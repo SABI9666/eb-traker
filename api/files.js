@@ -9,13 +9,13 @@ const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
 // Configure max file size from env, default to 100MB
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB || '100') * 1024 * 1024;
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB || '1000') * 1024 * 1024;
 
 // Configure multer for file uploads
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: MAX_FILE_SIZE, // 100MB per file
+        fileSize: MAX_FILE_SIZE, // 1000MB per file
         files: 10 // Allow up to 10 files at once
     },
     fileFilter: (req, file, cb) => {

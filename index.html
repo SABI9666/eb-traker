@@ -1847,12 +1847,12 @@ body.modal-open {
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
     <script>
        const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -1864,7 +1864,7 @@ body.modal-open {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
         console.log('🔧 Backend URL configured:', API_BASE);
 
         const authorizedUsers = {
@@ -5428,6 +5428,10 @@ function showCreateProposalModal() {
                 });
                 if (response.success) {
                     alert('✅ Proposal marked as WON!\n\nCOO will be notified.');
+                    // --- ADD THIS LINE ---
+                    // Note: You might need to pass clientName/projectName to this function or fetch it
+                     triggerEmailNotification('project.won', { proposalId: proposalId }); 
+                     // --------------------
                     closeModal();
                     showProposals();
                 } else {
@@ -5454,6 +5458,9 @@ function showCreateProposalModal() {
                 });
                 if (response.success) {
                     alert('Proposal marked as LOST.');
+                    // --- ADD THIS LINE ---
+                    triggerEmailNotification('project.lost', { proposalId: proposalId, reason: reason });
+                    // --------------------
                     closeModal();
                     showProposals();
                 } else {
@@ -6078,6 +6085,13 @@ if (window.currentEditStagedFiles.length > 0) {
                 if (response.success) {
                     closeModal();
                     showNotification('Pricing added successfully!', 'success');
+                    // --- ADD THIS LINE ---
+                    triggerEmailNotification('pricing.complete', { 
+                     proposalId: proposalId,
+                     // You might need to fetch these values from the DOM if not already available
+                     quoteValue: document.getElementById('currency').value + ' ' + document.getElementById('quoteValue').value,
+                    projectName: document.querySelector('.modal.show .subtitle')?.textContent || 'Project'
+                    });
                                 
                     // Refresh proposals list or show allocation option
                     showProposals();
@@ -7321,19 +7335,18 @@ async function createInvoiceAction(event) {
         
         // ***FIX***: The notification logic is now INSIDE the async function
         
-        // 2. Trigger Email Notifications (using existing function)
-        try {
-            await triggerEmailNotification('invoice.created', {
-                invoiceNumber: invoiceData.invoiceNo,
-                projectName: invoiceData.projectName,
-                // ***FIX***: Corrected variable names
-                amount: `${invoiceData.currency} ${invoiceData.amount}`,
-                dueDate: formatDate(invoiceData.paymentDueDate) 
-            });
-            console.log('Email notification queued for invoice.created');
-        } catch (emailError) {
-            console.warn('Failed to send email notification:', emailError.message);
-        }
+        // ============================================================
+        // 🟢 PASTE YOUR NEW CODE HERE
+        // ============================================================
+        await triggerEmailNotification('invoice.saved', {
+            projectId: invoiceData.projectId,
+            invoiceNumber: invoiceData.invoiceNo,
+            amount: invoiceData.currency + ' ' + invoiceData.amount,
+            // Add these two lines so the email template has the data it needs:
+            projectName: invoiceData.projectName,
+            clientName: invoiceData.clientCompany 
+        });
+        // ============================================================
 
         // 3. Trigger Internal Notifications (Bell Icon)
         // We need to find the BDM's UID from the proposal.
@@ -10446,6 +10459,14 @@ async function submitAdditionalTimeRequest() {
         if (response.success) {
             closeRequestTimeModal();
             alert(`✅ Request submitted successfully!\n\nRequested: ${requestedHours}h\nCOO will review your request shortly.`);
+
+            // --- ADD THIS LINE ---
+          triggerEmailNotification('time_request.created', {
+          projectId: projectId,
+           hours: requestedHours,
+           reason: reason,
+           designerName: currentUser.displayName // Assuming currentUser is global
+    });
             
             // Show pending requests
             if (typeof showPendingTimeRequests === 'function') {
@@ -10700,6 +10721,13 @@ async function approveTimeRequest(requestId, hours) {
         
         if (response.success) {
             alert(`✅ Approved ${hours}h additional time!`);
+            // --- ADD THIS LINE ---
+           // You might need to pass designerEmail to this function or let backend fetch it
+           triggerEmailNotification('time_request.approved', { 
+           requestId: requestId,
+           hours: hours 
+    });
+    // --------------------
             showCOOTimeRequests(); // Refresh list
         } else {
             throw new Error(response.error || 'Failed to approve');
@@ -12008,10 +12036,15 @@ async function submitDesignerUpload(event, projectId) {
                         'Variation Submitted!',
                         `Your request for variation "${variationCode}" has been sent to the COO for approval.`
                     );
-                    const parentProjectName = document.getElementById('variationParentProjectName').textContent; // <-- ADD THIS
-                    triggerEmailNotification('design.variation_request', { projectName: parentProjectName, variationCode: variationCode }); // <-- ADD THIS
-
-                    // No need to reload, just show success
+                    // --- ADD THIS LINE ---
+                   triggerEmailNotification('variation.request', {
+                    projectId: parentProjectId,
+                    variationCode: variationCode,
+                     hours: estimatedHours,
+                      // Grab project name from the modal if available
+                      projectName: document.getElementById('variationParentProjectName')?.textContent || 'Project'
+    });
+    // --------------------
                 } else {
                     throw new Error(response.error || 'Failed to submit variation. Please check if the variation code is unique.');
                 }
@@ -12114,7 +12147,7 @@ async function submitDesignerUpload(event, projectId) {
             const variationId = document.getElementById('approvalVariationId').value;
             const parentProjectId = document.getElementById('approvalParentProjectId').value;
             const notes = document.getElementById('approvalNotes').value.trim();
-            const hours = parseFloat(document.getElementById('app-estimatedHours').textContent);
+            const hours = parseFloat(document.getElementById('app-estimatedHours').textContent) || 0;
 
             if (decision === 'rejected' && !notes) {
                 alert('A reason is required for rejection.');
@@ -12149,18 +12182,38 @@ async function submitDesignerUpload(event, projectId) {
 
                 if (response.success) {
                     closeModal();
-                    showSuccessModal(
-                        `Variation ${decision.charAt(0).toUpperCase() + decision.slice(1)}!`,
-                        `The variation has been processed and the team will be notified.`
-                    );
                     
-                    // Refresh the COO dashboard
+                    // 1. Show success message
+                    const actionText = decision === 'approved' ? 'Approved' : 'Rejected';
+                    showSuccessModal(
+                        `Variation ${actionText}`, 
+                        `The variation request has been successfully ${actionText.toLowerCase()}.`
+                    );
+
+                    // 2. Trigger email notifications
+                    if (decision === 'approved') {
+                        await triggerEmailNotification('variation.approved', { 
+                            variationId: variationId,
+                            projectId: parentProjectId,
+                            hours: hours
+                        });
+                    } else {
+                        await triggerEmailNotification('variation.rejected', { 
+                            variationId: variationId, 
+                            projectId: parentProjectId,
+                            reason: notes 
+                        });
+                    }
+
+                    // 3. Refresh view
                     await showAllProjects();
+                    
                 } else {
                     throw new Error(response.error || 'Failed to process variation.');
                 }
 
             } catch (error) {
+                console.error('Variation approval error:', error);
                 alert(`Error: ${error.message}`);
             } finally {
                 hideLoading();
@@ -12213,84 +12266,40 @@ function handleTonnageInput() {
         calculateTotalHours();
     }
 }  
-   // ============================================
-// FRONTEND CODE - Replace uploadFileDirectly function
-// This handles:
-// - PDFs/Files → Upload through backend (no CORS issues)
-// - URLs → Keep working the same way as now
-// ============================================
-// Find this function in your index.html (around line 12204)
-// and REPLACE it with this version
-// ============================================
+  
 
-async function uploadFileDirectly(file, proposalId, fileType) {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`🚀 Uploading: ${file.name}`);
-    console.log(`📊 File size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`📦 File type: ${file.type || 'unknown'}`);
-    console.log(`🎯 Proposal ID: ${proposalId || 'none'}`);
-    console.log(`🏷️  Upload type: ${fileType || 'project'}`);
-    
-    try {
-        // Create FormData with file and metadata
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('proposalId', proposalId || '');
-        formData.append('fileType', fileType || 'project');
-        
-        console.log('📤 Sending to backend (no CORS issues)...');
-        
-        // Upload through backend - NO CORS needed!
-        const response = await apiCall('files/upload-file', {
-            method: 'POST',
-            body: formData
-            // Important: Don't set Content-Type - browser sets it automatically
-        });
-        
-        console.log('📥 Backend response:', response);
-        
-        if (!response.success) {
-            console.error('❌ Upload failed:', response);
-            throw new Error(response.error || 'Upload failed');
-        }
-        
-        console.log('✅ Upload successful!');
-        console.log('📄 File ID:', response.data.id);
-        console.log('🔗 File URL:', response.data.url);
+// ============================================
+    // ✅ GLOBAL FILE UPLOAD FUNCTION (MUST BE HERE)
+    // ============================================
+    async function uploadFileDirectly(file, proposalId, fileType) {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`🚀 Uploading: ${file.name}`);
         
-        return response.data;
-        
-    } catch (error) {
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('❌ UPLOAD FAILED:', file.name);
-        console.error('Error:', error.message);
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        throw error;
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('proposalId', proposalId || '');
+            formData.append('fileType', fileType || 'project');
+            
+            // console.log('📤 Sending to backend...');
+            
+            const response = await apiCall('files/upload-file', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.success) {
+                throw new Error(response.error || 'Upload failed');
+            }
+            
+            console.log('✅ Upload successful!');
+            return response.data;
+            
+        } catch (error) {
+            console.error('❌ UPLOAD FAILED:', file.name, error.message);
+            throw error;
+        }
     }
-}
-
-// ============================================
-// URL/LINK UPLOAD - KEEP YOUR EXISTING CODE
-// ============================================
-// Your existing code that uploads links already works fine!
-// It should look something like this in your proposal form:
-
-/*
-// Example of existing link upload code (keep this as-is):
-if (projectLinks.length > 0) {
-    await apiCall('files', {
-        method: 'POST',
-        body: JSON.stringify({ 
-            links: projectLinks, 
-            proposalId: proposalId, 
-            fileType: 'link' 
-        })
-    });
-}
-*/
-
-// That's it! No changes needed for link uploads.
 
 </script>
 

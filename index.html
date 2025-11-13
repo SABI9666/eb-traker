@@ -1846,14 +1846,15 @@ body.modal-open {
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
     <script>
-            const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+       const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
+
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -1863,7 +1864,7 @@ body.modal-open {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-         const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
         console.log('🔧 Backend URL configured:', API_BASE);
 
         const authorizedUsers = {
@@ -4802,12 +4803,18 @@ function showCreateProposalModal() {
                                     `).join('') : '<p>No project files uploaded.</p>'}
                                 </div>
 
-                                ${p.estimation ? `
+                              ${p.estimation ? `
                                     <div class="form-section">
                                         <h4>Estimation Details</h4>
-                                        <p><strong>Total Hours:</strong> ${p.estimation.totalHours || 'N/A'}</p>
+                                        
+                                        <p><strong>Total Hours:</strong> ${p.estimation.manhours || p.estimation.totalHours || 'N/A'}</p>
+                                        
+                                        <p><strong>Tonnage:</strong> ${p.estimation.tonnage || 'N/A'}</p>
+                                        
                                         <p><strong>Services:</strong> ${p.estimation.services?.join(', ') || 'N/A'}</p>
-                                        <p><strong>Estimated By:</strong> ${p.estimation.estimatedBy || 'N/A'}</p>
+                                        
+                                        <p><strong>Estimated By:</strong> ${p.estimation.estimatorName || p.estimation.estimatedByName || p.estimation.estimatedBy || 'N/A'}</p>
+                                        
                                         ${p.estimation.notes ? `<p><strong>Notes:</strong> ${p.estimation.notes}</p>` : ''}
                                     </div>
                                 ` : ''}
@@ -5022,7 +5029,7 @@ function showCreateProposalModal() {
     });
 }
 
-       async function saveEstimation(proposalId) {
+      async function saveEstimation(proposalId) {
     const services = Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value);
     
     // Get both values
@@ -5043,6 +5050,7 @@ function showCreateProposalModal() {
         revisionHours: document.getElementById('revisionHours').value || 0,
         pmHours: document.getElementById('pmHours').value || 0,
         totalHours: totalHours,
+        manhours: totalHours, // <-- ✅ THIS IS THE FIX
         services: services,
         notes: 'Estimation completed'
     };
@@ -5835,12 +5843,7 @@ if (window.currentEditStagedFiles.length > 0) {
     }
 }
     
-
-        // ============================================
-        // NEW FUNCTIONS ADDED FROM PROMPT
-        // ============================================
-        
-        // ============================================
+// ============================================
         // COO PRICING FORM WITH PROJECT NUMBER CREATION
         // ============================================
         async function showCOOPricingForm(proposalId) {
@@ -5860,6 +5863,23 @@ if (window.currentEditStagedFiles.length > 0) {
                     hideLoading();
                     return;
                 }
+           // ====================== MODIFICATION START ======================
+          // Logic to prepare display values
+          const estimation = proposal.estimation || {};
+          const totalHours = estimation.manhours || estimation.totalHours || 0;
+          const tonnage = estimation.tonnage || 0;
+
+         // Prepare HTML for Hours
+        // If hours are 0 but tonnage exists, display N/A for hours
+         const displayHours = (totalHours == 0 && tonnage > 0) ? 'N/A' : totalHours;
+        const hoursHtml = `<div><strong>Total Hours:</strong> ${displayHours}</div>`;
+
+         // Prepare HTML for Tonnage
+       // Only show tonnage if it's greater than 0
+       const tonnageHtml = tonnage > 0 
+    ? `<div><strong>Tonnage:</strong> ${tonnage}</div>` 
+    : '';
+// ======================= MODIFICATION END =======================
                         
                 const modalHtml = `
                     <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
@@ -5875,11 +5895,14 @@ if (window.currentEditStagedFiles.length > 0) {
                             <div class="modal-body">
                                 <div class="form-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
                                     <h4>Estimation Summary</h4>
-                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                                        <div><strong>Total Hours:</strong> ${proposal.estimation.manhours || proposal.estimation.totalHours || 0}</div>
-                                        <div><strong>Estimated By:</strong> ${proposal.estimation.estimatorName || 'N/A'}</div>
-                                        <div><strong>Services:</strong> ${proposal.estimation.services?.join(', ') || 'N/A'}</div>
-                                    </div>
+                                    
+                                  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                                  ${hoursHtml}
+                                  ${tonnageHtml}  
+                                  <div><strong>Estimated By:</strong> ${estimation.estimatorName || estimation.estimatedBy || 'N/A'}</div>
+                                  <div><strong>Services:</strong> ${estimation.services?.join(', ') || 'N/A'}</div>
+                                 </div>
+                                    
                                 </div>
                                                         
                                 <form id="cooPricingForm">
@@ -5890,6 +5913,7 @@ if (window.currentEditStagedFiles.length > 0) {
                                             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
                                                 <input type="text" id="projectNumber" class="form-control"
                                                        placeholder="Enter manually or click Generate" 
+                                                       value="${proposal.pricing?.projectNumber || ''}"
                                                        required>
                                                 <button type="button" onclick="generateProjectNumber('${proposal.clientCompany}')"
                                                         class="btn btn-outline" style="width: auto; white-space: nowrap;">
@@ -5907,16 +5931,17 @@ if (window.currentEditStagedFiles.length > 0) {
                                             <div class="form-group">
                                                 <label>Quote Value <span class="required">*</span></label>
                                                 <input type="number" id="quoteValue" class="form-control"
-                                                     placeholder="Enter quote value" step="0.01" required>
+                                                     placeholder="Enter quote value" step="0.01" 
+                                                     value="${proposal.pricing?.quoteValue || ''}" required>
                                             </div>
                                             <div class="form-group">
                                                 <label>Currency <span class="required">*</span></label>
                                                 <select id="currency" class="form-control" required>
-                                                    <option value="USD">USD ($)</option>
-                                                    <option value="AUD">AUD (A$)</option>
-                                                    <option value="CAD">CAD (C$)</option>
-                                                    <option value="GBP">GBP (£)</option>
-                                                    <option value="EUR">EUR (€)</option>
+                                                    <option value="USD" ${proposal.pricing?.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                                                    <option value="AUD" ${proposal.pricing?.currency === 'AUD' ? 'selected' : ''}>AUD (A$)</option>
+                                                    <option value="CAD" ${proposal.pricing?.currency === 'CAD' ? 'selected' : ''}>CAD (C$)</option>
+                                                    <option value="GBP" ${proposal.pricing?.currency === 'GBP' ? 'selected' : ''}>GBP (£)</option>
+                                                    <option value="EUR" ${proposal.pricing?.currency === 'EUR' ? 'selected' : ''}>EUR (€)</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -5925,19 +5950,21 @@ if (window.currentEditStagedFiles.length > 0) {
                                             <div class="form-group">
                                                 <label>Hourly Rate</label>
                                                 <input type="number" id="hourlyRate" class="form-control"
-                                                     placeholder="Enter hourly rate" step="0.01">
+                                                     placeholder="Enter hourly rate" step="0.01"
+                                                     value="${proposal.pricing?.hourlyRate || ''}">
                                             </div>
                                             <div class="form-group">
                                                 <label>Profit Margin (%)</label>
                                                 <input type="number" id="profitMargin" class="form-control"
-                                                     placeholder="Enter profit margin" step="0.01" min="0" max="100">
+                                                     placeholder="Enter profit margin" step="0.01" min="0" max="100"
+                                                     value="${proposal.pricing?.profitMargin || ''}">
                                             </div>
                                         </div>
                                                                         
                                         <div class="form-group">
                                             <label>Pricing Notes</label>
                                             <textarea id="pricingNotes" class="form-control" rows="3"
-                                                 placeholder="Add any pricing notes or special conditions..."></textarea>
+                                                 placeholder="Add any pricing notes or special conditions...">${proposal.pricing?.notes || ''}</textarea>
                                         </div>
                                     </div>
                                                                 
@@ -5947,24 +5974,28 @@ if (window.currentEditStagedFiles.length > 0) {
                                             <div class="form-group">
                                                 <label>Material Costs</label>
                                                 <input type="number" id="materialCosts" class="form-control"
-                                                     placeholder="0.00" step="0.01">
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.material || ''}">
                                             </div>
                                             <div class="form-group">
                                                 <label>Labor Costs</label>
                                                 <input type="number" id="laborCosts" class="form-control"
-                                                     placeholder="0.00" step="0.01">
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.labor || ''}">
                                             </div>
                                         </div>
                                         <div class="form-row">
                                             <div class="form-group">
                                                 <label>Overhead Costs</label>
                                                 <input type="number" id="overheadCosts" class="form-control"
-                                                     placeholder="0.00" step="0.01">
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.overhead || ''}">
                                             </div>
                                             <div class="form-group">
                                                 <label>Other Costs</label>
                                                 <input type="number" id="otherCosts" class="form-control"
-                                                     placeholder="0.00" step="0.01">
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.other || ''}">
                                             </div>
                                         </div>
                                     </div>
@@ -12218,7 +12249,9 @@ async function submitDesignerUpload(event, projectId) {
                 hideLoading();
             }
         }
-    // ============================================
+ 
+
+// ============================================
 // GLOBAL HELPER FUNCTIONS FOR ESTIMATION MODAL
 // ============================================
 
@@ -12230,10 +12263,19 @@ function calculateTotalHours() {
     const detailing = parseFloat(document.getElementById('detailingHours').value) || 0;
     const checking = parseFloat(document.getElementById('checkingHours').value) || 0;
     const revision = parseFloat(document.getElementById('revisionHours').value) || 0;
-    const projectManagement = parseFloat(document.getElementById('projectManagement').value) || 0;
+    
+    // ====================== THIS IS THE FIXED LINE ======================
+    // The ID in the HTML is "pmHours", not "projectManagement"
+    const projectManagement = parseFloat(document.getElementById('pmHours').value) || 0;
+    // ====================================================================
 
     const total = design + detailing + checking + revision + projectManagement;
-    document.getElementById('totalHours').value = total.toFixed(2);
+    
+    // Ensure totalHours is written back to the correct input
+    const totalHoursInput = document.getElementById('totalHours');
+    if (totalHoursInput) {
+        totalHoursInput.value = total.toFixed(2);
+    }
 }
 
 function toggleDesignHours() {
@@ -12264,7 +12306,7 @@ function handleTonnageInput() {
         designHoursInput.value = ((parseFloat(tonnageInput.value) || 0) * 10).toFixed(2);
         calculateTotalHours();
     }
-}  
+}
   
 
 // ============================================

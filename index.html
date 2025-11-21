@@ -2620,183 +2620,265 @@ async function triggerEmailNotification(eventName, data = {}) {
             }
         }
 
-        function renderProposals(proposals) {
-            const createButton = currentUserRole === 'bdm' ? `
-                <button onclick="showCreateProposalModal()" class="btn btn-primary" style="margin-bottom: 2rem; width: auto;">
-                    Create New Proposal
+        let currentProposalFilter = 'all'; // Add this global variable at the top of your script
+
+function renderProposals(proposals) {
+    const createButton = currentUserRole === 'bdm' ? `
+        <button onclick="showCreateProposalModal()" class="btn btn-primary" style="margin-bottom: 2rem; width: auto;">
+            Create New Proposal
+        </button>
+    ` : '';
+
+    // Calculate counts for Director filters
+    const pendingApprovalCount = proposals.filter(p => {
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        return statusLower === 'pending_approval' || 
+               statusLower === 'pricing_complete' || 
+               (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost');
+    }).length;
+
+    const pendingPricingCount = proposals.filter(p => {
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        return (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber);
+    }).length;
+
+    const pendingEstimationCount = proposals.filter(p => {
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && 
+               statusLower !== 'approved' && 
+               statusLower !== 'rejected' && 
+               statusLower !== 'won' && 
+               statusLower !== 'lost';
+    }).length;
+
+    // Director Filter Buttons
+    let directorFilterButtons = '';
+    if (currentUserRole === 'director') {
+        directorFilterButtons = `
+            <div class="filter-buttons-container">
+                <button class="filter-btn filter-btn-all ${currentProposalFilter === 'all' ? 'active' : ''}" 
+                        onclick="filterProposals('all')">
+                    📋 All Proposals
+                    <span class="filter-count">${proposals.length}</span>
                 </button>
-            ` : '';
+                <button class="filter-btn filter-btn-approval ${currentProposalFilter === 'pending_approval' ? 'active' : ''}" 
+                        onclick="filterProposals('pending_approval')">
+                    ⏰ Pending Approval
+                    <span class="filter-count">${pendingApprovalCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-pricing ${currentProposalFilter === 'pending_pricing' ? 'active' : ''}" 
+                        onclick="filterProposals('pending_pricing')">
+                    💰 Pending Pricing
+                    <span class="filter-count">${pendingPricingCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-estimation ${currentProposalFilter === 'pending_estimation' ? 'active' : ''}" 
+                        onclick="filterProposals('pending_estimation')">
+                    📊 Pending Estimation
+                    <span class="filter-count">${pendingEstimationCount}</span>
+                </button>
+            </div>
+        `;
+    }
 
-            const approvedProposals = proposals.filter(p => p.status === 'approved');
-            const submittedProposals = proposals.filter(p => p.status === 'submitted_to_client');
-            const wonProposals = proposals.filter(p => p.status === 'won');
-            const otherProposals = proposals.filter(p => !['approved', 'submitted_to_client', 'won'].includes(p.status));
-
-            let approvedSection = '';
-            if (currentUserRole === 'bdm' && approvedProposals.length > 0) {
-                approvedSection = `
-                    <div class="action-section" style="margin-bottom: 2rem; background: #E8F5E9;">
-                        <h3>✅ APPROVED Proposals - Ready for Client Submission</h3>
-                        ${approvedProposals.map(p => `
-                            <div class="action-item" style="background: white;">
-                                <div class="action-content">
-                                    <strong>${p.projectName}</strong>
-                                    <div class="action-meta">Client: ${p.clientCompany} | Approved: ${formatDate(p.directorApproval?.approvedAt || p.createdAt)}</div>
-                                </div>
-                                <span class="proposal-status status-approved">APPROVED</span>
-                                <div class="action-buttons">
-                                    <button onclick="submitToClient('${p.id}')" class="btn btn-primary btn-sm">📧 SUBMIT</button>
-                                    <button onclick="markProposalWon('${p.id}')" class="btn btn-success btn-sm">✅ WON</button>
-                                    <button onclick="markProposalLost('${p.id}')" class="btn btn-danger btn-sm">❌ LOST</button>
-                                    <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            }
-
-            let submittedSection = '';
-            if (currentUserRole === 'bdm' && submittedProposals.length > 0) {
-                submittedSection = `
-                    <div class="action-section" style="margin-bottom: 2rem; background: #E3F2FD;">
-                        <h3>📧 SUBMITTED Proposals - Awaiting Client Decision</h3>
-                        ${submittedProposals.map(p => `
-                            <div class="action-item" style="background: white;">
-                                <div class="action-content">
-                                    <strong>${p.projectName}</strong>
-                                    <div class="action-meta">Client: ${p.clientCompany} | Submitted: ${formatDate(p.updatedAt)}</div>
-                                </div>
-                                <span class="proposal-status status-submitted">SUBMITTED</span>
-                                <div class="action-buttons">
-                                    <button onclick="markProposalWon('${p.id}')" class="btn btn-success btn-sm">✅ WON</button>
-                                    <button onclick="markProposalLost('${p.id}')" class="btn btn-danger btn-sm">❌ LOST</button>
-                                    <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            }
-
-            let wonSection = '';
-            if (wonProposals.length > 0) {
-                wonSection = `
-                    <div class="action-section" style="margin-bottom: 2rem; background: #D5F4E6;">
-                        <h3>🏆 WON Proposals</h3>
-                        ${wonProposals.map(p => {
-                            // Determine allocation status and button
-                            let allocationInfo = '';
-                            let allocationButton = '';
-                            
-                            if (p.projectCreated && p.projectId) {
-                                // Project is allocated
-                                allocationInfo = '<span class="proposal-status status-allocated" style="background: #a7f3d0; color: #064e3b;">✅ Allocated</span>';
-                                if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                                    allocationButton = `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm">View Allocated Project</button>`;
-                                }
-                            } else if (p.pricing && p.pricing.projectNumber) {
-                                // Pricing complete but not allocated yet
-                                allocationInfo = '<span class="proposal-status status-pending" style="background: #fed7aa; color: #9a3412;">⏳ Pending Allocation</span>';
-                                if (currentUserRole === 'coo') {
-                                    allocationButton = `<button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-success btn-sm">🎯 Allocate</button>`;
-                                }
-                            } else {
-                                // No pricing yet
-                                allocationInfo = '<span class="proposal-status status-pending" style="background: #fecaca; color: #991b1b;">⏳ Pending Pricing</span>';
-                            }
-                            
-                            return `
-                            <div class="action-item" style="background: white;">
-                                <div class="action-content">
-                                    <strong>${p.projectName}</strong>
-                                    <div class="action-meta">
-                                        Client: ${p.clientCompany} |
-                                        Won: ${formatDate(p.wonDate)} |
-                                        ${p.pricing && p.pricing.projectNumber ? `Project #: ${p.pricing.projectNumber}` : 'No Project Number'}
-                                    </div>
-                                </div>
-                                ${allocationInfo}
-                                <div class="action-buttons">
-                                    ${allocationButton}
-                                    <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
-                                </div>
-                            </div>
-                        `}).join('')}
-                    </div>
-                `;
-            }
-
-            const proposalsHtml = otherProposals?.length ? otherProposals.map(p => {
-                // Determine the status display
-                let statusDisplay = p.status.toUpperCase().replace(/_/g, ' ');
-                let statusClass = p.status.toLowerCase().replace(/_/g, '-');
-                
-                // Override status display if pricing has been completed
-                if (p.pricing && p.pricing.projectNumber && p.status === 'pricing_complete') {
-                    statusDisplay = 'PRICING COMPLETE';
-                    statusClass = 'pricing-complete';
-                } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
-                    statusDisplay = 'PRICING COMPLETE';
-                    statusClass = 'pricing-complete';
-                }
-                
-                // Determine action buttons based on role and status
-                let actionButtons = '';
+    // Filter proposals based on current filter
+    let filteredProposals = proposals;
+    if (currentUserRole === 'director' && currentProposalFilter !== 'all') {
+        if (currentProposalFilter === 'pending_approval') {
+            filteredProposals = proposals.filter(p => {
                 const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
-                
-                // Estimator: Add Estimation button
-                if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation)) {
-                    actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}')">Add Estimation</button> `;
-                }
-                
-                // COO: Set Pricing button
-                if (currentUserRole === 'coo' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
-                    actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
-                }
-                
-                // Director: Approve/Reject buttons
-                if (currentUserRole === 'director' && (statusLower === 'pending_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected'))) {
-                    actionButtons += `
-                        <button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">✅ Approve</button>
-                        <button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">❌ Reject</button>
-                    `;
-                }
-                
-                // COO/Director: Allocation button
-                if ((currentUserRole === 'coo' || currentUserRole === 'director') && p.pricing && p.pricing.projectNumber) {
-                    actionButtons += getProposalAllocationButton(p);
-                }
-                
-                return `
-                <div class="action-item">
-                    <div class="action-content">
-                        <strong>${p.projectName}</strong>
-                        <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}</div>
-                    </div>
-                    <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
-                    <div class="action-buttons">
-                        ${actionButtons}
-                        <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View Details</button>
-                    </div>
-                </div>
-            `}).join('') : '';
+                return statusLower === 'pending_approval' || 
+                       statusLower === 'pricing_complete' || 
+                       (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost');
+            });
+        } else if (currentProposalFilter === 'pending_pricing') {
+            filteredProposals = proposals.filter(p => {
+                const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+                return (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber);
+            });
+        } else if (currentProposalFilter === 'pending_estimation') {
+            filteredProposals = proposals.filter(p => {
+                const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+                return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && 
+                       statusLower !== 'approved' && 
+                       statusLower !== 'rejected' && 
+                       statusLower !== 'won' && 
+                       statusLower !== 'lost';
+            });
+        }
+    }
 
-            document.getElementById('mainContent').innerHTML = `
-                <div class="page-header">
-                    <h2>All Proposals</h2>
-                    <div class="subtitle">Workflow: DRAFT → ESTIMATED → PRICED → APPROVED/REJECTED → SUBMITTED → WON/LOST</div>
-                </div>
-                ${createButton}
-                ${approvedSection}
-                ${submittedSection}
-                ${wonSection}
-                <div class="action-section">
-                    <h3>All Other Proposals</h3>
-                    ${proposalsHtml || '<p>No other proposals found.</p>'}
-                </div>
+    const approvedProposals = filteredProposals.filter(p => p.status === 'approved');
+    const submittedProposals = filteredProposals.filter(p => p.status === 'submitted_to_client');
+    const wonProposals = filteredProposals.filter(p => p.status === 'won');
+    const otherProposals = filteredProposals.filter(p => !['approved', 'submitted_to_client', 'won'].includes(p.status));
+
+    let approvedSection = '';
+    if (currentUserRole === 'bdm' && approvedProposals.length > 0) {
+        approvedSection = `
+            <div class="action-section" style="margin-bottom: 2rem; background: #E8F5E9;">
+                <h3>✅ APPROVED Proposals - Ready for Client Submission</h3>
+                ${approvedProposals.map(p => `
+                    <div class="action-item" style="background: white;">
+                        <div class="action-content">
+                            <strong>${p.projectName}</strong>
+                            <div class="action-meta">Client: ${p.clientCompany} | Approved: ${formatDate(p.directorApproval?.approvedAt || p.createdAt)}</div>
+                        </div>
+                        <span class="proposal-status status-approved">APPROVED</span>
+                        <div class="action-buttons">
+                            <button onclick="submitToClient('${p.id}')" class="btn btn-primary btn-sm">📧 SUBMIT</button>
+                            <button onclick="markProposalWon('${p.id}')" class="btn btn-success btn-sm">✅ WON</button>
+                            <button onclick="markProposalLost('${p.id}')" class="btn btn-danger btn-sm">❌ LOST</button>
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    let submittedSection = '';
+    if (currentUserRole === 'bdm' && submittedProposals.length > 0) {
+        submittedSection = `
+            <div class="action-section" style="margin-bottom: 2rem; background: #E3F2FD;">
+                <h3>📧 SUBMITTED Proposals - Awaiting Client Decision</h3>
+                ${submittedProposals.map(p => `
+                    <div class="action-item" style="background: white;">
+                        <div class="action-content">
+                            <strong>${p.projectName}</strong>
+                            <div class="action-meta">Client: ${p.clientCompany} | Submitted: ${formatDate(p.updatedAt)}</div>
+                        </div>
+                        <span class="proposal-status status-submitted">SUBMITTED</span>
+                        <div class="action-buttons">
+                            <button onclick="markProposalWon('${p.id}')" class="btn btn-success btn-sm">✅ WON</button>
+                            <button onclick="markProposalLost('${p.id}')" class="btn btn-danger btn-sm">❌ LOST</button>
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    let wonSection = '';
+    if (wonProposals.length > 0) {
+        wonSection = `
+            <div class="action-section" style="margin-bottom: 2rem; background: #D5F4E6;">
+                <h3>🏆 WON Proposals</h3>
+                ${wonProposals.map(p => {
+                    let allocationInfo = '';
+                    let allocationButton = '';
+                    
+                    if (p.projectCreated && p.projectId) {
+                        allocationInfo = '<span class="proposal-status status-allocated" style="background: #a7f3d0; color: #064e3b;">✅ Allocated</span>';
+                        if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                            allocationButton = `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm">View Allocated Project</button>`;
+                        }
+                    } else if (p.pricing && p.pricing.projectNumber) {
+                        allocationInfo = '<span class="proposal-status status-pending" style="background: #fed7aa; color: #9a3412;">⏳ Pending Allocation</span>';
+                        if (currentUserRole === 'coo') {
+                            allocationButton = `<button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-success btn-sm">🎯 Allocate</button>`;
+                        }
+                    } else {
+                        allocationInfo = '<span class="proposal-status status-pending" style="background: #fecaca; color: #991b1b;">⏳ Pending Pricing</span>';
+                    }
+                    
+                    return `
+                    <div class="action-item" style="background: white;">
+                        <div class="action-content">
+                            <strong>${p.projectName}</strong>
+                            <div class="action-meta">
+                                Client: ${p.clientCompany} |
+                                Won: ${formatDate(p.wonDate)} |
+                                ${p.pricing && p.pricing.projectNumber ? `Project #: ${p.pricing.projectNumber}` : 'No Project Number'}
+                            </div>
+                        </div>
+                        ${allocationInfo}
+                        <div class="action-buttons">
+                            ${allocationButton}
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
+                        </div>
+                    </div>
+                `}).join('')}
+            </div>
+        `;
+    }
+
+    const proposalsHtml = otherProposals?.length ? otherProposals.map(p => {
+        let statusDisplay = p.status.toUpperCase().replace(/_/g, ' ');
+        let statusClass = p.status.toLowerCase().replace(/_/g, '-');
+        
+        if (p.pricing && p.pricing.projectNumber && p.status === 'pricing_complete') {
+            statusDisplay = 'PRICING COMPLETE';
+            statusClass = 'pricing-complete';
+        } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
+            statusDisplay = 'PRICING COMPLETE';
+            statusClass = 'pricing-complete';
+        }
+        
+        let actionButtons = '';
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        
+        if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation)) {
+            actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}')">Add Estimation</button> `;
+        }
+        
+        if (currentUserRole === 'coo' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
+            actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
+        }
+        
+        if (currentUserRole === 'director' && (statusLower === 'pending_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected'))) {
+            actionButtons += `
+                <button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">✅ Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">❌ Reject</button>
             `;
         }
+        
+        if ((currentUserRole === 'coo' || currentUserRole === 'director') && p.pricing && p.pricing.projectNumber) {
+            actionButtons += getProposalAllocationButton(p);
+        }
+        
+        return `
+        <div class="action-item">
+            <div class="action-content">
+                <strong>${p.projectName}</strong>
+                <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}</div>
+            </div>
+            <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
+            <div class="action-buttons">
+                ${actionButtons}
+                <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View Details</button>
+            </div>
+        </div>
+    `}).join('') : '<p>No proposals found for this filter.</p>';
+
+    const filterInfo = currentUserRole === 'director' && currentProposalFilter !== 'all' ? 
+        `<div class="subtitle" style="color: var(--primary-blue); font-weight: 600;">Filtered: ${currentProposalFilter.replace(/_/g, ' ').toUpperCase()}</div>` : 
+        `<div class="subtitle">Workflow: DRAFT → ESTIMATED → PRICED → APPROVED/REJECTED → SUBMITTED → WON/LOST</div>`;
+
+    document.getElementById('mainContent').innerHTML = `
+        <div class="page-header">
+            <h2>All Proposals</h2>
+            ${filterInfo}
+        </div>
+        ${createButton}
+        ${directorFilterButtons}
+        ${approvedSection}
+        ${submittedSection}
+        ${wonSection}
+        <div class="action-section">
+            <h3>${currentUserRole === 'director' && currentProposalFilter !== 'all' ? 'Filtered Results' : 'All Other Proposals'}</h3>
+            ${proposalsHtml}
+        </div>
+    `;
+}
+
+// ============================================
+// NEW FUNCTION - Add this to your JavaScript
+// ============================================
+function filterProposals(filterType) {
+    currentProposalFilter = filterType;
+    loadProposals(); // This will re-render with the new filter
+}
          let currentProjectFilter = 'all';
         let allProjectsData = [];
         let allVariationsData = []; // <-- NEW: Add this line

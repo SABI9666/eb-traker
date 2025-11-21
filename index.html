@@ -1658,6 +1658,69 @@ body.modal-open {
 .hidden { display: none; }
 .block { display: block; }
 
+
+/* ============================================ */
+/* DIRECTOR FILTER BUTTONS STYLES */
+/* ============================================ */
+.filter-buttons-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.875rem 1.5rem;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.filter-btn.active {
+    border-color: currentColor;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.filter-btn-all {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+}
+
+.filter-btn-approval {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+}
+
+.filter-btn-pricing {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.filter-btn-estimation {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.filter-count {
+    background: rgba(255,255,255,0.3);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="analytics.js"></script>
@@ -3953,71 +4016,6 @@ async function reviewTimeRequest(requestId, action) {
         hideLoading();
     }
 }
-// ============================================
-// DIRECTOR FILTER BUTTONS - ADD TO YOUR HTML
-// ============================================
-// Add this CSS to your <style> section
-
-/* Filter Button Styles */
-.filter-buttons-container {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-}
-
-.filter-btn {
-    padding: 0.875rem 1.5rem;
-    border: 2px solid transparent;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.filter-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.filter-btn.active {
-    border-color: currentColor;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.filter-btn-all {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-}
-
-.filter-btn-approval {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-}
-
-.filter-btn-pricing {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-}
-
-.filter-btn-estimation {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-}
-
-.filter-count {
-    background: rgba(255,255,255,0.3);
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    font-weight: bold;
-}        
-
 // ============================================
 // HELPER FUNCTIONS
 // ============================================

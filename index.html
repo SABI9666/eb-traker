@@ -2746,6 +2746,9 @@ function renderProposals(proposals) {
     // Filter proposals based on current filter
     let filteredProposals = proposals;
     if (currentUserRole === 'director' && currentProposalFilter !== 'all') {
+        console.log('🔍 Applying filter:', currentProposalFilter);
+        console.log('📊 Total proposals before filter:', proposals.length);
+        
         if (currentProposalFilter === 'pending_approval') {
             filteredProposals = proposals.filter(p => {
                 const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
@@ -2768,6 +2771,8 @@ function renderProposals(proposals) {
                        statusLower !== 'lost';
             });
         }
+        
+        console.log('📊 Filtered proposals:', filteredProposals.length);
     }
 
     const approvedProposals = filteredProposals.filter(p => p.status === 'approved');
@@ -2936,11 +2941,12 @@ function renderProposals(proposals) {
 }
 
 // ============================================
-// NEW FUNCTION - Add this to your JavaScript
+// FILTER PROPOSALS FUNCTION
 // ============================================
 function filterProposals(filterType) {
+    console.log('🔍 Filtering proposals by:', filterType);
     currentProposalFilter = filterType;
-    loadProposals(); // This will re-render with the new filter
+    showProposals(); // This will re-render with the new filter
 }
          let currentProjectFilter = 'all';
         let allProjectsData = [];

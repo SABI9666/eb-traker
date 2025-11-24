@@ -1909,7 +1909,7 @@ body.modal-open {
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
     <script>
-        const firebaseConfig = {
+      const firebaseConfig = {
             apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
             authDomain: "eb-tracker-ff945.firebaseapp.com",
             projectId: "eb-tracker-ff945",
@@ -1928,6 +1928,8 @@ body.modal-open {
 
         // FIXED: Direct backend URL configuration
         const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+
+
         console.log('🔧 Backend URL configured:', API_BASE);
 
         const authorizedUsers = {
@@ -4971,16 +4973,40 @@ function showCreateProposalModal() {
 
                                 ${estimationFilesHtml}
 
-                                ${p.pricing ? `
-                                    <div class="form-section">
-                                        <h4>Pricing Information</h4>
-                                        <p><strong>Project Number:</strong> ${p.pricing.projectNumber || 'N/A'}</p>
-                                        <p><strong>Quote Value:</strong> ${p.pricing.quoteValue || 'N/A'} ${p.pricing.currency || ''}</p>
-                                        <p><strong>Profit Margin:</strong> ${p.pricing.profitMargin || 'N/A'}%</p>
-                                        <p><strong>Hourly Rate:</strong> ${p.pricing.hourlyRate || 'N/A'}</p>
-                                        <p><strong>Priced By:</strong> ${p.pricing.pricedBy || 'N/A'}</p>
-                                    </div>
-                                ` : ''}
+                              ${p.pricing ? `
+    <div class="form-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4>Pricing Information 💰</h4>
+            ${['coo', 'director'].includes(currentUserRole) && p.status !== 'won' && p.status !== 'lost' ? `
+                <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); showEditPricingModal('${p.id}')">
+                    ✏️ Edit Pricing
+                </button>
+            ` : ''}
+        </div>
+        <p><strong>Project Number:</strong> ${p.pricing.projectNumber || 'N/A'}</p>
+        <p><strong>Quote Value:</strong> ${p.pricing.currency || ''} ${p.pricing.quoteValue || 'N/A'}</p>
+        <p><strong>Profit Margin:</strong> ${p.pricing.profitMargin || 'N/A'}%</p>
+        <p><strong>Hourly Rate:</strong> ${p.pricing.hourlyRate || 'N/A'}</p>
+        <p><strong>Priced By:</strong> ${p.pricing.pricedBy || 'N/A'}</p>
+        ${p.pricing.costBreakdown ? `
+            <div style="margin-top: 1rem; padding: 1rem; background: var(--light-blue); border-radius: 8px;">
+                <strong>Cost Breakdown:</strong>
+                <div style="margin-top: 0.5rem;">
+                    <span>Material: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.material || 0}</span> |
+                    <span>Labor: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.labor || 0}</span> |
+                    <span>Overhead: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.overhead || 0}</span> |
+                    <span>Other: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.other || 0}</span>
+                </div>
+            </div>
+        ` : ''}
+        ${p.pricing.notes ? `
+            <div style="margin-top: 0.5rem;">
+                <strong>Notes:</strong> 
+                <p style="white-space: pre-wrap; background: #f9fafb; padding: 0.75rem; border-radius: 4px; margin-top: 0.25rem;">${p.pricing.notes}</p>
+            </div>
+        ` : ''}
+    </div>
+` : ''}
 
                                 ${p.directorApproval ? `
                                     <div class="form-section">
@@ -6286,6 +6312,277 @@ if (window.currentEditStagedFiles.length > 0) {
                 hideLoading();
             }
         }
+    /**
+ * Shows modal to edit existing pricing information (COO/Director only)
+ */
+async function showEditPricingModal(proposalId) {
+    try {
+        showLoading();
+        const response = await apiCall(`proposals?id=${proposalId}`);
+        
+        if (!response.success || !response.data) {
+            throw new Error('Failed to load proposal');
+        }
+        
+        const proposal = response.data;
+        
+        // Check if proposal has pricing
+        if (!proposal.pricing) {
+            alert('No pricing information found for this proposal');
+            hideLoading();
+            return;
+        }
+        
+        // Get existing pricing data
+        const pricing = proposal.pricing;
+        const estimation = proposal.estimation || {};
+        const totalHours = estimation.manhours || estimation.totalHours || 0;
+        const tonnage = estimation.tonnage || 0;
+        
+        // Prepare HTML for Hours
+        const displayHours = (totalHours == 0 && tonnage > 0) ? 'N/A' : totalHours;
+        const hoursHtml = `<div><strong>Total Hours:</strong> ${displayHours}</div>`;
+        
+        // Prepare HTML for Tonnage
+        const tonnageHtml = tonnage > 0 
+            ? `<div><strong>Tonnage:</strong> ${tonnage}</div>` 
+            : '';
+        
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <div>
+                            <h2>Edit Pricing Information</h2>
+                            <div class="subtitle">${proposal.projectName} - ${proposal.clientCompany}</div>
+                        </div>
+                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="form-section" style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <p style="margin: 0; color: #856404;">
+                                ⚠️ <strong>Warning:</strong> Editing pricing information will update the proposal. 
+                                Make sure to review all changes carefully before saving.
+                            </p>
+                        </div>
+                        
+                        <div class="form-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h4>Estimation Summary</h4>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                                ${hoursHtml}
+                                ${tonnageHtml}  
+                                <div><strong>Estimated By:</strong> ${estimation.estimatorName || estimation.estimatedBy || 'N/A'}</div>
+                                <div><strong>Services:</strong> ${estimation.services?.join(', ') || 'N/A'}</div>
+                            </div>
+                        </div>
+                        
+                        <form id="editPricingForm">
+                            <input type="hidden" id="editProposalId" value="${proposalId}">
+                            
+                            <div class="form-section">
+                                <h4>Project Number</h4>
+                                <div class="form-group">
+                                    <label>Project Number <span class="required">*</span></label>
+                                    <input type="text" id="editProjectNumber" class="form-control"
+                                           placeholder="Project number" 
+                                           value="${pricing.projectNumber || ''}"
+                                           required>
+                                    <small class="form-text">Changing the project number may affect project tracking</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <h4>Pricing Information</h4>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Quote Value <span class="required">*</span></label>
+                                        <input type="number" id="editQuoteValue" class="form-control"
+                                             placeholder="Enter quote value" step="0.01" 
+                                             value="${pricing.quoteValue || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Currency <span class="required">*</span></label>
+                                        <select id="editCurrency" class="form-control" required>
+                                            <option value="USD" ${pricing.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                                            <option value="AUD" ${pricing.currency === 'AUD' ? 'selected' : ''}>AUD (A$)</option>
+                                            <option value="CAD" ${pricing.currency === 'CAD' ? 'selected' : ''}>CAD (C$)</option>
+                                            <option value="GBP" ${pricing.currency === 'GBP' ? 'selected' : ''}>GBP (£)</option>
+                                            <option value="EUR" ${pricing.currency === 'EUR' ? 'selected' : ''}>EUR (€)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Hourly Rate</label>
+                                        <input type="number" id="editHourlyRate" class="form-control"
+                                             placeholder="Enter hourly rate" step="0.01"
+                                             value="${pricing.hourlyRate || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Profit Margin (%)</label>
+                                        <input type="number" id="editProfitMargin" class="form-control"
+                                             placeholder="Enter profit margin" step="0.01" min="0" max="100"
+                                             value="${pricing.profitMargin || ''}">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Pricing Notes</label>
+                                    <textarea id="editPricingNotes" class="form-control" rows="3"
+                                         placeholder="Add any pricing notes or special conditions...">${pricing.notes || ''}</textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <h4>Cost Breakdown (Optional)</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Material Costs</label>
+                                        <input type="number" id="editMaterialCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.material || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Labor Costs</label>
+                                        <input type="number" id="editLaborCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.labor || ''}">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Overhead Costs</label>
+                                        <input type="number" id="editOverheadCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.overhead || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Other Costs</label>
+                                        <input type="number" id="editOtherCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.other || ''}">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                        <button type="button" onclick="submitEditedPricing()" class="btn btn-warning">
+                            💾 Update Pricing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        hideLoading();
+        
+    } catch (error) {
+        console.error('Error loading edit pricing form:', error);
+        alert('Error loading pricing form: ' + error.message);
+        hideLoading();
+    }
+}
+    /**
+ * Submits the edited pricing information to the backend
+ */
+async function submitEditedPricing() {
+    const proposalId = document.getElementById('editProposalId').value;
+    const projectNumber = document.getElementById('editProjectNumber').value;
+    const quoteValue = document.getElementById('editQuoteValue').value;
+    const currency = document.getElementById('editCurrency').value;
+    const hourlyRate = document.getElementById('editHourlyRate').value;
+    const profitMargin = document.getElementById('editProfitMargin').value;
+    const pricingNotes = document.getElementById('editPricingNotes').value;
+    
+    // Optional cost breakdown
+    const materialCosts = document.getElementById('editMaterialCosts').value || 0;
+    const laborCosts = document.getElementById('editLaborCosts').value || 0;
+    const overheadCosts = document.getElementById('editOverheadCosts').value || 0;
+    const otherCosts = document.getElementById('editOtherCosts').value || 0;
+    
+    // Validation
+    if (!projectNumber) {
+        alert('Project number is required');
+        document.getElementById('editProjectNumber').focus();
+        return;
+    }
+    
+    if (!quoteValue || parseFloat(quoteValue) <= 0) {
+        alert('Please enter a valid quote value');
+        document.getElementById('editQuoteValue').focus();
+        return;
+    }
+    
+    // Confirmation dialog
+    if (!confirm('Are you sure you want to update the pricing information? This action will modify the existing pricing data.')) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const pricingData = {
+            projectNumber: projectNumber,
+            quoteValue: parseFloat(quoteValue),
+            currency: currency,
+            hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+            profitMargin: profitMargin ? parseFloat(profitMargin) : null,
+            notes: pricingNotes,
+            costBreakdown: {
+                material: parseFloat(materialCosts),
+                labor: parseFloat(laborCosts),
+                overhead: parseFloat(overheadCosts),
+                other: parseFloat(otherCosts),
+                total: parseFloat(materialCosts) + parseFloat(laborCosts) +
+                       parseFloat(overheadCosts) + parseFloat(otherCosts)
+            },
+            lastEditedBy: currentUser.name,
+            lastEditedAt: new Date().toISOString()
+        };
+        
+        const response = await apiCall(`proposals?id=${proposalId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_pricing',
+                data: pricingData
+            })
+        });
+        
+        if (response.success) {
+            closeModal();
+            showSuccessModal('Pricing Updated!', 'The pricing information has been successfully updated.');
+            
+            // Trigger email notification
+            await triggerEmailNotification('pricing.updated', { 
+                proposalId: proposalId,
+                quoteValue: currency + ' ' + quoteValue,
+                projectNumber: projectNumber
+            });
+            
+            // Refresh the proposals view
+            setTimeout(() => {
+                showProposals();
+            }, 1500);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update pricing');
+        }
+        
+    } catch (error) {
+        console.error('Error updating pricing:', error);
+        alert('Error updating pricing: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
 
         // ============================================
         // PROJECT ALLOCATION TO DESIGN MANAGER

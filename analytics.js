@@ -83,7 +83,7 @@ function getAnalyticsHTML(role) {
         <div class="action-section">
             <h3>Regional Business (Won Revenue)</h3>
             <div style="position: relative; height: 350px; display: flex; align-items: center; justify-content: center;">
-                <canvas id="regionalPieChart" style="max-height: 350px; max-width: 350px;"></canvas>.
+                <canvas id="regionalPieChart" style="max-height: 350px; max-width: 350px;"></canvas>
             </div>
         </div>
 
@@ -187,7 +187,8 @@ async function loadAnalyticsData(role) {
              date = new Date(p.updatedAt.seconds ? p.updatedAt.seconds * 1000 : p.updatedAt);
         }
 
-        if (date) {
+        // FIX 1: Check if date is a valid Date object before processing
+        if (date && !isNaN(date.getTime())) {
             const year = date.getFullYear();
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const label = `${year}-${month}`;
@@ -262,7 +263,8 @@ async function loadAnalyticsData(role) {
             if (p.wonDate) {
                 date = new Date(p.wonDate.seconds ? p.wonDate.seconds * 1000 : p.wonDate);
             }
-            if (date) {
+            // FIX 2: Check if date is a valid Date object before calling getWeekStartDate (RangeError fix)
+            if (date && !isNaN(date.getTime())) {
                 const weekStart = getWeekStartDate(date);
                 if (weeklyRevenue.hasOwnProperty(weekStart)) {
                     weeklyRevenue[weekStart] += (p.pricing?.quoteValue || 0);
@@ -492,7 +494,6 @@ function renderBdmPerformanceChart(bdmData) {
 
 /**
  * Renders the Weekly Revenue line chart (COO/Director only)
- * --- TYPO FIX APPLIED HERE ---
  */
 function renderWeeklyRevenueChart(weeklyData) {
     const ctx = document.getElementById('weeklyRevenueChart').getContext('2d');
@@ -523,7 +524,6 @@ function renderWeeklyRevenueChart(weeklyData) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            // The extra 'MS' string was removed from here
                             return '$' + (value / 1000) + 'k';
                         }
                     }
@@ -540,7 +540,6 @@ function renderWeeklyRevenueChart(weeklyData) {
 
 /**
  * Renders the Regional Business pie chart (COO/Director only)
- * --- TYPO FIX APPLIED HERE ---
  */
 function renderRegionalPieChart(regionalData) {
     const ctx = document.getElementById('regionalPieChart').getContext('2d');
@@ -557,7 +556,6 @@ function renderRegionalPieChart(regionalData) {
                     CHART_COLORS.green,
                     CHART_COLORS.yellow,
                     CHART_COLORS.purple,
-                    // Fixed: Was 'CHART_PROPERTIES.orange', now 'CHART_COLORS.orange'
                     CHART_COLORS.orange,
                     CHART_COLORS.red,
                     CHART_COLORS.grey

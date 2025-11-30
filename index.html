@@ -6,6 +6,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EBTracker - EDANBROOK Project Management</title>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.40.2/docxtemplater.js"></script>
+    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
+    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip-utils.js"></script>
     <style>
      * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2223,13 +2227,13 @@ body.modal-open {
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
       
-    const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -2241,8 +2245,7 @@ body.modal-open {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
 
@@ -2500,7 +2503,7 @@ body.modal-open {
                             div.innerHTML = `
                                 <strong>${file.fileName || file.originalName}</strong><br>
                                 <small>Uploaded: ${new Date(file.uploadedAt).toLocaleDateString()}</small><br>
-                                <a href="${file.url || file.fileUrl}" target="_blank" class="btn btn-primary btn-sm">Download</a>
+                                <a href="${file.url || file.fileUrl || file.downloadUrl || '#'}" target="_blank" class="btn btn-primary btn-sm">Download</a>
                             `;
                             filesList.appendChild(div);
                         });
@@ -5734,6 +5737,14 @@ function showCreateProposalModal() {
 
         function renderProposalDetailModal(p, files = []) {
              console.log('Rendering proposal modal. User Role:', currentUserRole, 'Proposal Status:', p.status); // DEBUG Line
+            
+            // Normalize file URLs - ensure each file has a 'url' property
+            files = files.map(f => ({
+                ...f,
+                url: f.url || f.fileUrl || f.downloadUrl || '',
+                originalName: f.originalName || f.fileName || 'Unknown File'
+            }));
+            
             const projectFiles = files.filter(f => !f.fileType || f.fileType === 'project');
             const estimationFiles = files.filter(f => f.fileType === 'estimation');
             const linkFiles = files.filter(f => f.fileType === 'link');
@@ -5780,6 +5791,15 @@ function showCreateProposalModal() {
                  actionsHtml = `
                     <button class="btn btn-success btn-sm" onclick="markProposalWon('${p.id}')">✅ WON</button>
                     <button class="btn btn-danger btn-sm" onclick="markProposalLost('${p.id}')" style="margin-left: 10px;">❌ LOST</button>
+                 `;
+            }
+             // --- ADD THIS BLOCK: Generate Word Quote Button for BDM ---
+            if (currentUserRole === 'bdm' && p.pricing && p.pricing.quoteValue) {
+                 actionsHtml += `
+                    <button class="btn btn-outline btn-sm" style="margin-left: 10px; border-color: #2563eb; color: #2563eb;" 
+                            onclick="generateWordQuote('${p.id}')">
+                        📄 Generate Word Quote
+                    </button>
                  `;
             }
 
@@ -5853,21 +5873,27 @@ function showCreateProposalModal() {
             let estimationFilesHtml = '';
             if (estimationFiles.length > 0) {
                 if (canAccessEstimationFile(p.status)) {
+                    const estimationFilesItems = estimationFiles.map(file => {
+                        const fileUrl = file.url || file.fileUrl || file.downloadUrl || '#';
+                        const fileName = file.originalName || file.fileName || 'Unknown File';
+                        const deleteBtn = file.canDelete ? 
+                            `<button class="btn btn-danger btn-sm" onclick="deleteFile('${file.id}'); closeModal(); viewProposal('${p.id}');">🗑️ Delete</button>` : '';
+                        return `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #fff; border-radius: 5px; margin-bottom: 0.5rem; border: 1px solid var(--border);">
+                                <span>📊 ${fileName}</span>
+                                <div>
+                                    <button class="btn btn-outline btn-sm" onclick="window.open('${fileUrl}', '_blank')">View</button>
+                                    <button class="btn btn-primary btn-sm" onclick="downloadFile('${fileUrl}', '${fileName}')">Download</button>
+                                    ${deleteBtn}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
                     estimationFilesHtml = `
                         <div class="form-section">
                             <h4>Estimation Files ${getFileAccessIndicator({ fileType: 'estimation' }, p.status)}</h4>
-                            ${estimationFiles.map(file => `
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #fff; border-radius: 5px; margin-bottom: 0.5rem; border: 1px solid var(--border);">
-                                    <span>📊 ${file.originalName}</span>
-                                    <div>
-                                        <button class="btn btn-outline btn-sm" onclick="window.open('${file.url}', '_blank')">View</button>
-                                        <button class="btn btn-primary btn-sm" onclick="downloadFile('${file.url}', '${file.originalName}')">Download</button>
-                                        ${file.canDelete ? `
-                                            <button class="btn btn-danger btn-sm" onclick="deleteFile('${file.id}'); closeModal(); viewProposal('${p.id}');">🗑️ Delete</button>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
+                            ${estimationFilesItems}
                         </div>
                     `;
                 } else {
@@ -6262,12 +6288,17 @@ function showCreateProposalModal() {
 }
 
         async function loadProjectFiles(proposalId) {
-            // ... (This function remains unchanged)
             try {
                 const { success, data } = await apiCall(`files?proposalId=${proposalId}`);
                 const projectFilesView = document.getElementById('projectFilesView');
                 if (success && data) {
-                    const projectFiles = data.filter(f => !f.fileType || f.fileType === 'project');
+                    // Normalize file URLs
+                    const normalizedFiles = data.map(f => ({
+                        ...f,
+                        url: f.url || f.fileUrl || f.downloadUrl || '',
+                        originalName: f.originalName || f.fileName || 'Unknown File'
+                    }));
+                    const projectFiles = normalizedFiles.filter(f => !f.fileType || f.fileType === 'project');
                     const filesHtml = projectFiles.length ? projectFiles.map(file => `
                         <div class="action-item" style="margin-bottom: 1rem; padding: 1rem;">
                             <div class="action-content"><strong>📄 ${file.originalName}</strong></div>
@@ -6912,11 +6943,19 @@ async function editProposal(proposalId) {
                 const selectedTypes = Array.from(document.querySelectorAll('input[name="editProjectType"]:checked')).map(cb => cb.value);
                 if (selectedTypes.length === 0) throw new Error('Please select at least one Project Type.');
 
-                // Update details
+                // Collect new links from the form
+                const newLinks = [];
+                document.querySelectorAll('#editLinksContainer .link-input-group').forEach(group => {
+                    const url = group.querySelector('input[type="url"]').value;
+                    const title = group.querySelector('input[type="text"]').value;
+                    if (url) newLinks.push({ url, title: title || url, description: title });
+                });
+
+                // Update proposal details (using correct action: update_basic_info)
                 await apiCall(`proposals?id=${proposalId}`, {
                     method: 'PUT',
                     body: JSON.stringify({ 
-                        action: 'update_details', 
+                        action: 'update_basic_info', 
                         data: {
                             projectName: document.getElementById('editProjectName').value || '',
                             clientCompany: document.getElementById('editClientCompany').value || '',
@@ -6924,37 +6963,24 @@ async function editProposal(proposalId) {
                             timeline: document.getElementById('editTimeline').value || '',
                             country: document.getElementById('editCountry').value || '',
                             priority: document.getElementById('editPriority').value || 'Medium',
-                            scopeOfWork: document.getElementById('editScopeOfWork').value || ''
+                            scopeOfWork: document.getElementById('editScopeOfWork').value || '',
+                            projectLinks: newLinks.length > 0 ? newLinks : undefined
                         } 
                     })
                 });
 
-               // Upload new files (using new direct method)
-if (window.currentEditStagedFiles.length > 0) {
-    console.log("Starting edit file uploads...");
-    for (const file of window.currentEditStagedFiles) {
-        try {
-            await uploadFileDirectly(file, proposalId, 'project');
-            console.log(`✅ Uploaded: ${file.name}`);
-        } catch (uploadError) {
-            console.error(`❌ Failed to upload ${file.name}:`, uploadError);
-            alert(`Failed to upload ${file.name}: ${uploadError.message}`);
-        }
-    }
-}
-
-                // Save new links
-                const newLinks = [];
-                document.querySelectorAll('#editLinksContainer .link-input-group').forEach(group => {
-                    const url = group.querySelector('input[type="url"]').value;
-                    const title = group.querySelector('input[type="text"]').value;
-                    if (url) newLinks.push({ url, title: title || url, description: title });
-                });
-                if (newLinks.length > 0) {
-                    await apiCall('proposals?id=' + proposalId, { // Use proposal endpoint for adding links to array
-                         method: 'PUT',
-                         body: JSON.stringify({ action: 'add_links', data: { links: newLinks } })
-                    });
+                // Upload new files (using new direct method)
+                if (window.currentEditStagedFiles.length > 0) {
+                    console.log("Starting edit file uploads...");
+                    for (const file of window.currentEditStagedFiles) {
+                        try {
+                            await uploadFileDirectly(file, proposalId, 'project');
+                            console.log(`✅ Uploaded: ${file.name}`);
+                        } catch (uploadError) {
+                            console.error(`❌ Failed to upload ${file.name}:`, uploadError);
+                            alert(`Failed to upload ${file.name}: ${uploadError.message}`);
+                        }
+                    }
                 }
 
                 alert('✅ Proposal updated successfully!');
@@ -7947,12 +7973,15 @@ async function submitEditedPricing() {
                 return;
             }
 
-            const filesHtml = files.map(file => `
+            const filesHtml = files.map(file => {
+                const fileUrl = file.url || file.fileUrl || file.downloadUrl || '#';
+                const fileName = file.originalName || file.fileName || fileUrl;
+                return `
                 <div class="action-item" style="padding: 1rem;">
                     <div class="action-content">
                         <strong>
                             ${file.fileType === 'link' ? '🔗' : '📄'} 
-                            ${file.originalName || file.url}
+                            ${fileName}
                         </strong>
                         <div class="action-meta">
                             Type: ${file.fileType || 'file'} | 
@@ -7963,11 +7992,11 @@ async function submitEditedPricing() {
                         </div>
                     </div>
                     <div class="action-buttons">
-                        <button class="btn btn-outline btn-sm" onclick="window.open('${file.url}', '_blank')">View</button>
+                        <button class="btn btn-outline btn-sm" onclick="window.open('${fileUrl}', '_blank')">View</button>
                         ${file.canDelete ? `<button class="btn btn-danger btn-sm" onclick="deleteFile('${file.id}')">Delete</button>` : ''}
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
             
             container.innerHTML = filesHtml;
         }
@@ -8885,47 +8914,59 @@ function formatFileSize(bytes) {
                 );
                 
                 const drawingsHtml = drawings.length > 0 
-                    ? drawings.map(file => `
+                    ? drawings.map(file => {
+                        const fileUrl = file.fileUrl || file.url || file.downloadUrl || '';
+                        if (!fileUrl) {
+                            console.warn('Drawing file without URL:', file);
+                            return '';
+                        }
+                        return `
                         <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px;">
                             <div>
-                                <span style="font-weight: 500;">📄 ${file.fileName}</span>
+                                <span style="font-weight: 500;">📄 ${file.fileName || file.originalName || 'Unknown File'}</span>
                                 <br>
-                                <small style="color: #6b7280;">Uploaded: ${new Date(file.uploadedAt).toLocaleDateString()}</small>
+                                <small style="color: #6b7280;">Uploaded: ${file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}</small>
                             </div>
                             <div style="display: flex; gap: 8px;">
-                                <a href="${file.fileUrl}" target="_blank" class="btn btn-primary btn-sm" 
+                                <a href="${fileUrl}" target="_blank" class="btn btn-primary btn-sm" 
                                    style="text-decoration: none; display: inline-block;">
                                     👁️ View
                                 </a>
-                                <a href="${file.fileUrl}" download="${file.fileName}" class="btn btn-success btn-sm"
+                                <a href="${fileUrl}" download="${file.fileName || file.originalName || 'download'}" class="btn btn-success btn-sm"
                                    style="text-decoration: none; display: inline-block;">
                                     ⬇️ Download
                                 </a>
                             </div>
                         </div>
-                    `).join('')
+                    `}).filter(html => html).join('')
                     : '<p style="color: #6b7280; text-align: center; padding: 20px;">No drawings available for this project</p>';
                 
                 const specsHtml = specifications.length > 0
-                    ? specifications.map(file => `
+                    ? specifications.map(file => {
+                        const fileUrl = file.fileUrl || file.url || file.downloadUrl || '';
+                        if (!fileUrl) {
+                            console.warn('Specification file without URL:', file);
+                            return '';
+                        }
+                        return `
                         <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px;">
                             <div>
-                                <span style="font-weight: 500;">📄 ${file.fileName}</span>
+                                <span style="font-weight: 500;">📄 ${file.fileName || file.originalName || 'Unknown File'}</span>
                                 <br>
-                                <small style="color: #6b7280;">Uploaded: ${new Date(file.uploadedAt).toLocaleDateString()}</small>
+                                <small style="color: #6b7280;">Uploaded: ${file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}</small>
                             </div>
                             <div style="display: flex; gap: 8px;">
-                                <a href="${file.fileUrl}" target="_blank" class="btn btn-primary btn-sm"
+                                <a href="${fileUrl}" target="_blank" class="btn btn-primary btn-sm"
                                    style="text-decoration: none; display: inline-block;">
                                     👁️ View
                                 </a>
-                                <a href="${file.fileUrl}" download="${file.fileName}" class="btn btn-success btn-sm"
+                                <a href="${fileUrl}" download="${file.fileName || file.originalName || 'download'}" class="btn btn-success btn-sm"
                                    style="text-decoration: none; display: inline-block;">
                                     ⬇️ Download
                                 </a>
                             </div>
                         </div>
-                    `).join('')
+                    `}).filter(html => html).join('')
                     : '<p style="color: #6b7280; text-align: center; padding: 20px;">No specifications available for this project</p>';
                 
                 // Display the project details modal
@@ -11122,16 +11163,18 @@ async function showAllocateProjectModal(projectId) {
             filesList.innerHTML = '';
 
             files.forEach(file => {
+                const fileUrl = file.url || file.fileUrl || file.downloadUrl || '#';
+                const fileName = file.originalName || file.fileName || 'Unknown File';
                 const fileItem = document.createElement('div');
                 fileItem.className = 'file-item';
                 fileItem.innerHTML = `
                     <div class="file-info">
-                        <span class="file-name">${file.originalName}</span>
+                        <span class="file-name">${fileName}</span>
                         <span class="file-size">${formatFileSize(file.fileSize)}</span>
                         <span class="file-date">${formatDate(file.uploadedAt)}</span>
                     </div>
                     <div class="file-actions">
-                        <a href="${file.url}" target="_blank" class="btn-download">Download</a>
+                        <a href="${fileUrl}" target="_blank" class="btn-download">Download</a>
                     </div>
                 `;
                 filesList.appendChild(fileItem);
@@ -13406,6 +13449,8 @@ Examples:
             </div>
         </div>
     </div>
+    <!-- ADD THIS LINE BEFORE CLOSING BODY TAG -->
+
 
 
 <!-- ============================================ -->
@@ -16791,6 +16836,9 @@ function toggleDesignHours() {
         </div>
     </div>
 </div>
+ <input type="file" id="wordTemplateInput" accept=".docx" style="display: none;" />
+    <!-- LOAD THE SEPARATE QUOTATION GENERATOR FILE -->
+    <script src="quotation_generator.js"></script>
 </body>
                                 
 </html>

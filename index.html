@@ -2227,13 +2227,13 @@ body.modal-open {
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
       
-     const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -2245,7 +2245,7 @@ body.modal-open {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
 
@@ -3024,22 +3024,39 @@ window.addEventListener('click', function(event) {
     }
 });
         function formatDate(ts) {
-            // Handles Firebase timestamp objects OR ISO strings
+            // Handles Firebase timestamp objects, ISO strings, numeric timestamps, or Date objects
             if (!ts) return 'N/A';
             let date;
 
-            // --- FIX: Check for _seconds OR seconds ---
-            if (ts.seconds || ts._seconds) { // Firebase Timestamp
-                 const seconds = ts.seconds || ts._seconds;
-                 date = new Date(seconds * 1000);
-             } else if (typeof ts === 'string' && ts.includes('-')) { // ISO String check
-                 date = new Date(ts);
-             } else {
-                 return 'Invalid Date'; // Handle other cases or return N/A
-             }
+            // Handle Firebase Timestamp object (seconds or _seconds)
+            if (ts && (ts.seconds || ts._seconds)) {
+                const seconds = ts.seconds || ts._seconds;
+                date = new Date(seconds * 1000);
+            } 
+            // Handle numeric timestamp (milliseconds)
+            else if (typeof ts === 'number') {
+                date = new Date(ts);
+            }
+            // Handle Date object
+            else if (ts instanceof Date) {
+                date = ts;
+            }
+            // Handle ISO string or other date string formats
+            else if (typeof ts === 'string') {
+                // Check if it's a valid date string
+                date = new Date(ts);
+            }
+            // Handle object with toDate method (Firestore Timestamp)
+            else if (ts && typeof ts.toDate === 'function') {
+                date = ts.toDate();
+            }
+            else {
+                return 'N/A';
+            }
             
-            if (isNaN(date.getTime())) {
-                return 'Invalid Date'; // Check if date is valid
+            // Check if date is valid
+            if (!date || isNaN(date.getTime())) {
+                return 'N/A';
             }
 
             return date.toLocaleDateString('en-US', {
@@ -12171,19 +12188,46 @@ async function submitProposalAllocation() {
                     entries = timesheetResponse.data || [];
                 }
                 
-                // Calculate summary - helper functions
-                const isThisWeek = (dateStr) => {
-                    if (!dateStr) return false;
-                    const date = new Date(dateStr);
+                // Calculate summary - helper function to parse date from various formats
+                const parseEntryDate = (dateValue) => {
+                    if (!dateValue) return null;
+                    // Handle Firebase Timestamp object
+                    if (dateValue && (dateValue.seconds || dateValue._seconds)) {
+                        const seconds = dateValue.seconds || dateValue._seconds;
+                        return new Date(seconds * 1000);
+                    }
+                    // Handle toDate method (Firestore Timestamp)
+                    if (dateValue && typeof dateValue.toDate === 'function') {
+                        return dateValue.toDate();
+                    }
+                    // Handle numeric timestamp
+                    if (typeof dateValue === 'number') {
+                        return new Date(dateValue);
+                    }
+                    // Handle string date
+                    if (typeof dateValue === 'string') {
+                        return new Date(dateValue);
+                    }
+                    // Handle Date object
+                    if (dateValue instanceof Date) {
+                        return dateValue;
+                    }
+                    return null;
+                };
+                
+                const isThisWeek = (dateValue) => {
+                    const date = parseEntryDate(dateValue);
+                    if (!date || isNaN(date.getTime())) return false;
                     const now = new Date();
-                    const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+                    const weekStart = new Date(now);
+                    weekStart.setDate(now.getDate() - now.getDay());
                     weekStart.setHours(0, 0, 0, 0);
                     return date >= weekStart;
                 };
                 
-                const isThisMonth = (dateStr) => {
-                    if (!dateStr) return false;
-                    const date = new Date(dateStr);
+                const isThisMonth = (dateValue) => {
+                    const date = parseEntryDate(dateValue);
+                    if (!date || isNaN(date.getTime())) return false;
                     const now = new Date();
                     return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
                 };
@@ -12196,17 +12240,25 @@ async function submitProposalAllocation() {
                     .filter(e => isThisMonth(e.date))
                     .reduce((sum, e) => sum + parseFloat(e.hours || 0), 0);
                 
-                // Build entries table
-                const entriesHtml = entries.length > 0 ? entries.slice(0, 20).map(entry => `
+                // Build entries table with proper date formatting and project code
+                const entriesHtml = entries.length > 0 ? entries.slice(0, 20).map(entry => {
+                    const entryDate = parseEntryDate(entry.date);
+                    const formattedDate = entryDate && !isNaN(entryDate.getTime()) 
+                        ? entryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : 'N/A';
+                    const projectDisplay = entry.projectCode 
+                        ? `${entry.projectCode}` 
+                        : (entry.projectName || 'Unknown Project');
+                    return `
                     <tr>
-                        <td>${entry.date || 'N/A'}</td>
-                        <td>${entry.projectName || 'Unknown Project'}</td>
+                        <td>${formattedDate}</td>
+                        <td>${projectDisplay}</td>
                         <td><strong>${parseFloat(entry.hours || 0).toFixed(2)}h</strong></td>
                         <td>${entry.description || 'No description'}</td>
                         <td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: ${entry.status === 'approved' ? '#d4edda' : '#fff3cd'}; color: ${entry.status === 'approved' ? '#155724' : '#856404'};">${entry.status || 'Pending'}</span></td>
                         <td>-</td>
                     </tr>
-                `).join('') : `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-light);">No timesheet entries yet. Click "Log Hours" to add your first entry.</td></tr>`;
+                `}).join('') : `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-light);">No timesheet entries yet. Click "Log Hours" to add your first entry.</td></tr>`;
                 
                 main.innerHTML = `
                     <div class="page-header">
@@ -16119,10 +16171,12 @@ async function loadDesignerTimesheet() {
             if (entries.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No timesheet entries yet</td></tr>';
             } else {
-                tbody.innerHTML = entries.map(entry => `
+                tbody.innerHTML = entries.map(entry => {
+                    const projectDisplay = entry.projectCode || entry.projectName || 'N/A';
+                    return `
                     <tr>
                         <td>${formatDate(entry.date)}</td>
-                        <td>${entry.projectName || 'N/A'}</td>
+                        <td>${projectDisplay}</td>
                         <td>${entry.hours}h</td>
                         <td>${entry.description || '-'}</td>
                         <td><span class="status-badge status-${entry.status || 'pending'}">${entry.status || 'Pending'}</span></td>
@@ -16133,7 +16187,7 @@ async function loadDesignerTimesheet() {
                                 : '-'}
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
             }
         }
         
@@ -16167,19 +16221,47 @@ async function deleteTimesheetEntry(entryId) {
     }
 }
 
+// Helper function to parse date from various formats
+function parseTimesheetDate(dateValue) {
+    if (!dateValue) return null;
+    // Handle Firebase Timestamp object (seconds or _seconds)
+    if (dateValue && (dateValue.seconds || dateValue._seconds)) {
+        const seconds = dateValue.seconds || dateValue._seconds;
+        return new Date(seconds * 1000);
+    }
+    // Handle toDate method (Firestore Timestamp)
+    if (dateValue && typeof dateValue.toDate === 'function') {
+        return dateValue.toDate();
+    }
+    // Handle numeric timestamp
+    if (typeof dateValue === 'number') {
+        return new Date(dateValue);
+    }
+    // Handle string date
+    if (typeof dateValue === 'string') {
+        return new Date(dateValue);
+    }
+    // Handle Date object
+    if (dateValue instanceof Date) {
+        return dateValue;
+    }
+    return null;
+}
+
 // Helper functions for date filtering
-function isThisWeek(dateObj) {
-    if (!dateObj || !dateObj.seconds) return false;
-    const date = new Date(dateObj.seconds * 1000);
+function isThisWeek(dateValue) {
+    const date = parseTimesheetDate(dateValue);
+    if (!date || isNaN(date.getTime())) return false;
     const now = new Date();
-    const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
     weekStart.setHours(0, 0, 0, 0);
     return date >= weekStart;
 }
 
-function isThisMonth(dateObj) {
-    if (!dateObj || !dateObj.seconds) return false;
-    const date = new Date(dateObj.seconds * 1000);
+function isThisMonth(dateValue) {
+    const date = parseTimesheetDate(dateValue);
+    if (!date || isNaN(date.getTime())) return false;
     const now = new Date();
     return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
 }

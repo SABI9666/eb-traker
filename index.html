@@ -1,11 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0d47a1">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ============================================== -->
+    <!-- 🚀 PWA & MOBILE META TAGS - PLAY STORE READY -->
+    <!-- ============================================== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0d47a1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EBTracker">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="EBTracker">
+    <meta name="msapplication-TileColor" content="#0d47a1">
+    <meta name="format-detection" content="telephone=no">
+    
     <title>EBTracker - EDANBROOK Project Management</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="EBTracker - Professional project management system for EDANBROOK steel detailing and construction services. Track proposals, estimates, and project allocations.">
+    <meta name="keywords" content="project management, steel detailing, construction, EDANBROOK, proposal tracking, estimation">
+    <meta name="author" content="EDANBROOK">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EBTracker - EDANBROOK Project Management">
+    <meta property="og:description" content="Professional project management for steel detailing and construction">
+    <meta property="og:image" content="/icons/icon-512x512.png">
+    <meta property="og:url" content="https://eb-traker.vercel.app">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png">
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.40.2/docxtemplater.js"></script>
     <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
@@ -1918,6 +1954,562 @@ body.modal-open {
     color: var(--text-dark);
 }
 
+/* ============================================== */
+/* 🚀 MOBILE & PWA ENHANCEMENTS - PLAY STORE READY */
+/* ============================================== */
+
+/* PWA Safe Areas */
+:root {
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
+@media all and (display-mode: standalone) {
+    .header {
+        padding-top: calc(1.25rem + var(--safe-area-inset-top));
+    }
+    body {
+        padding-bottom: var(--safe-area-inset-bottom);
+    }
+}
+
+/* Mobile Hamburger Menu */
+.mobile-menu-toggle {
+    display: none;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    margin-right: 0.75rem;
+}
+
+.mobile-menu-toggle:hover,
+.mobile-menu-toggle:active {
+    background: rgba(255,255,255,0.25);
+}
+
+.hamburger-icon {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 22px;
+}
+
+.hamburger-icon span {
+    display: block;
+    height: 3px;
+    background: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle.active .hamburger-icon span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.mobile-menu-toggle.active .hamburger-icon span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-toggle.active .hamburger-icon span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1050;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Touch-friendly buttons */
+.btn,
+.filter-btn,
+.role-btn,
+.auth-tab,
+.nav-menu a,
+.notification-bell,
+.btn-logout {
+    min-height: 44px;
+}
+
+.btn:active,
+.filter-btn:active,
+.nav-menu a:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+}
+
+.btn,
+.filter-btn,
+.nav-menu a {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent zoom on input focus (iOS) */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="date"],
+input[type="datetime-local"],
+select,
+textarea {
+    font-size: 16px !important;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .filter-buttons-container {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+    .filter-btn {
+        min-width: 150px;
+        padding: 0.6rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Mobile Landscape & Tablets */
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+    
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -300px;
+        width: 280px;
+        height: 100vh;
+        z-index: 1100;
+        transition: transform 0.3s ease;
+        padding-top: 80px;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    }
+    
+    .sidebar.active {
+        transform: translateX(300px);
+    }
+    
+    .nav-menu {
+        flex-direction: column;
+        overflow-x: visible;
+        overflow-y: auto;
+        padding: 1rem;
+        max-height: calc(100vh - 100px);
+    }
+    
+    .nav-menu li {
+        margin: 0.25rem 0;
+    }
+    
+    .nav-menu a {
+        padding: 1rem 1.25rem;
+        white-space: normal;
+        border-radius: 12px;
+        font-size: 1rem;
+    }
+    
+    .header {
+        padding: 1rem;
+    }
+    
+    .header-content {
+        flex-direction: row !important;
+        justify-content: space-between;
+        gap: 0.5rem;
+        text-align: left !important;
+    }
+    
+    .logo {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .company-info h1 {
+        font-size: 1.2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .company-info .subtitle {
+        display: none;
+    }
+    
+    .logo .logo-circle {
+        width: 38px;
+        height: 38px;
+        font-size: 14px;
+    }
+    
+    .user-info {
+        flex-direction: row !important;
+        gap: 0.5rem;
+        flex-shrink: 0;
+        width: auto !important;
+    }
+    
+    #userWelcome,
+    #userRole,
+    .user-info .user-name,
+    .user-info .user-role {
+        display: none;
+    }
+    
+    .btn-logout {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+        min-width: auto;
+        width: auto !important;
+    }
+    
+    .main-content {
+        padding: 1rem;
+        max-height: none;
+        min-height: calc(100vh - 70px);
+    }
+    
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+    }
+    
+    .page-header h2 {
+        font-size: 1.5rem;
+        line-height: 1.3;
+    }
+    
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+        padding: 1.25rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+    }
+    
+    .filter-buttons-container {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .filter-btn {
+        width: 100%;
+        min-width: auto;
+        justify-content: flex-start;
+        padding: 0.875rem 1rem;
+    }
+    
+    .action-section {
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .action-section h3 {
+        font-size: 1.25rem;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .form-control {
+        padding: 1rem;
+        font-size: 16px;
+        border-radius: 12px;
+    }
+    
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 20px;
+        padding-right: 44px;
+    }
+    
+    .notification-bell {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+    
+    .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .data-table {
+        min-width: 600px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    
+    .proposals-grid,
+    .project-cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Mobile Portrait */
+@media (max-width: 480px) {
+    .header {
+        padding: 0.75rem;
+    }
+    
+    .logo .logo-circle {
+        width: 34px;
+        height: 34px;
+        font-size: 12px;
+    }
+    
+    .company-info h1 {
+        font-size: 1.1rem;
+    }
+    
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 1.75rem;
+    }
+    
+    .modal-content {
+        margin: 0;
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        height: 100vh;
+    }
+    
+    .modal-header {
+        border-radius: 0;
+        padding: 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+        max-height: calc(100vh - 140px);
+        flex: 1;
+    }
+    
+    .modal-footer {
+        border-radius: 0;
+        padding: 1rem;
+        position: sticky;
+        bottom: 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .modal-footer .btn {
+        flex: 1;
+        padding: 1rem;
+    }
+    
+    .close,
+    .close-modal {
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+    
+    .project-card,
+    .proposal-card {
+        padding: 1rem;
+    }
+    
+    .project-card h4 {
+        font-size: 1.1rem;
+    }
+    
+    .btn {
+        padding: 0.875rem 1.25rem;
+        font-size: 0.9rem;
+    }
+    
+    .form-section {
+        padding: 1rem !important;
+    }
+    
+    .login-page {
+        padding: 1rem;
+    }
+    
+    .login-container {
+        min-width: auto;
+        min-height: auto;
+        border-radius: 16px;
+    }
+    
+    .login-left {
+        padding: 2rem 1.5rem;
+    }
+    
+    .login-right {
+        padding: 1.5rem;
+    }
+    
+    .logo-circle {
+        width: 80px;
+        height: 80px;
+        font-size: 32px;
+    }
+    
+    .company-title {
+        font-size: 1.75rem;
+    }
+    
+    .company-subtitle {
+        font-size: 1rem;
+    }
+    
+    .auth-tab {
+        padding: 0.875rem;
+        font-size: 1rem;
+    }
+    
+    .allocation-details-section > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .allocation-summary-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 360px) {
+    .company-info h1 {
+        font-size: 1rem;
+    }
+    
+    .logo .logo-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 11px;
+    }
+    
+    .btn-logout {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+    }
+    
+    .page-header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .mobile-menu-toggle {
+        width: 40px;
+        height: 40px;
+        margin-right: 0.5rem;
+    }
+}
+
+/* Accessibility */
+:focus-visible {
+    outline: 3px solid var(--primary-blue);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* Offline indicator */
+body.offline::before {
+    content: '📡 You are offline';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #f59e0b;
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    font-weight: 600;
+    z-index: 99999;
+    font-size: 0.9rem;
+}
+
+body.offline .header {
+    margin-top: 36px;
+}
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js">
         function switchDesignerTab(tabName) {
@@ -2042,6 +2634,15 @@ body.modal-open {
 
         <header class="header">
             <div class="header-content">
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
+                    <div class="hamburger-icon">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </button>
+                
                 <div class="logo">
                     <div class="logo-circle">EB</div>
                     <div class="company-info">
@@ -2075,6 +2676,9 @@ body.modal-open {
 
 
         </header>
+
+        <!-- Mobile Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
 
         <div class="main-layout">
             <nav class="sidebar">
@@ -16922,6 +17526,143 @@ function toggleDesignHours() {
  <input type="file" id="wordTemplateInput" accept=".docx" style="display: none;" />
     <!-- LOAD THE SEPARATE QUOTATION GENERATOR FILE -->
     <script src="quotation_generator.js"></script>
+
+<!-- ============================================== -->
+<!-- 🚀 PWA & MOBILE MENU JAVASCRIPT -->
+<!-- ============================================== -->
+<script>
+// ==============================
+// PWA Service Worker Registration
+// ==============================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then((registration) => {
+                console.log('✅ Service Worker registered:', registration.scope);
+            })
+            .catch((error) => {
+                console.log('❌ Service Worker registration failed:', error);
+            });
+    });
+}
+
+// ==============================
+// Mobile Menu Functions
+// ==============================
+function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.getElementById('mobileMenuToggle');
+    
+    if (sidebar && overlay && toggleBtn) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+        toggleBtn.classList.toggle('active');
+        
+        // Prevent body scroll when menu is open
+        document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+    }
+}
+
+function closeMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.getElementById('mobileMenuToggle');
+    
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    if (toggleBtn) toggleBtn.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close mobile menu when clicking a nav link
+document.addEventListener('DOMContentLoaded', () => {
+    const navLinks = document.querySelectorAll('.nav-menu a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                closeMobileMenu();
+            }
+        });
+    });
+});
+
+// Close mobile menu on window resize
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        closeMobileMenu();
+    }
+});
+
+// ==============================
+// PWA Install Prompt
+// ==============================
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('✅ PWA install prompt available');
+});
+
+function installPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('✅ User accepted the install prompt');
+            }
+            deferredPrompt = null;
+        });
+    }
+}
+
+// ==============================
+// Detect PWA Mode
+// ==============================
+function isPWA() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+}
+
+if (isPWA()) {
+    console.log('✅ Running as installed PWA');
+    document.body.classList.add('pwa-mode');
+}
+
+// ==============================
+// Online/Offline Status
+// ==============================
+function updateOnlineStatus() {
+    const isOnline = navigator.onLine;
+    document.body.classList.toggle('offline', !isOnline);
+    
+    if (!isOnline) {
+        console.log('⚠️ App is offline');
+    } else {
+        console.log('✅ App is online');
+    }
+}
+
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ==============================
+// Prevent Double-Tap Zoom (iOS)
+// ==============================
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (event) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+
+console.log('✅ EBTracker PWA initialized');
+</script>
+
 </body>
                                 
 </html>

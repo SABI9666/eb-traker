@@ -3629,108 +3629,81 @@ window.addEventListener('click', function(event) {
     }
 });
         function formatDate(ts) {
-            // BULLETPROOF DATE FORMATTER
-            // Handles: Firebase timestamps, JS Date objects, ISO strings, numbers, and malformed data
+            // BULLETPROOF DATE FORMATTER v2
+            // Returns 'N/A' for any invalid input
             
             // Handle null/undefined/empty
             if (ts === null || ts === undefined || ts === '') {
                 return 'N/A';
             }
             
-            // Handle string inputs (including "NaN.NaN.NaN" or other bad strings)
+            // Handle strings (including bad strings like "NaN.NaN.NaN")
             if (typeof ts === 'string') {
-                // Reject obviously bad strings
-                if (ts.includes('NaN') || ts.includes('undefined') || ts.includes('null') || ts.trim() === '') {
+                if (ts.includes('NaN') || ts.includes('undefined') || ts.includes('null') || ts.trim() === '' || ts === 'Invalid Date') {
                     return 'N/A';
                 }
-                // Try to parse the string
                 try {
                     const parsed = new Date(ts);
-                    if (parsed && !isNaN(parsed.getTime()) && parsed.getFullYear() > 1970) {
-                        return parsed.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                        });
+                    if (parsed && !isNaN(parsed.getTime()) && parsed.getFullYear() > 1970 && parsed.getFullYear() < 2100) {
+                        return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                     }
-                } catch (e) {
-                    // Ignore parsing errors
-                }
+                } catch (e) { /* ignore */ }
                 return 'N/A';
             }
             
-            // Handle number (Unix timestamp in milliseconds)
+            // Handle numbers (Unix timestamp in milliseconds)
             if (typeof ts === 'number') {
-                if (isNaN(ts) || ts <= 0) {
-                    return 'N/A';
-                }
+                if (isNaN(ts) || ts <= 0) return 'N/A';
                 try {
                     const d = new Date(ts);
-                    if (d && !isNaN(d.getTime()) && d.getFullYear() > 1970) {
-                        return d.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                        });
+                    if (d && !isNaN(d.getTime()) && d.getFullYear() > 1970 && d.getFullYear() < 2100) {
+                        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                     }
-                } catch (e) {
-                    // Ignore errors
-                }
+                } catch (e) { /* ignore */ }
                 return 'N/A';
             }
             
-            // Handle Date object directly
+            // Handle Date objects
             if (ts instanceof Date) {
-                if (!isNaN(ts.getTime()) && ts.getFullYear() > 1970) {
-                    return ts.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
+                if (!isNaN(ts.getTime()) && ts.getFullYear() > 1970 && ts.getFullYear() < 2100) {
+                    return ts.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                 }
                 return 'N/A';
             }
             
-            // Handle object types (Firebase Timestamp, Firestore Timestamp)
+            // Handle Firebase/Firestore Timestamp objects
             if (typeof ts === 'object' && ts !== null) {
-                let date = null;
-                
                 try {
-                    // Method 1: Check for toDate() method (Firestore Timestamp)
+                    let date = null;
+                    
+                    // Try toDate() method first (Firestore Timestamp)
                     if (typeof ts.toDate === 'function') {
                         date = ts.toDate();
                     }
-                    // Method 2: Check for seconds property (Firebase Timestamp JSON serialized)
-                    else if (ts.seconds !== undefined && ts.seconds !== null) {
-                        const seconds = Number(ts.seconds);
-                        if (!isNaN(seconds) && seconds > 0) {
-                            date = new Date(seconds * 1000);
+                    // Try seconds property (Firebase Timestamp from REST API)
+                    else if ('seconds' in ts && ts.seconds !== undefined && ts.seconds !== null) {
+                        const sec = Number(ts.seconds);
+                        if (!isNaN(sec) && sec > 0) {
+                            date = new Date(sec * 1000);
                         }
                     }
-                    // Method 3: Check for _seconds property (alternative Firebase format)
-                    else if (ts._seconds !== undefined && ts._seconds !== null) {
-                        const seconds = Number(ts._seconds);
-                        if (!isNaN(seconds) && seconds > 0) {
-                            date = new Date(seconds * 1000);
+                    // Try _seconds property (alternative format)
+                    else if ('_seconds' in ts && ts._seconds !== undefined && ts._seconds !== null) {
+                        const sec = Number(ts._seconds);
+                        if (!isNaN(sec) && sec > 0) {
+                            date = new Date(sec * 1000);
                         }
                     }
                     
-                    // Validate and format the date
-                    if (date && !isNaN(date.getTime()) && date.getFullYear() > 1970) {
-                        return date.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                        });
+                    if (date && !isNaN(date.getTime()) && date.getFullYear() > 1970 && date.getFullYear() < 2100) {
+                        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                     }
                 } catch (e) {
-                    console.warn('formatDate object handling error:', e);
+                    console.warn('formatDate error:', e, 'Input:', ts);
                 }
-                
                 return 'N/A';
             }
             
-            // Default fallback
             return 'N/A';
         }
         function formatFileSize(bytes) {

@@ -3632,37 +3632,50 @@ window.addEventListener('click', function(event) {
             // Handles Firebase timestamp objects, ISO strings, numeric timestamps, or Date objects
             if (!ts) return 'N/A';
             
+            // If it's already a string like "NaN.NaN.NaN" or invalid, return N/A
+            if (typeof ts === 'string') {
+                if (ts.includes('NaN') || ts.trim() === '') {
+                    return 'N/A';
+                }
+                // Try to parse the string
+                const parsed = new Date(ts);
+                if (!parsed || isNaN(parsed.getTime())) {
+                    return 'N/A';
+                }
+                return parsed.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+            
             let date;
 
             try {
                 // Handle Firebase Timestamp object (seconds or _seconds)
-                if (ts && typeof ts === 'object' && (ts.seconds !== undefined || ts._seconds !== undefined)) {
-                    const seconds = ts.seconds !== undefined ? ts.seconds : ts._seconds;
-                    if (typeof seconds === 'number' && !isNaN(seconds)) {
-                        date = new Date(seconds * 1000);
+                if (ts && typeof ts === 'object') {
+                    // Check for seconds property (Firebase Timestamp)
+                    if ('seconds' in ts || '_seconds' in ts) {
+                        const seconds = 'seconds' in ts ? ts.seconds : ts._seconds;
+                        if (typeof seconds === 'number' && !isNaN(seconds) && seconds > 0) {
+                            date = new Date(seconds * 1000);
+                        }
+                    }
+                    // Check for toDate method (Firestore Timestamp)
+                    else if (typeof ts.toDate === 'function') {
+                        date = ts.toDate();
                     }
                 }
-                // Handle object with toDate method (Firestore Timestamp)
-                else if (ts && typeof ts === 'object' && typeof ts.toDate === 'function') {
-                    date = ts.toDate();
-                }
                 // Handle numeric timestamp (milliseconds)
-                else if (typeof ts === 'number' && !isNaN(ts)) {
+                else if (typeof ts === 'number' && !isNaN(ts) && ts > 0) {
                     date = new Date(ts);
                 }
                 // Handle Date object
                 else if (ts instanceof Date) {
                     date = ts;
                 }
-                // Handle ISO string or other date string formats
-                else if (typeof ts === 'string' && ts.trim() !== '') {
-                    date = new Date(ts);
-                }
-                else {
-                    return 'N/A';
-                }
                 
-                // Check if date is valid
+                // Final validation
                 if (!date || isNaN(date.getTime())) {
                     return 'N/A';
                 }

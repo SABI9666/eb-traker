@@ -380,13 +380,7 @@ function renderMonthlyRevenueChart(monthlyRevenue) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            if (value >= 1000000) {
-                                return '$' + (value / 1000000).toFixed(1) + 'M';
-                            } else if (value >= 1000) {
-                                return '$' + (value / 1000).toFixed(1) + 'k';
-                            } else {
-                                return '$' + value.toFixed(0);
-                            }
+                            return '$' + (value / 1000) + 'k';
                         }
                     }
                 },
@@ -484,13 +478,7 @@ function renderBdmPerformanceChart(bdmData) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            if (value >= 1000000) {
-                                return '$' + (value / 1000000).toFixed(1) + 'M';
-                            } else if (value >= 1000) {
-                                return '$' + (value / 1000).toFixed(1) + 'k';
-                            } else {
-                                return '$' + value.toFixed(0);
-                            }
+                            return '$' + (value / 1000) + 'k';
                         }
                     }
                 },
@@ -536,13 +524,7 @@ function renderWeeklyRevenueChart(weeklyData) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            if (value >= 1000000) {
-                                return '$' + (value / 1000000).toFixed(1) + 'M';
-                            } else if (value >= 1000) {
-                                return '$' + (value / 1000).toFixed(1) + 'k';
-                            } else {
-                                return '$' + value.toFixed(0);
-                            }
+                            return '$' + (value / 1000) + 'k';
                         }
                     }
                 },

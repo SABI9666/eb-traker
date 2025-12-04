@@ -3,9 +3,9 @@
 // Version: 2.0.0
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v2';
-const STATIC_CACHE = 'ebtracker-static-v2';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v2';
+const CACHE_NAME = 'ebtracker-v3';
+const STATIC_CACHE = 'ebtracker-static-v3';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v3';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -268,3 +268,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 console.log('✅ Service Worker: Loaded successfully');
+
+
+
+

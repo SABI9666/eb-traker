@@ -63,7 +63,7 @@ async function generateWordQuote(proposalId) {
             client_company: p.clientCompany || 'Client Company',
             
             // --- DATE ---
-            date: formatDate(new Date()),
+            date: formatDateForQuote(new Date()),
             
             // --- SERVICES LIST ---
             services_list: servicesList,
@@ -136,14 +136,19 @@ async function generateWordQuote(proposalId) {
     }
 }
 
-// Helper function to format date as DD.MM.YYYY
-function formatDate(date) {
+// Helper function to format date as DD.MM.YYYY (for quote documents only)
+function formatDateForQuote(date) {
     if (!date) return '';
-    const d = new Date(date);
-    const day = d.getDate().toString().padStart(2, '0');
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}.${month}.${year}`;
+    try {
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '';
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}.${month}.${year}`;
+    } catch (e) {
+        return '';
+    }
 }
 
 // Helper function to get BDM role
@@ -219,3 +224,7 @@ function handleDocErrors(error) {
 
 // Attach to window for global access
 window.generateWordQuote = generateWordQuote;
+
+
+
+

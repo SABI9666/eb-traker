@@ -180,11 +180,34 @@ async function loadAnalyticsData(role) {
     }
 
     wonProposals.forEach(p => {
-        let date;
+        let date = null;
+        
+        // Safely parse wonDate (Firebase timestamp or ISO string)
         if (p.wonDate) {
-             date = new Date(p.wonDate.seconds ? p.wonDate.seconds * 1000 : p.wonDate);
-        } else if (p.updatedAt) {
-             date = new Date(p.updatedAt.seconds ? p.updatedAt.seconds * 1000 : p.updatedAt);
+            if (p.wonDate.seconds !== undefined && p.wonDate.seconds !== null) {
+                date = new Date(Number(p.wonDate.seconds) * 1000);
+            } else if (p.wonDate._seconds !== undefined && p.wonDate._seconds !== null) {
+                date = new Date(Number(p.wonDate._seconds) * 1000);
+            } else if (typeof p.wonDate === 'string') {
+                date = new Date(p.wonDate);
+            } else if (typeof p.wonDate === 'number') {
+                date = new Date(p.wonDate);
+            }
+        }
+        
+        // Fallback to updatedAt if wonDate didn't work
+        if (!date || isNaN(date.getTime())) {
+            if (p.updatedAt) {
+                if (p.updatedAt.seconds !== undefined && p.updatedAt.seconds !== null) {
+                    date = new Date(Number(p.updatedAt.seconds) * 1000);
+                } else if (p.updatedAt._seconds !== undefined && p.updatedAt._seconds !== null) {
+                    date = new Date(Number(p.updatedAt._seconds) * 1000);
+                } else if (typeof p.updatedAt === 'string') {
+                    date = new Date(p.updatedAt);
+                } else if (typeof p.updatedAt === 'number') {
+                    date = new Date(p.updatedAt);
+                }
+            }
         }
 
         // FIX 1: Check if date is a valid Date object before processing
@@ -259,10 +282,21 @@ async function loadAnalyticsData(role) {
             }
         }
         wonProposals.forEach(p => {
-            let date;
+            let date = null;
+            
+            // Safely parse wonDate for weekly revenue
             if (p.wonDate) {
-                date = new Date(p.wonDate.seconds ? p.wonDate.seconds * 1000 : p.wonDate);
+                if (p.wonDate.seconds !== undefined && p.wonDate.seconds !== null) {
+                    date = new Date(Number(p.wonDate.seconds) * 1000);
+                } else if (p.wonDate._seconds !== undefined && p.wonDate._seconds !== null) {
+                    date = new Date(Number(p.wonDate._seconds) * 1000);
+                } else if (typeof p.wonDate === 'string') {
+                    date = new Date(p.wonDate);
+                } else if (typeof p.wonDate === 'number') {
+                    date = new Date(p.wonDate);
+                }
             }
+            
             // FIX 2: Check if date is a valid Date object before calling getWeekStartDate (RangeError fix)
             if (date && !isNaN(date.getTime())) {
                 const weekStart = getWeekStartDate(date);
@@ -380,7 +414,16 @@ function renderMonthlyRevenueChart(monthlyRevenue) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '$' + (value / 1000) + 'k';
+                            // Smart formatting based on value size
+                            if (value >= 1000000) {
+                                return '$' + (value / 1000000).toFixed(1) + 'M';
+                            } else if (value >= 10000) {
+                                return '$' + (value / 1000).toFixed(0) + 'k';
+                            } else if (value >= 1000) {
+                                return '$' + (value / 1000).toFixed(1) + 'k';
+                            } else {
+                                return '$' + value.toLocaleString();
+                            }
                         }
                     }
                 },
@@ -478,7 +521,16 @@ function renderBdmPerformanceChart(bdmData) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '$' + (value / 1000) + 'k';
+                            // Smart formatting based on value size
+                            if (value >= 1000000) {
+                                return '$' + (value / 1000000).toFixed(1) + 'M';
+                            } else if (value >= 10000) {
+                                return '$' + (value / 1000).toFixed(0) + 'k';
+                            } else if (value >= 1000) {
+                                return '$' + (value / 1000).toFixed(1) + 'k';
+                            } else {
+                                return '$' + value.toLocaleString();
+                            }
                         }
                     }
                 },
@@ -524,7 +576,16 @@ function renderWeeklyRevenueChart(weeklyData) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '$' + (value / 1000) + 'k';
+                            // Smart formatting based on value size
+                            if (value >= 1000000) {
+                                return '$' + (value / 1000000).toFixed(1) + 'M';
+                            } else if (value >= 10000) {
+                                return '$' + (value / 1000).toFixed(0) + 'k';
+                            } else if (value >= 1000) {
+                                return '$' + (value / 1000).toFixed(1) + 'k';
+                            } else {
+                                return '$' + value.toLocaleString();
+                            }
                         }
                     }
                 },

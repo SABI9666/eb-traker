@@ -3,9 +3,9 @@
 // Version: 2.0.0
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v3';
-const STATIC_CACHE = 'ebtracker-static-v3';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v3';
+const CACHE_NAME = 'ebtracker-v4';
+const STATIC_CACHE = 'ebtracker-static-v4';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v4';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [

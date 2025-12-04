@@ -1,47 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    
-    <!-- ============================================== -->
-    <!-- 🚀 PWA & MOBILE META TAGS - PLAY STORE READY -->
-    <!-- ============================================== -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0d47a1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="EBTracker">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="EBTracker">
-    <meta name="msapplication-TileColor" content="#0d47a1">
-    <meta name="format-detection" content="telephone=no">
-    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EBTracker - EDANBROOK Project Management</title>
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="EBTracker - Professional project management system for EDANBROOK steel detailing and construction services. Track proposals, estimates, and project allocations.">
-    <meta name="keywords" content="project management, steel detailing, construction, EDANBROOK, proposal tracking, estimation">
-    <meta name="author" content="EDANBROOK">
-    
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="EBTracker - EDANBROOK Project Management">
-    <meta property="og:description" content="Professional project management for steel detailing and construction">
-    <meta property="og:image" content="/icons/icon-512x512.png">
-    <meta property="og:url" content="https://eb-traker.vercel.app">
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
-    
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png">
-    
-    <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
-    <link rel="shortcut icon" href="/favicon.ico">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.40.2/docxtemplater.js"></script>
     <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
@@ -1954,560 +1918,209 @@ body.modal-open {
     color: var(--text-dark);
 }
 
-/* ============================================== */
-/* 🚀 MOBILE & PWA ENHANCEMENTS - PLAY STORE READY */
-/* ============================================== */
+/* ============================================================================ */
+/* FEATURE 1 & 2: ALLOCATION CHANGE REQUEST STYLES */
+/* ============================================================================ */
 
-/* PWA Safe Areas */
-:root {
-    --safe-area-inset-top: env(safe-area-inset-top, 0px);
-    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-area-inset-left: env(safe-area-inset-left, 0px);
-    --safe-area-inset-right: env(safe-area-inset-right, 0px);
-}
-
-@media all and (display-mode: standalone) {
-    .header {
-        padding-top: calc(1.25rem + var(--safe-area-inset-top));
-    }
-    body {
-        padding-bottom: var(--safe-area-inset-bottom);
-    }
-}
-
-/* Mobile Hamburger Menu */
-.mobile-menu-toggle {
-    display: none;
-    background: rgba(255,255,255,0.15);
-    border: none;
-    color: white;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 1.5rem;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-    margin-right: 0.75rem;
-}
-
-.mobile-menu-toggle:hover,
-.mobile-menu-toggle:active {
-    background: rgba(255,255,255,0.25);
-}
-
-.hamburger-icon {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    width: 22px;
-}
-
-.hamburger-icon span {
-    display: block;
-    height: 3px;
+/* Allocation Request Card */
+.allocation-request-card {
     background: white;
-    border-radius: 2px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--card-shadow);
     transition: all 0.3s ease;
 }
 
-.mobile-menu-toggle.active .hamburger-icon span:nth-child(1) {
-    transform: rotate(45deg) translate(6px, 6px);
+.allocation-request-card:hover {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-2px);
 }
 
-.mobile-menu-toggle.active .hamburger-icon span:nth-child(2) {
-    opacity: 0;
+.allocation-request-card.pending {
+    border-left: 4px solid #f59e0b;
 }
 
-.mobile-menu-toggle.active .hamburger-icon span:nth-child(3) {
-    transform: rotate(-45deg) translate(6px, -6px);
+.allocation-request-card.approved {
+    border-left: 4px solid #10b981;
 }
 
-/* Sidebar Overlay */
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1050;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+.allocation-request-card.rejected {
+    border-left: 4px solid #ef4444;
 }
 
-.sidebar-overlay.active {
-    display: block;
-    opacity: 1;
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
 }
 
-/* Touch-friendly buttons */
-.btn,
-.filter-btn,
-.role-btn,
-.auth-tab,
-.nav-menu a,
-.notification-bell,
-.btn-logout {
-    min-height: 44px;
+.request-info h4 {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-dark);
 }
 
-.btn:active,
-.filter-btn:active,
-.nav-menu a:active {
-    transform: scale(0.97);
-    opacity: 0.9;
+.request-meta {
+    font-size: 0.85rem;
+    color: var(--text-light);
 }
 
-.btn,
-.filter-btn,
-.nav-menu a {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* Prevent zoom on input focus (iOS) */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="tel"],
-input[type="date"],
-input[type="datetime-local"],
-select,
-textarea {
-    font-size: 16px !important;
-}
-
-/* Tablet */
-@media (max-width: 1024px) {
-    .filter-buttons-container {
-        gap: 0.75rem;
-        padding: 0.75rem;
-    }
-    .filter-btn {
-        min-width: 150px;
-        padding: 0.6rem 1rem;
-        font-size: 0.875rem;
-    }
-}
-
-/* Mobile Landscape & Tablets */
-@media (max-width: 768px) {
-    .mobile-menu-toggle {
-        display: flex;
-    }
-    
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: -300px;
-        width: 280px;
-        height: 100vh;
-        z-index: 1100;
-        transition: transform 0.3s ease;
-        padding-top: 80px;
-        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
-    }
-    
-    .sidebar.active {
-        transform: translateX(300px);
-    }
-    
-    .nav-menu {
-        flex-direction: column;
-        overflow-x: visible;
-        overflow-y: auto;
-        padding: 1rem;
-        max-height: calc(100vh - 100px);
-    }
-    
-    .nav-menu li {
-        margin: 0.25rem 0;
-    }
-    
-    .nav-menu a {
-        padding: 1rem 1.25rem;
-        white-space: normal;
-        border-radius: 12px;
-        font-size: 1rem;
-    }
-    
-    .header {
-        padding: 1rem;
-    }
-    
-    .header-content {
-        flex-direction: row !important;
-        justify-content: space-between;
-        gap: 0.5rem;
-        text-align: left !important;
-    }
-    
-    .logo {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .company-info h1 {
-        font-size: 1.2rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    
-    .company-info .subtitle {
-        display: none;
-    }
-    
-    .logo .logo-circle {
-        width: 38px;
-        height: 38px;
-        font-size: 14px;
-    }
-    
-    .user-info {
-        flex-direction: row !important;
-        gap: 0.5rem;
-        flex-shrink: 0;
-        width: auto !important;
-    }
-    
-    #userWelcome,
-    #userRole,
-    .user-info .user-name,
-    .user-info .user-role {
-        display: none;
-    }
-    
-    .btn-logout {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.8rem;
-        min-width: auto;
-        width: auto !important;
-    }
-    
-    .main-content {
-        padding: 1rem;
-        max-height: none;
-        min-height: calc(100vh - 70px);
-    }
-    
-    .page-header {
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-    }
-    
-    .page-header h2 {
-        font-size: 1.5rem;
-        line-height: 1.3;
-    }
-    
-    .dashboard-stats {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .stat-card {
-        padding: 1.25rem;
-    }
-    
-    .stat-number {
-        font-size: 2rem;
-    }
-    
-    .stat-label {
-        font-size: 0.8rem;
-    }
-    
-    .filter-buttons-container {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .filter-btn {
-        width: 100%;
-        min-width: auto;
-        justify-content: flex-start;
-        padding: 0.875rem 1rem;
-    }
-    
-    .action-section {
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-    }
-    
-    .action-section h3 {
-        font-size: 1.25rem;
-    }
-    
-    .form-row {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .form-control {
-        padding: 1rem;
-        font-size: 16px;
-        border-radius: 12px;
-    }
-    
-    select.form-control {
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        background-size: 20px;
-        padding-right: 44px;
-    }
-    
-    .notification-bell {
-        width: 40px;
-        height: 40px;
-        font-size: 1.1rem;
-    }
-    
-    .table-responsive {
-        display: block;
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .data-table {
-        min-width: 600px;
-    }
-    
-    .data-table th,
-    .data-table td {
-        padding: 0.75rem;
-        font-size: 0.85rem;
-        white-space: nowrap;
-    }
-    
-    .proposals-grid,
-    .project-cards {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-}
-
-/* Mobile Portrait */
-@media (max-width: 480px) {
-    .header {
-        padding: 0.75rem;
-    }
-    
-    .logo .logo-circle {
-        width: 34px;
-        height: 34px;
-        font-size: 12px;
-    }
-    
-    .company-info h1 {
-        font-size: 1.1rem;
-    }
-    
-    .dashboard-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .stat-card {
-        padding: 1rem;
-    }
-    
-    .stat-number {
-        font-size: 1.75rem;
-    }
-    
-    .modal-content {
-        margin: 0;
-        width: 100%;
-        max-height: 100vh;
-        border-radius: 0;
-        height: 100vh;
-    }
-    
-    .modal-header {
-        border-radius: 0;
-        padding: 1rem;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-    
-    .modal-header h3 {
-        font-size: 1.1rem;
-    }
-    
-    .modal-body {
-        padding: 1rem;
-        max-height: calc(100vh - 140px);
-        flex: 1;
-    }
-    
-    .modal-footer {
-        border-radius: 0;
-        padding: 1rem;
-        position: sticky;
-        bottom: 0;
-        background: white;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .modal-footer .btn {
-        flex: 1;
-        padding: 1rem;
-    }
-    
-    .close,
-    .close-modal {
-        width: 40px;
-        height: 40px;
-        font-size: 24px;
-    }
-    
-    .project-card,
-    .proposal-card {
-        padding: 1rem;
-    }
-    
-    .project-card h4 {
-        font-size: 1.1rem;
-    }
-    
-    .btn {
-        padding: 0.875rem 1.25rem;
-        font-size: 0.9rem;
-    }
-    
-    .form-section {
-        padding: 1rem !important;
-    }
-    
-    .login-page {
-        padding: 1rem;
-    }
-    
-    .login-container {
-        min-width: auto;
-        min-height: auto;
-        border-radius: 16px;
-    }
-    
-    .login-left {
-        padding: 2rem 1.5rem;
-    }
-    
-    .login-right {
-        padding: 1.5rem;
-    }
-    
-    .logo-circle {
-        width: 80px;
-        height: 80px;
-        font-size: 32px;
-    }
-    
-    .company-title {
-        font-size: 1.75rem;
-    }
-    
-    .company-subtitle {
-        font-size: 1rem;
-    }
-    
-    .auth-tab {
-        padding: 0.875rem;
-        font-size: 1rem;
-    }
-    
-    .allocation-details-section > div[style*="grid-template-columns"] {
-        grid-template-columns: 1fr !important;
-    }
-    
-    .allocation-summary-grid {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* Extra small phones */
-@media (max-width: 360px) {
-    .company-info h1 {
-        font-size: 1rem;
-    }
-    
-    .logo .logo-circle {
-        width: 32px;
-        height: 32px;
-        font-size: 11px;
-    }
-    
-    .btn-logout {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.7rem;
-    }
-    
-    .page-header h2 {
-        font-size: 1.25rem;
-    }
-    
-    .mobile-menu-toggle {
-        width: 40px;
-        height: 40px;
-        margin-right: 0.5rem;
-    }
-}
-
-/* Accessibility */
-:focus-visible {
-    outline: 3px solid var(--primary-blue);
-    outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    html {
-        scroll-behavior: auto;
-    }
-}
-
-/* Offline indicator */
-body.offline::before {
-    content: '📡 You are offline';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: #f59e0b;
-    color: white;
-    text-align: center;
-    padding: 0.5rem;
+.request-status {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
     font-weight: 600;
-    z-index: 99999;
-    font-size: 0.9rem;
+    text-transform: uppercase;
 }
 
-body.offline .header {
-    margin-top: 36px;
+.request-status.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.request-status.approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.request-status.rejected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.request-hours-change {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.hours-box {
+    text-align: center;
+    flex: 1;
+}
+
+.hours-box label {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+}
+
+.hours-box .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.hours-arrow {
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+
+.hours-diff {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.hours-diff.increase {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.hours-diff.decrease {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.request-reason {
+    padding: 1rem;
+    background: #eff6ff;
+    border-radius: 8px;
+    font-style: italic;
+    color: #1e3a8a;
+    margin-bottom: 1rem;
+}
+
+.request-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+/* Designer Edit Row */
+.designer-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+}
+
+.designer-edit-row:hover {
+    background: #f0f4f8;
+}
+
+.designer-edit-info {
+    flex: 2;
+}
+
+.designer-edit-info .name {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.designer-edit-info .email {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.designer-edit-hours {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.designer-edit-hours input {
+    width: 100px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.designer-edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Empty state */
+.empty-requests {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-light);
+}
+
+.empty-requests .icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* Nav badge for pending requests */
+.nav-badge {
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    margin-left: 0.5rem;
 }
 
     </style>
@@ -2634,15 +2247,6 @@ body.offline .header {
 
         <header class="header">
             <div class="header-content">
-                <!-- Mobile Menu Toggle -->
-                <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
-                    <div class="hamburger-icon">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </button>
-                
                 <div class="logo">
                     <div class="logo-circle">EB</div>
                     <div class="company-info">
@@ -2676,9 +2280,6 @@ body.offline .header {
 
 
         </header>
-
-        <!-- Mobile Sidebar Overlay -->
-        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
 
         <div class="main-layout">
             <nav class="sidebar">
@@ -2734,6 +2335,12 @@ body.offline .header {
                     <a href="#" onclick="showCOOTimeRequests()" id="nav-time-requests">
                         <span class="nav-icon">⏰</span>Time Requests
                         <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                    </a>
+                </li>
+                <li id="allocationRequestsNavItem" style="display: none;">
+                    <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
+                        <span class="nav-icon">📋</span>Allocation Requests
+                        <span class="notification-count" id="directorRequestsBadge" style="display: none; margin-left: 10px; background: var(--danger); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
                     </a>
                 </li>
                 <li id="timesheetNavItem" style="display: none;">
@@ -2831,13 +2438,13 @@ body.offline .header {
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
       
-       const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -2849,8 +2456,7 @@ body.offline .header {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
 
@@ -3107,7 +2713,7 @@ body.offline .header {
                             div.style.cssText = 'padding: 10px; border: 1px solid #ddd; margin: 5px 0;';
                             div.innerHTML = `
                                 <strong>${file.fileName || file.originalName}</strong><br>
-                                <small>Uploaded: ${formatDate(file.uploadedAt)}</small><br>
+                                <small>Uploaded: ${new Date(file.uploadedAt).toLocaleDateString()}</small><br>
                                 <a href="${file.url || file.fileUrl || file.downloadUrl || '#'}" target="_blank" class="btn btn-primary btn-sm">Download</a>
                             `;
                             filesList.appendChild(div);
@@ -3502,6 +3108,12 @@ body.offline .header {
             setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck));
             setDisplay('executiveMonitoringNavItem', isManagement); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement);
+            setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
+            
+            // Update badge for Director
+            if (currentUserRole === 'director') {
+                updateDirectorRequestsBadge();
+            }
 
             
 
@@ -3629,82 +3241,46 @@ window.addEventListener('click', function(event) {
     }
 });
         function formatDate(ts) {
-            // BULLETPROOF DATE FORMATTER v2
-            // Returns 'N/A' for any invalid input
-            
-            // Handle null/undefined/empty
-            if (ts === null || ts === undefined || ts === '') {
+            // Handles Firebase timestamp objects, ISO strings, numeric timestamps, or Date objects
+            if (!ts) return 'N/A';
+            let date;
+
+            // Handle Firebase Timestamp object (seconds or _seconds)
+            if (ts && (ts.seconds || ts._seconds)) {
+                const seconds = ts.seconds || ts._seconds;
+                date = new Date(seconds * 1000);
+            } 
+            // Handle numeric timestamp (milliseconds)
+            else if (typeof ts === 'number') {
+                date = new Date(ts);
+            }
+            // Handle Date object
+            else if (ts instanceof Date) {
+                date = ts;
+            }
+            // Handle ISO string or other date string formats
+            else if (typeof ts === 'string') {
+                // Check if it's a valid date string
+                date = new Date(ts);
+            }
+            // Handle object with toDate method (Firestore Timestamp)
+            else if (ts && typeof ts.toDate === 'function') {
+                date = ts.toDate();
+            }
+            else {
                 return 'N/A';
             }
             
-            // Handle strings (including bad strings like "NaN.NaN.NaN")
-            if (typeof ts === 'string') {
-                if (ts.includes('NaN') || ts.includes('undefined') || ts.includes('null') || ts.trim() === '' || ts === 'Invalid Date') {
-                    return 'N/A';
-                }
-                try {
-                    const parsed = new Date(ts);
-                    if (parsed && !isNaN(parsed.getTime()) && parsed.getFullYear() > 1970 && parsed.getFullYear() < 2100) {
-                        return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                    }
-                } catch (e) { /* ignore */ }
+            // Check if date is valid
+            if (!date || isNaN(date.getTime())) {
                 return 'N/A';
             }
-            
-            // Handle numbers (Unix timestamp in milliseconds)
-            if (typeof ts === 'number') {
-                if (isNaN(ts) || ts <= 0) return 'N/A';
-                try {
-                    const d = new Date(ts);
-                    if (d && !isNaN(d.getTime()) && d.getFullYear() > 1970 && d.getFullYear() < 2100) {
-                        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                    }
-                } catch (e) { /* ignore */ }
-                return 'N/A';
-            }
-            
-            // Handle Date objects
-            if (ts instanceof Date) {
-                if (!isNaN(ts.getTime()) && ts.getFullYear() > 1970 && ts.getFullYear() < 2100) {
-                    return ts.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                }
-                return 'N/A';
-            }
-            
-            // Handle Firebase/Firestore Timestamp objects
-            if (typeof ts === 'object' && ts !== null) {
-                try {
-                    let date = null;
-                    
-                    // Try toDate() method first (Firestore Timestamp)
-                    if (typeof ts.toDate === 'function') {
-                        date = ts.toDate();
-                    }
-                    // Try seconds property (Firebase Timestamp from REST API)
-                    else if ('seconds' in ts && ts.seconds !== undefined && ts.seconds !== null) {
-                        const sec = Number(ts.seconds);
-                        if (!isNaN(sec) && sec > 0) {
-                            date = new Date(sec * 1000);
-                        }
-                    }
-                    // Try _seconds property (alternative format)
-                    else if ('_seconds' in ts && ts._seconds !== undefined && ts._seconds !== null) {
-                        const sec = Number(ts._seconds);
-                        if (!isNaN(sec) && sec > 0) {
-                            date = new Date(sec * 1000);
-                        }
-                    }
-                    
-                    if (date && !isNaN(date.getTime()) && date.getFullYear() > 1970 && date.getFullYear() < 2100) {
-                        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                    }
-                } catch (e) {
-                    console.warn('formatDate error:', e, 'Input:', ts);
-                }
-                return 'N/A';
-            }
-            
-            return 'N/A';
+
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
         }
         function formatFileSize(bytes) {
             if (!bytes) return '0 Bytes';
@@ -3841,7 +3417,7 @@ async function triggerEmailNotification(eventName, data = {}) {
                         <div class="action-item">
                             <div class="action-content">
                                 <strong>${item.projectName}</strong>
-                                <div class="action-meta">Client: ${item.clientCompany} | Status: ${item.status.replace(/_/g, ' ')}</div>
+                                <div class="action-meta">Client: ${item.clientCompany} | Status: ${item.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</div>
                             </div>
                             <div class="action-buttons">
                                 ${getActionButtons(item, currentUserRole)}
@@ -4216,19 +3792,23 @@ function renderProposals(proposals) {
                         // GREEN: Fully Allocated
                         allocationInfo = '<span class="proposal-status status-allocated" style="background: #a7f3d0; color: #064e3b;">✅ Fully Allocated</span>';
                         if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                            // Show "View Project" in outline/green, no allocate button
-                            allocationButton = `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">📂 View Project</button>`;
+                            // Show "View Project" and "Edit Allocations" buttons
+                            allocationButton = `
+                                <button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">📂 View Project</button>
+                                <button onclick="showCooEditAllocationModal('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #3b82f6; color: #3b82f6;">✏️ Edit Allocations</button>
+                            `;
                         }
                     } 
                     else if (isPartiallyAllocated) {
                         // YELLOW/ORANGE: Partially Allocated
                         allocationInfo = `<span class="proposal-status" style="background: #fef3c7; color: #b45309; border: 1px solid #f59e0b;">⏳ Partial (${totalAllocated}/${maxHours}h)</span>`;
                         if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                            // Show "Continue Allocation" in Orange/Yellow
+                            // Show "Continue Allocation" and "Edit Allocations" buttons
                             allocationButton = `
                                 <button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-warning btn-sm" style="color: white; font-weight:600;">
                                     ⚠️ Continue Alloc. (${remainingToAllocate}h left)
                                 </button>
+                                <button onclick="showCooEditAllocationModal('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #3b82f6; color: #3b82f6;">✏️ Edit</button>
                             `;
                         }
                     } 
@@ -4268,14 +3848,14 @@ function renderProposals(proposals) {
     }
 
     const proposalsHtml = otherProposals?.length ? otherProposals.map(p => {
-        let statusDisplay = p.status.toUpperCase().replace(/_/g, ' ');
-        let statusClass = p.status.toLowerCase().replace(/_/g, '-');
+        let statusDisplay = (p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        let statusClass = (p.status || '').toLowerCase().replace(/_/g, '-');
         
         if (p.pricing && p.pricing.projectNumber && p.status === 'pricing_complete') {
-            statusDisplay = 'PRICING COMPLETE';
+            statusDisplay = 'Pricing Complete';
             statusClass = 'pricing-complete';
         } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
-            statusDisplay = 'PRICING COMPLETE';
+            statusDisplay = 'Pricing Complete';
             statusClass = 'pricing-complete';
         }
         
@@ -4358,7 +3938,7 @@ function renderProposalsTable(proposals) {
     }
 
     const proposalsHtml = proposals.map(p => {
-        const statusDisplay = (p.status || 'DRAFT').toUpperCase().replace(/_/g, ' ');
+        const statusDisplay = (p.status || 'Draft').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         const statusClass = (p.status || 'draft').toLowerCase().replace(/_/g, '-');
         
         // Calculate allocation status for won proposals
@@ -4385,10 +3965,13 @@ function renderProposalsTable(proposals) {
                 // Case 1: Not allocated at all - show Allocate button
                 actionButtons += `<button class="btn btn-primary btn-sm" onclick="showProjectAllocationModal('${p.id}')">🎯 Allocate Project</button> `;
             } else if (isPartiallyAllocated) {
-                // Case 2: Partially allocated - show Continue Allocation with remaining hours
+                // Case 2: Partially allocated - show Continue Allocation with remaining hours + Edit button
                 actionButtons += `<button class="btn btn-warning btn-sm" onclick="showProjectAllocationModal('${p.id}')">🎯 Allocate Remaining ${remainingHours.toFixed(1)}h</button> `;
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #3b82f6; color: #3b82f6;">✏️ Edit</button> `;
+            } else if (isFullyAllocated) {
+                // Case 3: Fully Allocated - Show Edit button only
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #3b82f6; color: #3b82f6;">✏️ Edit Allocations</button> `;
             }
-            // Case 3: Fully Allocated - DO NOT show allocate button
         }
         
         // Allocation status indicator
@@ -4701,7 +4284,7 @@ async function showExecutiveDashboard() {
                     <div class="stat-label">Projects with Timeline</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">${parseFloat(metrics.averageHoursPerProject || 0).toFixed(2)}h</div>
+                    <div class="stat-number">${metrics.averageHoursPerProject}h</div>
                     <div class="stat-label">Average Hours per Project</div>
                 </div>
                 <div class="stat-card" style="border-top-color: var(--danger);">
@@ -4787,7 +4370,7 @@ function renderExecutiveProjectsTable(projects) {
                 </td>
                 <td>${statusBadge}</td>
                 <td>${p.designLeadName || 'Not Assigned'}</td>
-                <td><span class="badge badge-info">${p.status.replace('_', ' ')}</span></td>
+                <td><span class="badge badge-info">${(p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span></td>
             </tr>
         `;
     }).join('');
@@ -5947,7 +5530,7 @@ setInterval(updatePendingRequestsBadge, 60000); // Update every minute
                             <td>${p.pricing?.projectNumber ? 
                                 `<span class="project-number-badge" style="font-size: 0.9rem;">${p.pricing.projectNumber}</span>` : 
                                 '<span class="proposal-status status-pending">Not Assigned</span>'}</td>
-                            <td><span class="proposal-status status-${p.status}">${p.status.toUpperCase()}</span></td>
+                            <td><span class="proposal-status status-${p.status}">${(p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span></td>
                             <td>${allocationStatusDisplay}</td>
                             <td><div class="action-buttons">${actionButtons}</div></td>
                         </tr>
@@ -6582,7 +6165,7 @@ function showCreateProposalModal() {
                             <div style="margin-bottom: 2rem;"> 
                                 <strong>Status:</strong>
                                 <span class="proposal-status status-${p.status.toLowerCase().replace(/_/g, '-')}">
-                                    ${p.status.replace(/_/g, ' ').toUpperCase()}
+                                    ${p.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                 </span>
                             </div>
 
@@ -8712,10 +8295,11 @@ function createProjectCard(project) {
         <div class="project-card">
             <div class="project-header">
                 <h3>${project.projectName}</h3>
-                <span class="project-status ${project.status.replace(/_/g, '-')}">${project.status.replace(/_/g, ' ')}</span>
+                <span class="project-status ${project.status.replace(/_/g, '-')}">${project.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
             </div>
             <div class="project-details">
                 <p><strong>Client:</strong> ${project.clientCompany || 'N/A'}</p>
+                <p><strong>Project Number:</strong> ${project.projectNumber || 'N/A'}</p>
                 <p><strong>Code:</strong> ${project.projectCode || 'N/A'}</p>
                 <p><strong>Allocated:</strong> ${allocDate}</p>
                 <p><strong>Target:</strong> ${targetDate}</p>
@@ -9170,8 +8754,9 @@ async function showDesignerAllocations() {
                 <tr>
                     <td>
                         <strong>${p.projectName || 'Unknown Project'}</strong><br>
-                        <small style="color: var(--primary-blue); font-weight: 600;">${p.projectNumber || p.projectCode || 'No Project #'}</small>
+                        <small style="color: var(--text-light);">${p.projectCode || 'No Code'}</small>
                     </td>
+                    <td><strong>${p.projectNumber || 'N/A'}</strong></td>
                     <td>${p.clientCompany || 'N/A'}</td>
                     <td>${targetDate}</td>
 
@@ -9227,6 +8812,7 @@ async function showDesignerAllocations() {
                     <thead>
                         <tr>
                             <th>Project</th>
+                            <th>Project Number</th>
                             <th>Client</th>
                             <th>Target Date</th>
                             <th style="text-align: center;">My Allocated Hours</th>
@@ -9583,7 +9169,7 @@ function formatFileSize(bytes) {
                             <div>
                                 <span style="font-weight: 500;">📄 ${file.fileName || file.originalName || 'Unknown File'}</span>
                                 <br>
-                                <small style="color: #6b7280;">Uploaded: ${formatDate(file.uploadedAt)}</small>
+                                <small style="color: #6b7280;">Uploaded: ${file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}</small>
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <a href="${fileUrl}" target="_blank" class="btn btn-primary btn-sm" 
@@ -9611,7 +9197,7 @@ function formatFileSize(bytes) {
                             <div>
                                 <span style="font-weight: 500;">📄 ${file.fileName || file.originalName || 'Unknown File'}</span>
                                 <br>
-                                <small style="color: #6b7280;">Uploaded: ${formatDate(file.uploadedAt)}</small>
+                                <small style="color: #6b7280;">Uploaded: ${file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}</small>
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 <a href="${fileUrl}" target="_blank" class="btn btn-primary btn-sm"
@@ -10469,6 +10055,10 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         
         const project = projectResponse.data;
         
+        // Store project data globally for edit functions
+        window.currentEditProject = project;
+        window.currentEditProjectId = projectId;
+        
         // 2. Load available designers
         await loadAvailableDesigners();
         
@@ -10480,7 +10070,34 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         
         // 3. Populate project info
         document.getElementById('cooAllocProjectId').value = projectId;
-        document.getElementById('cooAllocProjectNumberInput').value = project.projectNumber || project.projectCode || '';
+        
+        // Setup project number field with Save/Edit buttons
+        const projectNumberInput = document.getElementById('cooAllocProjectNumberInput');
+        const saveBtn = document.getElementById('saveProjectNumberBtn');
+        const editBtn = document.getElementById('editProjectNumberBtn');
+        const statusText = document.getElementById('projectNumberStatus');
+        
+        projectNumberInput.value = project.projectNumber || '';
+        projectNumberInput.dataset.original = project.projectNumber || '';
+        
+        if (project.projectNumber) {
+            // Has project number - show as locked with Edit button
+            projectNumberInput.readOnly = true;
+            projectNumberInput.style.background = 'rgba(255,255,255,0.7)';
+            saveBtn.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            statusText.textContent = '✓ Saved';
+            statusText.style.color = '#86efac';
+        } else {
+            // No project number - show as editable
+            projectNumberInput.readOnly = false;
+            projectNumberInput.style.background = 'rgba(255,255,255,0.95)';
+            saveBtn.style.display = 'none';
+            editBtn.style.display = 'none';
+            statusText.textContent = 'Enter project number and click Save';
+            statusText.style.color = 'rgba(255,255,255,0.7)';
+        }
+        
         document.getElementById('cooAllocProjectName').textContent = project.projectName || 'N/A';
         document.getElementById('cooAllocClientName').textContent = project.clientCompany || 'N/A';
         
@@ -10544,6 +10161,12 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         totalHoursInput.value = totalBudget > 0 ? totalBudget : '';
         totalHoursInput.readOnly = isLocked;
         
+        // Show/hide Edit Budget button
+        const editBudgetBtn = document.getElementById('editBudgetBtn');
+        if (editBudgetBtn) {
+            editBudgetBtn.style.display = isLocked && totalBudget > 0 ? 'inline-block' : 'none';
+        }
+        
         if (isLocked) {
             // Locked state - budget is set
             totalHoursInput.style.backgroundColor = '#e9ecef';
@@ -10572,11 +10195,17 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         totalHoursInput.dataset.hoursSource = hoursSource;
         
         // ============================================
+        // ✅ NEW: RENDER EXISTING ALLOCATIONS WITH EDIT
+        // ============================================
+        
+        renderExistingAllocations(project);
+        
+        // ============================================
         // Designer Allocation Section State
         // ============================================
         
         const designerContainer = document.getElementById('designerAllocationsContainer');
-        const addDesignerBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-outline');
+        const addDesignerBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-outline[onclick="addDesignerAllocation()"]');
         const submitBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-success');
         
         // Reset form
@@ -10634,7 +10263,7 @@ async function showCooMultiDesignerAllocationModal(projectId) {
                         This project is <strong>fully allocated</strong><br>
                         <span style="font-size: 1.2rem; font-weight: 700;">${previouslyAllocated.toFixed(1)} / ${totalBudget.toFixed(1)} hours</span>
                     </p>
-                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8;">No further hours can be added.</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8;">Use "Edit" buttons above to modify existing allocations.</p>
                 </div>
             `;
             
@@ -10666,6 +10295,456 @@ async function showCooMultiDesignerAllocationModal(projectId) {
     } catch (error) {
         console.error('Error showing allocation modal:', error);
         alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * ✅ NEW: Render existing designer allocations with edit capabilities
+ */
+function renderExistingAllocations(project) {
+    const section = document.getElementById('existingAllocationsSection');
+    const list = document.getElementById('existingAllocationsList');
+    const totalSpan = document.getElementById('existingAllocTotal');
+    
+    const designerHours = project.designerHours || {};
+    const designerUids = project.assignedDesignerUids || [];
+    const designerNames = project.assignedDesignerNames || [];
+    const designerEmails = project.assignedDesignerEmails || [];
+    
+    // Check if there are existing allocations
+    if (designerUids.length === 0 || Object.keys(designerHours).length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    // Calculate total existing hours
+    let totalExisting = 0;
+    designerUids.forEach(uid => {
+        totalExisting += parseFloat(designerHours[uid]) || 0;
+    });
+    
+    // Show section
+    section.style.display = 'block';
+    totalSpan.textContent = `Total: ${totalExisting.toFixed(1)}h`;
+    
+    // Render each designer allocation
+    list.innerHTML = designerUids.map((uid, index) => {
+        const name = designerNames[index] || 'Unknown Designer';
+        const email = designerEmails[index] || '';
+        const hours = parseFloat(designerHours[uid]) || 0;
+        
+        return `
+            <div class="designer-edit-row" id="existingAlloc_${uid}" data-uid="${uid}" data-original="${hours}" 
+                 style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; border: 1px solid #e5e7eb;">
+                <div class="designer-edit-info" style="flex: 1;">
+                    <div class="name" style="font-weight: 600; color: #1f2937;">👤 ${name}</div>
+                    <div class="email" style="font-size: 0.85rem; color: #6b7280;">${email}</div>
+                </div>
+                <div class="designer-edit-hours" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="existingHours_${uid}" class="form-control existing-hours-input" 
+                           value="${hours}" min="0" step="0.5" data-original="${hours}"
+                           style="width: 100px; text-align: center; font-weight: 600;"
+                           onchange="highlightExistingHoursChange('${uid}')">
+                    <span style="color: #6b7280;">hours</span>
+                </div>
+                <div class="designer-edit-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="saveExistingDesignerHours('${uid}', '${name}', '${email}')" 
+                            style="padding: 0.4rem 0.75rem;">
+                        💾 Save
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Highlight changed hours in existing allocations
+ */
+function highlightExistingHoursChange(designerUid) {
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const original = parseFloat(input.dataset.original) || 0;
+    const current = parseFloat(input.value) || 0;
+    
+    if (current !== original) {
+        input.style.border = '2px solid #f59e0b';
+        input.style.background = '#fef3c7';
+    } else {
+        input.style.border = '';
+        input.style.background = '';
+    }
+    
+    // Also update the remaining hours display
+    updateRemainingHoursWithExisting();
+}
+
+/**
+ * Update remaining hours considering existing allocation changes
+ */
+function updateRemainingHoursWithExisting() {
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value) || 0;
+    
+    // Calculate existing allocations (current values in inputs)
+    let existingTotal = 0;
+    document.querySelectorAll('.existing-hours-input').forEach(input => {
+        existingTotal += parseFloat(input.value) || 0;
+    });
+    
+    // Get new session allocation
+    let newSessionTotal = 0;
+    document.querySelectorAll('.hours-input').forEach(input => {
+        newSessionTotal += parseFloat(input.value) || 0;
+    });
+    
+    const totalAllocated = existingTotal + newSessionTotal;
+    const remaining = totalBudget - totalAllocated;
+    
+    // Update display
+    const remainingDisplay = document.getElementById('cooRemainingHours');
+    if (remainingDisplay) {
+        remainingDisplay.innerHTML = `
+            <div style="font-size: 1.8rem; font-weight: 700; color: ${remaining < 0 ? 'var(--danger)' : remaining === 0 ? 'var(--success)' : 'var(--warning)'}">
+                ${remaining >= 0 ? remaining.toFixed(1) : '(' + Math.abs(remaining).toFixed(1) + ')'} hrs
+            </div>
+            <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8; line-height: 1.3;">
+                <div><strong>Total Budget:</strong> ${totalBudget.toFixed(1)} hrs</div>
+                ${existingTotal > 0 ? `<div><strong>Existing Allocations:</strong> ${existingTotal.toFixed(1)} hrs</div>` : ''}
+                ${newSessionTotal > 0 ? `<div><strong>New Allocations:</strong> ${newSessionTotal.toFixed(1)} hrs</div>` : ''}
+                <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 0.3rem; padding-top: 0.3rem;">
+                    <strong>Total Allocated:</strong> ${totalAllocated.toFixed(1)} hrs
+                </div>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Save existing designer hours directly (within budget)
+ */
+async function saveExistingDesignerHours(designerUid, designerName, designerEmail) {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const newHours = parseFloat(input.value) || 0;
+    const oldHours = parseFloat(input.dataset.original) || 0;
+    
+    if (newHours === oldHours) {
+        alert('No changes to save');
+        return;
+    }
+    
+    // Check if within budget
+    const maxBudget = parseFloat(project.maxAllocatedHours) || 0;
+    const currentTotal = parseFloat(project.totalAllocatedHours) || 0;
+    const hoursDiff = newHours - oldHours;
+    const newTotal = currentTotal + hoursDiff;
+    
+    if (maxBudget > 0 && newTotal > maxBudget + 0.1) {
+        const exceed = (newTotal - maxBudget).toFixed(1);
+        alert(`⚠️ Cannot save: This would exceed the budget by ${exceed} hours.\n\nUse "Request" to submit for Director approval.`);
+        return;
+    }
+    
+    const confirmMsg = `Update ${designerName}'s allocation?\n\nCurrent: ${oldHours}h\nNew: ${newHours}h\nChange: ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_designer_allocation',
+                data: {
+                    designerUid,
+                    designerName,
+                    designerEmail,
+                    newAllocatedHours: newHours,
+                    reason: `Direct edit by COO: ${oldHours}h → ${newHours}h`
+                }
+            })
+        });
+        
+        if (response.success) {
+            alert(`✅ ${designerName}'s hours updated to ${newHours}h`);
+            
+            // Update local data
+            input.dataset.original = newHours;
+            input.style.border = '2px solid #10b981';
+            input.style.background = '#d1fae5';
+            
+            // Update stored project data
+            window.currentEditProject.designerHours = window.currentEditProject.designerHours || {};
+            window.currentEditProject.designerHours[designerUid] = newHours;
+            window.currentEditProject.totalAllocatedHours = newTotal;
+            
+            // Update totals display
+            const totalSpan = document.getElementById('existingAllocTotal');
+            if (totalSpan) {
+                let existingTotal = 0;
+                document.querySelectorAll('.existing-hours-input').forEach(inp => {
+                    existingTotal += parseFloat(inp.value) || 0;
+                });
+                totalSpan.textContent = `Total: ${existingTotal.toFixed(1)}h`;
+            }
+            
+            // Update remaining hours
+            document.getElementById('cooTotalProjectHours').dataset.alreadyAllocated = newTotal;
+            updateRemainingHours();
+            
+            setTimeout(() => {
+                input.style.border = '';
+                input.style.background = '';
+            }, 2000);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update hours');
+        }
+    } catch (error) {
+        console.error('Error updating hours:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Request hours change that exceeds budget (opens Director approval modal)
+ */
+function requestHoursChangeFromModal(designerUid, designerName, designerEmail, currentHours) {
+    const projectId = window.currentEditProjectId;
+    
+    // Close current modal
+    closeCooMultiDesignerModal();
+    
+    // Open request modal
+    showRequestAllocationChangeModal(projectId, designerUid, designerName, designerEmail, currentHours);
+}
+
+/**
+ * Request budget change (requires Director approval) - Opens modal
+ */
+function toggleBudgetEdit() {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const currentBudget = parseFloat(project.maxAllocatedHours) || 0;
+    const totalAllocated = parseFloat(project.totalAllocatedHours) || 0;
+    
+    // Show the budget change modal
+    showBudgetChangeModal(projectId, project.projectName, currentBudget, totalAllocated);
+}
+
+/**
+ * Show Budget Change Request Modal - Professional Form
+ */
+function showBudgetChangeModal(projectId, projectName, currentBudget, totalAllocated) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('budgetChangeModal');
+    if (!modal) {
+        const modalHtml = `
+            <div id="budgetChangeModal" class="modal" style="display: none;">
+                <div class="modal-content new-modal" style="max-width: 600px;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div>
+                            <h2 style="color: white;">📊 Request Additional Hours</h2>
+                            <div class="subtitle" style="color: rgba(255,255,255,0.9);">Requires Director Approval</div>
+                        </div>
+                        <span class="close-modal" onclick="closeBudgetChangeModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <input type="hidden" id="budgetChangeProjectId" />
+                        
+                        <!-- Project Info Section -->
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; color: white;">
+                            <div style="font-size: 0.85rem; opacity: 0.9;">Project</div>
+                            <div style="font-size: 1.2rem; font-weight: 700;" id="budgetChangeProjectName"></div>
+                        </div>
+                        
+                        <!-- Current Status Section -->
+                        <div style="background: #f8fafc; padding: 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
+                            <h4 style="margin: 0 0 1rem 0; color: #475569;">📈 Current Status</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b;">Current Budget</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b;" id="budgetChangeCurrent">0</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">hours</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b;">Already Allocated</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;" id="budgetChangeAllocated">0</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">hours</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.8rem; color: #64748b;">Remaining</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="budgetChangeRemaining">0</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">hours</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Request Form -->
+                        <div style="background: #fffbeb; padding: 1.25rem; border-radius: 10px; border: 2px solid #f59e0b;">
+                            <h4 style="margin: 0 0 1rem 0; color: #92400e;">📝 Request Details</h4>
+                            
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="font-weight: 600; color: #78350f;">Additional Hours Required <span class="required">*</span></label>
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <input type="number" id="budgetChangeAdditionalHours" class="form-control" 
+                                           placeholder="e.g., 50" min="1" step="0.5" required
+                                           oninput="updateBudgetChangePreview()"
+                                           style="font-size: 1.2rem; padding: 0.75rem; flex: 1; font-weight: 600;">
+                                    <span style="color: #92400e; font-weight: 600;">hours</span>
+                                </div>
+                                <small style="color: #b45309;">Enter the number of additional hours needed</small>
+                            </div>
+                            
+                            <div id="budgetChangePreview" style="display: none; background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; border: 1px solid #fcd34d;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: #78350f;">New Total Budget:</span>
+                                    <span style="font-size: 1.3rem; font-weight: 700; color: #d97706;" id="budgetChangeNewTotal">0h</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: #78350f;">Reason / Justification <span class="required">*</span></label>
+                                <textarea id="budgetChangeReason" class="form-control" rows="4" required
+                                          placeholder="Please explain why additional hours are required...&#10;&#10;Examples:&#10;• Additional scope requested by client&#10;• Unforeseen design complexity&#10;• Revision requirements&#10;• Extended project timeline"
+                                          style="resize: vertical;"></textarea>
+                                <small style="color: #b45309;">This justification is required and will be reviewed by the Director</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-cancel" onclick="closeBudgetChangeModal()">Cancel</button>
+                        <button type="button" class="btn" onclick="submitBudgetChangeFromModal()" 
+                                style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; font-weight: 600;">
+                            📤 Submit Request to Director
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('budgetChangeModal');
+    }
+    
+    // Populate modal
+    document.getElementById('budgetChangeProjectId').value = projectId;
+    document.getElementById('budgetChangeProjectName').textContent = projectName;
+    document.getElementById('budgetChangeCurrent').textContent = currentBudget.toFixed(1);
+    document.getElementById('budgetChangeAllocated').textContent = totalAllocated.toFixed(1);
+    document.getElementById('budgetChangeRemaining').textContent = (currentBudget - totalAllocated).toFixed(1);
+    document.getElementById('budgetChangeAdditionalHours').value = '';
+    document.getElementById('budgetChangeReason').value = '';
+    document.getElementById('budgetChangePreview').style.display = 'none';
+    
+    // Store current budget for calculation
+    document.getElementById('budgetChangeAdditionalHours').dataset.current = currentBudget;
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close budget change modal
+ */
+function closeBudgetChangeModal() {
+    const modal = document.getElementById('budgetChangeModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Update budget change preview
+ */
+function updateBudgetChangePreview() {
+    const input = document.getElementById('budgetChangeAdditionalHours');
+    const current = parseFloat(input.dataset.current) || 0;
+    const additional = parseFloat(input.value) || 0;
+    const newTotal = current + additional;
+    
+    const preview = document.getElementById('budgetChangePreview');
+    const newTotalDisplay = document.getElementById('budgetChangeNewTotal');
+    
+    if (additional > 0) {
+        preview.style.display = 'block';
+        newTotalDisplay.textContent = `${newTotal.toFixed(1)}h`;
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+/**
+ * Submit budget change request from modal
+ */
+async function submitBudgetChangeFromModal() {
+    const projectId = document.getElementById('budgetChangeProjectId').value;
+    const currentBudget = parseFloat(document.getElementById('budgetChangeAdditionalHours').dataset.current) || 0;
+    const additionalHours = parseFloat(document.getElementById('budgetChangeAdditionalHours').value);
+    const reason = document.getElementById('budgetChangeReason').value.trim();
+    
+    // Validation
+    if (!additionalHours || additionalHours <= 0) {
+        alert('Please enter the number of additional hours required');
+        document.getElementById('budgetChangeAdditionalHours').focus();
+        return;
+    }
+    
+    if (!reason) {
+        alert('Please provide a reason/justification for the additional hours. This is required for Director approval.');
+        document.getElementById('budgetChangeReason').focus();
+        return;
+    }
+    
+    if (reason.length < 10) {
+        alert('Please provide a more detailed justification (at least 10 characters)');
+        document.getElementById('budgetChangeReason').focus();
+        return;
+    }
+    
+    const newBudget = currentBudget + additionalHours;
+    
+    const confirmMsg = `Request additional ${additionalHours} hours?\n\nCurrent Budget: ${currentBudget}h\nAdditional: +${additionalHours}h\nNew Total: ${newBudget}h\n\nThis request will be sent to the Director for approval.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const project = window.currentEditProject;
+        
+        const response = await apiCall('allocation-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: projectId,
+                requestType: 'budget_change',
+                currentBudget: currentBudget,
+                requestedBudget: newBudget,
+                reason: reason,
+                projectName: project.projectName,
+                projectCode: project.projectNumber || project.projectCode,
+                clientCompany: project.clientCompany
+            })
+        });
+        
+        if (response.success) {
+            closeBudgetChangeModal();
+            alert(`✅ Request Submitted Successfully!\n\nAdditional Hours: +${additionalHours}h\nNew Total Budget: ${newBudget}h\n\nAwaiting Director approval.`);
+        } else {
+            throw new Error(response.error || 'Failed to submit request');
+        }
+    } catch (error) {
+        console.error('Error submitting budget change:', error);
+        alert('❌ Error: ' + error.message);
     } finally {
         hideLoading();
     }
@@ -10851,12 +10930,130 @@ function validateDesignerSelection() {
  * ✅ FIXED: Submit COO Multi-Designer Allocation
  * Handles both scenarios: estimation hours OR manual COO entry
  */
+/**
+ * Mark project number as changed - show Save button
+ */
+function markProjectNumberChanged() {
+    const input = document.getElementById('cooAllocProjectNumberInput');
+    const saveBtn = document.getElementById('saveProjectNumberBtn');
+    const editBtn = document.getElementById('editProjectNumberBtn');
+    const statusText = document.getElementById('projectNumberStatus');
+    
+    const currentValue = input.value.trim();
+    const originalValue = input.dataset.original || '';
+    
+    if (currentValue !== originalValue && currentValue !== '') {
+        saveBtn.style.display = 'inline-block';
+        editBtn.style.display = 'none';
+        statusText.textContent = 'Click Save to update';
+        statusText.style.color = '#fbbf24';
+    } else if (currentValue === '' && originalValue === '') {
+        saveBtn.style.display = 'none';
+        editBtn.style.display = 'none';
+        statusText.textContent = 'Enter project number';
+        statusText.style.color = 'rgba(255,255,255,0.7)';
+    }
+}
+
+/**
+ * Enable project number editing
+ */
+function enableProjectNumberEdit() {
+    const input = document.getElementById('cooAllocProjectNumberInput');
+    const saveBtn = document.getElementById('saveProjectNumberBtn');
+    const editBtn = document.getElementById('editProjectNumberBtn');
+    const statusText = document.getElementById('projectNumberStatus');
+    
+    input.readOnly = false;
+    input.style.background = 'rgba(255,255,255,0.95)';
+    input.focus();
+    input.select();
+    
+    editBtn.style.display = 'none';
+    statusText.textContent = 'Edit and click Save';
+    statusText.style.color = '#fbbf24';
+}
+
+/**
+ * Save project number to database
+ */
+async function saveProjectNumber() {
+    const projectId = document.getElementById('cooAllocProjectId').value;
+    const input = document.getElementById('cooAllocProjectNumberInput');
+    const saveBtn = document.getElementById('saveProjectNumberBtn');
+    const editBtn = document.getElementById('editProjectNumberBtn');
+    const statusText = document.getElementById('projectNumberStatus');
+    
+    const projectNumber = input.value.trim();
+    
+    if (!projectNumber) {
+        alert('Please enter a project number');
+        input.focus();
+        return;
+    }
+    
+    try {
+        // Show loading state
+        saveBtn.textContent = '⏳...';
+        saveBtn.disabled = true;
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_project_number',
+                data: {
+                    projectNumber: projectNumber
+                }
+            })
+        });
+        
+        if (response.success) {
+            // Update UI to saved state
+            input.dataset.original = projectNumber;
+            input.readOnly = true;
+            input.style.background = 'rgba(255,255,255,0.7)';
+            
+            saveBtn.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            
+            statusText.textContent = '✓ Saved';
+            statusText.style.color = '#86efac';
+            
+            // Update stored project data
+            if (window.currentEditProject) {
+                window.currentEditProject.projectNumber = projectNumber;
+            }
+            
+            // Brief success flash
+            input.style.border = '2px solid #10b981';
+            setTimeout(() => {
+                input.style.border = 'none';
+            }, 2000);
+            
+        } else {
+            throw new Error(response.error || 'Failed to save project number');
+        }
+    } catch (error) {
+        console.error('Error saving project number:', error);
+        alert('❌ Error: ' + error.message);
+        statusText.textContent = 'Save failed - try again';
+        statusText.style.color = '#f87171';
+    } finally {
+        saveBtn.textContent = '💾 Save';
+        saveBtn.disabled = false;
+    }
+}
+
 async function submitCooMultiDesignerAllocation() {
     const projectId = document.getElementById('cooAllocProjectId').value;
     const totalHoursInput = document.getElementById('cooTotalProjectHours');
     const totalBudget = parseFloat(totalHoursInput.value);
     const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
     const hoursSource = totalHoursInput.dataset.hoursSource || 'unknown';
+    
+    // Get project number from input
+    const projectNumber = document.getElementById('cooAllocProjectNumberInput').value.trim();
     
     // Validation: Budget must be set
     if (!totalBudget || totalBudget <= 0) {
@@ -10958,17 +11155,13 @@ Proceed with allocation?`.trim();
         // ✅ CRITICAL: Prepare Payload for Backend
         // ============================================
         
-        // Get the manually entered project number
-        const projectNumberInput = document.getElementById('cooAllocProjectNumberInput');
-        const projectNumber = projectNumberInput ? projectNumberInput.value.trim() : '';
-        
         const allocationData = {
             action: 'allocate_to_multiple_designers',
             data: {
                 projectId: projectId,
                 
-                // ✅ Project Number (Manual Entry by COO)
-                projectNumber: projectNumber,
+                // ✅ Project Number
+                projectNumber: projectNumber || null,
                 
                 // ✅ CRITICAL: Set the budget and source
                 maxAllocatedHours: totalBudget, // Lock the budget
@@ -17481,7 +17674,25 @@ function toggleDesignHours() {
             <!-- Project Summary -->
             <div class="allocation-details-section" style="margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px;">
                 <h3 style="color: white; margin-bottom: 1rem;">📋 Project Information</h3>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project Number:</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                            <input type="text" id="cooAllocProjectNumberInput" class="form-control" 
+                                   placeholder="Enter project number" 
+                                   style="background: rgba(255,255,255,0.95); color: #1e293b; font-size: 1.1rem; font-weight: 700; padding: 0.5rem; border-radius: 6px; border: none; flex: 1;"
+                                   onchange="markProjectNumberChanged()">
+                            <button type="button" id="saveProjectNumberBtn" onclick="saveProjectNumber()" 
+                                    style="display: none; background: #10b981; color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+                                💾 Save
+                            </button>
+                            <button type="button" id="editProjectNumberBtn" onclick="enableProjectNumberEdit()" 
+                                    style="display: none; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 0.4rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+                                ✏️ Edit
+                            </button>
+                        </div>
+                        <small id="projectNumberStatus" style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.25rem; display: block;"></small>
+                    </div>
                     <div>
                         <label style="font-size: 0.85rem; opacity: 0.9;">Project Name:</label>
                         <div id="cooAllocProjectName" style="font-size: 1rem; font-weight: 600;"></div>
@@ -17491,18 +17702,17 @@ function toggleDesignHours() {
                         <div id="cooAllocClientName" style="font-size: 1rem; font-weight: 600;"></div>
                     </div>
                 </div>
-                <div style="margin-top: 1rem;">
-                    <label style="font-size: 0.85rem; opacity: 0.9;">Project Number (Manual Entry):</label>
-                    <input type="text" id="cooAllocProjectNumberInput" class="form-control" 
-                           style="background: rgba(255,255,255,0.95); color: #333; font-size: 1.1rem; font-weight: 700; margin-top: 0.25rem;"
-                           placeholder="Enter project number (e.g., EB-2024-001)">
-                    <small style="opacity: 0.8; font-size: 0.75rem;">This will be visible to designers</small>
-                </div>
             </div>
             
             <!-- Total Hours Input -->
             <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
-                <h3 style="color: var(--text-dark); margin-bottom: 1rem;">⏱️ Total Project Hours</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: var(--text-dark); margin: 0;">⏱️ Total Project Hours</h3>
+                    <button type="button" id="editBudgetBtn" class="btn btn-outline btn-sm" onclick="toggleBudgetEdit()" 
+                            style="display: none; border-color: #f59e0b; color: #d97706;">
+                        ➕ Request Additional Hours
+                    </button>
+                </div>
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                         <label for="cooTotalProjectHours">Total Allocated Hours <span class="required">*</span></label>
@@ -17520,10 +17730,21 @@ function toggleDesignHours() {
                 </div>
             </div>
             
-            <!-- Designer Allocations -->
+            <!-- EXISTING ALLOCATIONS SECTION (NEW) -->
+            <div id="existingAllocationsSection" class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #1e40af; margin: 0;">📊 Existing Designer Allocations</h3>
+                    <span id="existingAllocTotal" style="background: #3b82f6; color: white; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 600;"></span>
+                </div>
+                <div id="existingAllocationsList">
+                    <!-- Existing allocations will be rendered here -->
+                </div>
+            </div>
+            
+            <!-- Designer Allocations (NEW) -->
             <div class="form-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: var(--text-dark); margin: 0;">👨‍💼 Designer Allocations</h3>
+                    <h3 style="color: var(--text-dark); margin: 0;">👨‍💼 Add New Designer Allocations</h3>
                     <button type="button" class="btn btn-outline" onclick="addDesignerAllocation()">
                         <span style="font-size: 1.2rem;">+</span> Add Designer
                     </button>
@@ -17573,142 +17794,1015 @@ function toggleDesignHours() {
     <!-- LOAD THE SEPARATE QUOTATION GENERATOR FILE -->
     <script src="quotation_generator.js"></script>
 
-<!-- ============================================== -->
-<!-- 🚀 PWA & MOBILE MENU JAVASCRIPT -->
-<!-- ============================================== -->
-<script>
-// ==============================
-// PWA Service Worker Registration
-// ==============================
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then((registration) => {
-                console.log('✅ Service Worker registered:', registration.scope);
-            })
-            .catch((error) => {
-                console.log('❌ Service Worker registration failed:', error);
-            });
-    });
-}
-
-// ==============================
-// Mobile Menu Functions
-// ==============================
-function toggleMobileMenu() {
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggleBtn = document.getElementById('mobileMenuToggle');
-    
-    if (sidebar && overlay && toggleBtn) {
-        sidebar.classList.toggle('active');
-        overlay.classList.toggle('active');
-        toggleBtn.classList.toggle('active');
+<!-- ============================================ -->
+<!-- FEATURE 1: COO → Director Approval Modal    -->
+<!-- ============================================ -->
+<div id="cooRequestAllocationChangeModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <div>
+                <h2>📝 Request Allocation Change</h2>
+                <div class="subtitle">Submit change request to Director for approval</div>
+            </div>
+            <span class="close-modal" onclick="closeRequestAllocationChangeModal()">&times;</span>
+        </div>
         
-        // Prevent body scroll when menu is open
-        document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
-    }
-}
+        <div class="modal-body">
+            <input type="hidden" id="changeReqProjectId" />
+            <input type="hidden" id="changeReqDesignerUid" />
+            <input type="hidden" id="changeReqDesignerEmail" />
+            
+            <!-- Project & Designer Info -->
+            <div class="form-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project:</label>
+                        <div id="changeReqProjectName" style="font-size: 1.1rem; font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Designer:</label>
+                        <div id="changeReqDesignerName" style="font-size: 1.1rem; font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hours Input -->
+            <div class="form-section">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Current Allocated Hours</label>
+                        <input type="number" id="changeReqCurrentHours" class="form-control" readonly 
+                               style="background: #f3f4f6; font-weight: 600;">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>New Requested Hours <span class="required">*</span></label>
+                        <input type="number" id="changeReqNewHours" class="form-control" 
+                               placeholder="Enter new hours" min="0" step="0.5" required
+                               oninput="calculateHoursDifference()">
+                    </div>
+                </div>
+                
+                <div id="hoursDifferenceDisplay" style="text-align: center; padding: 1rem; margin: 1rem 0; border-radius: 8px; display: none;">
+                    <!-- Will show increase/decrease amount -->
+                </div>
+            </div>
+            
+            <!-- Mandatory Reason -->
+            <div class="form-section">
+                <div class="form-group">
+                    <label>Reason for Change <span class="required">*</span></label>
+                    <textarea id="changeReqReason" class="form-control" rows="4" 
+                              placeholder="Please provide a detailed reason for this allocation change request. This is mandatory for Director review."
+                              required></textarea>
+                    <small class="form-text" style="color: var(--danger);">⚠️ This field is mandatory</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeRequestAllocationChangeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-large" onclick="submitAllocationChangeRequest()">
+                <span class="btn-icon">📤</span> Submit to Director
+            </button>
+        </div>
+    </div>
+</div>
 
-function closeMobileMenu() {
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggleBtn = document.getElementById('mobileMenuToggle');
+<!-- ============================================ -->
+<!-- FEATURE 1: Director Approval Queue Modal    -->
+<!-- ============================================ -->
+<div id="directorAllocationRequestsModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal allocation-modal-large" style="max-width: 1000px; max-height: 90vh;">
+        <div class="modal-header">
+            <div>
+                <h2>📋 Allocation Change Requests</h2>
+                <div class="subtitle">Review and approve/reject COO allocation change requests</div>
+            </div>
+            <span class="close-modal" onclick="closeDirectorAllocationRequestsModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <div id="allocationRequestsList">
+                <!-- Requests will be loaded here -->
+                <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+                    <p>Loading requests...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeDirectorAllocationRequestsModal()">Close</button>
+            <button type="button" class="btn btn-primary" onclick="loadAllocationRequests()">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- FEATURE 1: Director Review Single Request   -->
+<!-- ============================================ -->
+<div id="directorReviewRequestModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 650px;">
+        <div class="modal-header">
+            <div>
+                <h2>🔍 Review Allocation Request</h2>
+                <div class="subtitle">Approve or reject this change request</div>
+            </div>
+            <span class="close-modal" onclick="closeDirectorReviewModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="reviewRequestId" />
+            
+            <!-- Request Details -->
+            <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">📋 Request Details</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Project:</label>
+                        <div id="reviewProjectName" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Designer:</label>
+                        <div id="reviewDesignerName" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Requested By:</label>
+                        <div id="reviewRequestedBy" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Request Date:</label>
+                        <div id="reviewRequestDate" style="font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hours Change -->
+            <div class="form-section" style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: #92400e;">⏱️ Hours Change</h4>
+                <div style="display: flex; align-items: center; justify-content: space-around;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #92400e;">Current</div>
+                        <div id="reviewCurrentHours" style="font-size: 2rem; font-weight: 700; color: #b45309;"></div>
+                    </div>
+                    <div style="font-size: 2rem; color: #92400e;">→</div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #92400e;">Requested</div>
+                        <div id="reviewRequestedHours" style="font-size: 2rem; font-weight: 700; color: #b45309;"></div>
+                    </div>
+                    <div id="reviewHoursDiff" style="text-align: center; padding: 0.5rem 1rem; border-radius: 8px;"></div>
+                </div>
+            </div>
+            
+            <!-- COO Reason -->
+            <div class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 0.5rem; color: #1e40af;">💬 COO's Reason</h4>
+                <div id="reviewCooReason" style="font-style: italic; color: #1e3a8a;"></div>
+            </div>
+            
+            <!-- Director's Decision -->
+            <div class="form-section">
+                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">✍️ Your Decision</h4>
+                
+                <div class="form-group">
+                    <label>Final Approved Hours (you can adjust)</label>
+                    <input type="number" id="reviewFinalHours" class="form-control" 
+                           min="0" step="0.5" placeholder="Leave blank to use requested hours">
+                    <small class="form-text">Leave blank to approve the requested hours as-is</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Comment (optional for approval, required for rejection)</label>
+                    <textarea id="reviewDirectorComment" class="form-control" rows="3" 
+                              placeholder="Add your comments..."></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeDirectorReviewModal()">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="rejectAllocationRequest()">
+                ❌ Reject
+            </button>
+            <button type="button" class="btn btn-success btn-large" onclick="approveAllocationRequest()">
+                ✅ Approve
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- FEATURE 2: COO Direct Edit Allocation Modal -->
+<!-- ============================================ -->
+<div id="cooEditAllocationModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 800px;">
+        <div class="modal-header">
+            <div>
+                <h2>✏️ Edit Designer Allocations</h2>
+                <div class="subtitle">Directly adjust hours for assigned designers</div>
+            </div>
+            <span class="close-modal" onclick="closeCooEditAllocationModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="editAllocProjectId" />
+            
+            <!-- Project Summary -->
+            <div class="form-section" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project:</label>
+                        <div id="editAllocProjectName" style="font-size: 1rem; font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Max Budget:</label>
+                        <div id="editAllocMaxBudget" style="font-size: 1.2rem; font-weight: 700;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Currently Allocated:</label>
+                        <div id="editAllocCurrentTotal" style="font-size: 1.2rem; font-weight: 700;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Remaining:</label>
+                        <div id="editAllocRemaining" style="font-size: 1.2rem; font-weight: 700;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Designer List -->
+            <div class="form-section">
+                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">👥 Assigned Designers</h4>
+                <div id="editAllocDesignerList">
+                    <!-- Designer rows will be loaded here -->
+                    <div style="text-align: center; padding: 2rem; color: var(--text-light);">
+                        Loading designers...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Request Change Option -->
+            <div class="form-section" style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
+                    <strong>💡 Note:</strong> For changes beyond budget limits, use "Request Change" to submit for Director approval.
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeCooEditAllocationModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// FEATURE 1 & 2: ALLOCATION CHANGE MANAGEMENT
+// ============================================
+
+// ============================================
+// FEATURE 1: COO Request Allocation Change
+// ============================================
+
+/**
+ * Show the request allocation change modal (COO)
+ */
+function showRequestAllocationChangeModal(projectId, designerUid, designerName, designerEmail, currentHours) {
+    document.getElementById('changeReqProjectId').value = projectId;
+    document.getElementById('changeReqDesignerUid').value = designerUid;
+    document.getElementById('changeReqDesignerEmail').value = designerEmail || '';
+    document.getElementById('changeReqDesignerName').textContent = designerName;
+    document.getElementById('changeReqCurrentHours').value = currentHours;
+    document.getElementById('changeReqNewHours').value = '';
+    document.getElementById('changeReqReason').value = '';
+    document.getElementById('hoursDifferenceDisplay').style.display = 'none';
     
-    if (sidebar) sidebar.classList.remove('active');
-    if (overlay) overlay.classList.remove('active');
-    if (toggleBtn) toggleBtn.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// Close mobile menu when clicking a nav link
-document.addEventListener('DOMContentLoaded', () => {
-    const navLinks = document.querySelectorAll('.nav-menu a');
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
-                closeMobileMenu();
-            }
-        });
+    // Get project name
+    apiCall(`projects?id=${projectId}`).then(response => {
+        if (response.success && response.data) {
+            document.getElementById('changeReqProjectName').textContent = response.data.projectName || 'Unknown Project';
+        }
     });
-});
-
-// Close mobile menu on window resize
-window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-        closeMobileMenu();
-    }
-});
-
-// ==============================
-// PWA Install Prompt
-// ==============================
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    console.log('✅ PWA install prompt available');
-});
-
-function installPWA() {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('✅ User accepted the install prompt');
-            }
-            deferredPrompt = null;
-        });
-    }
-}
-
-// ==============================
-// Detect PWA Mode
-// ==============================
-function isPWA() {
-    return window.matchMedia('(display-mode: standalone)').matches ||
-           window.navigator.standalone === true;
-}
-
-if (isPWA()) {
-    console.log('✅ Running as installed PWA');
-    document.body.classList.add('pwa-mode');
-}
-
-// ==============================
-// Online/Offline Status
-// ==============================
-function updateOnlineStatus() {
-    const isOnline = navigator.onLine;
-    document.body.classList.toggle('offline', !isOnline);
     
-    if (!isOnline) {
-        console.log('⚠️ App is offline');
+    document.getElementById('cooRequestAllocationChangeModal').style.display = 'flex';
+}
+
+function closeRequestAllocationChangeModal() {
+    document.getElementById('cooRequestAllocationChangeModal').style.display = 'none';
+}
+
+function calculateHoursDifference() {
+    const currentHours = parseFloat(document.getElementById('changeReqCurrentHours').value) || 0;
+    const newHours = parseFloat(document.getElementById('changeReqNewHours').value) || 0;
+    const diff = newHours - currentHours;
+    
+    const display = document.getElementById('hoursDifferenceDisplay');
+    
+    if (newHours > 0) {
+        display.style.display = 'block';
+        if (diff > 0) {
+            display.style.background = '#d1fae5';
+            display.style.color = '#065f46';
+            display.innerHTML = `<strong>📈 Increase:</strong> +${diff.toFixed(1)} hours`;
+        } else if (diff < 0) {
+            display.style.background = '#fee2e2';
+            display.style.color = '#991b1b';
+            display.innerHTML = `<strong>📉 Decrease:</strong> ${diff.toFixed(1)} hours`;
+        } else {
+            display.style.background = '#f3f4f6';
+            display.style.color = '#6b7280';
+            display.innerHTML = `<strong>➖ No Change</strong>`;
+        }
     } else {
-        console.log('✅ App is online');
+        display.style.display = 'none';
     }
 }
 
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus();
-
-// ==============================
-// Prevent Double-Tap Zoom (iOS)
-// ==============================
-let lastTouchEnd = 0;
-document.addEventListener('touchend', (event) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
+/**
+ * Submit allocation change request to Director
+ */
+async function submitAllocationChangeRequest() {
+    const projectId = document.getElementById('changeReqProjectId').value;
+    const designerUid = document.getElementById('changeReqDesignerUid').value;
+    const designerName = document.getElementById('changeReqDesignerName').textContent;
+    const designerEmail = document.getElementById('changeReqDesignerEmail').value;
+    const currentHours = parseFloat(document.getElementById('changeReqCurrentHours').value) || 0;
+    const newHours = parseFloat(document.getElementById('changeReqNewHours').value);
+    const reason = document.getElementById('changeReqReason').value.trim();
+    
+    // Validation
+    if (!newHours || newHours < 0) {
+        alert('⚠️ Please enter valid new hours');
+        return;
     }
-    lastTouchEnd = now;
-}, false);
+    
+    if (!reason) {
+        alert('⚠️ Reason is mandatory for allocation change requests');
+        document.getElementById('changeReqReason').focus();
+        return;
+    }
+    
+    if (newHours === currentHours) {
+        alert('⚠️ New hours must be different from current hours');
+        return;
+    }
+    
+    const confirmMsg = `
+Submit Allocation Change Request?
 
-console.log('✅ EBTracker PWA initialized');
+Designer: ${designerName}
+Current Hours: ${currentHours}h
+Requested Hours: ${newHours}h
+Change: ${(newHours - currentHours) >= 0 ? '+' : ''}${(newHours - currentHours).toFixed(1)}h
+
+This will be sent to Director for approval.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall('allocation-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId,
+                designerUid,
+                designerName,
+                designerEmail,
+                currentAllocatedHours: currentHours,
+                requestedNewHours: newHours,
+                reason
+            })
+        });
+        
+        if (response.success) {
+            alert('✅ Allocation change request submitted to Director for approval!');
+            closeRequestAllocationChangeModal();
+        } else {
+            throw new Error(response.error || 'Failed to submit request');
+        }
+    } catch (error) {
+        console.error('Error submitting request:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============================================
+// FEATURE 1: Director Approval Queue
+// ============================================
+
+/**
+ * Show Director's allocation requests queue
+ */
+async function showDirectorAllocationRequests() {
+    document.getElementById('directorAllocationRequestsModal').style.display = 'flex';
+    await loadAllocationRequests();
+}
+
+function closeDirectorAllocationRequestsModal() {
+    document.getElementById('directorAllocationRequestsModal').style.display = 'none';
+}
+
+/**
+ * Load pending allocation requests for Director
+ */
+async function loadAllocationRequests() {
+    const container = document.getElementById('allocationRequestsList');
+    
+    try {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+                <div class="loading-spinner"></div>
+                <p>Loading requests...</p>
+            </div>
+        `;
+        
+        const response = await apiCall('allocation-requests?status=pending');
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to load requests');
+        }
+        
+        const requests = response.data || [];
+        
+        if (requests.length === 0) {
+            container.innerHTML = `
+                <div class="empty-requests">
+                    <div class="icon">✅</div>
+                    <h3>No Pending Requests</h3>
+                    <p>All allocation change requests have been processed.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Process each request with error handling
+        const cardsHtml = requests.map(req => {
+            try {
+                const createdDate = req.createdAt ? 
+                    (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
+                const dateStr = createdDate ? createdDate.toLocaleDateString() : 'N/A';
+                
+                // Determine request type - check multiple indicators
+                const isBudgetChange = req.requestType === 'budget_change' || 
+                                      (req.currentBudget !== undefined && req.currentBudget !== null) ||
+                                      (req.requestedBudget !== undefined && req.requestedBudget !== null);
+                
+                if (isBudgetChange) {
+                    // BUDGET CHANGE REQUEST CARD
+                    const currentBudget = Number(req.currentBudget) || 0;
+                    const requestedBudget = Number(req.requestedBudget) || 0;
+                    const budgetDiff = requestedBudget - currentBudget;
+                    
+                    return `
+                    <div class="allocation-request-card pending" style="border-left: 4px solid #f59e0b;">
+                        <div class="request-header">
+                            <div class="request-info">
+                                <h4>📊 Budget Change: ${req.projectName || 'Unknown Project'}</h4>
+                                <div class="request-meta">
+                                    Requested by <strong>${req.requestedByName || 'Unknown'}</strong> • ${dateStr}
+                                </div>
+                            </div>
+                            <span class="request-status pending" style="background: #fef3c7; color: #92400e;">Budget</span>
+                        </div>
+                        
+                        <div class="request-hours-change" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                            <div class="hours-box">
+                                <label>Current Budget</label>
+                                <div class="value">${currentBudget.toFixed(1)}h</div>
+                            </div>
+                            <div class="hours-arrow">→</div>
+                            <div class="hours-box">
+                                <label>Requested Budget</label>
+                                <div class="value">${requestedBudget.toFixed(1)}h</div>
+                            </div>
+                            <div class="hours-diff ${budgetDiff >= 0 ? 'increase' : 'decrease'}">
+                                ${budgetDiff >= 0 ? '+' : ''}${budgetDiff.toFixed(1)}h
+                            </div>
+                        </div>
+                        
+                        <div class="request-reason">
+                            <strong>Reason:</strong> ${req.reason || 'No reason provided'}
+                        </div>
+                        
+                        <div class="request-actions">
+                            <button class="btn btn-primary btn-sm" onclick="openDirectorReviewModal('${req.id}')">
+                                🔍 Review
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                } else {
+                    // DESIGNER HOURS CHANGE REQUEST CARD
+                    const currentHours = Number(req.currentAllocatedHours) || 0;
+                    const requestedHours = Number(req.requestedNewHours) || 0;
+                    const hoursDiff = requestedHours - currentHours;
+                    
+                    return `
+                    <div class="allocation-request-card pending">
+                        <div class="request-header">
+                            <div class="request-info">
+                                <h4>📁 ${req.projectName || 'Unknown Project'}</h4>
+                                <div class="request-meta">
+                                    Requested by <strong>${req.requestedByName || 'Unknown'}</strong> • ${dateStr}
+                                </div>
+                            </div>
+                            <span class="request-status pending">pending</span>
+                        </div>
+                        
+                        <div class="request-hours-change">
+                            <div class="hours-box">
+                                <label>Designer</label>
+                                <div class="value" style="font-size: 1rem;">👤 ${req.designerName || 'Unknown'}</div>
+                            </div>
+                            <div class="hours-box">
+                                <label>Current</label>
+                                <div class="value">${currentHours.toFixed(1)}h</div>
+                            </div>
+                            <div class="hours-arrow">→</div>
+                            <div class="hours-box">
+                                <label>Requested</label>
+                                <div class="value">${requestedHours.toFixed(1)}h</div>
+                            </div>
+                            <div class="hours-diff ${hoursDiff >= 0 ? 'increase' : 'decrease'}">
+                                ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h
+                            </div>
+                        </div>
+                        
+                        <div class="request-reason">
+                            <strong>Reason:</strong> ${req.reason || 'No reason provided'}
+                        </div>
+                        
+                        <div class="request-actions">
+                            <button class="btn btn-primary btn-sm" onclick="openDirectorReviewModal('${req.id}')">
+                                🔍 Review
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }
+            } catch (itemError) {
+                console.error('Error rendering request:', req, itemError);
+                return `
+                    <div class="allocation-request-card" style="border-left: 4px solid #ef4444;">
+                        <div style="padding: 1rem; color: #991b1b;">
+                            ⚠️ Error displaying request (ID: ${req.id || 'unknown'})
+                        </div>
+                    </div>
+                `;
+            }
+        }).join('');
+        
+        container.innerHTML = cardsHtml;
+        
+    } catch (error) {
+        console.error('Error loading requests:', error);
+        container.innerHTML = `
+            <div class="empty-requests">
+                <div class="icon">❌</div>
+                <h3>Error Loading Requests</h3>
+                <p>${error.message}</p>
+                <button class="btn btn-primary" onclick="loadAllocationRequests()">Retry</button>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Open review modal for a specific request
+ */
+async function openDirectorReviewModal(requestId) {
+    try {
+        showLoading();
+        
+        const response = await apiCall(`allocation-requests?id=${requestId}`);
+        
+        if (!response.success || !response.data) {
+            throw new Error('Request not found');
+        }
+        
+        const req = response.data;
+        console.log('📋 Review request data:', req);
+        
+        // Determine request type - check multiple indicators
+        const isBudgetChange = req.requestType === 'budget_change' || 
+                              (req.currentBudget !== undefined && req.currentBudget !== null) ||
+                              (req.requestedBudget !== undefined && req.requestedBudget !== null);
+        
+        document.getElementById('reviewRequestId').value = requestId;
+        document.getElementById('reviewProjectName').textContent = req.projectName || 'Unknown Project';
+        document.getElementById('reviewRequestedBy').textContent = req.requestedByName || 'Unknown';
+        
+        const createdDate = req.createdAt ? 
+            (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
+        document.getElementById('reviewRequestDate').textContent = createdDate ? createdDate.toLocaleDateString() : 'N/A';
+        
+        // Handle different request types
+        const designerRow = document.getElementById('reviewDesignerRow');
+        const hoursLabel = document.getElementById('reviewHoursLabel');
+        
+        if (isBudgetChange) {
+            // BUDGET CHANGE REQUEST
+            if (designerRow) designerRow.style.display = 'none';
+            if (hoursLabel) hoursLabel.textContent = 'Budget';
+            
+            const currentBudget = Number(req.currentBudget) || 0;
+            const requestedBudget = Number(req.requestedBudget) || 0;
+            const diff = requestedBudget - currentBudget;
+            
+            document.getElementById('reviewDesignerName').textContent = 'N/A (Budget Change)';
+            document.getElementById('reviewCurrentHours').textContent = `${currentBudget.toFixed(1)}h`;
+            document.getElementById('reviewRequestedHours').textContent = `${requestedBudget.toFixed(1)}h`;
+            
+            const diffEl = document.getElementById('reviewHoursDiff');
+            if (diff >= 0) {
+                diffEl.style.background = '#d1fae5';
+                diffEl.style.color = '#065f46';
+                diffEl.textContent = `+${diff.toFixed(1)}h`;
+            } else {
+                diffEl.style.background = '#fee2e2';
+                diffEl.style.color = '#991b1b';
+                diffEl.textContent = `${diff.toFixed(1)}h`;
+            }
+        } else {
+            // DESIGNER HOURS CHANGE REQUEST
+            if (designerRow) designerRow.style.display = 'flex';
+            if (hoursLabel) hoursLabel.textContent = 'Allocated Hours';
+            
+            const currentHours = Number(req.currentAllocatedHours) || 0;
+            const requestedHours = Number(req.requestedNewHours) || 0;
+            const diff = requestedHours - currentHours;
+            
+            document.getElementById('reviewDesignerName').textContent = req.designerName || 'Unknown';
+            document.getElementById('reviewCurrentHours').textContent = `${currentHours.toFixed(1)}h`;
+            document.getElementById('reviewRequestedHours').textContent = `${requestedHours.toFixed(1)}h`;
+            
+            const diffEl = document.getElementById('reviewHoursDiff');
+            if (diff >= 0) {
+                diffEl.style.background = '#d1fae5';
+                diffEl.style.color = '#065f46';
+                diffEl.textContent = `+${diff.toFixed(1)}h`;
+            } else {
+                diffEl.style.background = '#fee2e2';
+                diffEl.style.color = '#991b1b';
+                diffEl.textContent = `${diff.toFixed(1)}h`;
+            }
+        }
+        
+        document.getElementById('reviewCooReason').textContent = req.reason || 'No reason provided';
+        document.getElementById('reviewFinalHours').value = '';
+        document.getElementById('reviewDirectorComment').value = '';
+        
+        // Store request type for approval
+        document.getElementById('reviewRequestId').dataset.requestType = isBudgetChange ? 'budget_change' : 'designer_hours';
+        
+        document.getElementById('directorReviewRequestModal').style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error loading request:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeDirectorReviewModal() {
+    document.getElementById('directorReviewRequestModal').style.display = 'none';
+}
+
+/**
+ * Approve allocation request
+ */
+async function approveAllocationRequest() {
+    const requestId = document.getElementById('reviewRequestId').value;
+    const finalHours = document.getElementById('reviewFinalHours').value;
+    const comment = document.getElementById('reviewDirectorComment').value;
+    
+    const confirmMsg = finalHours ? 
+        `Approve this request with ${finalHours} hours?` :
+        'Approve this request with the requested hours?';
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`allocation-requests?id=${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'approve',
+                finalApprovedHours: finalHours ? parseFloat(finalHours) : null,
+                comment: comment
+            })
+        });
+        
+        if (response.success) {
+            alert('✅ Request approved successfully!');
+            closeDirectorReviewModal();
+            await loadAllocationRequests();
+            updateDirectorRequestsBadge();
+        } else {
+            throw new Error(response.error || 'Failed to approve request');
+        }
+    } catch (error) {
+        console.error('Error approving request:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Reject allocation request
+ */
+async function rejectAllocationRequest() {
+    const requestId = document.getElementById('reviewRequestId').value;
+    const comment = document.getElementById('reviewDirectorComment').value;
+    
+    if (!comment.trim()) {
+        alert('⚠️ Please provide a reason for rejection');
+        document.getElementById('reviewDirectorComment').focus();
+        return;
+    }
+    
+    if (!confirm('Reject this allocation change request?')) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`allocation-requests?id=${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'reject',
+                comment: comment
+            })
+        });
+        
+        if (response.success) {
+            alert('Request rejected and COO has been notified.');
+            closeDirectorReviewModal();
+            await loadAllocationRequests();
+            updateDirectorRequestsBadge();
+        } else {
+            throw new Error(response.error || 'Failed to reject request');
+        }
+    } catch (error) {
+        console.error('Error rejecting request:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============================================
+// FEATURE 2: COO Direct Edit Allocation
+// ============================================
+
+let editAllocProjectData = null;
+
+/**
+ * Show COO edit allocation modal
+ */
+async function showCooEditAllocationModal(projectId) {
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`);
+        
+        if (!response.success || !response.data) {
+            throw new Error('Project not found');
+        }
+        
+        editAllocProjectData = response.data;
+        const project = editAllocProjectData;
+        
+        document.getElementById('editAllocProjectId').value = projectId;
+        document.getElementById('editAllocProjectName').textContent = project.projectName || 'Unknown Project';
+        
+        const maxBudget = parseFloat(project.maxAllocatedHours) || 0;
+        const currentTotal = parseFloat(project.totalAllocatedHours) || 0;
+        const remaining = maxBudget - currentTotal;
+        
+        document.getElementById('editAllocMaxBudget').textContent = `${maxBudget}h`;
+        document.getElementById('editAllocCurrentTotal').textContent = `${currentTotal.toFixed(1)}h`;
+        document.getElementById('editAllocRemaining').textContent = `${remaining.toFixed(1)}h`;
+        
+        // Render designer list
+        renderEditDesignerList(project);
+        
+        document.getElementById('cooEditAllocationModal').style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error loading project:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeCooEditAllocationModal() {
+    document.getElementById('cooEditAllocationModal').style.display = 'none';
+    editAllocProjectData = null;
+}
+
+/**
+ * Render designer list for editing
+ */
+function renderEditDesignerList(project) {
+    const container = document.getElementById('editAllocDesignerList');
+    const designerHours = project.designerHours || {};
+    const designerUids = project.assignedDesignerUids || [];
+    const designerNames = project.assignedDesignerNames || [];
+    const designerEmails = project.assignedDesignerEmails || [];
+    
+    if (designerUids.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--text-light);">
+                <p>No designers assigned yet</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = designerUids.map((uid, index) => {
+        const name = designerNames[index] || 'Unknown';
+        const email = designerEmails[index] || '';
+        const hours = parseFloat(designerHours[uid]) || 0;
+        
+        return `
+            <div class="designer-edit-row" id="editRow_${uid}">
+                <div class="designer-edit-info">
+                    <div class="name">👤 ${name}</div>
+                    <div class="email">${email}</div>
+                </div>
+                <div class="designer-edit-hours">
+                    <input type="number" id="editHours_${uid}" class="form-control" 
+                           value="${hours}" min="0" step="0.5" data-original="${hours}"
+                           onchange="highlightHoursChange('${uid}')">
+                    <span>hours</span>
+                </div>
+                <div class="designer-edit-actions">
+                    <button class="btn btn-success btn-sm" onclick="saveDesignerHours('${uid}', '${name}', '${email}')">
+                        💾 Save
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="requestDesignerHoursChange('${uid}', '${name}', '${email}', ${hours})">
+                        📤 Request
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function highlightHoursChange(designerUid) {
+    const input = document.getElementById(`editHours_${designerUid}`);
+    const original = parseFloat(input.dataset.original) || 0;
+    const current = parseFloat(input.value) || 0;
+    
+    if (current !== original) {
+        input.style.border = '2px solid #f59e0b';
+        input.style.background = '#fef3c7';
+    } else {
+        input.style.border = '';
+        input.style.background = '';
+    }
+}
+
+/**
+ * Save designer hours directly (Feature 2)
+ */
+async function saveDesignerHours(designerUid, designerName, designerEmail) {
+    const projectId = document.getElementById('editAllocProjectId').value;
+    const input = document.getElementById(`editHours_${designerUid}`);
+    const newHours = parseFloat(input.value) || 0;
+    const oldHours = parseFloat(input.dataset.original) || 0;
+    
+    if (newHours === oldHours) {
+        alert('No changes to save');
+        return;
+    }
+    
+    // Check if within budget
+    const maxBudget = parseFloat(editAllocProjectData.maxAllocatedHours) || 0;
+    const currentTotal = parseFloat(editAllocProjectData.totalAllocatedHours) || 0;
+    const hoursDiff = newHours - oldHours;
+    const newTotal = currentTotal + hoursDiff;
+    
+    if (maxBudget > 0 && newTotal > maxBudget) {
+        const exceed = (newTotal - maxBudget).toFixed(1);
+        alert(`⚠️ Cannot save: This would exceed the budget by ${exceed} hours.\n\nUse "Request" to submit for Director approval.`);
+        return;
+    }
+    
+    const confirmMsg = `
+Update ${designerName}'s allocation?
+
+Current: ${oldHours}h
+New: ${newHours}h
+Change: ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_designer_allocation',
+                data: {
+                    designerUid,
+                    designerName,
+                    designerEmail,
+                    newAllocatedHours: newHours,
+                    reason: `Direct edit by COO: ${oldHours}h → ${newHours}h`
+                }
+            })
+        });
+        
+        if (response.success) {
+            alert(`✅ ${designerName}'s hours updated to ${newHours}h`);
+            
+            // Update local data
+            input.dataset.original = newHours;
+            input.style.border = '2px solid #10b981';
+            input.style.background = '#d1fae5';
+            
+            // Refresh totals
+            editAllocProjectData.designerHours = editAllocProjectData.designerHours || {};
+            editAllocProjectData.designerHours[designerUid] = newHours;
+            editAllocProjectData.totalAllocatedHours = newTotal;
+            
+            document.getElementById('editAllocCurrentTotal').textContent = `${newTotal.toFixed(1)}h`;
+            document.getElementById('editAllocRemaining').textContent = `${(maxBudget - newTotal).toFixed(1)}h`;
+            
+            setTimeout(() => {
+                input.style.border = '';
+                input.style.background = '';
+            }, 2000);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update hours');
+        }
+    } catch (error) {
+        console.error('Error updating hours:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Request hours change that exceeds budget (goes to Director)
+ */
+function requestDesignerHoursChange(designerUid, designerName, designerEmail, currentHours) {
+    const projectId = document.getElementById('editAllocProjectId').value;
+    closeCooEditAllocationModal();
+    showRequestAllocationChangeModal(projectId, designerUid, designerName, designerEmail, currentHours);
+}
+
+// ============================================
+// COUNT PENDING REQUESTS FOR DIRECTOR NAV
+// ============================================
+
+async function updateDirectorRequestsBadge() {
+    if (currentUserRole !== 'director') return;
+    
+    try {
+        const response = await apiCall('allocation-requests?status=pending');
+        if (response.success && response.data) {
+            const count = response.data.length;
+            const badge = document.getElementById('directorRequestsBadge');
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline' : 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching pending requests count:', error);
+    }
+}
+
+// ============================================
+// UPDATE DASHBOARD INIT TO SHOW NAV ITEMS
+// ============================================
+
+// Add this to your existing updateUIForRole or dashboard initialization:
+// For Director: show allocationRequestsNavItem and call updateDirectorRequestsBadge()
+// For COO: they use showCooEditAllocationModal from project actions
+
+// Example: Add to your setDisplay calls in the dashboard init:
+// setDisplay('allocationRequestsNavItem', currentUserRole === 'director');
+// if (currentUserRole === 'director') { updateDirectorRequestsBadge(); }
+
 </script>
-
 </body>
                                 
 </html>

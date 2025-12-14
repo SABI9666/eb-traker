@@ -1,11 +1,11 @@
 // ============================================
-// EBTracker Service Worker - Play Store Ready
-// Version: 2.1.0
+// EBTracker Service Worker - UPDATED FOR LEAVE SYSTEM
+// Version: 2.2.0 - Cache Version 6 (Forces Refresh)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v5';
-const STATIC_CACHE = 'ebtracker-static-v5';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v5';
+const CACHE_NAME = 'ebtracker-v6';
+const STATIC_CACHE = 'ebtracker-static-v6';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v6';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -20,20 +20,20 @@ const STATIC_ASSETS = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker: Installing...');
+  console.log('🔧 Service Worker v6: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker: Caching static assets');
+        console.log('📦 Service Worker v6: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker: Static assets cached');
+        console.log('✅ Service Worker v6: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker: Cache failed', error);
+        console.error('❌ Service Worker v6: Cache failed', error);
       })
   );
 });
@@ -42,24 +42,38 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker: Activating...');
+  console.log('🚀 Service Worker v6: Activating...');
   
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            // Delete old caches
+            // Delete old caches (v5 and below)
             if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
-              console.log('🗑️ Service Worker: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v6: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker: Activated');
+        console.log('✅ Service Worker v6: Activated - Old caches cleared');
         return self.clients.claim();
+      })
+      .then(() => {
+        // Notify all clients that cache has been updated
+        return self.clients.matchAll({ type: 'window' });
+      })
+      .then((clients) => {
+        console.log('📢 Service Worker v6: Notifying clients to refresh');
+        clients.forEach(client => {
+          client.postMessage({ 
+            type: 'CACHE_UPDATED',
+            version: 'v6',
+            message: 'New version available! Please refresh.'
+          });
+        });
       })
   );
 });
@@ -267,4 +281,13 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-console.log('✅ Service Worker: Loaded successfully');
+// ==============================
+// MESSAGE HANDLER - Auto-refresh on update
+// ==============================
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+console.log('✅ Service Worker v6: Loaded successfully - Leave system enabled');

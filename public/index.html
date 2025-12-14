@@ -2437,8 +2437,7 @@ body.modal-open {
       // ============================================
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
-      
-    const firebaseConfig = {
+      const firebaseConfig = {
             apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
             authDomain: "eb-tracker-ff945.firebaseapp.com",
             projectId: "eb-tracker-ff945",
@@ -3418,7 +3417,7 @@ async function triggerEmailNotification(eventName, data = {}) {
                         <div class="action-item">
                             <div class="action-content">
                                 <strong>${item.projectName}</strong>
-                                <div class="action-meta">Client: ${item.clientCompany} | Status: ${item.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</div>
+                                <div class="action-meta">Client: ${item.clientCompany} | Status: ${item.status.replace(/_/g, ' ')}</div>
                             </div>
                             <div class="action-buttons">
                                 ${getActionButtons(item, currentUserRole)}
@@ -3849,14 +3848,14 @@ function renderProposals(proposals) {
     }
 
     const proposalsHtml = otherProposals?.length ? otherProposals.map(p => {
-        let statusDisplay = (p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        let statusClass = (p.status || '').toLowerCase().replace(/_/g, '-');
+        let statusDisplay = p.status.toUpperCase().replace(/_/g, ' ');
+        let statusClass = p.status.toLowerCase().replace(/_/g, '-');
         
         if (p.pricing && p.pricing.projectNumber && p.status === 'pricing_complete') {
-            statusDisplay = 'Pricing Complete';
+            statusDisplay = 'PRICING COMPLETE';
             statusClass = 'pricing-complete';
         } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
-            statusDisplay = 'Pricing Complete';
+            statusDisplay = 'PRICING COMPLETE';
             statusClass = 'pricing-complete';
         }
         
@@ -3939,7 +3938,7 @@ function renderProposalsTable(proposals) {
     }
 
     const proposalsHtml = proposals.map(p => {
-        const statusDisplay = (p.status || 'Draft').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const statusDisplay = (p.status || 'DRAFT').toUpperCase().replace(/_/g, ' ');
         const statusClass = (p.status || 'draft').toLowerCase().replace(/_/g, '-');
         
         // Calculate allocation status for won proposals
@@ -4371,7 +4370,7 @@ function renderExecutiveProjectsTable(projects) {
                 </td>
                 <td>${statusBadge}</td>
                 <td>${p.designLeadName || 'Not Assigned'}</td>
-                <td><span class="badge badge-info">${(p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span></td>
+                <td><span class="badge badge-info">${p.status.replace('_', ' ')}</span></td>
             </tr>
         `;
     }).join('');
@@ -5531,7 +5530,7 @@ setInterval(updatePendingRequestsBadge, 60000); // Update every minute
                             <td>${p.pricing?.projectNumber ? 
                                 `<span class="project-number-badge" style="font-size: 0.9rem;">${p.pricing.projectNumber}</span>` : 
                                 '<span class="proposal-status status-pending">Not Assigned</span>'}</td>
-                            <td><span class="proposal-status status-${p.status}">${(p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span></td>
+                            <td><span class="proposal-status status-${p.status}">${p.status.toUpperCase()}</span></td>
                             <td>${allocationStatusDisplay}</td>
                             <td><div class="action-buttons">${actionButtons}</div></td>
                         </tr>
@@ -5640,7 +5639,7 @@ function showCreateProposalModal() {
 
     const projectTypes = [
         'Steel Detailing', 'Miscellaneous Steel', 'Connection Design', 'PE Stamping',
-        'Joist Detailing', 'As-built Drawings'
+        'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'
     ];
 
     const modalHtml = `
@@ -5666,6 +5665,15 @@ function showCreateProposalModal() {
                                 <div class="form-group">
                                     <label>Client Company <span class="required">*</span></label>
                                     <input type="text" id="clientCompany" class="form-control" placeholder="Enter client company" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Client Name (Optional)</label>
+                                    <input type="text" id="clientName" class="form-control" placeholder="Enter client contact name">
+                                </div>
+                                <div class="form-group">
+                                    <!-- Empty for layout balance -->
                                 </div>
                             </div>
                             <div class="form-row">
@@ -5862,6 +5870,7 @@ function showCreateProposalModal() {
         const formData = {
             projectName: document.getElementById('projectName').value,
             clientCompany: document.getElementById('clientCompany').value,
+            clientName: document.getElementById('clientName').value || '',
             projectType: selectedTypes,
             country: document.getElementById('country').value,
             timeline: document.getElementById('timeline').value,
@@ -6166,7 +6175,7 @@ function showCreateProposalModal() {
                             <div style="margin-bottom: 2rem;"> 
                                 <strong>Status:</strong>
                                 <span class="proposal-status status-${p.status.toLowerCase().replace(/_/g, '-')}">
-                                    ${p.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                    ${p.status.replace(/_/g, ' ').toUpperCase()}
                                 </span>
                             </div>
 
@@ -6176,6 +6185,7 @@ function showCreateProposalModal() {
                                     <p><strong>Scope:</strong> ${p.scopeOfWork || 'N/A'}</p>
                                     <p><strong>Timeline:</strong> ${p.timeline || 'N/A'}</p>
                                     <p><strong>Country:</strong> ${p.country || 'N/A'}</p>
+                                    ${p.clientName ? `<p><strong>Client Name:</strong> ${p.clientName}</p>` : ''}
                                     <p><strong>Created by:</strong> ${p.createdByName || 'N/A'} on ${formatDate(p.createdAt)}</p>
                                 </div>
 
@@ -6354,6 +6364,7 @@ function showCreateProposalModal() {
                             <label class="service-item"><input type="checkbox" name="services" value="Joist Detailing"><span>Joist Detailing</span></label>
                             <label class="service-item"><input type="checkbox" name="services" value="As-built Drawings"><span>As-built Drawings</span></label>
                             <label class="service-item"><input type="checkbox" name="services" value="Engineering Services"><span>Engineering Services</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="Rebar Detailing"><span>Rebar Detailing</span></label>
                         </div>
                     </div>
 
@@ -6588,7 +6599,7 @@ function showCreateProposalModal() {
                                 <div class="form-section">
                                     <h4>Edit Services</h4>
                                     <div class="service-grid">
-                                        ${['Steel Detailing', 'Miscellaneous Steel Detailing', 'Connection Design', 'PE Stamping', 'Joist Detailing', 'As-built Drawings'].map(service => `
+                                        ${['Steel Detailing', 'Miscellaneous Steel Detailing', 'Connection Design', 'PE Stamping', 'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'].map(service => `
                                             <label class="service-item ${estimation.services?.includes(service) ? 'checked' : ''}">
                                                 <input type="checkbox" name="editServices" value="${service}" ${estimation.services?.includes(service) ? 'checked' : ''}>
                                                 <span>${service}</span>
@@ -6943,7 +6954,7 @@ async function editProposal(proposalId) {
 
         const projectTypes = [
             'Steel Detailing', 'Miscellaneous Steel', 'Connection Design', 'PE Stamping',
-            'Joist Detailing', 'As-built Drawings'
+            'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'
         ];
 
         const modalHtml = `
@@ -6970,6 +6981,15 @@ async function editProposal(proposalId) {
                                 <div class="form-group">
                                     <label>Client Company *</label>
                                     <input type="text" id="editClientCompany" class="form-control" value="${p.clientCompany || ''}" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Client Name (Optional)</label>
+                                    <input type="text" id="editClientName" class="form-control" value="${p.clientName || ''}" placeholder="Enter client contact name">
+                                </div>
+                                <div class="form-group">
+                                    <!-- Empty for layout balance -->
                                 </div>
                             </div>
                             <div class="form-row">
@@ -7201,6 +7221,7 @@ async function editProposal(proposalId) {
                         data: {
                             projectName: document.getElementById('editProjectName').value || '',
                             clientCompany: document.getElementById('editClientCompany').value || '',
+                            clientName: document.getElementById('editClientName').value || '',
                             projectType: selectedTypes,
                             timeline: document.getElementById('editTimeline').value || '',
                             country: document.getElementById('editCountry').value || '',
@@ -8296,11 +8317,10 @@ function createProjectCard(project) {
         <div class="project-card">
             <div class="project-header">
                 <h3>${project.projectName}</h3>
-                <span class="project-status ${project.status.replace(/_/g, '-')}">${project.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                <span class="project-status ${project.status.replace(/_/g, '-')}">${project.status.replace(/_/g, ' ')}</span>
             </div>
             <div class="project-details">
                 <p><strong>Client:</strong> ${project.clientCompany || 'N/A'}</p>
-                <p><strong>Project Number:</strong> ${project.projectNumber || 'N/A'}</p>
                 <p><strong>Code:</strong> ${project.projectCode || 'N/A'}</p>
                 <p><strong>Allocated:</strong> ${allocDate}</p>
                 <p><strong>Target:</strong> ${targetDate}</p>
@@ -8757,7 +8777,6 @@ async function showDesignerAllocations() {
                         <strong>${p.projectName || 'Unknown Project'}</strong><br>
                         <small style="color: var(--text-light);">${p.projectCode || 'No Code'}</small>
                     </td>
-                    <td><strong>${p.projectNumber || 'N/A'}</strong></td>
                     <td>${p.clientCompany || 'N/A'}</td>
                     <td>${targetDate}</td>
 
@@ -8813,7 +8832,6 @@ async function showDesignerAllocations() {
                     <thead>
                         <tr>
                             <th>Project</th>
-                            <th>Project Number</th>
                             <th>Client</th>
                             <th>Target Date</th>
                             <th style="text-align: center;">My Allocated Hours</th>
@@ -10071,34 +10089,7 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         
         // 3. Populate project info
         document.getElementById('cooAllocProjectId').value = projectId;
-        
-        // Setup project number field with Save/Edit buttons
-        const projectNumberInput = document.getElementById('cooAllocProjectNumberInput');
-        const saveBtn = document.getElementById('saveProjectNumberBtn');
-        const editBtn = document.getElementById('editProjectNumberBtn');
-        const statusText = document.getElementById('projectNumberStatus');
-        
-        projectNumberInput.value = project.projectNumber || '';
-        projectNumberInput.dataset.original = project.projectNumber || '';
-        
-        if (project.projectNumber) {
-            // Has project number - show as locked with Edit button
-            projectNumberInput.readOnly = true;
-            projectNumberInput.style.background = 'rgba(255,255,255,0.7)';
-            saveBtn.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            statusText.textContent = '✓ Saved';
-            statusText.style.color = '#86efac';
-        } else {
-            // No project number - show as editable
-            projectNumberInput.readOnly = false;
-            projectNumberInput.style.background = 'rgba(255,255,255,0.95)';
-            saveBtn.style.display = 'none';
-            editBtn.style.display = 'none';
-            statusText.textContent = 'Enter project number and click Save';
-            statusText.style.color = 'rgba(255,255,255,0.7)';
-        }
-        
+        document.getElementById('cooAllocProjectNumber').textContent = project.projectNumber || 'N/A';
         document.getElementById('cooAllocProjectName').textContent = project.projectName || 'N/A';
         document.getElementById('cooAllocClientName').textContent = project.clientCompany || 'N/A';
         
@@ -10534,25 +10525,24 @@ function toggleBudgetEdit() {
     const projectId = window.currentEditProjectId;
     const project = window.currentEditProject;
     const currentBudget = parseFloat(project.maxAllocatedHours) || 0;
-    const totalAllocated = parseFloat(project.totalAllocatedHours) || 0;
     
     // Show the budget change modal
-    showBudgetChangeModal(projectId, project.projectName, currentBudget, totalAllocated);
+    showBudgetChangeModal(projectId, project.projectName, currentBudget);
 }
 
 /**
- * Show Budget Change Request Modal - Professional Form
+ * Show Budget Change Request Modal
  */
-function showBudgetChangeModal(projectId, projectName, currentBudget, totalAllocated) {
+function showBudgetChangeModal(projectId, projectName, currentBudget) {
     // Create modal if it doesn't exist
     let modal = document.getElementById('budgetChangeModal');
     if (!modal) {
         const modalHtml = `
             <div id="budgetChangeModal" class="modal" style="display: none;">
-                <div class="modal-content new-modal" style="max-width: 600px;">
+                <div class="modal-content new-modal" style="max-width: 550px;">
                     <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
                         <div>
-                            <h2 style="color: white;">📊 Request Additional Hours</h2>
+                            <h2 style="color: white;">📊 Request Budget Change</h2>
                             <div class="subtitle" style="color: rgba(255,255,255,0.9);">Requires Director Approval</div>
                         </div>
                         <span class="close-modal" onclick="closeBudgetChangeModal()">&times;</span>
@@ -10561,72 +10551,33 @@ function showBudgetChangeModal(projectId, projectName, currentBudget, totalAlloc
                     <div class="modal-body">
                         <input type="hidden" id="budgetChangeProjectId" />
                         
-                        <!-- Project Info Section -->
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; color: white;">
-                            <div style="font-size: 0.85rem; opacity: 0.9;">Project</div>
-                            <div style="font-size: 1.2rem; font-weight: 700;" id="budgetChangeProjectName"></div>
+                        <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #f59e0b;">
+                            <div style="font-weight: 600; color: #92400e;" id="budgetChangeProjectName"></div>
+                            <div style="font-size: 0.9rem; color: #b45309;">Current Budget: <strong id="budgetChangeCurrent">0</strong> hours</div>
                         </div>
                         
-                        <!-- Current Status Section -->
-                        <div style="background: #f8fafc; padding: 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
-                            <h4 style="margin: 0 0 1rem 0; color: #475569;">📈 Current Status</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
-                                <div>
-                                    <div style="font-size: 0.8rem; color: #64748b;">Current Budget</div>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b;" id="budgetChangeCurrent">0</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">hours</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.8rem; color: #64748b;">Already Allocated</div>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;" id="budgetChangeAllocated">0</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">hours</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.8rem; color: #64748b;">Remaining</div>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="budgetChangeRemaining">0</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">hours</div>
-                                </div>
-                            </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="budgetChangeNewHours" style="font-weight: 600;">New Budget Hours <span class="required">*</span></label>
+                            <input type="number" id="budgetChangeNewHours" class="form-control" 
+                                   placeholder="Enter new total budget hours" min="1" step="0.5" required
+                                   oninput="updateBudgetChangeDiff()"
+                                   style="font-size: 1.1rem; padding: 0.75rem;">
+                            <div id="budgetChangeDiff" style="margin-top: 0.5rem; font-weight: 600;"></div>
                         </div>
                         
-                        <!-- Request Form -->
-                        <div style="background: #fffbeb; padding: 1.25rem; border-radius: 10px; border: 2px solid #f59e0b;">
-                            <h4 style="margin: 0 0 1rem 0; color: #92400e;">📝 Request Details</h4>
-                            
-                            <div class="form-group" style="margin-bottom: 1.25rem;">
-                                <label style="font-weight: 600; color: #78350f;">Additional Hours Required <span class="required">*</span></label>
-                                <div style="display: flex; align-items: center; gap: 1rem;">
-                                    <input type="number" id="budgetChangeAdditionalHours" class="form-control" 
-                                           placeholder="e.g., 50" min="1" step="0.5" required
-                                           oninput="updateBudgetChangePreview()"
-                                           style="font-size: 1.2rem; padding: 0.75rem; flex: 1; font-weight: 600;">
-                                    <span style="color: #92400e; font-weight: 600;">hours</span>
-                                </div>
-                                <small style="color: #b45309;">Enter the number of additional hours needed</small>
-                            </div>
-                            
-                            <div id="budgetChangePreview" style="display: none; background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; border: 1px solid #fcd34d;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="color: #78350f;">New Total Budget:</span>
-                                    <span style="font-size: 1.3rem; font-weight: 700; color: #d97706;" id="budgetChangeNewTotal">0h</span>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label style="font-weight: 600; color: #78350f;">Reason / Justification <span class="required">*</span></label>
-                                <textarea id="budgetChangeReason" class="form-control" rows="4" required
-                                          placeholder="Please explain why additional hours are required...&#10;&#10;Examples:&#10;• Additional scope requested by client&#10;• Unforeseen design complexity&#10;• Revision requirements&#10;• Extended project timeline"
-                                          style="resize: vertical;"></textarea>
-                                <small style="color: #b45309;">This justification is required and will be reviewed by the Director</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="budgetChangeReason" style="font-weight: 600;">Reason for Change <span class="required">*</span></label>
+                            <textarea id="budgetChangeReason" class="form-control" rows="4" required
+                                      placeholder="Please explain why the budget needs to be changed...&#10;&#10;Example: Additional scope added by client, unforeseen complexity, etc."
+                                      style="resize: vertical;"></textarea>
+                            <small class="form-text" style="color: #6b7280;">This comment is mandatory and will be sent to the Director for review.</small>
                         </div>
                     </div>
                     
                     <div class="modal-footer">
                         <button type="button" class="btn btn-cancel" onclick="closeBudgetChangeModal()">Cancel</button>
-                        <button type="button" class="btn" onclick="submitBudgetChangeFromModal()" 
-                                style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; font-weight: 600;">
-                            📤 Submit Request to Director
+                        <button type="button" class="btn btn-warning" onclick="submitBudgetChangeFromModal()" style="background: #f59e0b; border-color: #f59e0b;">
+                            📤 Submit for Approval
                         </button>
                     </div>
                 </div>
@@ -10640,14 +10591,12 @@ function showBudgetChangeModal(projectId, projectName, currentBudget, totalAlloc
     document.getElementById('budgetChangeProjectId').value = projectId;
     document.getElementById('budgetChangeProjectName').textContent = projectName;
     document.getElementById('budgetChangeCurrent').textContent = currentBudget.toFixed(1);
-    document.getElementById('budgetChangeAllocated').textContent = totalAllocated.toFixed(1);
-    document.getElementById('budgetChangeRemaining').textContent = (currentBudget - totalAllocated).toFixed(1);
-    document.getElementById('budgetChangeAdditionalHours').value = '';
+    document.getElementById('budgetChangeNewHours').value = '';
     document.getElementById('budgetChangeReason').value = '';
-    document.getElementById('budgetChangePreview').style.display = 'none';
+    document.getElementById('budgetChangeDiff').innerHTML = '';
     
     // Store current budget for calculation
-    document.getElementById('budgetChangeAdditionalHours').dataset.current = currentBudget;
+    document.getElementById('budgetChangeNewHours').dataset.current = currentBudget;
     
     // Show modal
     modal.style.display = 'flex';
@@ -10664,22 +10613,26 @@ function closeBudgetChangeModal() {
 }
 
 /**
- * Update budget change preview
+ * Update budget change difference display
  */
-function updateBudgetChangePreview() {
-    const input = document.getElementById('budgetChangeAdditionalHours');
+function updateBudgetChangeDiff() {
+    const input = document.getElementById('budgetChangeNewHours');
     const current = parseFloat(input.dataset.current) || 0;
-    const additional = parseFloat(input.value) || 0;
-    const newTotal = current + additional;
+    const newValue = parseFloat(input.value) || 0;
+    const diff = newValue - current;
     
-    const preview = document.getElementById('budgetChangePreview');
-    const newTotalDisplay = document.getElementById('budgetChangeNewTotal');
+    const diffDisplay = document.getElementById('budgetChangeDiff');
     
-    if (additional > 0) {
-        preview.style.display = 'block';
-        newTotalDisplay.textContent = `${newTotal.toFixed(1)}h`;
+    if (newValue > 0) {
+        if (diff > 0) {
+            diffDisplay.innerHTML = `<span style="color: #059669;">↑ Increase by ${diff.toFixed(1)} hours</span>`;
+        } else if (diff < 0) {
+            diffDisplay.innerHTML = `<span style="color: #dc2626;">↓ Decrease by ${Math.abs(diff).toFixed(1)} hours</span>`;
+        } else {
+            diffDisplay.innerHTML = `<span style="color: #6b7280;">No change</span>`;
+        }
     } else {
-        preview.style.display = 'none';
+        diffDisplay.innerHTML = '';
     }
 }
 
@@ -10688,34 +10641,26 @@ function updateBudgetChangePreview() {
  */
 async function submitBudgetChangeFromModal() {
     const projectId = document.getElementById('budgetChangeProjectId').value;
-    const currentBudget = parseFloat(document.getElementById('budgetChangeAdditionalHours').dataset.current) || 0;
-    const additionalHours = parseFloat(document.getElementById('budgetChangeAdditionalHours').value);
+    const currentBudget = parseFloat(document.getElementById('budgetChangeNewHours').dataset.current) || 0;
+    const newBudget = parseFloat(document.getElementById('budgetChangeNewHours').value);
     const reason = document.getElementById('budgetChangeReason').value.trim();
     
     // Validation
-    if (!additionalHours || additionalHours <= 0) {
-        alert('Please enter the number of additional hours required');
-        document.getElementById('budgetChangeAdditionalHours').focus();
+    if (!newBudget || newBudget <= 0) {
+        alert('Please enter a valid new budget hours');
+        return;
+    }
+    
+    if (newBudget === currentBudget) {
+        alert('New budget is the same as current budget');
         return;
     }
     
     if (!reason) {
-        alert('Please provide a reason/justification for the additional hours. This is required for Director approval.');
+        alert('Please provide a reason for the budget change. This is required for Director approval.');
         document.getElementById('budgetChangeReason').focus();
         return;
     }
-    
-    if (reason.length < 10) {
-        alert('Please provide a more detailed justification (at least 10 characters)');
-        document.getElementById('budgetChangeReason').focus();
-        return;
-    }
-    
-    const newBudget = currentBudget + additionalHours;
-    
-    const confirmMsg = `Request additional ${additionalHours} hours?\n\nCurrent Budget: ${currentBudget}h\nAdditional: +${additionalHours}h\nNew Total: ${newBudget}h\n\nThis request will be sent to the Director for approval.`;
-    
-    if (!confirm(confirmMsg)) return;
     
     try {
         showLoading();
@@ -10739,7 +10684,7 @@ async function submitBudgetChangeFromModal() {
         
         if (response.success) {
             closeBudgetChangeModal();
-            alert(`✅ Request Submitted Successfully!\n\nAdditional Hours: +${additionalHours}h\nNew Total Budget: ${newBudget}h\n\nAwaiting Director approval.`);
+            alert(`✅ Budget change request submitted!\n\nCurrent: ${currentBudget}h\nRequested: ${newBudget}h\n\nAwaiting Director approval.`);
         } else {
             throw new Error(response.error || 'Failed to submit request');
         }
@@ -10931,130 +10876,12 @@ function validateDesignerSelection() {
  * ✅ FIXED: Submit COO Multi-Designer Allocation
  * Handles both scenarios: estimation hours OR manual COO entry
  */
-/**
- * Mark project number as changed - show Save button
- */
-function markProjectNumberChanged() {
-    const input = document.getElementById('cooAllocProjectNumberInput');
-    const saveBtn = document.getElementById('saveProjectNumberBtn');
-    const editBtn = document.getElementById('editProjectNumberBtn');
-    const statusText = document.getElementById('projectNumberStatus');
-    
-    const currentValue = input.value.trim();
-    const originalValue = input.dataset.original || '';
-    
-    if (currentValue !== originalValue && currentValue !== '') {
-        saveBtn.style.display = 'inline-block';
-        editBtn.style.display = 'none';
-        statusText.textContent = 'Click Save to update';
-        statusText.style.color = '#fbbf24';
-    } else if (currentValue === '' && originalValue === '') {
-        saveBtn.style.display = 'none';
-        editBtn.style.display = 'none';
-        statusText.textContent = 'Enter project number';
-        statusText.style.color = 'rgba(255,255,255,0.7)';
-    }
-}
-
-/**
- * Enable project number editing
- */
-function enableProjectNumberEdit() {
-    const input = document.getElementById('cooAllocProjectNumberInput');
-    const saveBtn = document.getElementById('saveProjectNumberBtn');
-    const editBtn = document.getElementById('editProjectNumberBtn');
-    const statusText = document.getElementById('projectNumberStatus');
-    
-    input.readOnly = false;
-    input.style.background = 'rgba(255,255,255,0.95)';
-    input.focus();
-    input.select();
-    
-    editBtn.style.display = 'none';
-    statusText.textContent = 'Edit and click Save';
-    statusText.style.color = '#fbbf24';
-}
-
-/**
- * Save project number to database
- */
-async function saveProjectNumber() {
-    const projectId = document.getElementById('cooAllocProjectId').value;
-    const input = document.getElementById('cooAllocProjectNumberInput');
-    const saveBtn = document.getElementById('saveProjectNumberBtn');
-    const editBtn = document.getElementById('editProjectNumberBtn');
-    const statusText = document.getElementById('projectNumberStatus');
-    
-    const projectNumber = input.value.trim();
-    
-    if (!projectNumber) {
-        alert('Please enter a project number');
-        input.focus();
-        return;
-    }
-    
-    try {
-        // Show loading state
-        saveBtn.textContent = '⏳...';
-        saveBtn.disabled = true;
-        
-        const response = await apiCall(`projects?id=${projectId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'update_project_number',
-                data: {
-                    projectNumber: projectNumber
-                }
-            })
-        });
-        
-        if (response.success) {
-            // Update UI to saved state
-            input.dataset.original = projectNumber;
-            input.readOnly = true;
-            input.style.background = 'rgba(255,255,255,0.7)';
-            
-            saveBtn.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            
-            statusText.textContent = '✓ Saved';
-            statusText.style.color = '#86efac';
-            
-            // Update stored project data
-            if (window.currentEditProject) {
-                window.currentEditProject.projectNumber = projectNumber;
-            }
-            
-            // Brief success flash
-            input.style.border = '2px solid #10b981';
-            setTimeout(() => {
-                input.style.border = 'none';
-            }, 2000);
-            
-        } else {
-            throw new Error(response.error || 'Failed to save project number');
-        }
-    } catch (error) {
-        console.error('Error saving project number:', error);
-        alert('❌ Error: ' + error.message);
-        statusText.textContent = 'Save failed - try again';
-        statusText.style.color = '#f87171';
-    } finally {
-        saveBtn.textContent = '💾 Save';
-        saveBtn.disabled = false;
-    }
-}
-
 async function submitCooMultiDesignerAllocation() {
     const projectId = document.getElementById('cooAllocProjectId').value;
     const totalHoursInput = document.getElementById('cooTotalProjectHours');
     const totalBudget = parseFloat(totalHoursInput.value);
     const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
     const hoursSource = totalHoursInput.dataset.hoursSource || 'unknown';
-    
-    // Get project number from input
-    const projectNumber = document.getElementById('cooAllocProjectNumberInput').value.trim();
     
     // Validation: Budget must be set
     if (!totalBudget || totalBudget <= 0) {
@@ -11160,9 +10987,6 @@ Proceed with allocation?`.trim();
             action: 'allocate_to_multiple_designers',
             data: {
                 projectId: projectId,
-                
-                // ✅ Project Number
-                projectNumber: projectNumber || null,
                 
                 // ✅ CRITICAL: Set the budget and source
                 maxAllocatedHours: totalBudget, // Lock the budget
@@ -17678,21 +17502,7 @@ function toggleDesignHours() {
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                     <div>
                         <label style="font-size: 0.85rem; opacity: 0.9;">Project Number:</label>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
-                            <input type="text" id="cooAllocProjectNumberInput" class="form-control" 
-                                   placeholder="Enter project number" 
-                                   style="background: rgba(255,255,255,0.95); color: #1e293b; font-size: 1.1rem; font-weight: 700; padding: 0.5rem; border-radius: 6px; border: none; flex: 1;"
-                                   onchange="markProjectNumberChanged()">
-                            <button type="button" id="saveProjectNumberBtn" onclick="saveProjectNumber()" 
-                                    style="display: none; background: #10b981; color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
-                                💾 Save
-                            </button>
-                            <button type="button" id="editProjectNumberBtn" onclick="enableProjectNumberEdit()" 
-                                    style="display: none; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 0.4rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
-                                ✏️ Edit
-                            </button>
-                        </div>
-                        <small id="projectNumberStatus" style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.25rem; display: block;"></small>
+                        <div id="cooAllocProjectNumber" style="font-size: 1.2rem; font-weight: 700;"></div>
                     </div>
                     <div>
                         <label style="font-size: 0.85rem; opacity: 0.9;">Project Name:</label>
@@ -17709,9 +17519,8 @@ function toggleDesignHours() {
             <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h3 style="color: var(--text-dark); margin: 0;">⏱️ Total Project Hours</h3>
-                    <button type="button" id="editBudgetBtn" class="btn btn-outline btn-sm" onclick="toggleBudgetEdit()" 
-                            style="display: none; border-color: #f59e0b; color: #d97706;">
-                        ➕ Request Additional Hours
+                    <button type="button" id="editBudgetBtn" class="btn btn-outline btn-sm" onclick="toggleBudgetEdit()" style="display: none;">
+                        ✏️ Edit Budget
                     </button>
                 </div>
                 <div class="form-row">
@@ -18241,124 +18050,53 @@ async function loadAllocationRequests() {
             return;
         }
         
-        // Process each request with error handling
-        const cardsHtml = requests.map(req => {
-            try {
-                const createdDate = req.createdAt ? 
-                    (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
-                const dateStr = createdDate ? createdDate.toLocaleDateString() : 'N/A';
+        container.innerHTML = requests.map(req => {
+            const createdDate = req.createdAt ? 
+                (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
+            const dateStr = createdDate ? createdDate.toLocaleDateString() : 'N/A';
+            
+            return `
+            <div class="allocation-request-card ${req.status}">
+                <div class="request-header">
+                    <div class="request-info">
+                        <h4>📁 ${req.projectName || 'Unknown Project'}</h4>
+                        <div class="request-meta">
+                            Requested by <strong>${req.requestedByName}</strong> • ${dateStr}
+                        </div>
+                    </div>
+                    <span class="request-status ${req.status}">${req.status}</span>
+                </div>
                 
-                // Determine request type - check multiple indicators
-                const isBudgetChange = req.requestType === 'budget_change' || 
-                                      (req.currentBudget !== undefined && req.currentBudget !== null) ||
-                                      (req.requestedBudget !== undefined && req.requestedBudget !== null);
+                <div class="request-hours-change">
+                    <div class="hours-box">
+                        <label>Designer</label>
+                        <div class="value" style="font-size: 1rem;">👤 ${req.designerName}</div>
+                    </div>
+                    <div class="hours-box">
+                        <label>Current</label>
+                        <div class="value">${req.currentAllocatedHours}h</div>
+                    </div>
+                    <div class="hours-arrow">→</div>
+                    <div class="hours-box">
+                        <label>Requested</label>
+                        <div class="value">${req.requestedNewHours}h</div>
+                    </div>
+                    <div class="hours-diff ${req.hoursDifference >= 0 ? 'increase' : 'decrease'}">
+                        ${req.hoursDifference >= 0 ? '+' : ''}${req.hoursDifference.toFixed(1)}h
+                    </div>
+                </div>
                 
-                if (isBudgetChange) {
-                    // BUDGET CHANGE REQUEST CARD
-                    const currentBudget = Number(req.currentBudget) || 0;
-                    const requestedBudget = Number(req.requestedBudget) || 0;
-                    const budgetDiff = requestedBudget - currentBudget;
-                    
-                    return `
-                    <div class="allocation-request-card pending" style="border-left: 4px solid #f59e0b;">
-                        <div class="request-header">
-                            <div class="request-info">
-                                <h4>📊 Budget Change: ${req.projectName || 'Unknown Project'}</h4>
-                                <div class="request-meta">
-                                    Requested by <strong>${req.requestedByName || 'Unknown'}</strong> • ${dateStr}
-                                </div>
-                            </div>
-                            <span class="request-status pending" style="background: #fef3c7; color: #92400e;">Budget</span>
-                        </div>
-                        
-                        <div class="request-hours-change" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
-                            <div class="hours-box">
-                                <label>Current Budget</label>
-                                <div class="value">${currentBudget.toFixed(1)}h</div>
-                            </div>
-                            <div class="hours-arrow">→</div>
-                            <div class="hours-box">
-                                <label>Requested Budget</label>
-                                <div class="value">${requestedBudget.toFixed(1)}h</div>
-                            </div>
-                            <div class="hours-diff ${budgetDiff >= 0 ? 'increase' : 'decrease'}">
-                                ${budgetDiff >= 0 ? '+' : ''}${budgetDiff.toFixed(1)}h
-                            </div>
-                        </div>
-                        
-                        <div class="request-reason">
-                            <strong>Reason:</strong> ${req.reason || 'No reason provided'}
-                        </div>
-                        
-                        <div class="request-actions">
-                            <button class="btn btn-primary btn-sm" onclick="openDirectorReviewModal('${req.id}')">
-                                🔍 Review
-                            </button>
-                        </div>
-                    </div>
-                    `;
-                } else {
-                    // DESIGNER HOURS CHANGE REQUEST CARD
-                    const currentHours = Number(req.currentAllocatedHours) || 0;
-                    const requestedHours = Number(req.requestedNewHours) || 0;
-                    const hoursDiff = requestedHours - currentHours;
-                    
-                    return `
-                    <div class="allocation-request-card pending">
-                        <div class="request-header">
-                            <div class="request-info">
-                                <h4>📁 ${req.projectName || 'Unknown Project'}</h4>
-                                <div class="request-meta">
-                                    Requested by <strong>${req.requestedByName || 'Unknown'}</strong> • ${dateStr}
-                                </div>
-                            </div>
-                            <span class="request-status pending">pending</span>
-                        </div>
-                        
-                        <div class="request-hours-change">
-                            <div class="hours-box">
-                                <label>Designer</label>
-                                <div class="value" style="font-size: 1rem;">👤 ${req.designerName || 'Unknown'}</div>
-                            </div>
-                            <div class="hours-box">
-                                <label>Current</label>
-                                <div class="value">${currentHours.toFixed(1)}h</div>
-                            </div>
-                            <div class="hours-arrow">→</div>
-                            <div class="hours-box">
-                                <label>Requested</label>
-                                <div class="value">${requestedHours.toFixed(1)}h</div>
-                            </div>
-                            <div class="hours-diff ${hoursDiff >= 0 ? 'increase' : 'decrease'}">
-                                ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h
-                            </div>
-                        </div>
-                        
-                        <div class="request-reason">
-                            <strong>Reason:</strong> ${req.reason || 'No reason provided'}
-                        </div>
-                        
-                        <div class="request-actions">
-                            <button class="btn btn-primary btn-sm" onclick="openDirectorReviewModal('${req.id}')">
-                                🔍 Review
-                            </button>
-                        </div>
-                    </div>
-                    `;
-                }
-            } catch (itemError) {
-                console.error('Error rendering request:', req, itemError);
-                return `
-                    <div class="allocation-request-card" style="border-left: 4px solid #ef4444;">
-                        <div style="padding: 1rem; color: #991b1b;">
-                            ⚠️ Error displaying request (ID: ${req.id || 'unknown'})
-                        </div>
-                    </div>
-                `;
-            }
-        }).join('');
-        
-        container.innerHTML = cardsHtml;
+                <div class="request-reason">
+                    <strong>Reason:</strong> ${req.reason}
+                </div>
+                
+                <div class="request-actions">
+                    <button class="btn btn-primary btn-sm" onclick="openDirectorReviewModal('${req.id}')">
+                        🔍 Review
+                    </button>
+                </div>
+            </div>
+        `}).join('');
         
     } catch (error) {
         console.error('Error loading requests:', error);
@@ -18387,79 +18125,34 @@ async function openDirectorReviewModal(requestId) {
         }
         
         const req = response.data;
-        console.log('📋 Review request data:', req);
-        
-        // Determine request type - check multiple indicators
-        const isBudgetChange = req.requestType === 'budget_change' || 
-                              (req.currentBudget !== undefined && req.currentBudget !== null) ||
-                              (req.requestedBudget !== undefined && req.requestedBudget !== null);
         
         document.getElementById('reviewRequestId').value = requestId;
-        document.getElementById('reviewProjectName').textContent = req.projectName || 'Unknown Project';
-        document.getElementById('reviewRequestedBy').textContent = req.requestedByName || 'Unknown';
+        document.getElementById('reviewProjectName').textContent = req.projectName;
+        document.getElementById('reviewDesignerName').textContent = req.designerName;
+        document.getElementById('reviewRequestedBy').textContent = req.requestedByName;
         
         const createdDate = req.createdAt ? 
             (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
         document.getElementById('reviewRequestDate').textContent = createdDate ? createdDate.toLocaleDateString() : 'N/A';
         
-        // Handle different request types
-        const designerRow = document.getElementById('reviewDesignerRow');
-        const hoursLabel = document.getElementById('reviewHoursLabel');
-        
-        if (isBudgetChange) {
-            // BUDGET CHANGE REQUEST
-            if (designerRow) designerRow.style.display = 'none';
-            if (hoursLabel) hoursLabel.textContent = 'Budget';
-            
-            const currentBudget = Number(req.currentBudget) || 0;
-            const requestedBudget = Number(req.requestedBudget) || 0;
-            const diff = requestedBudget - currentBudget;
-            
-            document.getElementById('reviewDesignerName').textContent = 'N/A (Budget Change)';
-            document.getElementById('reviewCurrentHours').textContent = `${currentBudget.toFixed(1)}h`;
-            document.getElementById('reviewRequestedHours').textContent = `${requestedBudget.toFixed(1)}h`;
-            
-            const diffEl = document.getElementById('reviewHoursDiff');
-            if (diff >= 0) {
-                diffEl.style.background = '#d1fae5';
-                diffEl.style.color = '#065f46';
-                diffEl.textContent = `+${diff.toFixed(1)}h`;
-            } else {
-                diffEl.style.background = '#fee2e2';
-                diffEl.style.color = '#991b1b';
-                diffEl.textContent = `${diff.toFixed(1)}h`;
-            }
-        } else {
-            // DESIGNER HOURS CHANGE REQUEST
-            if (designerRow) designerRow.style.display = 'flex';
-            if (hoursLabel) hoursLabel.textContent = 'Allocated Hours';
-            
-            const currentHours = Number(req.currentAllocatedHours) || 0;
-            const requestedHours = Number(req.requestedNewHours) || 0;
-            const diff = requestedHours - currentHours;
-            
-            document.getElementById('reviewDesignerName').textContent = req.designerName || 'Unknown';
-            document.getElementById('reviewCurrentHours').textContent = `${currentHours.toFixed(1)}h`;
-            document.getElementById('reviewRequestedHours').textContent = `${requestedHours.toFixed(1)}h`;
-            
-            const diffEl = document.getElementById('reviewHoursDiff');
-            if (diff >= 0) {
-                diffEl.style.background = '#d1fae5';
-                diffEl.style.color = '#065f46';
-                diffEl.textContent = `+${diff.toFixed(1)}h`;
-            } else {
-                diffEl.style.background = '#fee2e2';
-                diffEl.style.color = '#991b1b';
-                diffEl.textContent = `${diff.toFixed(1)}h`;
-            }
-        }
-        
-        document.getElementById('reviewCooReason').textContent = req.reason || 'No reason provided';
+        document.getElementById('reviewCurrentHours').textContent = `${req.currentAllocatedHours}h`;
+        document.getElementById('reviewRequestedHours').textContent = `${req.requestedNewHours}h`;
+        document.getElementById('reviewCooReason').textContent = req.reason;
         document.getElementById('reviewFinalHours').value = '';
         document.getElementById('reviewDirectorComment').value = '';
         
-        // Store request type for approval
-        document.getElementById('reviewRequestId').dataset.requestType = isBudgetChange ? 'budget_change' : 'designer_hours';
+        // Hours difference display
+        const diff = req.hoursDifference || (req.requestedNewHours - req.currentAllocatedHours);
+        const diffEl = document.getElementById('reviewHoursDiff');
+        if (diff >= 0) {
+            diffEl.style.background = '#d1fae5';
+            diffEl.style.color = '#065f46';
+            diffEl.textContent = `+${diff.toFixed(1)}h`;
+        } else {
+            diffEl.style.background = '#fee2e2';
+            diffEl.style.color = '#991b1b';
+            diffEl.textContent = `${diff.toFixed(1)}h`;
+        }
         
         document.getElementById('directorReviewRequestModal').style.display = 'flex';
         

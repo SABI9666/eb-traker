@@ -2348,6 +2348,17 @@ body.modal-open {
                         <span class="nav-icon">⏱️</span>My Timesheet
                     </a>
                 </li>
+                <li id="leaveRequestNavItem" style="display: none;">
+                    <a href="#" onclick="showLeaveRequest()" id="nav-leave-request">
+                        <span class="nav-icon">📅</span>Leave Request
+                    </a>
+                </li>
+                <li id="leaveApprovalNavItem" style="display: none;">
+                    <a href="#" onclick="showLeaveApprovals()" id="nav-leave-approval">
+                        <span class="nav-icon">✅</span>Leave Approvals
+                        <span class="notification-count" id="leaveApprovalsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -2431,13 +2442,190 @@ body.modal-open {
         }
 
     </script>
+
+    <!-- ============================================ -->
+    <!-- LEAVE REQUEST MODALS -->
+    <!-- ============================================ -->
+    <div id="leaveRequestModal" class="modal">
+        <div class="modal-content professional-form">
+            <button class="modal-close-btn" onclick="closeModal('leaveRequestModal')" title="Close">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            
+            <div class="form-header">
+                <div class="form-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <h2>Submit Leave Request</h2>
+                <p class="form-subtitle">Please fill in all required fields to submit your leave request</p>
+            </div>
+            
+            <form id="leaveRequestForm" onsubmit="submitLeaveRequest(event)" class="professional-form-content">
+                
+                <!-- Leave Details Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <h3>Leave Details</h3>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="leaveType">
+                                <span class="label-text">Leave Type</span>
+                                <span class="label-required">*</span>
+                            </label>
+                            <div class="input-wrapper select-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="8.5" cy="7" r="4"></circle>
+                                    <polyline points="17 11 19 13 23 9"></polyline>
+                                </svg>
+                                <select id="leaveType" required class="professional-input">
+                                    <option value="">Select Leave Type</option>
+                                    <option value="Sick Leave">🏥 Sick Leave</option>
+                                    <option value="Casual Leave">☀️ Casual Leave</option>
+                                    <option value="Earned Leave">⭐ Earned Leave</option>
+                                    <option value="Maternity Leave">👶 Maternity Leave</option>
+                                    <option value="Paternity Leave">👨‍👦 Paternity Leave</option>
+                                    <option value="Unpaid Leave">📋 Unpaid Leave</option>
+                                    <option value="Compensatory Off">🔄 Compensatory Off</option>
+                                    <option value="Emergency Leave">🚨 Emergency Leave</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="leaveStartDate">
+                                <span class="label-text">Start Date</span>
+                                <span class="label-required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                <input type="date" id="leaveStartDate" required class="professional-input">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="leaveEndDate">
+                                <span class="label-text">End Date</span>
+                                <span class="label-required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                <input type="date" id="leaveEndDate" required class="professional-input">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="leaveReason">
+                                <span class="label-text">Reason for Leave</span>
+                                <span class="label-required">*</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <textarea id="leaveReason" rows="4" required class="professional-input" placeholder="Please provide a detailed reason for your leave request..."></textarea>
+                            </div>
+                            <span class="input-hint">Provide clear and concise information about your leave</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Emergency Contact Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <h3>Emergency Contact</h3>
+                        <span class="optional-badge">Optional</span>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="emergencyContact">
+                                <span class="label-text">Contact Name</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <input type="text" id="emergencyContact" class="professional-input" placeholder="Enter contact name">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="emergencyPhone">
+                                <span class="label-text">Contact Phone</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                                <input type="tel" id="emergencyPhone" class="professional-input" placeholder="Enter phone number">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="form-actions-professional">
+                    <button type="button" class="btn-cancel" onclick="closeModal('leaveRequestModal')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-submit">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leave Approval Detail Modal -->
+    <div id="leaveApprovalModal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button" onclick="closeModal('leaveApprovalModal')">&times;</span>
+            <h2>✅ Leave Request Approval</h2>
+            <div id="leaveApprovalContent"></div>
+        </div>
+    </div>
+    
     <script>
       // ============================================
       // CACHE BUSTER - Version 1.0.3-final-20251125
       // ============================================
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
-      const firebaseConfig = {
+      
+     const firebaseConfig = {
             apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
             authDomain: "eb-tracker-ff945.firebaseapp.com",
             projectId: "eb-tracker-ff945",
@@ -3110,6 +3298,22 @@ body.modal-open {
             setDisplay('timeRequestsNavItem', isManagement);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
             
+            // Leave Request System - Menu Visibility
+            // All employees can submit leave requests
+            setDisplay('leaveRequestNavItem', ['bdm', 'estimator', 'designer', 'accounts', 'coo', 'hr', 'director'].includes(roleForCheck));
+            
+            // Approvers can see leave approvals (COO, Director, HR)
+            setDisplay('leaveApprovalNavItem', ['coo', 'director', 'hr'].includes(roleForCheck));
+            
+            // Update leave approvals badge for approvers
+            if (['coo', 'director', 'hr'].includes(roleForCheck)) {
+                loadPendingLeaveApprovals().then(response => {
+                    if (response && response.success) {
+                        updateLeaveApprovalsBadge(response.data?.length || 0);
+                    }
+                });
+            }
+            
             // Update badge for Director
             if (currentUserRole === 'director') {
                 updateDirectorRequestsBadge();
@@ -3165,6 +3369,9 @@ showApp.retried = false;
             document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
             document.getElementById(navId)?.classList.add('active');
         }
+        
+        // Alias for leave request functions
+        const updateActiveNav = setActiveNav;
 
         // ============================================
         // HELPER FUNCTIONS
@@ -18488,6 +18695,525 @@ async function updateDirectorRequestsBadge() {
 // UPDATE DASHBOARD INIT TO SHOW NAV ITEMS
 // ============================================
 
+// ============================================
+// LEAVE REQUEST SYSTEM - FUNCTIONS
+// ============================================
+
+// Show Leave Request Page
+async function showLeaveRequest() {
+    updateActiveNav('nav-leave-request');
+    const container = document.getElementById('mainContent');
+    
+    container.innerHTML = `
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>📅 Leave Requests</h1>
+                <p>Submit and track your leave requests</p>
+            </div>
+            <button class="btn-primary" onclick="openModal('leaveRequestModal')">
+                ➕ New Leave Request
+            </button>
+        </div>
+
+        <div class="leave-filters">
+            <div class="filter-chip active" data-filter="all">All Requests</div>
+            <div class="filter-chip" data-filter="pending">Pending</div>
+            <div class="filter-chip" data-filter="approved">Approved</div>
+            <div class="filter-chip" data-filter="rejected">Rejected</div>
+        </div>
+
+        <div id="myLeaveRequestsContainer">
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner"></div>
+                <p>Loading your leave requests...</p>
+            </div>
+        </div>
+    `;
+
+    // Add filter functionality
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            const filter = this.dataset.filter;
+            filterLeaveRequests(filter);
+        });
+    });
+
+    // Load leave requests
+    await loadMyLeaveRequests();
+}
+
+// Load Employee's Leave Requests
+async function loadMyLeaveRequests() {
+    try {
+        const response = await apiCall('leave-requests/my-requests');
+        
+        if (response.success) {
+            displayLeaveRequests(response.data, 'myLeaveRequestsContainer');
+        } else {
+            showMessage('Failed to load leave requests', 'error');
+        }
+    } catch (error) {
+        console.error('Load leave requests error:', error);
+        showMessage('Error loading leave requests', 'error');
+    }
+}
+
+// Display Leave Requests
+function displayLeaveRequests(requests, containerId) {
+    const container = document.getElementById(containerId);
+    
+    if (!requests || requests.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+                <p style="font-size: 1.1rem; font-weight: 500;">No leave requests found</p>
+                <p>Submit your first leave request to get started</p>
+            </div>
+        `;
+        return;
+    }
+
+    const statusColors = {
+        'pending': 'var(--warning)',
+        'approved': 'var(--success)',
+        'rejected': 'var(--danger)'
+    };
+
+    const statusIcons = {
+        'pending': '⏳',
+        'approved': '✅',
+        'rejected': '❌'
+    };
+
+    container.innerHTML = requests.map(request => `
+        <div class="leave-card" data-status="${request.status}">
+            <div class="leave-card-header">
+                <div>
+                    <h3>${request.leaveType}</h3>
+                    <p class="text-muted">${request.numberOfDays} day(s)</p>
+                </div>
+                <span class="status-badge" style="background: ${statusColors[request.status] || 'var(--text-light)'}">
+                    ${statusIcons[request.status] || '⏳'} ${request.status.toUpperCase()}
+                </span>
+            </div>
+            <div class="leave-card-body">
+                <div class="leave-info">
+                    <span class="label">📅 Start Date:</span>
+                    <span>${new Date(request.startDate).toLocaleDateString()}</span>
+                </div>
+                <div class="leave-info">
+                    <span class="label">📅 End Date:</span>
+                    <span>${new Date(request.endDate).toLocaleDateString()}</span>
+                </div>
+                <div class="leave-info">
+                    <span class="label">📝 Reason:</span>
+                    <span>${request.reason}</span>
+                </div>
+                <div class="leave-info">
+                    <span class="label">📍 Current Stage:</span>
+                    <span>Stage ${request.currentStage} of 3</span>
+                </div>
+            </div>
+            <div class="leave-card-footer">
+                <small>Submitted: ${new Date(request.createdAt).toLocaleString()}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Filter Leave Requests
+function filterLeaveRequests(filter) {
+    const cards = document.querySelectorAll('.leave-card');
+    cards.forEach(card => {
+        if (filter === 'all' || card.dataset.status === filter) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Submit Leave Request
+async function submitLeaveRequest(event) {
+    event.preventDefault();
+    
+    const leaveData = {
+        leaveType: document.getElementById('leaveType').value,
+        startDate: document.getElementById('leaveStartDate').value,
+        endDate: document.getElementById('leaveEndDate').value,
+        reason: document.getElementById('leaveReason').value,
+        emergencyContact: document.getElementById('emergencyContact').value,
+        emergencyPhone: document.getElementById('emergencyPhone').value
+    };
+
+    try {
+        const response = await apiCall('leave-requests/submit', { 
+            method: 'POST', 
+            body: JSON.stringify(leaveData) 
+        });
+        
+        if (response.success) {
+            showMessage('Leave request submitted successfully!', 'success');
+            closeModal('leaveRequestModal');
+            document.getElementById('leaveRequestForm').reset();
+            await loadMyLeaveRequests();
+        } else {
+            showMessage(response.error || 'Failed to submit leave request', 'error');
+        }
+    } catch (error) {
+        console.error('Submit leave error:', error);
+        showMessage('Error submitting leave request', 'error');
+    }
+}
+
+// Show Leave Approvals Dashboard
+async function showLeaveApprovals() {
+    updateActiveNav('nav-leave-approval');
+    const container = document.getElementById('mainContent');
+    
+    const roleTitle = currentUserRole === 'hr' ? 'HR' : 
+                     currentUserRole === 'coo' ? 'Reporting Officer (COO)' : 
+                     'Director (Final Approval)';
+    
+    container.innerHTML = `
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>✅ Leave Approvals</h1>
+                <p>${roleTitle} - Pending Approvals</p>
+            </div>
+        </div>
+
+        <div id="leaveApprovalsContainer">
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner"></div>
+                <p>Loading pending approvals...</p>
+            </div>
+        </div>
+    `;
+
+    await loadPendingLeaveApprovals();
+}
+
+// Load Pending Leave Approvals
+async function loadPendingLeaveApprovals() {
+    try {
+        let endpoint = '';
+        let stage = 0;
+        
+        // Determine which stage this role approves
+        if (currentUserRole === 'coo') {
+            endpoint = 'leave-requests/pending-stage1';
+            stage = 1;
+        } else if (currentUserRole === 'hr') {
+            endpoint = 'leave-requests/pending-stage2';
+            stage = 2;
+        } else if (currentUserRole === 'director') {
+            // Directors see both Stage 1 (if reporting directly to them) and Stage 3
+            const stage1Response = await apiCall('leave-requests/pending-stage1');
+            const stage3Response = await apiCall('leave-requests/pending-stage3');
+            
+            const stage1Requests = stage1Response.success ? stage1Response.data.map(r => ({ ...r, approvalStage: 1 })) : [];
+            const stage3Requests = stage3Response.success ? stage3Response.data.map(r => ({ ...r, approvalStage: 3 })) : [];
+            
+            const allRequests = [...stage1Requests, ...stage3Requests];
+            displayLeaveApprovalsForRole(allRequests);
+            return { success: true, data: allRequests };
+        }
+        
+        const response = await apiCall(endpoint);
+        
+        if (response.success) {
+            const requestsWithStage = response.data.map(r => ({ ...r, approvalStage: stage }));
+            displayLeaveApprovalsForRole(requestsWithStage);
+        } else {
+            showMessage('Failed to load pending approvals', 'error');
+        }
+        
+        return response;
+        
+    } catch (error) {
+        console.error('Load pending approvals error:', error);
+        showMessage('Error loading pending approvals', 'error');
+        return { success: false, data: [] };
+    }
+}
+
+// Display Leave Approvals (Professional Cards)
+function displayLeaveApprovalsForRole(requests) {
+    const container = document.getElementById('leaveApprovalsContainer');
+    
+    if (!requests || requests.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+                <p style="font-size: 1.1rem; font-weight: 500;">All caught up!</p>
+                <p>No pending leave approvals at this time</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = requests.map(request => `
+        <div class="professional-approval-card">
+            <div class="approval-card-header">
+                <div class="employee-info">
+                    <div class="employee-avatar">${request.employeeName.charAt(0).toUpperCase()}</div>
+                    <div class="employee-details">
+                        <h3 class="employee-name">${request.employeeName}</h3>
+                        <p class="employee-role">${request.employeeRole.toUpperCase()} • ${request.employeeEmail}</p>
+                    </div>
+                </div>
+                <span class="status-pill status-pending">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Pending Approval (Stage ${request.approvalStage})
+                </span>
+            </div>
+            
+            <div class="approval-card-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <div class="info-content">
+                            <span class="info-label">Leave Type</span>
+                            <span class="info-value">${request.leaveType}</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <div class="info-content">
+                            <span class="info-label">Start Date</span>
+                            <span class="info-value">${new Date(request.startDate).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="16 12 12 8 8 12"></polyline>
+                            <line x1="12" y1="16" x2="12" y2="8"></line>
+                        </svg>
+                        <div class="info-content">
+                            <span class="info-label">End Date</span>
+                            <span class="info-value">${new Date(request.endDate).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <div class="info-content">
+                            <span class="info-label">Duration</span>
+                            <span class="info-value">${request.numberOfDays} day(s)</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 6v6l4 2"></path>
+                        </svg>
+                        <div class="info-content">
+                            <span class="info-label">Submitted</span>
+                            <span class="info-value">${new Date(request.createdAt).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <div class="info-content">
+                            <span class="info-label">Current Stage</span>
+                            <span class="info-value">Stage ${request.currentStage} of 3</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="reason-section">
+                    <div class="section-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        Reason for Leave
+                    </div>
+                    <p class="reason-text">${request.reason}</p>
+                </div>
+                
+                ${request.emergencyContact ? `
+                <div class="emergency-contact-section">
+                    <div class="section-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        Emergency Contact
+                    </div>
+                    <p class="emergency-text">${request.emergencyContact} ${request.emergencyPhone ? '• ' + request.emergencyPhone : ''}</p>
+                </div>
+                ` : ''}
+                
+                ${request.approvalStage === 2 ? `
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label for="hrCategory-${request.id}">HR Category</label>
+                    <select id="hrCategory-${request.id}" class="form-control">
+                        <option value="Sick Leave">Sick Leave</option>
+                        <option value="Casual Leave">Casual Leave</option>
+                        <option value="Earned Leave">Earned Leave</option>
+                        <option value="Unpaid Leave">Unpaid Leave</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                ` : ''}
+                
+                <div class="form-group">
+                    <label for="comments-${request.id}">Comments ${request.approvalStage !== 1 ? '(Optional)' : ''}</label>
+                    <textarea id="comments-${request.id}" class="form-control" rows="3" placeholder="Add your comments here..."></textarea>
+                </div>
+            </div>
+            
+            <div class="approval-card-actions">
+                <div class="approval-button-group">
+                    <button class="professional-btn btn-reject-pro" onclick="rejectLeaveRequest('${request.id}', ${request.approvalStage})">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        Reject Request
+                    </button>
+                    <button class="professional-btn btn-approve-pro" onclick="approveLeaveRequest('${request.id}', ${request.approvalStage})">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Approve Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Approve Leave Request
+async function approveLeaveRequest(leaveId, stage) {
+    const comments = document.getElementById(`comments-${leaveId}`).value;
+    let endpoint = '';
+    let payload = { action: 'approve', comments };
+
+    // Determine endpoint based on stage
+    if (stage === 1) {
+        endpoint = `leave-requests/stage1/${leaveId}`;
+    } else if (stage === 2) {
+        endpoint = `leave-requests/stage2/${leaveId}`;
+        const hrCategory = document.getElementById(`hrCategory-${leaveId}`)?.value;
+        payload.hrCategory = hrCategory;
+    } else if (stage === 3) {
+        endpoint = `leave-requests/stage3/${leaveId}`;
+    }
+
+    if (!confirm('Are you sure you want to APPROVE this leave request?')) {
+        return;
+    }
+
+    try {
+        const response = await apiCall(endpoint, { 
+            method: 'PUT', 
+            body: JSON.stringify(payload) 
+        });
+        
+        if (response.success) {
+            showMessage('Leave request approved successfully!', 'success');
+            await loadPendingLeaveApprovals();
+        } else {
+            showMessage(response.error || 'Failed to approve leave request', 'error');
+        }
+    } catch (error) {
+        console.error('Approve leave error:', error);
+        showMessage('Error approving leave request', 'error');
+    }
+}
+
+// Reject Leave Request
+async function rejectLeaveRequest(leaveId, stage) {
+    const comments = document.getElementById(`comments-${leaveId}`).value;
+    
+    if (!comments.trim()) {
+        showMessage('Please provide a reason for rejection', 'error');
+        return;
+    }
+
+    let endpoint = '';
+    const payload = { action: 'reject', comments };
+
+    // Determine endpoint based on stage
+    if (stage === 1) {
+        endpoint = `leave-requests/stage1/${leaveId}`;
+    } else if (stage === 2) {
+        endpoint = `leave-requests/stage2/${leaveId}`;
+    } else if (stage === 3) {
+        endpoint = `leave-requests/stage3/${leaveId}`;
+    }
+
+    if (!confirm('Are you sure you want to REJECT this leave request?')) {
+        return;
+    }
+
+    try {
+        const response = await apiCall(endpoint, { 
+            method: 'PUT', 
+            body: JSON.stringify(payload) 
+        });
+        
+        if (response.success) {
+            showMessage('Leave request rejected', 'success');
+            await loadPendingLeaveApprovals();
+        } else {
+            showMessage(response.error || 'Failed to reject leave request', 'error');
+        }
+    } catch (error) {
+        console.error('Reject leave error:', error);
+        showMessage('Error rejecting leave request', 'error');
+    }
+}
+
+// Update Leave Approvals Badge
+function updateLeaveApprovalsBadge(count) {
+    const badge = document.getElementById('leaveApprovalsBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// Get All Leave Requests (for Management Dashboard)
+async function getAllLeaveRequests() {
+    try {
+        const response = await apiCall('leave-requests/all/requests');
+        return response;
+    } catch (error) {
+        console.error('Get all leave requests error:', error);
+        return { success: false, data: [] };
+    }
+}
+
 // Add this to your existing updateUIForRole or dashboard initialization:
 // For Director: show allocationRequestsNavItem and call updateDirectorRequestsBadge()
 // For COO: they use showCooEditAllocationModal from project actions
@@ -18497,6 +19223,641 @@ async function updateDirectorRequestsBadge() {
 // if (currentUserRole === 'director') { updateDirectorRequestsBadge(); }
 
 </script>
+</body>
+
+<style>
+/* ============================================ */
+/* PROFESSIONAL LEAVE REQUEST FORMS - CSS */
+/* ============================================ */
+
+/* Professional Form Container */
+.professional-form .modal-content {
+    max-width: 700px;
+    padding: 0;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* Modal Close Button */
+.modal-close-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.modal-close-btn:hover {
+    background: #fff;
+    transform: rotate(90deg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-close-btn svg {
+    color: #6b7280;
+}
+
+/* Form Header */
+.form-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2.5rem 2rem 2rem;
+    text-align: center;
+}
+
+.form-icon {
+    width: 64px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.form-header h2 {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.form-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+/* Form Content */
+.professional-form-content {
+    padding: 2rem;
+}
+
+.form-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.section-header svg {
+    color: #667eea;
+    flex-shrink: 0;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.optional-badge {
+    margin-left: auto;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+}
+
+/* Form Grid */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Labels */
+.form-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.label-text {
+    flex: 1;
+}
+
+.label-required {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* Input Wrapper */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper.select-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #6b7280;
+    pointer-events: none;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    color: #9ca3af;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Professional Inputs */
+.professional-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    background: #fff;
+}
+
+.professional-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.professional-input::placeholder {
+    color: #9ca3af;
+}
+
+/* Select Styling */
+select.professional-input {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 3rem;
+}
+
+/* Textarea */
+textarea.professional-input {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+/* Input Hint */
+.input-hint {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+/* Form Actions */
+.form-actions-professional {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 640px) {
+    .form-actions-professional {
+        flex-direction: column;
+    }
+}
+
+.btn-cancel,
+.btn-submit {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+/* Leave Card Styles */
+.leave-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.leave-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.leave-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.leave-card-header h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.25rem;
+    color: #1f2937;
+}
+
+.status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+}
+
+.leave-card-body {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.leave-info {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.leave-info .label {
+    font-weight: 600;
+    color: #6b7280;
+    min-width: 120px;
+}
+
+.leave-card-footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.leave-filters {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-chip {
+    padding: 0.5rem 1rem;
+    background: #f3f4f6;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+    background: #e5e7eb;
+}
+
+.filter-chip.active {
+    background: #667eea;
+    color: white;
+}
+
+/* Professional Approval Cards */
+.professional-approval-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.professional-approval-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.approval-card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.employee-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.employee-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.employee-details {
+    flex: 1;
+}
+
+.employee-name {
+    margin: 0 0 0.25rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.employee-role {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-pill.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-pill svg {
+    width: 16px;
+    height: 16px;
+}
+
+.approval-card-body {
+    padding: 1.5rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.info-icon {
+    flex-shrink: 0;
+    color: #667eea;
+    margin-top: 0.125rem;
+}
+
+.info-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.info-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.reason-section,
+.emergency-contact-section {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.section-title svg {
+    color: #667eea;
+}
+
+.reason-text,
+.emergency-text {
+    margin: 0;
+    line-height: 1.6;
+    color: #1f2937;
+}
+
+.approval-card-actions {
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.approval-button-group {
+    display: flex;
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .approval-button-group {
+        flex-direction: column-reverse;
+    }
+}
+
+.professional-btn {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-approve-pro {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.btn-approve-pro:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-reject-pro {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.btn-reject-pro:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.professional-btn:active {
+    transform: translateY(0);
+}
+
+.professional-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+    .approval-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-header {
+        padding: 2rem 1.5rem 1.5rem;
+    }
+    
+    .professional-form-content {
+        padding: 1.5rem;
+    }
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-light);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-text {
+    color: var(--text-light);
+}
+</style>
+
 </body>
                                 
 </html>

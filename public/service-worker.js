@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - Play Store Ready
-// Version: 2.0.0
+// Version: 2.1.0
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v4';
-const STATIC_CACHE = 'ebtracker-static-v4';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v4';
+const CACHE_NAME = 'ebtracker-v5';
+const STATIC_CACHE = 'ebtracker-static-v5';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v5';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -268,7 +268,3 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 console.log('✅ Service Worker: Loaded successfully');
-
-
-
-

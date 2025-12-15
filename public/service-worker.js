@@ -1,5 +1,5 @@
 // ============================================
-// EBTracker Service Worker - UPDATED FOR LEAVE SYSTEM
+// EBTracker Service Worker - UPDATED VERSION
 // Version: 2.2.0 - Cache Version 6 (Forces Refresh)
 // ============================================
 
@@ -290,4 +290,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('✅ Service Worker v6: Loaded successfully - Leave system enabled');
+console.log('✅ Service Worker v6: Loaded successfully - All services enabled');

@@ -1,6 +1,6 @@
 /**
  * quotation_generator.js
- * Updated version for Edanbrook Quote Generation
+ * UPDATED VERSION - Proper BDM Name, Client Name, and Project Number Handling
  * Maps BDM Proposal data to Word template placeholders
  */
 
@@ -54,12 +54,14 @@ async function generateWordQuote(proposalId) {
         
         const quoteData = {
             // --- HEADER INFO (Cover Page) ---
+            // Project Number from COO Pricing (can be added/edited in COO portal)
             quote_no: p.pricing?.projectNumber || 'DRAFT',
             project_name: p.projectName || 'Project Name',
             
             // --- CLIENT INFO ---
-            // Client name from proposal clientContact field
-            client_name: p.clientContact || 'Client',
+            // UPDATED: Client name should be the company name entered by BDM
+            // Using clientCompany as primary field (this is what BDM enters)
+            client_name: p.clientCompany || p.clientContact || 'Client',
             client_company: p.clientCompany || 'Client Company',
             
             // --- DATE ---
@@ -80,14 +82,18 @@ async function generateWordQuote(proposalId) {
             // From BDM proposal Timeline field
             lead_time: leadTime,
             
-            // --- SIGNATORY INFO ---
-            // BDM name from createdByName (who created the proposal)
+            // --- SIGNATORY INFO (Bottom of Cover Page under "Sincerely") ---
+            // CRITICAL: BDM name should be the PORTAL USER NAME who created the proposal
+            // createdByName contains the actual user's name from the portal
             bdm_name: p.createdByName || 'Sales Team',
             bdm_role: getBDMRole(p),
             company_name: 'Edanbrook Consultancy Services INC'
         };
 
         console.log("📝 Quote Data Prepared:", quoteData);
+        console.log("✅ BDM Name (Portal User):", quoteData.bdm_name);
+        console.log("✅ Client Name:", quoteData.client_name);
+        console.log("✅ Project Number:", quoteData.quote_no);
 
         // 4. Load Template and Render
         loadFileFromServer("./proposal_template.docx", function(error, content) {
@@ -169,7 +175,7 @@ function getBDMRole(proposal) {
 // Internal function to do the actual DocxTemplater rendering
 function renderDoc(content, data) {
     try {
-        console.log("🔄 Rendering document with data:", data);
+        console.log("📄 Rendering document with data:", data);
         
         const zip = new PizZip(content);
         const doc = new window.docxtemplater(zip, {
@@ -198,6 +204,9 @@ function renderDoc(content, data) {
         saveAs(out, fileName);
         
         console.log("✅ Document generated:", fileName);
+        console.log("✅ BDM Name in document:", data.bdm_name);
+        console.log("✅ Client Name in document:", data.client_name);
+        console.log("✅ Project Number in document:", data.quote_no);
         
     } catch (error) {
         handleDocErrors(error);
@@ -224,7 +233,3 @@ function handleDocErrors(error) {
 
 // Attach to window for global access
 window.generateWordQuote = generateWordQuote;
-
-
-
-

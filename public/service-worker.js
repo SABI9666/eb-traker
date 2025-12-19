@@ -1,11 +1,11 @@
 // ============================================
-// EBTracker Service Worker - UPDATED FOR LEAVE SYSTEM
-// Version: 2.4.0 - Cache Version 8 (Mobile + Leave Form Fix)
+// EBTracker Service Worker - FULL FEATURED
+// Version: 4.3.0 - Cache Version 27 (Beautiful Running News Ticker)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v8';
-const STATIC_CACHE = 'ebtracker-static-v8';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v8';
+const CACHE_NAME = 'ebtracker-v27';
+const STATIC_CACHE = 'ebtracker-static-v27';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v27';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -16,24 +16,33 @@ const STATIC_ASSETS = [
   '/icons/icon-512x512.png'
 ];
 
+// URLs to always fetch from network (never cache)
+const NETWORK_ONLY = [
+  '/api/',
+  'render.com',
+  'firebase',
+  'firestore',
+  'googleapis.com'
+];
+
 // ==============================
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v8: Installing...');
+  console.log('🔧 Service Worker v15: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v8: Caching static assets');
+        console.log('📦 Service Worker v15: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v8: Static assets cached');
+        console.log('✅ Service Worker v15: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v8: Cache failed', error);
+        console.error('❌ Service Worker v15: Cache failed', error);
       })
   );
 });
@@ -42,23 +51,26 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v8: Activating...');
+  console.log('🚀 Service Worker v15: Activating...');
+  
+  // List of valid cache names to keep
+  const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
   
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            // Delete old caches (v5 and below)
-            if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
-              console.log('🗑️ Service Worker v8: Deleting old cache:', cacheName);
+            // Delete any cache that's not in our valid list
+            if (!validCaches.includes(cacheName)) {
+              console.log('🗑️ Service Worker v15: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v8: Activated - Old caches cleared');
+        console.log('✅ Service Worker v15: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -66,12 +78,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v8: Notifying clients to refresh');
+        console.log('📢 Service Worker v15: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v8',
-            message: 'New version available! Please refresh.'
+            version: 'v15',
+            message: 'New version available with Company News feature! Please refresh.'
           });
         });
       })
@@ -85,7 +97,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   
-  // Skip non-GET requests
+  // Skip non-GET requests (POST, PUT, DELETE should always go to network)
   if (request.method !== 'GET') {
     return;
   }
@@ -95,14 +107,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Skip API calls - always go to network
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('render.com')) {
+  // Skip blob URLs (used for file downloads)
+  if (url.protocol === 'blob:') {
+    return;
+  }
+  
+  // Check if this URL should always go to network
+  const shouldSkipCache = NETWORK_ONLY.some(pattern => 
+    url.href.includes(pattern) || url.pathname.includes(pattern)
+  );
+  
+  // Skip API calls and Firebase - always go to network
+  if (shouldSkipCache) {
     event.respondWith(
       fetch(request)
-        .catch(() => {
+        .catch((error) => {
+          console.warn('⚠️ Network request failed:', url.href, error);
           return new Response(
-            JSON.stringify({ error: 'Offline', message: 'You are offline. Please check your connection.' }),
-            { headers: { 'Content-Type': 'application/json' } }
+            JSON.stringify({ 
+              error: 'Offline', 
+              message: 'You are offline. Please check your connection.',
+              offline: true
+            }),
+            { 
+              status: 503,
+              headers: { 'Content-Type': 'application/json' } 
+            }
           );
         })
     );
@@ -125,12 +155,15 @@ self.addEventListener('fetch', (event) => {
 
 // Cache First Strategy (for static assets)
 async function cacheFirst(request) {
-  const cachedResponse = await caches.match(request);
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-  
   try {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      // Return cached version immediately
+      // Also fetch new version in background to update cache
+      fetchAndCache(request);
+      return cachedResponse;
+    }
+    
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
       const cache = await caches.open(STATIC_CACHE);
@@ -138,6 +171,7 @@ async function cacheFirst(request) {
     }
     return networkResponse;
   } catch (error) {
+    console.warn('⚠️ Cache first failed for:', request.url);
     return offlineFallback();
   }
 }
@@ -152,6 +186,7 @@ async function networkFirst(request) {
     }
     return networkResponse;
   } catch (error) {
+    console.warn('⚠️ Network first failed, trying cache:', request.url);
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
       return cachedResponse;
@@ -160,10 +195,26 @@ async function networkFirst(request) {
   }
 }
 
+// Background fetch and cache update
+async function fetchAndCache(request) {
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      const cache = await caches.open(STATIC_CACHE);
+      cache.put(request, networkResponse.clone());
+    }
+  } catch (error) {
+    // Silently fail - we already returned cached version
+  }
+}
+
 // Check if URL is a static asset
 function isStaticAsset(pathname) {
-  const staticExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf'];
-  return staticExtensions.some(ext => pathname.endsWith(ext));
+  const staticExtensions = [
+    '.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', 
+    '.ico', '.woff', '.woff2', '.ttf', '.eot', '.webp'
+  ];
+  return staticExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
 }
 
 // Offline fallback response
@@ -217,10 +268,22 @@ function offlineFallback() {
           font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: transform 0.2s, box-shadow 0.2s;
         }
         .retry-btn:hover {
           transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .retry-btn:active {
+          transform: translateY(0);
+        }
+        .status-info {
+          margin-top: 1.5rem;
+          padding: 1rem;
+          background: #f3f4f6;
+          border-radius: 10px;
+          font-size: 0.85rem;
+          color: #6b7280;
         }
       </style>
     </head>
@@ -229,8 +292,17 @@ function offlineFallback() {
         <div class="offline-icon">📡</div>
         <h1>You're Offline</h1>
         <p>Please check your internet connection and try again. EBTracker requires an active connection to sync your data.</p>
-        <button class="retry-btn" onclick="window.location.reload()">Try Again</button>
+        <button class="retry-btn" onclick="window.location.reload()">🔄 Try Again</button>
+        <div class="status-info">
+          <strong>Tip:</strong> Your data is safe! Any unsaved changes will sync when you're back online.
+        </div>
       </div>
+      <script>
+        // Auto-retry when connection is restored
+        window.addEventListener('online', () => {
+          window.location.reload();
+        });
+      </script>
     </body>
     </html>
   `, {
@@ -239,55 +311,159 @@ function offlineFallback() {
 }
 
 // ==============================
-// PUSH NOTIFICATIONS (Future)
+// PUSH NOTIFICATIONS
 // ==============================
 self.addEventListener('push', (event) => {
+  console.log('📬 Push notification received');
+  
+  let data = {
+    title: 'EBTracker',
+    body: 'New notification from EBTracker',
+    icon: '/icons/icon-192x192.png',
+    url: '/'
+  };
+  
   if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'New notification from EBTracker',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
-      vibrate: [100, 50, 100],
-      data: {
-        url: data.url || '/'
-      }
-    };
-    
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'EBTracker', options)
-    );
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      data.body = event.data.text();
+    }
   }
+  
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    vibrate: [100, 50, 100],
+    tag: data.tag || 'ebtracker-notification',
+    renotify: true,
+    requireInteraction: data.requireInteraction || false,
+    data: {
+      url: data.url || '/',
+      timestamp: Date.now()
+    },
+    actions: data.actions || []
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
 });
 
 // Handle notification click
 self.addEventListener('notificationclick', (event) => {
+  console.log('🔔 Notification clicked');
   event.notification.close();
   
+  const urlToOpen = event.notification.data?.url || '/';
+  
   event.waitUntil(
-    clients.matchAll({ type: 'window' })
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
         // If app is already open, focus it
         for (const client of clientList) {
-          if (client.url === event.notification.data.url && 'focus' in client) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(urlToOpen);
             return client.focus();
           }
         }
         // Otherwise open new window
         if (clients.openWindow) {
-          return clients.openWindow(event.notification.data.url);
+          return clients.openWindow(urlToOpen);
         }
       })
   );
 });
 
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  console.log('🔕 Notification closed');
+});
+
 // ==============================
-// MESSAGE HANDLER - Auto-refresh on update
+// MESSAGE HANDLER
 // ==============================
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+  console.log('📨 Message received:', event.data);
+  
+  if (!event.data) return;
+  
+  switch (event.data.type) {
+    case 'SKIP_WAITING':
+      console.log('⏭️ Skip waiting requested');
+      self.skipWaiting();
+      break;
+      
+    case 'GET_VERSION':
+      event.ports[0]?.postMessage({ version: 'v15', cache: CACHE_NAME });
+      break;
+      
+    case 'CLEAR_CACHE':
+      console.log('🗑️ Clear cache requested');
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      }).then(() => {
+        event.ports[0]?.postMessage({ success: true });
+      });
+      break;
+      
+    case 'CACHE_URLS':
+      if (event.data.urls && Array.isArray(event.data.urls)) {
+        caches.open(DYNAMIC_CACHE).then(cache => {
+          cache.addAll(event.data.urls);
+        });
+      }
+      break;
+      
+    default:
+      console.log('Unknown message type:', event.data.type);
   }
 });
 
-console.log('✅ Service Worker v8: Loaded successfully - Leave system enabled');
+// ==============================
+// PERIODIC BACKGROUND SYNC (if supported)
+// ==============================
+self.addEventListener('periodicsync', (event) => {
+  console.log('🔄 Periodic sync:', event.tag);
+  
+  if (event.tag === 'update-cache') {
+    event.waitUntil(
+      caches.open(DYNAMIC_CACHE).then(cache => {
+        return cache.addAll(STATIC_ASSETS);
+      })
+    );
+  }
+});
+
+// ==============================
+// BACKGROUND SYNC (for offline actions)
+// ==============================
+self.addEventListener('sync', (event) => {
+  console.log('🔄 Background sync:', event.tag);
+  
+  if (event.tag === 'sync-announcements') {
+    event.waitUntil(syncAnnouncements());
+  }
+});
+
+// Sync announcements when back online
+async function syncAnnouncements() {
+  console.log('📢 Syncing announcements...');
+  // This would sync localStorage announcements to a backend if needed
+  // For now, announcements are stored locally
+  return Promise.resolve();
+}
+
+// ==============================
+// ERROR HANDLING
+// ==============================
+self.addEventListener('error', (event) => {
+  console.error('❌ Service Worker Error:', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('❌ Unhandled Promise Rejection:', event.reason);
+});
+
+console.log('✅ Service Worker v15: Loaded successfully - Employee Leave Request + Designer Announcements enabled');

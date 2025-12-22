@@ -5014,14 +5014,14 @@ body.is-ios .nav-menu {
       // ============================================
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
-     
-        const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -5033,7 +5033,7 @@ body.is-ios .nav-menu {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
 
@@ -7537,7 +7537,7 @@ async function showExecutiveDashboard() {
                     <div class="stat-label">Projects with Timeline</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">${metrics.averageHoursPerProject}h</div>
+                    <div class="stat-number">${typeof metrics.averageHoursPerProject === 'number' ? metrics.averageHoursPerProject.toFixed(2) : metrics.averageHoursPerProject}h</div>
                     <div class="stat-label">Average Hours per Project</div>
                 </div>
                 <div class="stat-card" style="border-top-color: var(--danger);">
@@ -12027,6 +12027,9 @@ async function showDesignerAllocations() {
             return `
                 <tr>
                     <td>
+                        <span style="font-weight: 700; color: var(--primary-blue);">${p.projectNumber || 'N/A'}</span>
+                    </td>
+                    <td>
                         <strong>${p.projectName || 'Unknown Project'}</strong><br>
                         <small style="color: var(--text-light);">${p.projectCode || 'No Code'}</small>
                     </td>
@@ -12086,6 +12089,7 @@ async function showDesignerAllocations() {
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>Project #</th>
                             <th>Project</th>
                             <th>Client</th>
                             <th>Target Date</th>
@@ -15839,6 +15843,75 @@ async function showCooMultiDesignerAllocationModal(projectId) {
     } catch (error) {
         console.error('Error showing allocation modal:', error);
         alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Toggle project number edit mode
+ */
+function toggleProjectNumberEdit() {
+    const container = document.getElementById('projectNumberEditContainer');
+    const input = document.getElementById('projectNumberEditInput');
+    const currentNumber = document.getElementById('cooAllocProjectNumber').textContent;
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'flex';
+        input.value = currentNumber === 'N/A' ? '' : currentNumber;
+        input.focus();
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+/**
+ * Cancel project number edit
+ */
+function cancelProjectNumberEdit() {
+    document.getElementById('projectNumberEditContainer').style.display = 'none';
+}
+
+/**
+ * Save project number
+ */
+async function saveProjectNumber() {
+    const projectId = document.getElementById('cooAllocProjectId').value;
+    const newProjectNumber = document.getElementById('projectNumberEditInput').value.trim();
+    
+    if (!newProjectNumber) {
+        alert('Please enter a project number');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectNumber: newProjectNumber
+            })
+        });
+        
+        if (response.success) {
+            // Update display
+            document.getElementById('cooAllocProjectNumber').textContent = newProjectNumber;
+            document.getElementById('projectNumberEditContainer').style.display = 'none';
+            
+            // Update global project data
+            if (window.currentEditProject) {
+                window.currentEditProject.projectNumber = newProjectNumber;
+            }
+            
+            alert('✅ Project number updated successfully!');
+        } else {
+            throw new Error(response.error || 'Failed to update project number');
+        }
+    } catch (error) {
+        console.error('Error updating project number:', error);
+        alert('❌ Error: ' + error.message);
     } finally {
         hideLoading();
     }
@@ -23054,7 +23127,26 @@ function toggleDesignHours() {
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                     <div>
                         <label style="font-size: 0.85rem; opacity: 0.9;">Project Number:</label>
-                        <div id="cooAllocProjectNumber" style="font-size: 1.2rem; font-weight: 700;"></div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div id="cooAllocProjectNumber" style="font-size: 1.2rem; font-weight: 700;"></div>
+                            <button type="button" onclick="toggleProjectNumberEdit()" 
+                                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                ✏️ Edit
+                            </button>
+                        </div>
+                        <div id="projectNumberEditContainer" style="display: none; margin-top: 0.5rem;">
+                            <input type="text" id="projectNumberEditInput" 
+                                   style="padding: 0.5rem; border-radius: 4px; border: none; width: 150px; font-weight: 600;" 
+                                   placeholder="Enter project number">
+                            <button type="button" onclick="saveProjectNumber()" 
+                                    style="background: #10b981; border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
+                                💾 Save
+                            </button>
+                            <button type="button" onclick="cancelProjectNumberEdit()" 
+                                    style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
+                                ✕
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label style="font-size: 0.85rem; opacity: 0.9;">Project Name:</label>
@@ -23607,13 +23699,22 @@ async function loadAllocationRequests() {
                 (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
             const dateStr = createdDate ? createdDate.toLocaleDateString() : 'N/A';
             
+            // Handle different request types
+            const isBudgetChange = req.requestType === 'budget_change';
+            const currentValue = isBudgetChange ? (req.currentBudget || 0) : (req.currentAllocatedHours || 0);
+            const requestedValue = isBudgetChange ? (req.requestedBudget || 0) : (req.requestedNewHours || 0);
+            const difference = isBudgetChange ? (req.budgetDifference || (requestedValue - currentValue)) : (req.hoursDifference !== undefined ? req.hoursDifference : (requestedValue - currentValue));
+            const targetLabel = isBudgetChange ? 'Project Budget' : req.designerName || 'Unknown';
+            const targetIcon = isBudgetChange ? '📊' : '👤';
+            
             return `
             <div class="allocation-request-card ${req.status}">
                 <div class="request-header">
                     <div class="request-info">
                         <h4>📁 ${req.projectName || 'Unknown Project'}</h4>
                         <div class="request-meta">
-                            Requested by <strong>${req.requestedByName}</strong> • ${dateStr}
+                            Requested by <strong>${req.requestedByName || 'Unknown'}</strong> • ${dateStr}
+                            ${isBudgetChange ? '<span style="background: #8b5cf6; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Budget Change</span>' : ''}
                         </div>
                     </div>
                     <span class="request-status ${req.status}">${req.status}</span>
@@ -23621,25 +23722,25 @@ async function loadAllocationRequests() {
                 
                 <div class="request-hours-change">
                     <div class="hours-box">
-                        <label>Designer</label>
-                        <div class="value" style="font-size: 1rem;">👤 ${req.designerName}</div>
+                        <label>${isBudgetChange ? 'Type' : 'Designer'}</label>
+                        <div class="value" style="font-size: 1rem;">${targetIcon} ${targetLabel}</div>
                     </div>
                     <div class="hours-box">
                         <label>Current</label>
-                        <div class="value">${req.currentAllocatedHours}h</div>
+                        <div class="value">${currentValue.toFixed(1)}h</div>
                     </div>
                     <div class="hours-arrow">→</div>
                     <div class="hours-box">
                         <label>Requested</label>
-                        <div class="value">${req.requestedNewHours}h</div>
+                        <div class="value">${requestedValue.toFixed(1)}h</div>
                     </div>
-                    <div class="hours-diff ${req.hoursDifference >= 0 ? 'increase' : 'decrease'}">
-                        ${req.hoursDifference >= 0 ? '+' : ''}${req.hoursDifference.toFixed(1)}h
+                    <div class="hours-diff ${difference >= 0 ? 'increase' : 'decrease'}">
+                        ${(difference >= 0 ? '+' : '') + difference.toFixed(1)}h
                     </div>
                 </div>
                 
                 <div class="request-reason">
-                    <strong>Reason:</strong> ${req.reason}
+                    <strong>Reason:</strong> ${req.reason || 'No reason provided'}
                 </div>
                 
                 <div class="request-actions">
@@ -23677,24 +23778,29 @@ async function openDirectorReviewModal(requestId) {
         }
         
         const req = response.data;
+        const isBudgetChange = req.requestType === 'budget_change';
         
         document.getElementById('reviewRequestId').value = requestId;
-        document.getElementById('reviewProjectName').textContent = req.projectName;
-        document.getElementById('reviewDesignerName').textContent = req.designerName;
-        document.getElementById('reviewRequestedBy').textContent = req.requestedByName;
+        document.getElementById('reviewProjectName').textContent = req.projectName || 'Unknown Project';
+        document.getElementById('reviewDesignerName').textContent = isBudgetChange ? 'Project Budget Change' : (req.designerName || 'Unknown');
+        document.getElementById('reviewRequestedBy').textContent = req.requestedByName || 'Unknown';
         
         const createdDate = req.createdAt ? 
             (req.createdAt.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt)) : null;
         document.getElementById('reviewRequestDate').textContent = createdDate ? createdDate.toLocaleDateString() : 'N/A';
         
-        document.getElementById('reviewCurrentHours').textContent = `${req.currentAllocatedHours}h`;
-        document.getElementById('reviewRequestedHours').textContent = `${req.requestedNewHours}h`;
-        document.getElementById('reviewCooReason').textContent = req.reason;
+        // Handle different request types for hours display
+        const currentValue = isBudgetChange ? (req.currentBudget || 0) : (req.currentAllocatedHours || 0);
+        const requestedValue = isBudgetChange ? (req.requestedBudget || 0) : (req.requestedNewHours || 0);
+        
+        document.getElementById('reviewCurrentHours').textContent = `${currentValue.toFixed(1)}h`;
+        document.getElementById('reviewRequestedHours').textContent = `${requestedValue.toFixed(1)}h`;
+        document.getElementById('reviewCooReason').textContent = req.reason || 'No reason provided';
         document.getElementById('reviewFinalHours').value = '';
         document.getElementById('reviewDirectorComment').value = '';
         
         // Hours difference display
-        const diff = req.hoursDifference || (req.requestedNewHours - req.currentAllocatedHours);
+        const diff = isBudgetChange ? (req.budgetDifference || (requestedValue - currentValue)) : (req.hoursDifference !== undefined ? req.hoursDifference : (requestedValue - currentValue));
         const diffEl = document.getElementById('reviewHoursDiff');
         if (diff >= 0) {
             diffEl.style.background = '#d1fae5';

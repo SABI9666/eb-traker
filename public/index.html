@@ -2989,11 +2989,19 @@ body.modal-open {
     .nav-menu {
         display: flex;
         overflow-x: auto;
-        padding: 0.5rem;
+        padding: 0.5rem 1rem;
+        gap: 0.5rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    
+    .nav-menu::-webkit-scrollbar {
+        display: none;
     }
     
     .nav-menu li {
-        margin: 0 0.25rem;
+        margin: 0;
+        flex-shrink: 0;
     }
     
     .nav-menu a {
@@ -3327,11 +3335,16 @@ body.modal-open {
         flex-direction: row;
         overflow-x: auto;
         overflow-y: hidden;
-        padding: 0.5rem;
-        gap: 0.25rem;
+        padding: 0.5rem 1rem;
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+        gap: 0.5rem;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
         -ms-overflow-style: none;
+        scroll-behavior: smooth;
+        /* Ensure scroll starts from left */
+        scroll-snap-type: x proximity;
     }
     
     .nav-menu::-webkit-scrollbar {
@@ -3341,17 +3354,67 @@ body.modal-open {
     .nav-menu li {
         flex-shrink: 0;
         margin: 0;
+        scroll-snap-align: start;
+    }
+    
+    .nav-menu li:first-child {
+        margin-left: 0;
+    }
+    
+    .nav-menu li:last-child {
+        margin-right: 0;
+        padding-right: 1rem;
     }
     
     .nav-menu a {
-        padding: 0.625rem 0.875rem;
+        padding: 0.75rem 1rem;
         font-size: 0.8rem;
         white-space: nowrap;
         border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
     }
     
     .nav-icon {
         margin-right: 0.25rem;
+        flex-shrink: 0;
+    }
+    
+    /* Mobile sidebar scroll shadow indicators */
+    .sidebar {
+        position: relative;
+    }
+    
+    .sidebar::before,
+    .sidebar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 20px;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .sidebar::before {
+        left: 0;
+        background: linear-gradient(to right, rgba(255,255,255,0.95), transparent);
+    }
+    
+    .sidebar::after {
+        right: 0;
+        background: linear-gradient(to left, rgba(255,255,255,0.95), transparent);
+    }
+    
+    .sidebar.scroll-left::before {
+        opacity: 1;
+    }
+    
+    .sidebar.scroll-right::after {
+        opacity: 1;
     }
     
     /* Main Content Mobile */
@@ -4683,20 +4746,6 @@ body.is-ios .nav-menu {
                 <div class="logo-circle">EB</div>
                 <h1 class="company-title">EDANBROOK</h1>
                 <p class="company-subtitle">Project Management System</p>
-                <div class="info-box">
-                    <h4>✅ Updated Workflow Process</h4>
-                    <ul>
-                        <li><strong>Step 1:</strong> BDM creates proposal (DRAFT) & uploads files</li>
-                        <li><strong>Step 2:</strong> Estimator adds manhours (ESTIMATED) & BOQ</li>
-                        <li><strong>Step 3:</strong> COO sets pricing (PRICED)</li>
-                        <li><strong>Step 4:</strong> Director approves (APPROVED) or rejects (REJECTED)</li>
-                        <li><strong>Step 5:</strong> BDM submits to client (SUBMITTED)</li>
-                        <li><strong>Step 6:</strong> BDM marks as WON/LOST → Project created</li>
-                        <li><strong>Step 7:</strong> COO allocates → Design Lead assigns tasks</li>
-                        <li><strong>Step 8:</strong> Designer uploads → Design sent to client</li>
-                        <li><strong>Step 9:</strong> Accounts prepares invoice → Payment tracking</li>
-                    </ul>
-                </div>
             </div>
             <div class="login-right">
                 <div class="auth-tabs">
@@ -4966,13 +5015,13 @@ body.is-ios .nav-menu {
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
       
-    const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -4984,8 +5033,7 @@ body.is-ios .nav-menu {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
 
@@ -4993,7 +5041,7 @@ body.is-ios .nav-menu {
             estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
             coo: ["coo@edanbrook.com", "coo2@edanbrook.com"],
             director: ["director@edanbrook.com", "ajit@edanbrook.com"],
-            hr: ["hr@edanbrook.com","paul.a@edanbrook.com"],
+            design_lead: ["aravindhan.tech@edanbrook.in"],
             designer: [],
             accounts: ["accounts@edanbrook.com", "finance@edanbrook.com"],
             bdm: []
@@ -5520,6 +5568,80 @@ body.is-ios .nav-menu {
         console.log('✅ Mobile support initialized');
     }
     
+    // Initialize Mobile Navigation - ensure proper scrolling and visibility
+    function initMobileNavigation() {
+        const navMenu = document.querySelector('.nav-menu');
+        const sidebar = document.querySelector('.sidebar');
+        
+        if (!navMenu || !sidebar) {
+            // Elements not yet in DOM, try again later
+            setTimeout(initMobileNavigation, 500);
+            return;
+        }
+        
+        // Function to update scroll indicators
+        function updateScrollIndicators() {
+            const scrollLeft = navMenu.scrollLeft;
+            const maxScroll = navMenu.scrollWidth - navMenu.clientWidth;
+            
+            // Add/remove classes for scroll shadow indicators
+            if (scrollLeft > 10) {
+                sidebar.classList.add('scroll-left');
+            } else {
+                sidebar.classList.remove('scroll-left');
+            }
+            
+            if (scrollLeft < maxScroll - 10) {
+                sidebar.classList.add('scroll-right');
+            } else {
+                sidebar.classList.remove('scroll-right');
+            }
+        }
+        
+        // Reset scroll to start on page load
+        navMenu.scrollLeft = 0;
+        
+        // Listen for scroll events to update indicators
+        navMenu.addEventListener('scroll', updateScrollIndicators, { passive: true });
+        
+        // Initial check for scroll indicators
+        setTimeout(updateScrollIndicators, 100);
+        
+        // Also update on window resize
+        window.addEventListener('resize', () => {
+            setTimeout(updateScrollIndicators, 100);
+        });
+        
+        // Scroll active nav item into view
+        function scrollActiveIntoView() {
+            const activeItem = navMenu.querySelector('a.active');
+            if (activeItem) {
+                const li = activeItem.parentElement;
+                if (li) {
+                    li.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+        }
+        
+        // MutationObserver to scroll to active item when it changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    if (mutation.target.classList.contains('active')) {
+                        scrollActiveIntoView();
+                    }
+                }
+            });
+        });
+        
+        // Observe all nav links for class changes
+        navMenu.querySelectorAll('a').forEach(link => {
+            observer.observe(link, { attributes: true, attributeFilter: ['class'] });
+        });
+        
+        console.log('✅ Mobile navigation initialized');
+    }
+    
     // Fix announcements visibility on mobile devices
     function fixMobileAnnouncementsVisibility() {
         const sections = document.querySelectorAll('.announcements-section, #announcementsSectionMobile');
@@ -5958,6 +6080,9 @@ body.is-ios .nav-menu {
             
             // Mobile Detection and Setup
             initMobileSupport();
+            
+            // Initialize Mobile Navigation Scroll
+            initMobileNavigation();
             
             // Register Service Worker
             registerServiceWorker();
@@ -6592,7 +6717,7 @@ async function triggerEmailNotification(eventName, data = {}) {
             document.getElementById('mainContent').innerHTML = `
                 <div class="page-header">
                     <h2>Dashboard</h2>
-                    <div class="subtitle">✅ Workflow: DRAFT → ESTIMATED → PRICED → APPROVED/REJECTED → SUBMITTED → WON/LOST</div>
+                    <div class="subtitle">Welcome to EDANBROOK Project Management System</div>
                 </div>
                 ${announcementsHtml}
                 <div class="dashboard-stats">${statsHtml}</div>
@@ -7024,7 +7149,7 @@ function renderProposals(proposals) {
 
     const filterInfo = currentUserRole === 'director' && currentProposalFilter !== 'all' ? 
         `<div class="subtitle" style="color: var(--primary-blue); font-weight: 600;">Filtered: ${currentProposalFilter.replace(/_/g, ' ').toUpperCase()}</div>` : 
-        `<div class="subtitle">Workflow: DRAFT → ESTIMATED → PRICED → APPROVED/REJECTED → SUBMITTED → WON/LOST</div>`;
+        `<div class="subtitle">Manage and track all project proposals</div>`;
 
     document.getElementById('mainContent').innerHTML = `
         <div class="page-header">

@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 4.5.0 - Cache Version 29 (Designer Analytics + Self-View)
+// Version: 4.8.0 - Cache Version 32 (Designer Analytics Complete - Director HR Designer Self-View)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v29';
-const STATIC_CACHE = 'ebtracker-static-v29';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v29';
+const CACHE_NAME = 'ebtracker-v32';
+const STATIC_CACHE = 'ebtracker-static-v32';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v32';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v29: Installing...');
+  console.log('🔧 Service Worker v32: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v29: Caching static assets');
+        console.log('📦 Service Worker v32: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v29: Static assets cached');
+        console.log('✅ Service Worker v32: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v29: Cache failed', error);
+        console.error('❌ Service Worker v32: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v29: Activating...');
+  console.log('🚀 Service Worker v32: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v29: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v32: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v29: Activated - Old caches cleared');
+        console.log('✅ Service Worker v32: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,11 +78,11 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v29: Notifying clients to refresh');
+        console.log('📢 Service Worker v32: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v29',
+            version: 'v32',
             message: 'New version available with Designer Weekly Hours Analytics! Please refresh.'
           });
         });
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v29', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v32', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -466,4 +466,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v29: Loaded successfully - Designer Weekly Hours Analytics enabled');
+console.log('✅ Service Worker v32: Loaded successfully - Designer Weekly Hours Analytics enabled');

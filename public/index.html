@@ -5106,14 +5106,13 @@ body.is-ios .nav-menu {
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
       
-      
-        const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -5125,8 +5124,7 @@ body.is-ios .nav-menu {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
 
@@ -6399,7 +6397,7 @@ body.is-ios .nav-menu {
 
             // --- Menu Visibility ---
             setDisplay('newProposalNavItem', isBDM);
-            setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR);
+            setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR); // Analytics for BDM/COO/Director
             setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR);
             setDisplay('settingsNavItem', roleForCheck === 'director');
             
@@ -25206,7 +25204,456 @@ async function downloadMyAnalyticsExcel() {
     }
 }
 
+// Expose analytics functions to window for onclick handlers
+window.showDesignerWeeklyAnalytics = showDesignerWeeklyAnalytics;
+window.showMyAnalytics = showMyAnalytics;
+window.showAnalyticsTab = showAnalyticsTab;
+window.showMyAnalyticsTab = showMyAnalyticsTab;
+window.downloadDesignerWeeklyExcel = downloadDesignerWeeklyExcel;
+window.downloadDesignerMonthlyExcel = downloadDesignerMonthlyExcel;
+window.downloadMyAnalyticsExcel = downloadMyAnalyticsExcel;
+
 console.log('✅ Designer Analytics Module v3.0.0 loaded');
+
+// ============================================
+// EBTRACKER ANALYTICS DASHBOARD (V2)
+// Analytics for BDM, COO, and Director roles.
+// ============================================
+
+// Chart.js Global Colors for Analytics
+const CHART_COLORS = {
+    blue: 'rgba(0, 191, 255, 0.7)',
+    darkBlue: 'rgba(0, 153, 204, 1)',
+    green: 'rgba(39, 174, 96, 0.7)',
+    red: 'rgba(231, 76, 60, 0.7)',
+    yellow: 'rgba(243, 156, 18, 0.7)',
+    grey: 'rgba(127, 140, 141, 0.7)',
+    purple: 'rgba(155, 89, 182, 0.7)',
+    orange: 'rgba(230, 126, 34, 0.7)',
+};
+
+/**
+ * Main function to show the Analytics Dashboard.
+ */
+async function showAnalyticsDashboard() {
+    setActiveNav('nav-analytics');
+    const main = document.getElementById('mainContent');
+    main.style.display = 'block';
+    showLoading();
+
+    try {
+        main.innerHTML = getAnalyticsHTML(currentUserRole);
+        const analyticsData = await loadAnalyticsData(currentUserRole);
+        renderKpiCards(analyticsData.kpis, currentUserRole);
+        renderMonthlyRevenueChart(analyticsData.monthlyRevenue);
+        renderStatusPieChart(analyticsData.statusCounts);
+
+        if (currentUserRole !== 'bdm') {
+            if (analyticsData.bdmPerformance) {
+                renderBdmPerformanceChart(analyticsData.bdmPerformance);
+            }
+            if (analyticsData.weeklyRevenue) {
+                renderWeeklyRevenueChart(analyticsData.weeklyRevenue);
+            }
+            if (analyticsData.regionalData) {
+                renderRegionalPieChart(analyticsData.regionalData);
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Error loading analytics:', error);
+        main.innerHTML = `<div class="card" style="padding: 3rem; text-align: center;">
+            <h3 style="color: var(--danger);">⚠️ Error Loading Analytics</h3>
+            <p style="color: var(--text-light); margin: 1rem 0;">${error.message}</p>
+            <button onclick="showAnalyticsDashboard()" class="btn btn-primary">🔄 Retry</button>
+        </div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Returns the HTML skeleton for the analytics dashboard
+ */
+function getAnalyticsHTML(role) {
+    const isDirectorView = role === 'coo' || role === 'director';
+    const title = isDirectorView ? '📊 Company Analytics Dashboard' : '📈 My BDM Analytics';
+
+    const directorCharts = `
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">BDM Performance (Won Revenue)</h3>
+            <div style="position: relative; height: 350px;">
+                <canvas id="bdmPerformanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Regional Business (Won Revenue)</h3>
+            <div style="position: relative; height: 350px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="regionalPieChart" style="max-height: 350px; max-width: 350px;"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Weekly Revenue (Last 16 Weeks)</h3>
+            <div style="position: relative; height: 350px;">
+                <canvas id="weeklyRevenueChart"></canvas>
+            </div>
+        </div>
+    `;
+
+    return `
+        <div class="page-header">
+            <h2>${title}</h2>
+            <p class="subtitle">Insights on proposals and revenue</p>
+        </div>
+        
+        <div class="dashboard-stats" id="bdm-kpi-cards"></div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-top: 2rem;">
+            
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">Monthly Revenue (Last 12 Months)</h3>
+                <div style="position: relative; height: 350px;">
+                    <canvas id="monthlyRevenueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">Proposal Status Breakdown</h3>
+                <div style="position: relative; height: 350px; display: flex; align-items: center; justify-content: center;">
+                    <canvas id="statusPieChart" style="max-height: 350px; max-width: 350px;"></canvas>
+                </div>
+            </div>
+
+            ${isDirectorView ? directorCharts : ''}
+        </div>
+    `;
+}
+
+/**
+ * Fetches and processes all proposal data for analytics
+ */
+async function loadAnalyticsData(role) {
+    const response = await apiCall('proposals');
+    if (!response.success || !response.data) {
+        throw new Error('Failed to fetch proposal data');
+    }
+
+    let proposals;
+    if (role === 'bdm') {
+        proposals = response.data.filter(p => p.createdByUid === currentUser.uid);
+    } else {
+        proposals = response.data;
+    }
+
+    const wonProposals = proposals.filter(p => p.status === 'won');
+    const lostProposals = proposals.filter(p => p.status === 'lost');
+    
+    const totalRevenue = wonProposals.reduce((sum, p) => sum + (p.pricing?.quoteValue || 0), 0);
+    const totalWon = wonProposals.length;
+    const totalLost = lostProposals.length;
+    const totalProposals = proposals.length;
+    const winRate = (totalWon + totalLost) > 0 ? (totalWon / (totalWon + totalLost)) * 100 : 0;
+    const avgDealValue = totalWon > 0 ? totalRevenue / totalWon : 0;
+
+    const kpis = { totalRevenue, totalProposals, winRate, avgDealValue, totalWon, totalLost };
+
+    // Monthly Revenue
+    const monthlyRevenue = {};
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const label = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+        monthlyRevenue[label] = 0;
+    }
+
+    wonProposals.forEach(p => {
+        let date = parseAnalyticsDate(p.wonDate) || parseAnalyticsDate(p.updatedAt);
+        if (date && !isNaN(date.getTime())) {
+            const label = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+            if (monthlyRevenue.hasOwnProperty(label)) {
+                monthlyRevenue[label] += (p.pricing?.quoteValue || 0);
+            }
+        }
+    });
+
+    // Status Counts
+    const statusCounts = { Won: 0, Lost: 0, Pending: 0, Pricing: 0, Draft: 0 };
+    proposals.forEach(p => {
+        switch (p.status) {
+            case 'won': statusCounts.Won++; break;
+            case 'lost': statusCounts.Lost++; break;
+            case 'submitted_to_client':
+            case 'approved': statusCounts.Pending++; break;
+            case 'estimated':
+            case 'pricing_complete':
+            case 'pending_director_approval': statusCounts.Pricing++; break;
+            default: statusCounts.Draft++; break;
+        }
+    });
+
+    // COO/Director specific data
+    let bdmPerformance = null, weeklyRevenue = null, regionalData = null;
+
+    if (role !== 'bdm') {
+        bdmPerformance = {};
+        wonProposals.forEach(p => {
+            const bdmName = p.createdByName || 'Unknown';
+            bdmPerformance[bdmName] = (bdmPerformance[bdmName] || 0) + (p.pricing?.quoteValue || 0);
+        });
+
+        weeklyRevenue = {};
+        const today = new Date();
+        for (let i = 15; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (i * 7));
+            const weekStart = getAnalyticsWeekStart(d);
+            weeklyRevenue[weekStart] = 0;
+        }
+        wonProposals.forEach(p => {
+            let date = parseAnalyticsDate(p.wonDate);
+            if (date && !isNaN(date.getTime())) {
+                const weekStart = getAnalyticsWeekStart(date);
+                if (weeklyRevenue.hasOwnProperty(weekStart)) {
+                    weeklyRevenue[weekStart] += (p.pricing?.quoteValue || 0);
+                }
+            }
+        });
+        
+        regionalData = {};
+        wonProposals.forEach(p => {
+            const region = p.country || 'Unknown';
+            regionalData[region] = (regionalData[region] || 0) + (p.pricing?.quoteValue || 0);
+        });
+    }
+
+    return { kpis, monthlyRevenue, statusCounts, bdmPerformance, weeklyRevenue, regionalData };
+}
+
+function parseAnalyticsDate(dateValue) {
+    if (!dateValue) return null;
+    if (dateValue.seconds !== undefined) return new Date(Number(dateValue.seconds) * 1000);
+    if (dateValue._seconds !== undefined) return new Date(Number(dateValue._seconds) * 1000);
+    if (typeof dateValue === 'string' || typeof dateValue === 'number') return new Date(dateValue);
+    return null;
+}
+
+function getAnalyticsWeekStart(d) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff)).toISOString().split('T')[0];
+}
+
+/**
+ * Renders the KPI cards
+ */
+function renderKpiCards(kpis, role) {
+    const container = document.getElementById('bdm-kpi-cards');
+    const currencyFormat = { style: 'currency', currency: 'USD', maximumFractionDigits: 0 };
+    
+    const bdmCards = `
+        <div class="stat-card"><div class="stat-number">${kpis.totalProposals}</div><div class="stat-label">Total Proposals</div></div>
+        <div class="stat-card"><div class="stat-number" style="color: ${CHART_COLORS.green}">${kpis.totalWon}</div><div class="stat-label">Proposals Won</div></div>
+        <div class="stat-card"><div class="stat-number" style="color: ${CHART_COLORS.red}">${kpis.totalLost}</div><div class="stat-label">Proposals Lost</div></div>
+        <div class="stat-card"><div class="stat-number">${kpis.winRate.toFixed(1)}%</div><div class="stat-label">Win Rate</div></div>
+        <div class="stat-card"><div class="stat-number">${kpis.totalRevenue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Total Revenue (Won)</div></div>
+        <div class="stat-card"><div class="stat-number">${kpis.avgDealValue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Avg. Revenue (Won)</div></div>
+    `;
+
+    const directorCards = `
+        <div class="stat-card"><div class="stat-number">${kpis.totalRevenue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Total Revenue (Won)</div></div>
+        <div class="stat-card"><div class="stat-number">${kpis.avgDealValue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Avg. Revenue (Won)</div></div>
+        <div class="stat-card"><div class="stat-number">${kpis.winRate.toFixed(1)}%</div><div class="stat-label">Company Win Rate</div></div>
+        <div class="stat-card"><div class="stat-number">${kpis.totalProposals}</div><div class="stat-label">Total Proposals</div></div>
+    `;
+
+    container.innerHTML = (role === 'bdm') ? bdmCards : directorCards;
+}
+
+/**
+ * Renders the Monthly Revenue bar chart
+ */
+function renderMonthlyRevenueChart(monthlyRevenue) {
+    const ctx = document.getElementById('monthlyRevenueChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    const displayLabels = Object.keys(monthlyRevenue).map(label => {
+        const [year, month] = label.split('-');
+        return new Date(year, month - 1, 1).toLocaleString('default', { month: 'short', year: '2-digit' });
+    });
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: displayLabels,
+            datasets: [{
+                label: 'Revenue',
+                data: Object.values(monthlyRevenue),
+                backgroundColor: CHART_COLORS.blue,
+                borderColor: CHART_COLORS.darkBlue,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: (v) => formatAnalyticsAxisValue(v) } },
+                x: { grid: { display: false } }
+            },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => formatAnalyticsTooltip(ctx) } } }
+        }
+    });
+}
+
+/**
+ * Renders the Proposal Status pie chart
+ */
+function renderStatusPieChart(statusCounts) {
+    const ctx = document.getElementById('statusPieChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(statusCounts),
+            datasets: [{
+                data: Object.values(statusCounts),
+                backgroundColor: [CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.blue, CHART_COLORS.yellow, CHART_COLORS.grey],
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+/**
+ * Renders the BDM Performance bar chart (COO/Director only)
+ */
+function renderBdmPerformanceChart(bdmData) {
+    const ctx = document.getElementById('bdmPerformanceChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    const sortedData = Object.entries(bdmData).sort(([, a], [, b]) => b - a);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sortedData.map(item => item[0]),
+            datasets: [{
+                label: 'Revenue Won',
+                data: sortedData.map(item => item[1]),
+                backgroundColor: [CHART_COLORS.green, CHART_COLORS.blue, CHART_COLORS.yellow, CHART_COLORS.purple, CHART_COLORS.orange, CHART_COLORS.red, CHART_COLORS.grey],
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { beginAtZero: true, ticks: { callback: (v) => formatAnalyticsAxisValue(v) } },
+                y: { grid: { display: false } }
+            },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => formatAnalyticsTooltip(ctx) } } }
+        }
+    });
+}
+
+/**
+ * Renders the Weekly Revenue line chart (COO/Director only)
+ */
+function renderWeeklyRevenueChart(weeklyData) {
+    const ctx = document.getElementById('weeklyRevenueChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    const displayLabels = Object.keys(weeklyData).map(label => {
+        const [year, month, day] = label.split('-');
+        return `${month}/${day}`;
+    });
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: displayLabels,
+            datasets: [{
+                label: 'Revenue',
+                data: Object.values(weeklyData),
+                backgroundColor: CHART_COLORS.blue,
+                borderColor: CHART_COLORS.darkBlue,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: (v) => formatAnalyticsAxisValue(v) } },
+                x: { grid: { display: false } }
+            },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => formatAnalyticsTooltip(ctx) } } }
+        }
+    });
+}
+
+/**
+ * Renders the Regional Business pie chart (COO/Director only)
+ */
+function renderRegionalPieChart(regionalData) {
+    const ctx = document.getElementById('regionalPieChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(regionalData),
+            datasets: [{
+                data: Object.values(regionalData),
+                backgroundColor: [CHART_COLORS.blue, CHART_COLORS.green, CHART_COLORS.yellow, CHART_COLORS.purple, CHART_COLORS.orange, CHART_COLORS.red, CHART_COLORS.grey],
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => formatAnalyticsTooltipWithLabel(ctx) } } }
+        }
+    });
+}
+
+function formatAnalyticsAxisValue(value) {
+    if (value >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+    if (value >= 10000) return '$' + (value / 1000).toFixed(0) + 'k';
+    if (value >= 1000) return '$' + (value / 1000).toFixed(1) + 'k';
+    return '$' + value.toLocaleString();
+}
+
+function formatAnalyticsTooltip(context) {
+    let label = context.dataset.label || '';
+    if (label) label += ': ';
+    const value = context.parsed.y !== null ? context.parsed.y : context.raw;
+    return label + new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+}
+
+function formatAnalyticsTooltipWithLabel(context) {
+    return `${context.label}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(context.raw)}`;
+}
+
+// Expose Analytics functions to window
+window.showAnalyticsDashboard = showAnalyticsDashboard;
+
+console.log('✅ Analytics Dashboard Module loaded (BDM/COO/Director)');
 console.log('   - Director/HR Portal: showDesignerWeeklyAnalytics()');
 console.log('   - Designer Self-View: showMyAnalytics()');
 

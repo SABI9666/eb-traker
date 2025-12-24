@@ -2298,14 +2298,14 @@ body.modal-open {
 /* ============================== */
 .dashboard-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1.5rem;
     margin-bottom: 3rem;
 }
 
 .stat-card {
     background: white;
-    padding: 2rem;
+    padding: 1.5rem 1rem;
     border-radius: 16px;
     box-shadow: var(--card-shadow);
     text-align: center;
@@ -2313,6 +2313,7 @@ body.modal-open {
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-width: 0;
 }
 
 .stat-card::before {
@@ -2334,22 +2335,27 @@ body.modal-open {
 }
 
 .stat-number {
-    font-size: 3rem;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
     font-weight: 700;
     color: var(--primary-blue);
     margin-bottom: 0.5rem;
     position: relative;
     z-index: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .stat-label {
     color: var(--text-light);
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     position: relative;
     z-index: 1;
+    line-height: 1.3;
 }
 
 /* ============================== */
@@ -3031,7 +3037,8 @@ body.modal-open {
     }
     
     .dashboard-stats {
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
     }
     
     .project-cards {
@@ -3094,12 +3101,21 @@ body.modal-open {
         font-size: 1.75rem;
     }
     
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
     .stat-card {
-        padding: 1.5rem;
+        padding: 1.25rem 0.75rem;
     }
     
     .stat-number {
-        font-size: 2.5rem;
+        font-size: clamp(1.2rem, 5vw, 1.8rem);
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
     }
     
     .project-cards {
@@ -3166,10 +3182,23 @@ body.modal-open {
         font-size: 1.5rem;
     }
     
-    .stat-number {
-        font-size: 2rem;
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
     }
     
+    .stat-card {
+        padding: 1rem 0.5rem;
+    }
+    
+    .stat-number {
+        font-size: clamp(1rem, 4.5vw, 1.5rem);
+    }
+    
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
     /* Announcements for small phones */
     .announcements-section {
         margin: 0.75rem 0 !important;
@@ -25448,26 +25477,79 @@ function getAnalyticsWeekStart(d) {
 }
 
 /**
- * Renders the KPI cards
+ * Format currency - compact for large numbers
+ */
+function formatCurrencyCompact(value) {
+    if (value === null || value === undefined || isNaN(value)) return '$0';
+    const absValue = Math.abs(value);
+    if (absValue >= 1000000) {
+        return '$' + (value / 1000000).toFixed(1) + 'M';
+    } else if (absValue >= 10000) {
+        return '$' + (value / 1000).toFixed(0) + 'K';
+    } else if (absValue >= 1000) {
+        return '$' + (value / 1000).toFixed(1) + 'K';
+    }
+    return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+/**
+ * Format currency - full display
+ */
+function formatCurrencyFull(value) {
+    if (value === null || value === undefined || isNaN(value)) return '$0';
+    return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+/**
+ * Renders the KPI cards - FIXED FOR APPLE/MOBILE VIEW
  */
 function renderKpiCards(kpis, role) {
     const container = document.getElementById('bdm-kpi-cards');
-    const currencyFormat = { style: 'currency', currency: 'USD', maximumFractionDigits: 0 };
     
     const bdmCards = `
-        <div class="stat-card"><div class="stat-number">${kpis.totalProposals}</div><div class="stat-label">Total Proposals</div></div>
-        <div class="stat-card"><div class="stat-number" style="color: ${CHART_COLORS.green}">${kpis.totalWon}</div><div class="stat-label">Proposals Won</div></div>
-        <div class="stat-card"><div class="stat-number" style="color: ${CHART_COLORS.red}">${kpis.totalLost}</div><div class="stat-label">Proposals Lost</div></div>
-        <div class="stat-card"><div class="stat-number">${kpis.winRate.toFixed(1)}%</div><div class="stat-label">Win Rate</div></div>
-        <div class="stat-card"><div class="stat-number">${kpis.totalRevenue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Total Revenue (Won)</div></div>
-        <div class="stat-card"><div class="stat-number">${kpis.avgDealValue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Avg. Revenue (Won)</div></div>
+        <div class="stat-card">
+            <div class="stat-number">${kpis.totalProposals}</div>
+            <div class="stat-label">Total Proposals</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: ${CHART_COLORS.green}">${kpis.totalWon}</div>
+            <div class="stat-label">Proposals Won</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: ${CHART_COLORS.red}">${kpis.totalLost}</div>
+            <div class="stat-label">Proposals Lost</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${kpis.winRate.toFixed(1)}%</div>
+            <div class="stat-label">Win Rate</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" title="${formatCurrencyFull(kpis.totalRevenue)}">${formatCurrencyCompact(kpis.totalRevenue)}</div>
+            <div class="stat-label">Total Revenue (Won)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" title="${formatCurrencyFull(kpis.avgDealValue)}">${formatCurrencyCompact(kpis.avgDealValue)}</div>
+            <div class="stat-label">Avg. Revenue (Won)</div>
+        </div>
     `;
 
     const directorCards = `
-        <div class="stat-card"><div class="stat-number">${kpis.totalRevenue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Total Revenue (Won)</div></div>
-        <div class="stat-card"><div class="stat-number">${kpis.avgDealValue.toLocaleString('en-US', currencyFormat)}</div><div class="stat-label">Avg. Revenue (Won)</div></div>
-        <div class="stat-card"><div class="stat-number">${kpis.winRate.toFixed(1)}%</div><div class="stat-label">Company Win Rate</div></div>
-        <div class="stat-card"><div class="stat-number">${kpis.totalProposals}</div><div class="stat-label">Total Proposals</div></div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: var(--primary-blue);" title="${formatCurrencyFull(kpis.totalRevenue)}">${formatCurrencyCompact(kpis.totalRevenue)}</div>
+            <div class="stat-label">Total Revenue (Won)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: var(--success);" title="${formatCurrencyFull(kpis.avgDealValue)}">${formatCurrencyCompact(kpis.avgDealValue)}</div>
+            <div class="stat-label">Avg. Revenue (Won)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: var(--warning);">${kpis.winRate.toFixed(1)}%</div>
+            <div class="stat-label">Company Win Rate</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color: #8b5cf6;">${kpis.totalProposals}</div>
+            <div class="stat-label">Total Proposals</div>
+        </div>
     `;
 
     container.innerHTML = (role === 'bdm') ? bdmCards : directorCards;

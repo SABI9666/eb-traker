@@ -6456,11 +6456,22 @@ body.is-ios .nav-menu {
             // Hide Activities from HR (HR has their own dashboard)
             setDisplay('activitiesNavItem', !isHR);
             
-            // Leave Approval visible to HR, COO, and Director
-            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck);
+            // Check if user is a Team Lead (Designer Team Leads)
+            const TEAM_LEAD_EMAILS = [
+                'muruganantham.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'meeraj.tech@edanbrook.in'
+            ];
+            const isTeamLead = currentUser && currentUser.email && 
+                TEAM_LEAD_EMAILS.some(tl => tl.toLowerCase() === currentUser.email.toLowerCase());
+            
+            // Leave Approval visible to HR, COO, Director, AND Team Leads
+            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck) || isTeamLead;
             setDisplay('hrLeaveApprovalNavItem', canApproveLeave);
             
             // Show Leave Request for all roles EXCEPT HR, COO, Director (they have Leave Approval)
+            // Team Leads CAN see Leave Request (they can submit their own leaves)
             const showLeaveRequest = !isHR && !['coo', 'director'].includes(roleForCheck);
             setDisplay('employeeLeaveRequestNavItem', showLeaveRequest);
             
@@ -6469,8 +6480,8 @@ body.is-ios .nav-menu {
                 updateDirectorRequestsBadge();
             }
             
-            // Update HR leave requests badge
-            if (isHR) {
+            // Update HR leave requests badge for all approvers
+            if (canApproveLeave) {
                 updateHRLeaveRequestsBadge();
             }
 
@@ -15023,9 +15034,19 @@ async function markProjectComplete(projectId) {
         window.showAllAnnouncements = showAllAnnouncements;
         window.onBirthdayEmployeeSelect = onBirthdayEmployeeSelect;
 
+
         // ============================================
-        // HR LEAVE APPROVAL SYSTEM
+        // HR LEAVE APPROVAL SYSTEM - MULTI-LEVEL WORKFLOW
+        // Version 5.0.0
         // ============================================
+        
+        // DESIGNER TEAM LEADS - These emails can approve designer leave requests
+        const DESIGNER_TEAM_LEADS = [
+            { email: 'muruganantham.tech@edanbrook.in', name: 'Muruganantham' },
+            { email: 'aravindhan.tech@edanbrook.in', name: 'Aravindhan' },
+            { email: 'sathish.tech@edanbrook.in', name: 'Sathish' },
+            { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj' }
+        ];
         
         let leaveRequests = [];
         
@@ -15041,18 +15062,157 @@ async function markProjectComplete(projectId) {
             localStorage.setItem('leaveRequests', JSON.stringify(leaveRequests));
         }
         
-        // Update HR leave requests badge
-        function updateHRLeaveRequestsBadge() {
-            loadLeaveRequests();
-            const pendingCount = leaveRequests.filter(r => r.status === 'pending').length;
-            const badge = document.getElementById('hrLeaveRequestsBadge');
-            if (badge) {
-                badge.textContent = pendingCount;
-                badge.style.display = pendingCount > 0 ? 'inline' : 'none';
+        // Check if current user is a Team Lead
+        function isCurrentUserTeamLead() {
+            if (!currentUser || !currentUser.email) return false;
+            return DESIGNER_TEAM_LEADS.some(tl => 
+                tl.email.toLowerCase() === currentUser.email.toLowerCase()
+            );
+        }
+        
+        // Get approval flow info based on role and email
+        function getApprovalFlowInfo(userRole, userEmail) {
+            const emailLower = (userEmail || '').toLowerCase();
+            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === emailLower);
+            
+            if (isTeamLead) {
+                return {
+                    flowType: 'teamlead_flow',
+                    flowDescription: 'Your Leave → COO → HR',
+                    stages: ['COO Approval', 'HR Approval'],
+                    totalStages: 2,
+                    requiresTeamLeadSelection: false
+                };
+            }
+            
+            switch ((userRole || '').toLowerCase()) {
+                case 'bdm':
+                case 'estimator':
+                case 'accounts':
+                    return {
+                        flowType: 'standard_flow',
+                        flowDescription: 'Your Leave → COO → HR → Director',
+                        stages: ['COO Approval', 'HR Approval', 'Director Approval'],
+                        totalStages: 3,
+                        requiresTeamLeadSelection: false
+                    };
+                case 'designer':
+                    return {
+                        flowType: 'designer_flow',
+                        flowDescription: 'Your Leave → Team Lead → HR → COO',
+                        stages: ['Team Lead Approval', 'HR Approval', 'COO Approval'],
+                        totalStages: 3,
+                        requiresTeamLeadSelection: true
+                    };
+                case 'hr':
+                    return {
+                        flowType: 'hr_flow',
+                        flowDescription: 'Your Leave → Director',
+                        stages: ['Director Approval'],
+                        totalStages: 1,
+                        requiresTeamLeadSelection: false
+                    };
+                case 'coo':
+                    return {
+                        flowType: 'coo_flow',
+                        flowDescription: 'Your Leave → Director',
+                        stages: ['Director Approval'],
+                        totalStages: 1,
+                        requiresTeamLeadSelection: false
+                    };
+                case 'director':
+                    return {
+                        flowType: 'director_flow',
+                        flowDescription: 'Self-Approved',
+                        stages: [],
+                        totalStages: 0,
+                        requiresTeamLeadSelection: false
+                    };
+                default:
+                    return {
+                        flowType: 'default_flow',
+                        flowDescription: 'Your Leave → COO → HR → Director',
+                        stages: ['COO Approval', 'HR Approval', 'Director Approval'],
+                        totalStages: 3,
+                        requiresTeamLeadSelection: false
+                    };
             }
         }
         
-        // Show HR Leave Approval Dashboard
+        // Get pending count for current user's approval role
+        function getPendingCountForUser() {
+            loadLeaveRequests();
+            const userRole = (currentUser?.role || '').toLowerCase();
+            const userEmail = (currentUser?.email || '').toLowerCase();
+            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+            
+            let count = 0;
+            
+            leaveRequests.forEach(req => {
+                if (req.status !== 'pending') return;
+                const flow = req.approvalFlow?.flowType;
+                const stage = req.currentStage || 1;
+                
+                // Team Lead approvals (Stage 1 for designers)
+                if (isTeamLead && req.selectedTeamLead?.toLowerCase() === userEmail && stage === 1) {
+                    count++;
+                }
+                
+                // COO approvals
+                if (userRole === 'coo') {
+                    if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) count++;
+                    if (flow === 'designer_flow' && stage === 3) count++;
+                }
+                
+                // HR approvals (Stage 2)
+                if (userRole === 'hr' && stage === 2) {
+                    count++;
+                }
+                
+                // Director approvals
+                if (userRole === 'director') {
+                    if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) count++;
+                    if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) count++;
+                }
+            });
+            
+            return count;
+        }
+        
+        // Update HR leave requests badge
+        function updateHRLeaveRequestsBadge() {
+            const badge = document.getElementById('hrLeaveRequestsBadge');
+            if (badge) {
+                const count = getPendingCountForUser();
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline' : 'none';
+            }
+        }
+        
+        // Update leave navigation visibility
+        function updateLeaveNavigation() {
+            const userRole = (currentUser?.role || '').toLowerCase();
+            const userEmail = (currentUser?.email || '').toLowerCase();
+            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+            
+            const canApproveLeave = ['hr', 'coo', 'director'].includes(userRole) || isTeamLead;
+            const approvalNav = document.getElementById('hrLeaveApprovalNavItem');
+            if (approvalNav) {
+                approvalNav.style.display = canApproveLeave ? 'block' : 'none';
+            }
+            
+            const showLeaveRequest = !['hr', 'coo', 'director'].includes(userRole);
+            const requestNav = document.getElementById('employeeLeaveRequestNavItem');
+            if (requestNav) {
+                requestNav.style.display = showLeaveRequest ? 'block' : 'none';
+            }
+            
+            updateHRLeaveRequestsBadge();
+        }
+        
+        // ============================================
+        // LEAVE APPROVAL DASHBOARD
+        // ============================================
         async function showHRLeaveApproval() {
             setActiveNav('nav-hr-leave');
             const main = document.getElementById('mainContent');
@@ -15062,64 +15222,126 @@ async function markProjectComplete(projectId) {
             try {
                 loadLeaveRequests();
                 
-                const pendingRequests = leaveRequests.filter(r => r.status === 'pending');
+                const userRole = (currentUser?.role || '').toLowerCase();
+                const userEmail = (currentUser?.email || '').toLowerCase();
+                const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+                
+                let pendingRequests = [];
+                let approvalTitle = '📋 Leave Approval Dashboard';
+                let approvalSubtitle = 'Manage employee leave requests';
+                
+                leaveRequests.forEach(req => {
+                    if (req.status !== 'pending') return;
+                    const flow = req.approvalFlow?.flowType;
+                    const stage = req.currentStage || 1;
+                    
+                    if (isTeamLead && req.selectedTeamLead?.toLowerCase() === userEmail && stage === 1) {
+                        pendingRequests.push({...req, myApprovalStage: 1, myRole: 'teamlead'});
+                    }
+                    
+                    if (userRole === 'coo') {
+                        if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
+                            pendingRequests.push({...req, myApprovalStage: 1, myRole: 'coo'});
+                        }
+                        if (flow === 'designer_flow' && stage === 3) {
+                            pendingRequests.push({...req, myApprovalStage: 3, myRole: 'coo'});
+                        }
+                    }
+                    
+                    if (userRole === 'hr' && stage === 2) {
+                        pendingRequests.push({...req, myApprovalStage: 2, myRole: 'hr'});
+                    }
+                    
+                    if (userRole === 'director') {
+                        if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) {
+                            pendingRequests.push({...req, myApprovalStage: 3, myRole: 'director'});
+                        }
+                        if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) {
+                            pendingRequests.push({...req, myApprovalStage: 1, myRole: 'director'});
+                        }
+                    }
+                });
+                
+                if (isTeamLead && userRole !== 'coo' && userRole !== 'hr' && userRole !== 'director') {
+                    approvalTitle = '👥 Team Leave Approval';
+                    approvalSubtitle = 'Approve leave requests from your team members';
+                } else if (userRole === 'coo') {
+                    approvalTitle = '📋 COO Leave Approval';
+                    approvalSubtitle = 'Review and approve leave requests';
+                } else if (userRole === 'hr') {
+                    approvalTitle = '📋 HR Leave Approval';
+                    approvalSubtitle = 'Review, categorize and approve leave requests';
+                } else if (userRole === 'director') {
+                    approvalTitle = '📋 Director Leave Approval';
+                    approvalSubtitle = 'Final approval for leave requests';
+                }
+                
                 const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
                 const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
                 
                 main.innerHTML = `
+                    ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
+                    
                     <div class="page-header">
-                        <h2>📋 Leave Approval Dashboard</h2>
-                        <div class="subtitle">Manage employee leave requests</div>
+                        <h2>${approvalTitle}</h2>
+                        <div class="subtitle">${approvalSubtitle}</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="font-size: 2rem;">👤</div>
+                            <div>
+                                <div style="font-weight: 600;">${currentUser?.name || currentUser?.email || 'User'}</div>
+                                <div style="opacity: 0.9; font-size: 0.9rem;">
+                                    ${isTeamLead ? '🏷️ Team Lead | ' : ''}
+                                    ${userRole ? userRole.toUpperCase() : 'Employee'}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="dashboard-stats" style="margin-bottom: 2rem;">
                         <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
                             <div class="stat-number">${pendingRequests.length}</div>
-                            <div class="stat-label">Pending</div>
+                            <div class="stat-label">Pending My Approval</div>
                         </div>
                         <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
                             <div class="stat-number">${approvedRequests.length}</div>
-                            <div class="stat-label">Approved</div>
+                            <div class="stat-label">Total Approved</div>
                         </div>
                         <div class="stat-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca);">
                             <div class="stat-number">${rejectedRequests.length}</div>
-                            <div class="stat-label">Rejected</div>
+                            <div class="stat-label">Total Rejected</div>
                         </div>
                     </div>
                     
                     ${pendingRequests.length > 0 ? `
-                        <div class="action-section" style="margin-bottom: 2rem; background: #fffbeb; border-left: 4px solid #f59e0b;">
-                            <h3 style="color: #b45309;">⏳ Pending Leave Requests</h3>
-                            ${pendingRequests.map((req, idx) => renderLeaveRequestCard(req, leaveRequests.indexOf(req), 'pending')).join('')}
+                        <div class="action-section" style="margin-bottom: 2rem; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 0 12px 12px 0;">
+                            <h3 style="color: #b45309; margin-bottom: 1rem;">⏳ Pending Leave Requests (${pendingRequests.length})</h3>
+                            ${pendingRequests.map((req) => renderLeaveApprovalCard(req, leaveRequests.findIndex(r => r.id === req.id))).join('')}
                         </div>
                     ` : `
-                        <div class="info-message" style="margin-bottom: 2rem;">
-                            <h4>✅ No Pending Requests</h4>
-                            <p>All leave requests have been processed.</p>
+                        <div class="info-message" style="margin-bottom: 2rem; text-align: center; padding: 3rem; background: #f0fdf4; border-radius: 12px;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                            <h4 style="color: #166534;">No Pending Requests</h4>
+                            <p style="color: #166534;">All leave requests have been processed. Great job!</p>
                         </div>
                     `}
                     
                     ${approvedRequests.length > 0 ? `
-                        <div class="action-section" style="margin-bottom: 2rem; background: #ecfdf5; border-left: 4px solid #10b981;">
-                            <h3 style="color: #065f46;">✅ Approved Requests</h3>
-                            ${approvedRequests.slice(0, 5).map((req, idx) => renderLeaveRequestCard(req, leaveRequests.indexOf(req), 'approved')).join('')}
-                            ${approvedRequests.length > 5 ? `<p style="text-align: center; color: #6b7280;">...and ${approvedRequests.length - 5} more</p>` : ''}
+                        <div class="action-section" style="margin-bottom: 2rem; background: #ecfdf5; border-left: 4px solid #10b981; padding: 1.5rem; border-radius: 0 12px 12px 0;">
+                            <h3 style="color: #065f46; margin-bottom: 1rem;">✅ Recently Approved (${Math.min(approvedRequests.length, 5)})</h3>
+                            ${approvedRequests.slice(0, 5).map((req) => renderLeaveHistoryCard(req, 'approved')).join('')}
+                            ${approvedRequests.length > 5 ? `<p style="text-align: center; color: #6b7280; margin-top: 1rem;">...and ${approvedRequests.length - 5} more</p>` : ''}
                         </div>
                     ` : ''}
                     
                     ${rejectedRequests.length > 0 ? `
-                        <div class="action-section" style="background: #fef2f2; border-left: 4px solid #ef4444;">
-                            <h3 style="color: #991b1b;">❌ Rejected Requests</h3>
-                            ${rejectedRequests.slice(0, 5).map((req, idx) => renderLeaveRequestCard(req, leaveRequests.indexOf(req), 'rejected')).join('')}
-                            ${rejectedRequests.length > 5 ? `<p style="text-align: center; color: #6b7280;">...and ${rejectedRequests.length - 5} more</p>` : ''}
+                        <div class="action-section" style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 1.5rem; border-radius: 0 12px 12px 0;">
+                            <h3 style="color: #991b1b; margin-bottom: 1rem;">❌ Recently Rejected (${Math.min(rejectedRequests.length, 5)})</h3>
+                            ${rejectedRequests.slice(0, 5).map((req) => renderLeaveHistoryCard(req, 'rejected')).join('')}
                         </div>
                     ` : ''}
-                    
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: white; border-radius: 12px; box-shadow: var(--card-shadow);">
-                        <h3 style="margin-bottom: 1rem;">📝 Test: Submit a Leave Request</h3>
-                        <p style="color: #6b7280; margin-bottom: 1rem;">Use this form to test the leave approval system.</p>
-                        <button class="btn btn-primary" onclick="showSubmitLeaveModal()">+ Submit Test Leave Request</button>
-                    </div>
                 `;
                 
             } catch (error) {
@@ -15130,298 +15352,211 @@ async function markProjectComplete(projectId) {
             }
         }
         
-        // Render leave request card
-        function renderLeaveRequestCard(request, index, status) {
-            const statusColors = {
-                pending: { bg: '#fef3c7', text: '#b45309', label: '⏳ Pending' },
-                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved' },
-                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected' }
-            };
+        // Render leave approval card (with approve/reject buttons)
+        function renderLeaveApprovalCard(request, index) {
+            const flowInfo = request.approvalFlow || {};
+            const currentStage = request.currentStage || 1;
+            const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
             
-            const statusStyle = statusColors[status] || statusColors.pending;
+            let progressHtml = '';
+            if (flowInfo.stages && flowInfo.stages.length > 0) {
+                progressHtml = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">';
+                flowInfo.stages.forEach((stage, idx) => {
+                    const stageNum = idx + 1;
+                    let bgColor = '#f3f4f6';
+                    let textColor = '#6b7280';
+                    let icon = '⏳';
+                    
+                    if (stageNum < currentStage) {
+                        bgColor = '#d1fae5';
+                        textColor = '#065f46';
+                        icon = '✅';
+                    } else if (stageNum === currentStage) {
+                        bgColor = '#dbeafe';
+                        textColor = '#1e40af';
+                        icon = '🔄';
+                    }
+                    
+                    progressHtml += '<span style="background: ' + bgColor + '; color: ' + textColor + '; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500;">' + icon + ' ' + stage + '</span>';
+                });
+                progressHtml += '</div>';
+            }
             
             return `
-                <div class="action-item" style="background: white; margin-bottom: 1rem; border-radius: 12px; padding: 1.5rem;">
+                <div style="background: white; margin-bottom: 1rem; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                                <div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                        <div style="flex: 1; min-width: 280px;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">
                                     ${(request.employeeName || 'E')[0].toUpperCase()}
                                 </div>
                                 <div>
                                     <h4 style="margin: 0; color: #1f2937;">${request.employeeName || 'Employee'}</h4>
-                                    <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">${request.department || 'Department'}</p>
+                                    <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">${request.department || request.submittedBy?.split('@')[0] || ''}</p>
                                 </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1rem;">
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem;">
                                 <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
-                                    <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase;">Leave Type</div>
-                                    <div style="font-weight: 600; color: #374151;">${request.leaveType || 'N/A'}</div>
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Leave Type</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.leaveType || 'N/A'}</div>
                                 </div>
                                 <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
-                                    <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase;">From</div>
-                                    <div style="font-weight: 600; color: #374151;">${formatDate(request.fromDate)}</div>
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Duration</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.totalDays || 1} Day${(request.totalDays || 1) > 1 ? 's' : ''}</div>
                                 </div>
                                 <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
-                                    <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase;">To</div>
-                                    <div style="font-weight: 600; color: #374151;">${formatDate(request.toDate)}</div>
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">From</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${formatDate(request.fromDate)}</div>
                                 </div>
                                 <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
-                                    <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase;">Days</div>
-                                    <div style="font-weight: 600; color: #374151;">${request.totalDays || 1}</div>
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">To</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${formatDate(request.toDate)}</div>
                                 </div>
                             </div>
+                            
+                            ${request.selectedTeamLead ? `
+                                <div style="margin-top: 0.75rem; padding: 0.5rem; background: #ede9fe; border-radius: 8px;">
+                                    <span style="font-size: 0.75rem; color: #5b21b6;">👤 Assigned Team Lead: <strong>${request.selectedTeamLead}</strong></span>
+                                </div>
+                            ` : ''}
+                            
                             ${request.reason ? `
-                                <div style="margin-top: 1rem; padding: 0.75rem; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
-                                    <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.25rem;">Reason</div>
-                                    <p style="margin: 0; color: #4b5563;">${request.reason}</p>
+                                <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.25rem;">Reason</div>
+                                    <p style="margin: 0; color: #4b5563; font-size: 0.9rem;">${request.reason}</p>
                                 </div>
                             ` : ''}
-                            ${request.hrComment ? `
-                                <div style="margin-top: 0.75rem; padding: 0.75rem; background: ${status === 'approved' ? '#ecfdf5' : '#fef2f2'}; border-radius: 8px;">
-                                    <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.25rem;">HR Comment</div>
-                                    <p style="margin: 0; color: #4b5563;">${request.hrComment}</p>
+                            
+                            <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-radius: 8px;">
+                                <div style="font-size: 0.75rem; color: #0369a1; margin-bottom: 0.25rem;">
+                                    <strong>Approval Flow:</strong> ${flowInfo.flowDescription || 'Standard Approval'}
                                 </div>
-                            ` : ''}
+                                <div style="font-size: 0.75rem; color: #0369a1;">
+                                    <strong>Current Stage:</strong> ${currentStage} of ${totalStages}
+                                </div>
+                                ${progressHtml}
+                            </div>
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
-                            <span style="padding: 0.4rem 1rem; background: ${statusStyle.bg}; color: ${statusStyle.text}; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                                ${statusStyle.label}
-                            </span>
-                            ${status === 'pending' ? `
-                                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                                    <button class="btn btn-success btn-sm" onclick="approveLeaveRequest(${index})">✅ Approve</button>
-                                    <button class="btn btn-danger btn-sm" onclick="rejectLeaveRequest(${index})">❌ Reject</button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.8rem; color: #9ca3af;">
-                        Submitted: ${formatDate(request.submittedAt)} ${request.processedAt ? `| Processed: ${formatDate(request.processedAt)}` : ''}
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Show submit leave modal (for testing)
-        async function showSubmitLeaveModal() {
-            showLoading();
-            
-            // Fetch all users for the employee dropdown
-            let employeeOptions = '<option value="">Select Employee</option>';
-            try {
-                const roles = ['bdm', 'estimator', 'coo', 'director', 'designer', 'accounts', 'hr'];
-                const allUsers = [];
-                
-                for (const role of roles) {
-                    try {
-                        const response = await apiCall(`users?role=${role}`);
-                        if (response.success && response.data) {
-                            allUsers.push(...response.data.map(u => ({
-                                ...u,
-                                role: role
-                            })));
-                        }
-                    } catch (e) {
-                        console.log(`Could not fetch ${role} users`);
-                    }
-                }
-                
-                allUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                
-                employeeOptions += allUsers.map(user => 
-                    `<option value="${user.name || user.email}" data-email="${user.email || ''}" data-role="${user.role || ''}">${user.name || user.email} (${(user.role || '').toUpperCase()})</option>`
-                ).join('');
-                
-            } catch (error) {
-                console.error('Error fetching users:', error);
-            }
-            
-            hideLoading();
-            
-            const modalHtml = `
-                <div id="submitLeaveModal" class="modal" style="display: flex;">
-                    <div class="modal-content large">
-                        <span class="close-button" onclick="closeModal('submitLeaveModal')">&times;</span>
-                        <h2 style="margin-bottom: 1.5rem;">📝 Submit Leave Request</h2>
                         
-                        <form id="leaveRequestForm" onsubmit="submitLeaveRequest(event)">
-                            <div class="hr-form-section">
-                                <h4>👤 Employee Details</h4>
-                                <div class="form-group">
-                                    <label for="leaveEmployee">Select Employee *</label>
-                                    <select id="leaveEmployee" class="form-control" required onchange="onLeaveEmployeeSelect()">
-                                        ${employeeOptions}
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="leaveEmployeeName">Employee Name</label>
-                                    <input type="text" id="leaveEmployeeName" class="form-control" readonly>
-                                </div>
-                                <div class="form-group">
-                                    <label for="leaveDepartment">Department</label>
-                                    <input type="text" id="leaveDepartment" class="form-control" readonly>
-                                </div>
-                            </div>
-                            
-                            <div class="hr-form-section">
-                                <h4>📅 Leave Details</h4>
-                                <div class="form-group">
-                                    <label for="leaveType">Leave Type *</label>
-                                    <select id="leaveType" class="form-control" required>
-                                        <option value="">Select Leave Type</option>
-                                        <option value="Annual Leave">Annual Leave</option>
-                                        <option value="Sick Leave">Sick Leave</option>
-                                        <option value="Casual Leave">Casual Leave</option>
-                                        <option value="Maternity Leave">Maternity Leave</option>
-                                        <option value="Paternity Leave">Paternity Leave</option>
-                                        <option value="Unpaid Leave">Unpaid Leave</option>
-                                        <option value="Compensatory Off">Compensatory Off</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group">
-                                        <label for="leaveFromDate">From Date *</label>
-                                        <input type="date" id="leaveFromDate" class="form-control" required onchange="calculateLeaveDays()">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="leaveToDate">To Date *</label>
-                                        <input type="date" id="leaveToDate" class="form-control" required onchange="calculateLeaveDays()">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="leaveTotalDays">Total Days</label>
-                                    <input type="number" id="leaveTotalDays" class="form-control" readonly value="1">
-                                </div>
-                            </div>
-                            
-                            <div class="hr-form-section">
-                                <h4>💬 Reason</h4>
-                                <div class="form-group">
-                                    <label for="leaveReason">Reason for Leave</label>
-                                    <textarea id="leaveReason" class="form-control" rows="3" placeholder="Enter reason for leave request..."></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="modal-actions" style="margin-top: 1.5rem;">
-                                <button type="button" class="btn btn-outline" onclick="closeModal('submitLeaveModal')">Cancel</button>
-                                <button type="submit" class="btn btn-primary">📤 Submit Request</button>
-                            </div>
-                        </form>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 130px;">
+                            <button class="btn btn-success" onclick="approveLeaveRequest(${index})" style="padding: 0.75rem 1.5rem;">
+                                ✅ Approve
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectLeaveRequest(${index})" style="padding: 0.75rem 1.5rem;">
+                                ❌ Reject
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.8rem; color: #9ca3af;">
+                        Submitted: ${formatDate(request.submittedAt)} by ${request.submittedBy || 'Unknown'}
                     </div>
                 </div>
             `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Set default dates
-            const today = new Date();
-            document.getElementById('leaveFromDate').valueAsDate = today;
-            document.getElementById('leaveToDate').valueAsDate = today;
         }
         
-        // Handle employee selection in leave form
-        function onLeaveEmployeeSelect() {
-            const select = document.getElementById('leaveEmployee');
-            const selectedOption = select.options[select.selectedIndex];
-            const name = select.value;
-            const role = selectedOption.dataset.role || '';
-            
-            document.getElementById('leaveEmployeeName').value = name;
-            
-            const deptMap = {
-                'designer': 'Design',
-                'estimator': 'Estimation',
-                'bdm': 'Business Development',
-                'accounts': 'Accounts',
-                'hr': 'Human Resources',
-                'coo': 'Management',
-                'director': 'Management'
+        // Render leave history card (approved/rejected - no buttons)
+        function renderLeaveHistoryCard(request, status) {
+            const statusStyles = {
+                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved' },
+                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected' }
             };
+            const style = statusStyles[status] || statusStyles.approved;
             
-            document.getElementById('leaveDepartment').value = deptMap[role] || '';
-        }
-        
-        // Calculate leave days
-        function calculateLeaveDays() {
-            const fromDate = document.getElementById('leaveFromDate').value;
-            const toDate = document.getElementById('leaveToDate').value;
-            
-            if (fromDate && toDate) {
-                const from = new Date(fromDate);
-                const to = new Date(toDate);
-                const diffTime = Math.abs(to - from);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                document.getElementById('leaveTotalDays').value = diffDays > 0 ? diffDays : 1;
-            }
-        }
-        
-        // Submit leave request
-        function submitLeaveRequest(event) {
-            event.preventDefault();
-            
-            const request = {
-                id: Date.now(),
-                employeeName: document.getElementById('leaveEmployeeName').value,
-                department: document.getElementById('leaveDepartment').value,
-                leaveType: document.getElementById('leaveType').value,
-                fromDate: document.getElementById('leaveFromDate').value,
-                toDate: document.getElementById('leaveToDate').value,
-                totalDays: parseInt(document.getElementById('leaveTotalDays').value) || 1,
-                reason: document.getElementById('leaveReason').value,
-                status: 'pending',
-                submittedAt: new Date().toISOString(),
-                submittedBy: currentUser ? currentUser.email : 'System'
-            };
-            
-            loadLeaveRequests();
-            leaveRequests.push(request);
-            saveLeaveRequests();
-            
-            closeModal('submitLeaveModal');
-            showHRLeaveApproval();
-            updateHRLeaveRequestsBadge();
-            
-            alert('✅ Leave request submitted successfully!');
+            return `
+                <div style="background: white; margin-bottom: 0.75rem; border-radius: 10px; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                ${(request.employeeName || 'E')[0].toUpperCase()}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937;">${request.employeeName || 'Employee'}</div>
+                                <div style="font-size: 0.8rem; color: #6b7280;">${request.leaveType} • ${request.totalDays} day${request.totalDays > 1 ? 's' : ''}</div>
+                            </div>
+                        </div>
+                        <span style="padding: 0.35rem 0.75rem; background: ${style.bg}; color: ${style.text}; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                            ${style.label}
+                        </span>
+                    </div>
+                    ${request.hrComment ? `
+                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: ${style.bg}40; border-radius: 6px; font-size: 0.85rem; color: #4b5563;">
+                            💬 ${request.hrComment}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
         }
         
         // Approve leave request
         function approveLeaveRequest(index) {
-            const comment = prompt('Add a comment (optional):');
+            const comment = prompt('Add an approval comment (optional):');
             
             loadLeaveRequests();
             if (leaveRequests[index]) {
-                leaveRequests[index].status = 'approved';
-                leaveRequests[index].hrComment = comment || '';
-                leaveRequests[index].processedAt = new Date().toISOString();
-                leaveRequests[index].processedBy = currentUser ? currentUser.email : 'HR';
-                saveLeaveRequests();
+                const request = leaveRequests[index];
+                const flowInfo = request.approvalFlow || {};
+                const currentStage = request.currentStage || 1;
+                const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
                 
+                request['stage' + currentStage + 'Status'] = 'approved';
+                request['stage' + currentStage + 'ApprovedAt'] = new Date().toISOString();
+                request['stage' + currentStage + 'ApprovedBy'] = currentUser?.email || 'Approver';
+                request['stage' + currentStage + 'ApprovedByName'] = currentUser?.name || currentUser?.email || 'Approver';
+                if (comment) {
+                    request['stage' + currentStage + 'Comments'] = comment;
+                }
+                
+                if (currentStage >= totalStages) {
+                    request.status = 'approved';
+                    request.currentStage = totalStages + 1;
+                    request.hrComment = comment || (request.hrComment || 'Approved');
+                } else {
+                    request.currentStage = currentStage + 1;
+                }
+                
+                request.processedAt = new Date().toISOString();
+                request.processedBy = currentUser?.email || 'Approver';
+                
+                saveLeaveRequests();
                 showHRLeaveApproval();
                 updateHRLeaveRequestsBadge();
                 
-                alert('✅ Leave request approved!');
+                if (currentStage >= totalStages) {
+                    alert('✅ Leave request FULLY APPROVED!');
+                } else {
+                    alert('✅ Approved! Forwarded to Stage ' + (currentStage + 1));
+                }
             }
         }
         
         // Reject leave request
         function rejectLeaveRequest(index) {
-            const comment = prompt('Reason for rejection:');
+            const comment = prompt('Please provide a reason for rejection:');
             
             if (!comment) {
-                alert('Please provide a reason for rejection.');
+                alert('⚠️ A rejection reason is required.');
                 return;
             }
             
             loadLeaveRequests();
             if (leaveRequests[index]) {
-                leaveRequests[index].status = 'rejected';
-                leaveRequests[index].hrComment = comment;
-                leaveRequests[index].processedAt = new Date().toISOString();
-                leaveRequests[index].processedBy = currentUser ? currentUser.email : 'HR';
-                saveLeaveRequests();
+                const request = leaveRequests[index];
+                const currentStage = request.currentStage || 1;
                 
+                request['stage' + currentStage + 'Status'] = 'rejected';
+                request['stage' + currentStage + 'Comments'] = comment;
+                request['stage' + currentStage + 'RejectedAt'] = new Date().toISOString();
+                request['stage' + currentStage + 'RejectedBy'] = currentUser?.email || 'Approver';
+                
+                request.status = 'rejected';
+                request.hrComment = comment;
+                request.processedAt = new Date().toISOString();
+                request.processedBy = currentUser?.email || 'Approver';
+                request.currentStage = 0;
+                
+                saveLeaveRequests();
                 showHRLeaveApproval();
                 updateHRLeaveRequestsBadge();
                 
@@ -15432,8 +15567,6 @@ async function markProjectComplete(projectId) {
         // ============================================
         // EMPLOYEE LEAVE REQUEST PAGE
         // ============================================
-        
-        // Show Employee Leave Request page (for all employees except HR/Management)
         async function showEmployeeLeaveRequest() {
             setActiveNav('nav-employee-leave');
             const main = document.getElementById('mainContent');
@@ -15443,18 +15576,18 @@ async function markProjectComplete(projectId) {
             try {
                 loadLeaveRequests();
                 
-                // Get current user's leave requests
                 const myEmail = currentUser ? currentUser.email : '';
                 const myRequests = leaveRequests.filter(r => r.submittedBy === myEmail);
                 const pendingCount = myRequests.filter(r => r.status === 'pending').length;
                 const approvedCount = myRequests.filter(r => r.status === 'approved').length;
                 const rejectedCount = myRequests.filter(r => r.status === 'rejected').length;
                 
-                // Get user name and department
-                let userName = currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'Employee';
+                const userRole = currentUser?.role || '';
+                const flowInfo = getApprovalFlowInfo(userRole, myEmail);
+                
+                let userName = currentUser ? (currentUser.displayName || currentUser.name || currentUser.email.split('@')[0]) : 'Employee';
                 let userDept = '';
                 
-                // Try to get user details from Firestore
                 if (currentUser && typeof db !== 'undefined') {
                     try {
                         const userDoc = await db.collection('users').doc(currentUser.uid).get();
@@ -15468,7 +15601,9 @@ async function markProjectComplete(projectId) {
                                     'estimator': 'Estimation',
                                     'bdm': 'Business Development',
                                     'accounts': 'Accounts',
-                                    'hr': 'Human Resources'
+                                    'hr': 'Human Resources',
+                                    'coo': 'Management',
+                                    'director': 'Management'
                                 };
                                 userDept = deptMap[userData.role] || '';
                             }
@@ -15478,43 +15613,9 @@ async function markProjectComplete(projectId) {
                     }
                 }
                 
-                // Build my requests list
                 const myRequestsHtml = myRequests.length > 0 
                     ? myRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
-                        .map(req => {
-                            const statusColors = {
-                                pending: { bg: '#fef3c7', text: '#b45309', label: '⏳ Pending' },
-                                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved' },
-                                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected' }
-                            };
-                            const status = statusColors[req.status] || statusColors.pending;
-                            
-                            return `
-                                <div style="background: white; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid ${req.status === 'approved' ? '#10b981' : req.status === 'rejected' ? '#ef4444' : '#f59e0b'};">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-                                        <div>
-                                            <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">${req.leaveType || 'Leave'}</h4>
-                                            <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
-                                                📅 ${formatDate(req.fromDate)} - ${formatDate(req.toDate)} (${req.totalDays} day${req.totalDays > 1 ? 's' : ''})
-                                            </p>
-                                            ${req.reason ? `<p style="margin: 0.5rem 0 0 0; color: #4b5563; font-size: 0.9rem;">💬 ${req.reason}</p>` : ''}
-                                        </div>
-                                        <span style="padding: 0.4rem 1rem; background: ${status.bg}; color: ${status.text}; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                                            ${status.label}
-                                        </span>
-                                    </div>
-                                    ${req.hrComment ? `
-                                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: ${req.status === 'approved' ? '#ecfdf5' : '#fef2f2'}; border-radius: 8px;">
-                                            <small style="color: #6b7280;">HR Comment:</small>
-                                            <p style="margin: 0.25rem 0 0 0; color: #374151;">${req.hrComment}</p>
-                                        </div>
-                                    ` : ''}
-                                    <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #9ca3af;">
-                                        Submitted: ${formatDate(req.submittedAt)} ${req.processedAt ? `• Processed: ${formatDate(req.processedAt)}` : ''}
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')
+                        .map(req => renderMyLeaveRequestCard(req)).join('')
                     : `
                         <div style="text-align: center; padding: 3rem; background: white; border-radius: 12px; color: #6b7280;">
                             <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
@@ -15524,7 +15625,7 @@ async function markProjectComplete(projectId) {
                     `;
                 
                 main.innerHTML = `
-                    ${renderDashboardAnnouncements()}
+                    ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
                     
                     <div class="page-header">
                         <h2>🏖️ My Leave Requests</h2>
@@ -15536,6 +15637,9 @@ async function markProjectComplete(projectId) {
                             <div>
                                 <h3 style="margin: 0;">Hello, ${userName}! 👋</h3>
                                 <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Need time off? Submit your leave request below.</p>
+                                <p style="margin: 0.25rem 0 0 0; opacity: 0.8; font-size: 0.85rem;">
+                                    <strong>Your Approval Flow:</strong> ${flowInfo.flowDescription}
+                                </p>
                             </div>
                             <button class="btn" style="background: white; color: #667eea; font-weight: 600;" onclick="showEmployeeLeaveModal('${userName}', '${userDept}')">
                                 + Submit Leave Request
@@ -15572,22 +15676,114 @@ async function markProjectComplete(projectId) {
             }
         }
         
+        // Render my leave request card
+        function renderMyLeaveRequestCard(request) {
+            const statusColors = {
+                pending: { bg: '#fef3c7', text: '#b45309', label: '⏳ Pending', border: '#f59e0b' },
+                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved', border: '#10b981' },
+                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected', border: '#ef4444' }
+            };
+            const status = statusColors[request.status] || statusColors.pending;
+            const flowInfo = request.approvalFlow || {};
+            const currentStage = request.currentStage || 1;
+            
+            let progressHtml = '';
+            if (flowInfo.stages && flowInfo.stages.length > 0 && request.status === 'pending') {
+                progressHtml = '<div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.75rem;">';
+                flowInfo.stages.forEach((stage, idx) => {
+                    const stageNum = idx + 1;
+                    let bgColor = '#f3f4f6';
+                    let icon = '⏳';
+                    
+                    if (stageNum < currentStage) {
+                        bgColor = '#d1fae5';
+                        icon = '✅';
+                    } else if (stageNum === currentStage) {
+                        bgColor = '#dbeafe';
+                        icon = '🔄';
+                    }
+                    
+                    progressHtml += '<span style="background: ' + bgColor + '; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem;">' + icon + ' ' + stage + '</span>';
+                });
+                progressHtml += '</div>';
+            }
+            
+            return `
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid ${status.border};">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">${request.leaveType || 'Leave'}</h4>
+                            <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
+                                📅 ${formatDate(request.fromDate)} - ${formatDate(request.toDate)} (${request.totalDays} day${request.totalDays > 1 ? 's' : ''})
+                            </p>
+                            ${request.selectedTeamLead ? `
+                                <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.85rem;">
+                                    👤 Reporting to: <strong>${request.selectedTeamLead.split('@')[0]}</strong>
+                                </p>
+                            ` : ''}
+                            ${request.reason ? `<p style="margin: 0.5rem 0 0 0; color: #4b5563; font-size: 0.9rem;">💬 ${request.reason}</p>` : ''}
+                            ${progressHtml}
+                        </div>
+                        <span style="padding: 0.4rem 1rem; background: ${status.bg}; color: ${status.text}; border-radius: 20px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;">
+                            ${status.label}
+                        </span>
+                    </div>
+                    ${request.hrComment ? `
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: ${request.status === 'approved' ? '#ecfdf5' : '#fef2f2'}; border-radius: 8px;">
+                            <small style="color: #6b7280;">Comment:</small>
+                            <p style="margin: 0.25rem 0 0 0; color: #374151;">${request.hrComment}</p>
+                        </div>
+                    ` : ''}
+                    <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #9ca3af;">
+                        Submitted: ${formatDate(request.submittedAt)} ${request.processedAt ? '• Processed: ' + formatDate(request.processedAt) : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
         // Show Employee Leave Modal
         function showEmployeeLeaveModal(userName, userDept) {
+            const userRole = (currentUser?.role || '').toLowerCase();
+            const userEmail = currentUser?.email || '';
+            const flowInfo = getApprovalFlowInfo(userRole, userEmail);
+            
+            let teamLeadDropdown = '';
+            if (flowInfo.requiresTeamLeadSelection) {
+                teamLeadDropdown = `
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="empLeaveTeamLead" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Select Reporting Team Lead <span style="color: #ef4444;">*</span>
+                        </label>
+                        <select id="empLeaveTeamLead" class="form-control" required>
+                            <option value="">-- Select Your Team Lead --</option>
+                            ${DESIGNER_TEAM_LEADS.map(tl => '<option value="' + tl.email + '">' + tl.name + ' (' + tl.email + ')</option>').join('')}
+                        </select>
+                        <small style="color: #6b7280; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                            Your leave request will be sent to this team lead for approval
+                        </small>
+                    </div>
+                `;
+            }
+            
             const modalHtml = `
                 <div id="employeeLeaveModal" class="modal" style="display: flex;">
                     <div class="modal-content large">
                         <span class="close-button" onclick="closeModal('employeeLeaveModal')">&times;</span>
-                        <h2 style="margin-bottom: 1.5rem;">🏖️ Submit Leave Request</h2>
+                        <h2 style="margin-bottom: 0.5rem;">🏖️ Submit Leave Request</h2>
+                        <p style="color: #6b7280; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                            <strong>Approval Flow:</strong> ${flowInfo.flowDescription}
+                        </p>
                         
                         <form id="employeeLeaveForm" onsubmit="submitEmployeeLeave(event)">
                             <input type="hidden" id="empLeaveName" value="${userName || ''}">
                             <input type="hidden" id="empLeaveDept" value="${userDept || ''}">
                             
-                            <div class="hr-form-section">
-                                <h4>📅 Leave Details</h4>
+                            ${teamLeadDropdown}
+                            
+                            <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0;">📅 Leave Details</h4>
                                 <div class="form-group">
-                                    <label for="empLeaveType">Leave Type *</label>
+                                    <label for="empLeaveType">Leave Type <span style="color: #ef4444;">*</span></label>
                                     <select id="empLeaveType" class="form-control" required>
                                         <option value="">Select Leave Type</option>
                                         <option value="Annual Leave">Annual Leave</option>
@@ -15595,6 +15791,7 @@ async function markProjectComplete(projectId) {
                                         <option value="Casual Leave">Casual Leave</option>
                                         <option value="Maternity Leave">Maternity Leave</option>
                                         <option value="Paternity Leave">Paternity Leave</option>
+                                        <option value="Emergency Leave">Emergency Leave</option>
                                         <option value="Compensatory Off">Compensatory Off</option>
                                         <option value="Unpaid Leave">Unpaid Leave</option>
                                         <option value="Other">Other</option>
@@ -15602,29 +15799,39 @@ async function markProjectComplete(projectId) {
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
-                                        <label for="empLeaveFromDate">From Date *</label>
+                                        <label for="empLeaveFromDate">From Date <span style="color: #ef4444;">*</span></label>
                                         <input type="date" id="empLeaveFromDate" class="form-control" required onchange="calculateEmpLeaveDays()">
                                     </div>
                                     <div class="form-group">
-                                        <label for="empLeaveToDate">To Date *</label>
+                                        <label for="empLeaveToDate">To Date <span style="color: #ef4444;">*</span></label>
                                         <input type="date" id="empLeaveToDate" class="form-control" required onchange="calculateEmpLeaveDays()">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="empLeaveTotalDays">Total Days</label>
-                                    <input type="number" id="empLeaveTotalDays" class="form-control" readonly value="1" style="background: #f3f4f6;">
+                                    <input type="number" id="empLeaveTotalDays" class="form-control" readonly value="1" style="background: #e5e7eb;">
                                 </div>
                             </div>
                             
-                            <div class="hr-form-section">
-                                <h4>💬 Reason</h4>
+                            <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0;">💬 Reason & Contact</h4>
                                 <div class="form-group">
-                                    <label for="empLeaveReason">Reason for Leave *</label>
+                                    <label for="empLeaveReason">Reason for Leave <span style="color: #ef4444;">*</span></label>
                                     <textarea id="empLeaveReason" class="form-control" rows="3" required placeholder="Please provide a reason for your leave request..."></textarea>
                                 </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="empEmergencyContact">Emergency Contact Name</label>
+                                        <input type="text" id="empEmergencyContact" class="form-control" placeholder="Contact person name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="empEmergencyPhone">Emergency Phone</label>
+                                        <input type="tel" id="empEmergencyPhone" class="form-control" placeholder="Phone number">
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div class="modal-actions" style="margin-top: 1.5rem;">
+                            <div class="modal-actions" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
                                 <button type="button" class="btn btn-outline" onclick="closeModal('employeeLeaveModal')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">📤 Submit Request</button>
                             </div>
@@ -15635,7 +15842,6 @@ async function markProjectComplete(projectId) {
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
-            // Set default dates
             const today = new Date();
             document.getElementById('empLeaveFromDate').valueAsDate = today;
             document.getElementById('empLeaveToDate').valueAsDate = today;
@@ -15659,8 +15865,24 @@ async function markProjectComplete(projectId) {
         function submitEmployeeLeave(event) {
             event.preventDefault();
             
+            const userRole = (currentUser?.role || '').toLowerCase();
+            const userEmail = currentUser?.email || '';
+            const flowInfo = getApprovalFlowInfo(userRole, userEmail);
+            
+            let selectedTeamLead = null;
+            if (flowInfo.requiresTeamLeadSelection) {
+                const teamLeadSelect = document.getElementById('empLeaveTeamLead');
+                if (teamLeadSelect) {
+                    selectedTeamLead = teamLeadSelect.value;
+                    if (!selectedTeamLead) {
+                        alert('⚠️ Please select your reporting Team Lead');
+                        return;
+                    }
+                }
+            }
+            
             const request = {
-                id: Date.now(),
+                id: 'leave_' + Date.now(),
                 employeeName: document.getElementById('empLeaveName').value || (currentUser ? currentUser.email.split('@')[0] : 'Employee'),
                 department: document.getElementById('empLeaveDept').value || '',
                 leaveType: document.getElementById('empLeaveType').value,
@@ -15668,9 +15890,17 @@ async function markProjectComplete(projectId) {
                 toDate: document.getElementById('empLeaveToDate').value,
                 totalDays: parseInt(document.getElementById('empLeaveTotalDays').value) || 1,
                 reason: document.getElementById('empLeaveReason').value,
+                emergencyContact: document.getElementById('empEmergencyContact')?.value || '',
+                emergencyPhone: document.getElementById('empEmergencyPhone')?.value || '',
+                selectedTeamLead: selectedTeamLead,
                 status: 'pending',
+                currentStage: 1,
                 submittedAt: new Date().toISOString(),
-                submittedBy: currentUser ? currentUser.email : 'Anonymous'
+                submittedBy: currentUser ? currentUser.email : 'Anonymous',
+                approvalFlow: flowInfo,
+                stage1Status: 'pending',
+                stage2Status: flowInfo.totalStages >= 2 ? 'pending' : 'not_required',
+                stage3Status: flowInfo.totalStages >= 3 ? 'pending' : 'not_required'
             };
             
             loadLeaveRequests();
@@ -15681,24 +15911,27 @@ async function markProjectComplete(projectId) {
             showEmployeeLeaveRequest();
             updateHRLeaveRequestsBadge();
             
-            alert('✅ Leave request submitted successfully! HR will review your request.');
+            let confirmMsg = '✅ Leave request submitted successfully!\n\n';
+            if (selectedTeamLead) {
+                confirmMsg += 'Your request has been sent to ' + selectedTeamLead.split('@')[0] + ' for approval.';
+            } else {
+                confirmMsg += 'Your request is pending approval.';
+            }
+            alert(confirmMsg);
         }
         
-        // Make Employee Leave functions globally accessible
+        // Make functions globally accessible
         window.showEmployeeLeaveRequest = showEmployeeLeaveRequest;
         window.showEmployeeLeaveModal = showEmployeeLeaveModal;
         window.calculateEmpLeaveDays = calculateEmpLeaveDays;
         window.submitEmployeeLeave = submitEmployeeLeave;
-        
-        // Make Leave Approval functions globally accessible
         window.showHRLeaveApproval = showHRLeaveApproval;
-        window.showSubmitLeaveModal = showSubmitLeaveModal;
-        window.onLeaveEmployeeSelect = onLeaveEmployeeSelect;
-        window.calculateLeaveDays = calculateLeaveDays;
-        window.submitLeaveRequest = submitLeaveRequest;
         window.approveLeaveRequest = approveLeaveRequest;
         window.rejectLeaveRequest = rejectLeaveRequest;
         window.updateHRLeaveRequestsBadge = updateHRLeaveRequestsBadge;
+        window.updateLeaveNavigation = updateLeaveNavigation;
+        window.isCurrentUserTeamLead = isCurrentUserTeamLead;
+        window.DESIGNER_TEAM_LEADS = DESIGNER_TEAM_LEADS;
 
         // ============================================
         // DIAGNOSTICS

@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 4.8.0 - Cache Version 32 (Designer Analytics Complete - Director HR Designer Self-View)
+// Version: 5.0.0 - Cache Version 33 (Multi-Level Leave Approval System)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v32';
-const STATIC_CACHE = 'ebtracker-static-v32';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v32';
+const CACHE_NAME = 'ebtracker-v33';
+const STATIC_CACHE = 'ebtracker-static-v33';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v33';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v32: Installing...');
+  console.log('🔧 Service Worker v33: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v32: Caching static assets');
+        console.log('📦 Service Worker v33: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v32: Static assets cached');
+        console.log('✅ Service Worker v33: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v32: Cache failed', error);
+        console.error('❌ Service Worker v33: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v32: Activating...');
+  console.log('🚀 Service Worker v33: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v32: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v33: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v32: Activated - Old caches cleared');
+        console.log('✅ Service Worker v33: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,12 +78,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v32: Notifying clients to refresh');
+        console.log('📢 Service Worker v33: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v32',
-            message: 'New version available with Designer Weekly Hours Analytics! Please refresh.'
+            version: 'v33',
+            message: 'New version available with Multi-Level Leave Approval System! Please refresh.'
           });
         });
       })
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v32', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v33', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -445,13 +445,21 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-announcements') {
     event.waitUntil(syncAnnouncements());
   }
+  
+  if (event.tag === 'sync-leave-requests') {
+    event.waitUntil(syncLeaveRequests());
+  }
 });
 
 // Sync announcements when back online
 async function syncAnnouncements() {
   console.log('📢 Syncing announcements...');
-  // This would sync localStorage announcements to a backend if needed
-  // For now, announcements are stored locally
+  return Promise.resolve();
+}
+
+// Sync leave requests when back online
+async function syncLeaveRequests() {
+  console.log('🏖️ Syncing leave requests...');
   return Promise.resolve();
 }
 
@@ -466,4 +474,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v32: Loaded successfully - Designer Weekly Hours Analytics enabled');
+console.log('✅ Service Worker v33: Loaded successfully - Multi-Level Leave Approval System enabled');

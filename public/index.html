@@ -6487,13 +6487,42 @@ body.is-ios .nav-menu {
             // Hide Activities from HR (HR has their own dashboard)
             setDisplay('activitiesNavItem', !isHR);
             
-            // Leave Approval visible ONLY to HR, COO, Director
-            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck);
+            // Check if current user is a Team Lead (Designer Team Leads - 5 Total)
+            // These 5 emails are the ONLY team leads who can approve designer leaves
+            const TEAM_LEAD_EMAILS_NAV = [
+                'kathar.tech@edanbrook.in',
+                'muruganantham.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'meeraj.tech@edanbrook.in'
+            ];
+            
+            const userEmailLower = (currentUser?.email || '').toLowerCase().trim();
+            
+            // Simple check: is this email in the team lead list?
+            const isTeamLead = TEAM_LEAD_EMAILS_NAV.includes(userEmailLower);
+            
+            console.log('==========================================');
+            console.log('🔍 NAVIGATION DEBUG');
+            console.log('==========================================');
+            console.log('👤 User Email (lowercase):', userEmailLower);
+            console.log('👤 Role from Firestore:', roleForCheck);
+            console.log('👤 Is HR:', isHR);
+            console.log('👤 Is Team Lead:', isTeamLead);
+            console.log('📋 Team Lead Emails:', TEAM_LEAD_EMAILS_NAV);
+            console.log('🔍 Email in list?', TEAM_LEAD_EMAILS_NAV.includes(userEmailLower));
+            
+            // Leave Approval visible to HR, COO, Director, AND Team Leads
+            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck) || isTeamLead;
+            console.log('✅ Can Approve Leave:', canApproveLeave);
             setDisplay('hrLeaveApprovalNavItem', canApproveLeave);
             
-            // Show Leave Request for all roles EXCEPT HR, COO, Director (they have Leave Approval)
+            // Show Leave Request for all roles EXCEPT HR, COO, Director
+            // Note: Team Leads CAN submit their own leave requests (they see both menus)
             const showLeaveRequest = !isHR && !['coo', 'director'].includes(roleForCheck);
+            console.log('✅ Show Leave Request Menu:', showLeaveRequest);
             setDisplay('employeeLeaveRequestNavItem', showLeaveRequest);
+            console.log('==========================================');
             
             // Update badge for Director
             if (currentUserRole === 'director') {
@@ -15060,13 +15089,73 @@ async function markProjectComplete(projectId) {
         // Version 5.0.0
         // ============================================
         
-        // DESIGNER TEAM LEADS - These emails can approve designer leave requests
+        // DESIGNER TEAM LEADS - These emails can approve designer leave requests (5 Team Leads)
         const DESIGNER_TEAM_LEADS = [
-            { email: 'muruganantham.tech@edanbrook.in', name: 'Muruganantham' },
-            { email: 'aravindhan.tech@edanbrook.in', name: 'Aravindhan' },
-            { email: 'sathish.tech@edanbrook.in', name: 'Sathish' },
-            { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj' }
+            { email: 'kathar.tech@edanbrook.in', name: 'Kathar', namePrefix: 'kathar' },
+            { email: 'muruganantham.tech@edanbrook.in', name: 'Muruganantham', namePrefix: 'muruganantham' },
+            { email: 'aravindhan.tech@edanbrook.in', name: 'Aravindhan', namePrefix: 'aravindhan' },
+            { email: 'sathish.tech@edanbrook.in', name: 'Sathish', namePrefix: 'sathish' },
+            { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj', namePrefix: 'meeraj' }
         ];
+        
+        // All possible team lead email formats
+        const TEAM_LEAD_EMAIL_PATTERNS = [
+            'kathar.tech@edanbrook.in', 'kathar.p@edanbrook.in', 'kathar@edanbrook.in',
+            'muruganantham.tech@edanbrook.in', 'muruganantham.p@edanbrook.in', 'muruganantham@edanbrook.in',
+            'aravindhan.tech@edanbrook.in', 'aravindhan.p@edanbrook.in', 'aravindhan@edanbrook.in',
+            'sathish.tech@edanbrook.in', 'sathish.p@edanbrook.in', 'sathish@edanbrook.in',
+            'meeraj.tech@edanbrook.in', 'meeraj.p@edanbrook.in', 'meeraj@edanbrook.in'
+        ];
+        
+        const TEAM_LEAD_NAME_PREFIXES = ['kathar', 'muruganantham', 'aravindhan', 'sathish', 'meeraj'];
+        
+        // Helper function to check if an email belongs to a team lead
+        function isEmailTeamLead(email) {
+            if (!email) {
+                console.log('❌ isEmailTeamLead: No email provided');
+                return false;
+            }
+            const emailLower = email.toLowerCase().trim();
+            
+            // Direct check against the 5 team lead emails
+            const TEAM_LEAD_EMAILS_CHECK = [
+                'kathar.tech@edanbrook.in',
+                'muruganantham.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'meeraj.tech@edanbrook.in'
+            ];
+            
+            const isMatch = TEAM_LEAD_EMAILS_CHECK.includes(emailLower);
+            console.log('🔍 isEmailTeamLead:', emailLower, '→', isMatch ? '✅ YES' : '❌ NO');
+            return isMatch;
+        }
+        
+        // Helper function to check if two emails belong to the same team lead person
+        function isSameTeamLead(loggedInEmail, assignedEmail) {
+            if (!loggedInEmail || !assignedEmail) {
+                console.log('❌ isSameTeamLead: Missing email - loggedIn:', loggedInEmail, 'assigned:', assignedEmail);
+                return false;
+            }
+            
+            const email1 = loggedInEmail.toLowerCase().trim();
+            const email2 = assignedEmail.toLowerCase().trim();
+            
+            // Direct match
+            if (email1 === email2) {
+                console.log('✅ isSameTeamLead: Direct match!', email1);
+                return true;
+            }
+            
+            // Extract first name (before . or @)
+            const getName = (email) => email.split('@')[0].split('.')[0];
+            const name1 = getName(email1);
+            const name2 = getName(email2);
+            
+            const isMatch = name1 === name2;
+            console.log('🔍 isSameTeamLead:', email1, 'vs', email2, '→ names:', name1, 'vs', name2, '→', isMatch ? '✅ MATCH' : '❌ NO MATCH');
+            return isMatch;
+        }
         
         // Get user role with email fallback detection
         // PRIORITY: Email patterns first for key roles, then Firestore
@@ -15094,9 +15183,8 @@ async function markProjectComplete(projectId) {
             }
             
             // PRIORITY 4: Check if Team Lead email (before general designer check)
-            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === email);
-            if (isTeamLead) {
-                console.log('🎯 Role = DESIGNER/TEAM_LEAD (from team lead list)');
+            if (isEmailTeamLead(email)) {
+                console.log('🎯 Role = DESIGNER/TEAM_LEAD (from team lead check)');
                 return 'designer';
             }
             
@@ -15144,20 +15232,45 @@ async function markProjectComplete(projectId) {
         function loadLeaveRequests() {
             const stored = localStorage.getItem('leaveRequests');
             leaveRequests = stored ? JSON.parse(stored) : [];
+            console.log('📂 Loaded', leaveRequests.length, 'leave requests from localStorage');
             return leaveRequests;
         }
         
         // Save leave requests to localStorage
         function saveLeaveRequests() {
             localStorage.setItem('leaveRequests', JSON.stringify(leaveRequests));
+            console.log('💾 Saved', leaveRequests.length, 'leave requests to localStorage');
         }
+        
+        // DEBUG: View all leave requests in console
+        function debugLeaveRequests() {
+            loadLeaveRequests();
+            console.log('==========================================');
+            console.log('🔍 DEBUG: All Leave Requests in localStorage');
+            console.log('==========================================');
+            if (leaveRequests.length === 0) {
+                console.log('⚠️ No leave requests found in localStorage');
+            } else {
+                leaveRequests.forEach((req, idx) => {
+                    console.log(`\n📝 Request #${idx + 1}:`);
+                    console.log('   ID:', req.id);
+                    console.log('   Employee:', req.employeeName);
+                    console.log('   Status:', req.status);
+                    console.log('   Current Stage:', req.currentStage);
+                    console.log('   Flow Type:', req.approvalFlow?.flowType);
+                    console.log('   Selected Team Lead:', req.selectedTeamLead);
+                    console.log('   Submitted By:', req.submittedBy);
+                });
+            }
+            console.log('==========================================');
+            return leaveRequests;
+        }
+        window.debugLeaveRequests = debugLeaveRequests;
         
         // Check if current user is a Team Lead
         function isCurrentUserTeamLead() {
             if (!currentUser || !currentUser.email) return false;
-            return DESIGNER_TEAM_LEADS.some(tl => 
-                tl.email.toLowerCase() === currentUser.email.toLowerCase()
-            );
+            return isEmailTeamLead(currentUser.email);
         }
         
         // Get approval flow info based on role and email
@@ -15165,8 +15278,8 @@ async function markProjectComplete(projectId) {
             const emailLower = (userEmail || '').toLowerCase();
             const role = (userRole || '').toLowerCase();
             
-            // Check if user is one of the 4 team lead emails (they are designers)
-            const isTeamLeadEmail = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === emailLower);
+            // Check if user is a team lead using flexible matching
+            const isTeamLeadEmail = isEmailTeamLead(emailLower);
             
             switch (role) {
                 case 'bdm':
@@ -15180,14 +15293,26 @@ async function markProjectComplete(projectId) {
                         requiresTeamLeadSelection: false
                     };
                 case 'designer':
-                    // All designers (including team lead emails) go through COO → HR
-                    return {
-                        flowType: 'designer_flow',
-                        flowDescription: 'Your Leave → COO → HR',
-                        stages: ['COO Approval', 'HR Approval'],
-                        totalStages: 2,
-                        requiresTeamLeadSelection: false
-                    };
+                    // Check if this designer is a team lead
+                    if (isTeamLeadEmail) {
+                        // Team leads don't select another team lead - they go direct to COO → HR
+                        return {
+                            flowType: 'teamlead_flow',
+                            flowDescription: 'Your Leave → COO → HR',
+                            stages: ['COO Approval', 'HR Approval'],
+                            totalStages: 2,
+                            requiresTeamLeadSelection: false
+                        };
+                    } else {
+                        // Regular designers select a team lead first
+                        return {
+                            flowType: 'designer_flow',
+                            flowDescription: 'Your Leave → Team Lead → HR → COO',
+                            stages: ['Team Lead Approval', 'HR Approval', 'COO Approval'],
+                            totalStages: 3,
+                            requiresTeamLeadSelection: true
+                        };
+                    }
                 case 'hr':
                     return {
                         flowType: 'hr_flow',
@@ -15228,7 +15353,7 @@ async function markProjectComplete(projectId) {
             loadLeaveRequests();
             const userRole = getUserRoleWithFallback();
             const userEmail = (currentUser?.email || '').toLowerCase();
-            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+            const isTeamLead = isEmailTeamLead(userEmail);
             
             console.log('🔍 getPendingCountForUser - Role:', userRole, 'Email:', userEmail, 'IsTeamLead:', isTeamLead);
             console.log('📋 Total leave requests in localStorage:', leaveRequests.length);
@@ -15243,8 +15368,8 @@ async function markProjectComplete(projectId) {
                 
                 // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
                 if (isTeamLead && flow === 'designer_flow' && stage === 1) {
-                    // Check if this request is assigned to THIS team lead
-                    if (assignedTeamLead === userEmail || assignedTeamLead.startsWith(userEmail.split('@')[0])) {
+                    // Check if this request is assigned to THIS team lead using flexible matching
+                    if (isSameTeamLead(userEmail, assignedTeamLead)) {
                         console.log('✅ Badge count: Team Lead match for request', req.id);
                         count++;
                     }
@@ -15294,13 +15419,16 @@ async function markProjectComplete(projectId) {
         function updateLeaveNavigation() {
             const userRole = getUserRoleWithFallback();
             const userEmail = (currentUser?.email || '').toLowerCase();
-            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+            const isTeamLead = isEmailTeamLead(userEmail);
+            
+            console.log('🔍 updateLeaveNavigation - Email:', userEmail, 'Role:', userRole, 'IsTeamLead:', isTeamLead);
             
             // HR, COO, Director, AND Team Leads can approve leaves
             const canApproveLeave = ['hr', 'coo', 'director'].includes(userRole) || isTeamLead;
             const approvalNav = document.getElementById('hrLeaveApprovalNavItem');
             if (approvalNav) {
                 approvalNav.style.display = canApproveLeave ? 'block' : 'none';
+                console.log('🔍 Leave Approval Nav visibility:', canApproveLeave ? 'VISIBLE' : 'HIDDEN');
             }
             
             // Everyone except HR, COO, Director can submit leave requests
@@ -15328,10 +15456,16 @@ async function markProjectComplete(projectId) {
                 
                 const userRole = getUserRoleWithFallback();
                 const userEmail = (currentUser?.email || '').toLowerCase();
-                const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+                const isTeamLead = isEmailTeamLead(userEmail);
                 
-                console.log('🔍 showHRLeaveApproval - Role:', userRole, 'Email:', userEmail, 'IsTeamLead:', isTeamLead);
-                console.log('📋 Leave requests loaded:', leaveRequests.length);
+                console.log('==========================================');
+                console.log('🔍 showHRLeaveApproval DEBUG');
+                console.log('==========================================');
+                console.log('👤 Current User Email:', userEmail);
+                console.log('👤 Current User Role:', userRole);
+                console.log('👤 Is Team Lead:', isTeamLead);
+                console.log('📋 Total Leave requests:', leaveRequests.length);
+                console.log('📋 Leave requests:', JSON.stringify(leaveRequests, null, 2));
                 
                 let pendingRequests = [];
                 let approvalTitle = '📋 Leave Approval Dashboard';
@@ -15347,8 +15481,8 @@ async function markProjectComplete(projectId) {
                     
                     // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
                     if (isTeamLead && flow === 'designer_flow' && stage === 1) {
-                        // Check if this request is assigned to THIS team lead
-                        if (assignedTeamLead === userEmail || assignedTeamLead.startsWith(userEmail.split('@')[0])) {
+                        // Check if this request is assigned to THIS team lead using flexible matching
+                        if (isSameTeamLead(userEmail, assignedTeamLead)) {
                             console.log('✅ Matched for Team Lead approval (designer flow stage 1)');
                             pendingRequests.push({...req, myApprovalStage: 1, myRole: 'teamlead'});
                         }
@@ -16076,6 +16210,8 @@ async function markProjectComplete(projectId) {
         window.updateHRLeaveRequestsBadge = updateHRLeaveRequestsBadge;
         window.updateLeaveNavigation = updateLeaveNavigation;
         window.isCurrentUserTeamLead = isCurrentUserTeamLead;
+        window.isEmailTeamLead = isEmailTeamLead;
+        window.isSameTeamLead = isSameTeamLead;
         window.DESIGNER_TEAM_LEADS = DESIGNER_TEAM_LEADS;
 
         // ============================================

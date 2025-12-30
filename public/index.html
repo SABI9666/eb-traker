@@ -6487,22 +6487,11 @@ body.is-ios .nav-menu {
             // Hide Activities from HR (HR has their own dashboard)
             setDisplay('activitiesNavItem', !isHR);
             
-            // Check if user is a Team Lead (Designer Team Leads)
-            const TEAM_LEAD_EMAILS = [
-                'muruganantham.tech@edanbrook.in',
-                'aravindhan.tech@edanbrook.in',
-                'sathish.tech@edanbrook.in',
-                'meeraj.tech@edanbrook.in'
-            ];
-            const isTeamLead = currentUser && currentUser.email && 
-                TEAM_LEAD_EMAILS.some(tl => tl.toLowerCase() === currentUser.email.toLowerCase());
-            
-            // Leave Approval visible to HR, COO, Director, AND Team Leads
-            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck) || isTeamLead;
+            // Leave Approval visible ONLY to HR, COO, Director
+            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck);
             setDisplay('hrLeaveApprovalNavItem', canApproveLeave);
             
             // Show Leave Request for all roles EXCEPT HR, COO, Director (they have Leave Approval)
-            // Team Leads CAN see Leave Request (they can submit their own leaves)
             const showLeaveRequest = !isHR && !['coo', 'director'].includes(roleForCheck);
             setDisplay('employeeLeaveRequestNavItem', showLeaveRequest);
             
@@ -15174,19 +15163,12 @@ async function markProjectComplete(projectId) {
         // Get approval flow info based on role and email
         function getApprovalFlowInfo(userRole, userEmail) {
             const emailLower = (userEmail || '').toLowerCase();
-            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === emailLower);
+            const role = (userRole || '').toLowerCase();
             
-            if (isTeamLead) {
-                return {
-                    flowType: 'teamlead_flow',
-                    flowDescription: 'Your Leave → COO → HR',
-                    stages: ['COO Approval', 'HR Approval'],
-                    totalStages: 2,
-                    requiresTeamLeadSelection: false
-                };
-            }
+            // Check if user is one of the 4 team lead emails (they are designers)
+            const isTeamLeadEmail = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === emailLower);
             
-            switch ((userRole || '').toLowerCase()) {
+            switch (role) {
                 case 'bdm':
                 case 'estimator':
                 case 'accounts':
@@ -15198,12 +15180,13 @@ async function markProjectComplete(projectId) {
                         requiresTeamLeadSelection: false
                     };
                 case 'designer':
+                    // All designers (including team lead emails) go through COO → HR
                     return {
                         flowType: 'designer_flow',
-                        flowDescription: 'Your Leave → Team Lead → HR → COO',
-                        stages: ['Team Lead Approval', 'HR Approval', 'COO Approval'],
-                        totalStages: 3,
-                        requiresTeamLeadSelection: true
+                        flowDescription: 'Your Leave → COO → HR',
+                        stages: ['COO Approval', 'HR Approval'],
+                        totalStages: 2,
+                        requiresTeamLeadSelection: false
                     };
                 case 'hr':
                     return {
@@ -15256,24 +15239,37 @@ async function markProjectComplete(projectId) {
                 if (req.status !== 'pending') return;
                 const flow = req.approvalFlow?.flowType || 'standard_flow';
                 const stage = req.currentStage || 1;
+                const assignedTeamLead = (req.selectedTeamLead || '').toLowerCase();
                 
-                // Team Lead approvals (Stage 1 for designers)
-                if (isTeamLead && req.selectedTeamLead?.toLowerCase() === userEmail && stage === 1) {
-                    count++;
+                // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
+                if (isTeamLead && flow === 'designer_flow' && stage === 1) {
+                    // Check if this request is assigned to THIS team lead
+                    if (assignedTeamLead === userEmail || assignedTeamLead.startsWith(userEmail.split('@')[0])) {
+                        console.log('✅ Badge count: Team Lead match for request', req.id);
+                        count++;
+                    }
                 }
                 
                 // COO approvals
                 if (userRole === 'coo') {
-                    if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) count++;
-                    if (flow === 'designer_flow' && stage === 3) count++;
+                    // Stage 1 for standard_flow, teamlead_flow, default_flow
+                    if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
+                        count++;
+                    }
+                    // Stage 3 for designer_flow (final approval for designers)
+                    if (flow === 'designer_flow' && stage === 3) {
+                        count++;
+                    }
                 }
                 
-                // HR approvals (Stage 2)
-                if (userRole === 'hr' && stage === 2) {
-                    count++;
+                // HR approvals - Stage 2 for all multi-stage flows
+                if (userRole === 'hr') {
+                    if ((flow === 'standard_flow' || flow === 'designer_flow' || flow === 'default_flow' || flow === 'teamlead_flow') && stage === 2) {
+                        count++;
+                    }
                 }
                 
-                // Director approvals
+                // Director approvals - Stage 3 for standard/default, Stage 1 for HR/COO leaves
                 if (userRole === 'director') {
                     if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) count++;
                     if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) count++;
@@ -15300,12 +15296,15 @@ async function markProjectComplete(projectId) {
             const userEmail = (currentUser?.email || '').toLowerCase();
             const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
             
+            // HR, COO, Director, AND Team Leads can approve leaves
             const canApproveLeave = ['hr', 'coo', 'director'].includes(userRole) || isTeamLead;
             const approvalNav = document.getElementById('hrLeaveApprovalNavItem');
             if (approvalNav) {
                 approvalNav.style.display = canApproveLeave ? 'block' : 'none';
             }
             
+            // Everyone except HR, COO, Director can submit leave requests
+            // Note: Team Leads CAN submit their own leave requests
             const showLeaveRequest = !['hr', 'coo', 'director'].includes(userRole);
             const requestNav = document.getElementById('employeeLeaveRequestNavItem');
             if (requestNav) {
@@ -15342,38 +15341,46 @@ async function markProjectComplete(projectId) {
                     if (req.status !== 'pending') return;
                     const flow = req.approvalFlow?.flowType || 'standard_flow';
                     const stage = req.currentStage || 1;
+                    const assignedTeamLead = (req.selectedTeamLead || '').toLowerCase();
                     
-                    console.log('📝 Checking request:', req.id, '| Flow:', flow, '| Stage:', stage, '| Selected TL:', req.selectedTeamLead);
+                    console.log('📝 Checking request:', req.id, '| Flow:', flow, '| Stage:', stage, '| Assigned TL:', assignedTeamLead);
                     
-                    // Team Lead approvals (Stage 1 for designers)
-                    if (isTeamLead && req.selectedTeamLead?.toLowerCase() === userEmail && stage === 1) {
-                        console.log('✅ Matched for Team Lead approval');
-                        pendingRequests.push({...req, myApprovalStage: 1, myRole: 'teamlead'});
+                    // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
+                    if (isTeamLead && flow === 'designer_flow' && stage === 1) {
+                        // Check if this request is assigned to THIS team lead
+                        if (assignedTeamLead === userEmail || assignedTeamLead.startsWith(userEmail.split('@')[0])) {
+                            console.log('✅ Matched for Team Lead approval (designer flow stage 1)');
+                            pendingRequests.push({...req, myApprovalStage: 1, myRole: 'teamlead'});
+                        }
                     }
                     
                     // COO approvals
                     if (userRole === 'coo') {
                         console.log('🔍 COO check - Flow:', flow, 'Stage:', stage);
+                        // Stage 1 for standard_flow, teamlead_flow, default_flow
                         if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
                             console.log('✅ Matched for COO approval (standard/teamlead/default flow stage 1)');
                             pendingRequests.push({...req, myApprovalStage: 1, myRole: 'coo'});
                         }
+                        // Stage 3 for designer_flow (final approval for designers)
                         if (flow === 'designer_flow' && stage === 3) {
-                            console.log('✅ Matched for COO approval (designer flow stage 3)');
+                            console.log('✅ Matched for COO approval (designer flow stage 3 - final)');
                             pendingRequests.push({...req, myApprovalStage: 3, myRole: 'coo'});
                         }
                     }
                     
-                    // HR approvals (Stage 2)
-                    if (userRole === 'hr' && stage === 2) {
-                        console.log('✅ Matched for HR approval (stage 2)');
-                        pendingRequests.push({...req, myApprovalStage: 2, myRole: 'hr'});
+                    // HR approvals - Stage 2 for all multi-stage flows
+                    if (userRole === 'hr') {
+                        if ((flow === 'standard_flow' || flow === 'designer_flow' || flow === 'default_flow' || flow === 'teamlead_flow') && stage === 2) {
+                            console.log('✅ Matched for HR approval (stage 2)');
+                            pendingRequests.push({...req, myApprovalStage: 2, myRole: 'hr'});
+                        }
                     }
                     
-                    // Director approvals
+                    // Director approvals - Stage 3 for standard/default, Stage 1 for HR/COO leaves
                     if (userRole === 'director') {
                         if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) {
-                            console.log('✅ Matched for Director approval (standard/default flow stage 3)');
+                            console.log('✅ Matched for Director approval (stage 3)');
                             pendingRequests.push({...req, myApprovalStage: 3, myRole: 'director'});
                         }
                         if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) {
@@ -15383,15 +15390,16 @@ async function markProjectComplete(projectId) {
                     }
                 });
                 
+                // Set title based on role
                 if (isTeamLead && userRole !== 'coo' && userRole !== 'hr' && userRole !== 'director') {
-                    approvalTitle = '👥 Team Leave Approval';
-                    approvalSubtitle = 'Approve leave requests from your team members';
+                    approvalTitle = '👥 Team Lead - Leave Approval';
+                    approvalSubtitle = 'Approve leave requests from your team members (Stage 1)';
                 } else if (userRole === 'coo') {
                     approvalTitle = '📋 COO Leave Approval';
                     approvalSubtitle = 'Review and approve leave requests';
                 } else if (userRole === 'hr') {
                     approvalTitle = '📋 HR Leave Approval';
-                    approvalSubtitle = 'Review, categorize and approve leave requests';
+                    approvalSubtitle = 'Review and approve leave requests (Stage 2)';
                 } else if (userRole === 'director') {
                     approvalTitle = '📋 Director Leave Approval';
                     approvalSubtitle = 'Final approval for leave requests';
@@ -15407,7 +15415,10 @@ async function markProjectComplete(projectId) {
                     'designer': 'Designer',
                     'accounts': 'Accounts'
                 };
-                const roleDisplay = roleDisplayMap[userRole] || userRole.toUpperCase();
+                let roleDisplay = roleDisplayMap[userRole] || userRole.toUpperCase();
+                if (isTeamLead) {
+                    roleDisplay = '🏷️ Team Lead | ' + roleDisplay;
+                }
                 
                 const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
                 const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
@@ -15428,7 +15439,6 @@ async function markProjectComplete(projectId) {
                             <div>
                                 <div style="font-weight: 600;">${currentUser?.name || currentUser?.displayName || currentUser?.email || 'User'}</div>
                                 <div style="opacity: 0.9; font-size: 0.9rem;">
-                                    ${isTeamLead ? '🏷️ Team Lead | ' : ''}
                                     ${roleDisplay}
                                 </div>
                             </div>

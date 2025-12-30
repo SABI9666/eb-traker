@@ -15695,6 +15695,10 @@ async function markProjectComplete(projectId) {
             const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
             const docId = request.docId; // Use Firestore document ID
             
+            // Check if current user is HR
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
             let progressHtml = '';
             if (flowInfo.stages && flowInfo.stages.length > 0) {
                 progressHtml = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">';
@@ -15719,6 +15723,38 @@ async function markProjectComplete(projectId) {
                 progressHtml += '</div>';
             }
             
+            // Leave type display - HR gets dropdown, others see static text
+            const leaveTypeHtml = isHRUser ? `
+                <div style="padding: 0.5rem; background: #fef3c7; border-radius: 8px; border: 2px solid #f59e0b;">
+                    <div style="font-size: 0.7rem; color: #92400e; text-transform: uppercase;">Leave Type (HR Assign) *</div>
+                    <select id="leaveType_${docId}" class="form-control" style="margin-top: 0.25rem; font-size: 0.85rem; padding: 0.4rem;" required>
+                        <option value="">-- Select Leave Type --</option>
+                        <option value="Annual Leave" ${request.leaveType === 'Annual Leave' ? 'selected' : ''}>Annual Leave</option>
+                        <option value="Sick Leave" ${request.leaveType === 'Sick Leave' ? 'selected' : ''}>Sick Leave</option>
+                        <option value="Casual Leave" ${request.leaveType === 'Casual Leave' ? 'selected' : ''}>Casual Leave</option>
+                        <option value="Maternity Leave" ${request.leaveType === 'Maternity Leave' ? 'selected' : ''}>Maternity Leave</option>
+                        <option value="Paternity Leave" ${request.leaveType === 'Paternity Leave' ? 'selected' : ''}>Paternity Leave</option>
+                        <option value="Emergency Leave" ${request.leaveType === 'Emergency Leave' ? 'selected' : ''}>Emergency Leave</option>
+                        <option value="Compensatory Off" ${request.leaveType === 'Compensatory Off' ? 'selected' : ''}>Compensatory Off</option>
+                        <option value="Unpaid Leave" ${request.leaveType === 'Unpaid Leave' ? 'selected' : ''}>Unpaid Leave</option>
+                        <option value="Other" ${request.leaveType === 'Other' ? 'selected' : ''}>Other</option>
+                    </select>
+                </div>
+            ` : `
+                <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
+                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Leave Type</div>
+                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.leaveType || 'Pending HR Assignment'}</div>
+                </div>
+            `;
+            
+            // HR Comment input - only for HR
+            const hrCommentHtml = isHRUser ? `
+                <div style="margin-top: 0.75rem; padding: 0.75rem; background: #fef3c7; border-radius: 8px; border: 2px solid #f59e0b;">
+                    <div style="font-size: 0.7rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.5rem;">HR Comments</div>
+                    <textarea id="hrComment_${docId}" class="form-control" rows="2" style="font-size: 0.85rem;" placeholder="Add your comments (optional)...">${request.hrComment || ''}</textarea>
+                </div>
+            ` : '';
+            
             return `
                 <div style="background: white; margin-bottom: 1rem; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -15734,10 +15770,7 @@ async function markProjectComplete(projectId) {
                             </div>
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem;">
-                                <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
-                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Leave Type</div>
-                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.leaveType || 'N/A'}</div>
-                                </div>
+                                ${leaveTypeHtml}
                                 <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
                                     <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Duration</div>
                                     <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.totalDays || 1} Day${(request.totalDays || 1) > 1 ? 's' : ''}</div>
@@ -15760,10 +15793,12 @@ async function markProjectComplete(projectId) {
                             
                             ${request.reason ? `
                                 <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
-                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.25rem;">Reason</div>
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.25rem;">Reason for Leave</div>
                                     <p style="margin: 0; color: #4b5563; font-size: 0.9rem;">${request.reason}</p>
                                 </div>
                             ` : ''}
+                            
+                            ${hrCommentHtml}
                             
                             <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-radius: 8px;">
                                 <div style="font-size: 0.75rem; color: #0369a1; margin-bottom: 0.25rem;">
@@ -15828,7 +15863,33 @@ async function markProjectComplete(projectId) {
         
         // Approve leave request (using Firestore docId)
         async function approveLeaveRequest(docId) {
-            const comment = prompt('Add an approval comment (optional):');
+            // Check if current user is HR - need to get leave type and comments from form
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
+            let leaveTypeFromForm = null;
+            let hrCommentFromForm = '';
+            
+            // If HR, get values from form fields
+            if (isHRUser) {
+                const leaveTypeSelect = document.getElementById('leaveType_' + docId);
+                const hrCommentTextarea = document.getElementById('hrComment_' + docId);
+                
+                if (leaveTypeSelect) {
+                    leaveTypeFromForm = leaveTypeSelect.value;
+                    if (!leaveTypeFromForm) {
+                        alert('⚠️ Please select a Leave Type before approving');
+                        return;
+                    }
+                }
+                
+                if (hrCommentTextarea) {
+                    hrCommentFromForm = hrCommentTextarea.value || '';
+                }
+            }
+            
+            // Only prompt for comment if NOT HR (HR has textarea in form)
+            const comment = isHRUser ? hrCommentFromForm : prompt('Add an approval comment (optional):');
             
             try {
                 showLoading();
@@ -15858,10 +15919,24 @@ async function markProjectComplete(projectId) {
                     updateData['stage' + currentStage + 'Comments'] = comment;
                 }
                 
+                // If HR and leave type selected, update leave type
+                if (isHRUser && leaveTypeFromForm) {
+                    updateData.leaveType = leaveTypeFromForm;
+                    updateData.leaveTypeAssignedBy = currentUser?.email || 'HR';
+                    updateData.leaveTypeAssignedAt = new Date().toISOString();
+                }
+                
+                // If HR, save HR comments
+                if (isHRUser && hrCommentFromForm) {
+                    updateData.hrComment = hrCommentFromForm;
+                }
+                
                 if (currentStage >= totalStages) {
                     updateData.status = 'approved';
                     updateData.currentStage = totalStages + 1;
-                    updateData.hrComment = comment || (request.hrComment || 'Approved');
+                    if (!updateData.hrComment) {
+                        updateData.hrComment = comment || (request.hrComment || 'Approved');
+                    }
                 } else {
                     updateData.currentStage = currentStage + 1;
                 }
@@ -15891,7 +15966,24 @@ async function markProjectComplete(projectId) {
         
         // Reject leave request (using Firestore docId)
         async function rejectLeaveRequest(docId) {
-            const comment = prompt('Please provide a reason for rejection:');
+            // Check if current user is HR - get comments from form field
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
+            let comment = '';
+            
+            // If HR, try to get comment from form field first
+            if (isHRUser) {
+                const hrCommentTextarea = document.getElementById('hrComment_' + docId);
+                if (hrCommentTextarea && hrCommentTextarea.value) {
+                    comment = hrCommentTextarea.value;
+                }
+            }
+            
+            // If no comment from form, prompt for one
+            if (!comment) {
+                comment = prompt('Please provide a reason for rejection:');
+            }
             
             if (!comment) {
                 alert('⚠️ A rejection reason is required.');
@@ -16161,20 +16253,8 @@ async function markProjectComplete(projectId) {
                             
                             <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                                 <h4 style="margin: 0 0 1rem 0;">📅 Leave Details</h4>
-                                <div class="form-group">
-                                    <label for="empLeaveType">Leave Type <span style="color: #ef4444;">*</span></label>
-                                    <select id="empLeaveType" class="form-control" required>
-                                        <option value="">Select Leave Type</option>
-                                        <option value="Annual Leave">Annual Leave</option>
-                                        <option value="Sick Leave">Sick Leave</option>
-                                        <option value="Casual Leave">Casual Leave</option>
-                                        <option value="Maternity Leave">Maternity Leave</option>
-                                        <option value="Paternity Leave">Paternity Leave</option>
-                                        <option value="Emergency Leave">Emergency Leave</option>
-                                        <option value="Compensatory Off">Compensatory Off</option>
-                                        <option value="Unpaid Leave">Unpaid Leave</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                <div style="padding: 0.75rem; background: #e0e7ff; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: #4338ca;">
+                                    ℹ️ <strong>Note:</strong> Leave type will be assigned by HR during approval process.
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
@@ -16264,7 +16344,7 @@ async function markProjectComplete(projectId) {
                 id: 'leave_' + Date.now(),
                 employeeName: document.getElementById('empLeaveName').value || (currentUser ? currentUser.email.split('@')[0] : 'Employee'),
                 department: document.getElementById('empLeaveDept').value || '',
-                leaveType: document.getElementById('empLeaveType').value,
+                leaveType: 'Pending HR Assignment', // HR will assign leave type during approval
                 fromDate: document.getElementById('empLeaveFromDate').value,
                 toDate: document.getElementById('empLeaveToDate').value,
                 totalDays: parseInt(document.getElementById('empLeaveTotalDays').value) || 1,

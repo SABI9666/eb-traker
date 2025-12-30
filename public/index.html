@@ -6405,8 +6405,39 @@ body.is-ios .nav-menu {
                 throw new Error("Critical UI elements not found after retry.");
             }
 
-            // 1. Update User Info
-            const roleForCheck = (currentUserRole || '').trim().toLowerCase();
+            // 1. Update User Info - Get role with email fallback
+            let roleForCheck = (currentUserRole || '').trim().toLowerCase();
+            
+            // If role is empty or 'employee', try to detect from email
+            if (!roleForCheck || roleForCheck === 'employee' || roleForCheck === '') {
+                const emailLower = (currentUser?.email || '').toLowerCase();
+                console.log('⚠️ Role is empty/employee, checking email:', emailLower);
+                
+                if (emailLower.startsWith('coo@') || emailLower.includes('.coo@')) {
+                    roleForCheck = 'coo';
+                    currentUserRole = 'coo'; // Update global for consistency
+                } else if (emailLower.startsWith('director@') || emailLower.includes('.director@')) {
+                    roleForCheck = 'director';
+                    currentUserRole = 'director';
+                } else if (emailLower.startsWith('hr@') || emailLower.includes('.hr@')) {
+                    roleForCheck = 'hr';
+                    currentUserRole = 'hr';
+                } else if (emailLower.startsWith('bdm@') || emailLower.includes('.bdm@')) {
+                    roleForCheck = 'bdm';
+                    currentUserRole = 'bdm';
+                } else if (emailLower.startsWith('estimator@') || emailLower.includes('.estimator@')) {
+                    roleForCheck = 'estimator';
+                    currentUserRole = 'estimator';
+                } else if (emailLower.startsWith('accounts@') || emailLower.includes('.accounts@')) {
+                    roleForCheck = 'accounts';
+                    currentUserRole = 'accounts';
+                } else if (emailLower.includes('.tech@')) {
+                    roleForCheck = 'designer';
+                    currentUserRole = 'designer';
+                }
+                console.log('✅ Role after email detection:', roleForCheck);
+            }
+            
             userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;
             userRoleDisplay.textContent = roleForCheck.replace('_', ' ').toUpperCase();
 
@@ -15048,6 +15079,76 @@ async function markProjectComplete(projectId) {
             { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj' }
         ];
         
+        // Get user role with email fallback detection
+        // PRIORITY: Email patterns first for key roles, then Firestore
+        function getUserRoleWithFallback() {
+            const email = (currentUser?.email || '').toLowerCase();
+            
+            console.log('🔍 getUserRoleWithFallback checking email:', email);
+            
+            // PRIORITY 1: Detect COO by email (most important - coo@ prefix)
+            if (email.startsWith('coo@') || email === 'coo@edanbrook.com' || email === 'coo@edanbrook.in') {
+                console.log('🎯 Role = COO (from email pattern)');
+                return 'coo';
+            }
+            
+            // PRIORITY 2: Detect Director by email
+            if (email.startsWith('director@') || email === 'director@edanbrook.com' || email === 'director@edanbrook.in') {
+                console.log('🎯 Role = DIRECTOR (from email pattern)');
+                return 'director';
+            }
+            
+            // PRIORITY 3: Detect HR by email
+            if (email.startsWith('hr@') || email === 'hr@edanbrook.com' || email === 'hr@edanbrook.in') {
+                console.log('🎯 Role = HR (from email pattern)');
+                return 'hr';
+            }
+            
+            // PRIORITY 4: Check if Team Lead email (before general designer check)
+            const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === email);
+            if (isTeamLead) {
+                console.log('🎯 Role = DESIGNER/TEAM_LEAD (from team lead list)');
+                return 'designer';
+            }
+            
+            // PRIORITY 5: Check Firestore role (if valid and specific)
+            let firestoreRole = '';
+            if (typeof currentUserRole !== 'undefined' && currentUserRole) {
+                firestoreRole = currentUserRole.trim().toLowerCase();
+            } else if (currentUser?.role) {
+                firestoreRole = currentUser.role.trim().toLowerCase();
+            }
+            
+            if (firestoreRole && firestoreRole !== '' && firestoreRole !== 'employee') {
+                console.log('🎯 Role =', firestoreRole.toUpperCase(), '(from Firestore)');
+                return firestoreRole;
+            }
+            
+            // PRIORITY 6: Additional email pattern checks
+            if (email.includes('bdm') || email.startsWith('bdm@')) {
+                console.log('🎯 Role = BDM (from email pattern)');
+                return 'bdm';
+            }
+            if (email.includes('estimator') || email.startsWith('estimator@')) {
+                console.log('🎯 Role = ESTIMATOR (from email pattern)');
+                return 'estimator';
+            }
+            if (email.includes('accounts') || email.startsWith('accounts@')) {
+                console.log('🎯 Role = ACCOUNTS (from email pattern)');
+                return 'accounts';
+            }
+            
+            // PRIORITY 7: Check for designer pattern (.tech@)
+            if (email.includes('.tech@')) {
+                console.log('🎯 Role = DESIGNER (from .tech@ email pattern)');
+                return 'designer';
+            }
+            
+            // DEFAULT: Return whatever Firestore has, even if 'employee'
+            console.log('⚠️ Role = EMPLOYEE (default/Firestore)');
+            return firestoreRole || 'employee';
+        }
+        
         let leaveRequests = [];
         
         // Load leave requests from localStorage
@@ -15142,15 +15243,18 @@ async function markProjectComplete(projectId) {
         // Get pending count for current user's approval role
         function getPendingCountForUser() {
             loadLeaveRequests();
-            const userRole = (currentUser?.role || '').toLowerCase();
+            const userRole = getUserRoleWithFallback();
             const userEmail = (currentUser?.email || '').toLowerCase();
             const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+            
+            console.log('🔍 getPendingCountForUser - Role:', userRole, 'Email:', userEmail, 'IsTeamLead:', isTeamLead);
+            console.log('📋 Total leave requests in localStorage:', leaveRequests.length);
             
             let count = 0;
             
             leaveRequests.forEach(req => {
                 if (req.status !== 'pending') return;
-                const flow = req.approvalFlow?.flowType;
+                const flow = req.approvalFlow?.flowType || 'standard_flow';
                 const stage = req.currentStage || 1;
                 
                 // Team Lead approvals (Stage 1 for designers)
@@ -15176,6 +15280,7 @@ async function markProjectComplete(projectId) {
                 }
             });
             
+            console.log('📊 Pending count for this user:', count);
             return count;
         }
         
@@ -15191,7 +15296,7 @@ async function markProjectComplete(projectId) {
         
         // Update leave navigation visibility
         function updateLeaveNavigation() {
-            const userRole = (currentUser?.role || '').toLowerCase();
+            const userRole = getUserRoleWithFallback();
             const userEmail = (currentUser?.email || '').toLowerCase();
             const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
             
@@ -15222,9 +15327,12 @@ async function markProjectComplete(projectId) {
             try {
                 loadLeaveRequests();
                 
-                const userRole = (currentUser?.role || '').toLowerCase();
+                const userRole = getUserRoleWithFallback();
                 const userEmail = (currentUser?.email || '').toLowerCase();
                 const isTeamLead = DESIGNER_TEAM_LEADS.some(tl => tl.email.toLowerCase() === userEmail);
+                
+                console.log('🔍 showHRLeaveApproval - Role:', userRole, 'Email:', userEmail, 'IsTeamLead:', isTeamLead);
+                console.log('📋 Leave requests loaded:', leaveRequests.length);
                 
                 let pendingRequests = [];
                 let approvalTitle = '📋 Leave Approval Dashboard';
@@ -15232,31 +15340,44 @@ async function markProjectComplete(projectId) {
                 
                 leaveRequests.forEach(req => {
                     if (req.status !== 'pending') return;
-                    const flow = req.approvalFlow?.flowType;
+                    const flow = req.approvalFlow?.flowType || 'standard_flow';
                     const stage = req.currentStage || 1;
                     
+                    console.log('📝 Checking request:', req.id, '| Flow:', flow, '| Stage:', stage, '| Selected TL:', req.selectedTeamLead);
+                    
+                    // Team Lead approvals (Stage 1 for designers)
                     if (isTeamLead && req.selectedTeamLead?.toLowerCase() === userEmail && stage === 1) {
+                        console.log('✅ Matched for Team Lead approval');
                         pendingRequests.push({...req, myApprovalStage: 1, myRole: 'teamlead'});
                     }
                     
+                    // COO approvals
                     if (userRole === 'coo') {
+                        console.log('🔍 COO check - Flow:', flow, 'Stage:', stage);
                         if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
+                            console.log('✅ Matched for COO approval (standard/teamlead/default flow stage 1)');
                             pendingRequests.push({...req, myApprovalStage: 1, myRole: 'coo'});
                         }
                         if (flow === 'designer_flow' && stage === 3) {
+                            console.log('✅ Matched for COO approval (designer flow stage 3)');
                             pendingRequests.push({...req, myApprovalStage: 3, myRole: 'coo'});
                         }
                     }
                     
+                    // HR approvals (Stage 2)
                     if (userRole === 'hr' && stage === 2) {
+                        console.log('✅ Matched for HR approval (stage 2)');
                         pendingRequests.push({...req, myApprovalStage: 2, myRole: 'hr'});
                     }
                     
+                    // Director approvals
                     if (userRole === 'director') {
                         if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) {
+                            console.log('✅ Matched for Director approval (standard/default flow stage 3)');
                             pendingRequests.push({...req, myApprovalStage: 3, myRole: 'director'});
                         }
                         if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) {
+                            console.log('✅ Matched for Director approval (hr/coo flow stage 1)');
                             pendingRequests.push({...req, myApprovalStage: 1, myRole: 'director'});
                         }
                     }
@@ -15276,8 +15397,22 @@ async function markProjectComplete(projectId) {
                     approvalSubtitle = 'Final approval for leave requests';
                 }
                 
+                // Get proper role display name
+                const roleDisplayMap = {
+                    'hr': 'HR Manager',
+                    'coo': 'COO',
+                    'director': 'Director',
+                    'bdm': 'Business Development',
+                    'estimator': 'Estimator',
+                    'designer': 'Designer',
+                    'accounts': 'Accounts'
+                };
+                const roleDisplay = roleDisplayMap[userRole] || userRole.toUpperCase();
+                
                 const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
                 const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
+                
+                console.log('📊 Dashboard stats - Pending:', pendingRequests.length, 'Approved:', approvedRequests.length, 'Rejected:', rejectedRequests.length);
                 
                 main.innerHTML = `
                     ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
@@ -15291,10 +15426,10 @@ async function markProjectComplete(projectId) {
                         <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                             <div style="font-size: 2rem;">👤</div>
                             <div>
-                                <div style="font-weight: 600;">${currentUser?.name || currentUser?.email || 'User'}</div>
+                                <div style="font-weight: 600;">${currentUser?.name || currentUser?.displayName || currentUser?.email || 'User'}</div>
                                 <div style="opacity: 0.9; font-size: 0.9rem;">
                                     ${isTeamLead ? '🏷️ Team Lead | ' : ''}
-                                    ${userRole ? userRole.toUpperCase() : 'Employee'}
+                                    ${roleDisplay}
                                 </div>
                             </div>
                         </div>
@@ -15582,7 +15717,7 @@ async function markProjectComplete(projectId) {
                 const approvedCount = myRequests.filter(r => r.status === 'approved').length;
                 const rejectedCount = myRequests.filter(r => r.status === 'rejected').length;
                 
-                const userRole = currentUser?.role || '';
+                const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
                 const flowInfo = getApprovalFlowInfo(userRole, myEmail);
                 
                 let userName = currentUser ? (currentUser.displayName || currentUser.name || currentUser.email.split('@')[0]) : 'Employee';
@@ -15743,7 +15878,7 @@ async function markProjectComplete(projectId) {
         
         // Show Employee Leave Modal
         function showEmployeeLeaveModal(userName, userDept) {
-            const userRole = (currentUser?.role || '').toLowerCase();
+            const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
             const userEmail = currentUser?.email || '';
             const flowInfo = getApprovalFlowInfo(userRole, userEmail);
             
@@ -15865,7 +16000,7 @@ async function markProjectComplete(projectId) {
         function submitEmployeeLeave(event) {
             event.preventDefault();
             
-            const userRole = (currentUser?.role || '').toLowerCase();
+            const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
             const userEmail = currentUser?.email || '';
             const flowInfo = getApprovalFlowInfo(userRole, userEmail);
             

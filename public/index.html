@@ -15228,31 +15228,68 @@ async function markProjectComplete(projectId) {
         
         let leaveRequests = [];
         
-        // Load leave requests from localStorage
-        function loadLeaveRequests() {
-            const stored = localStorage.getItem('leaveRequests');
-            leaveRequests = stored ? JSON.parse(stored) : [];
-            console.log('📂 Loaded', leaveRequests.length, 'leave requests from localStorage');
-            return leaveRequests;
+        // Load leave requests from Firestore
+        async function loadLeaveRequests() {
+            try {
+                console.log('📂 Loading leave requests from Firestore...');
+                const snapshot = await db.collection('leaveRequests').orderBy('submittedAt', 'desc').get();
+                leaveRequests = [];
+                snapshot.forEach(doc => {
+                    leaveRequests.push({ ...doc.data(), docId: doc.id });
+                });
+                console.log('✅ Loaded', leaveRequests.length, 'leave requests from Firestore');
+                return leaveRequests;
+            } catch (error) {
+                console.error('❌ Error loading leave requests:', error);
+                leaveRequests = [];
+                return leaveRequests;
+            }
         }
         
-        // Save leave requests to localStorage
-        function saveLeaveRequests() {
-            localStorage.setItem('leaveRequests', JSON.stringify(leaveRequests));
-            console.log('💾 Saved', leaveRequests.length, 'leave requests to localStorage');
+        // Save a single leave request to Firestore
+        async function saveLeaveRequest(request) {
+            try {
+                if (request.docId) {
+                    // Update existing document
+                    await db.collection('leaveRequests').doc(request.docId).update(request);
+                    console.log('💾 Updated leave request:', request.docId);
+                } else {
+                    // Add new document
+                    const docRef = await db.collection('leaveRequests').add(request);
+                    request.docId = docRef.id;
+                    console.log('💾 Created new leave request:', docRef.id);
+                }
+                return true;
+            } catch (error) {
+                console.error('❌ Error saving leave request:', error);
+                return false;
+            }
+        }
+        
+        // Update a leave request in Firestore by docId
+        async function updateLeaveRequest(docId, updateData) {
+            try {
+                await db.collection('leaveRequests').doc(docId).update(updateData);
+                console.log('💾 Updated leave request:', docId);
+                return true;
+            } catch (error) {
+                console.error('❌ Error updating leave request:', error);
+                return false;
+            }
         }
         
         // DEBUG: View all leave requests in console
-        function debugLeaveRequests() {
-            loadLeaveRequests();
+        async function debugLeaveRequests() {
+            await loadLeaveRequests();
             console.log('==========================================');
-            console.log('🔍 DEBUG: All Leave Requests in localStorage');
+            console.log('🔍 DEBUG: All Leave Requests in Firestore');
             console.log('==========================================');
             if (leaveRequests.length === 0) {
-                console.log('⚠️ No leave requests found in localStorage');
+                console.log('⚠️ No leave requests found in Firestore');
             } else {
                 leaveRequests.forEach((req, idx) => {
                     console.log(`\n📝 Request #${idx + 1}:`);
+                    console.log('   Doc ID:', req.docId);
                     console.log('   ID:', req.id);
                     console.log('   Employee:', req.employeeName);
                     console.log('   Status:', req.status);
@@ -15349,14 +15386,14 @@ async function markProjectComplete(projectId) {
         }
         
         // Get pending count for current user's approval role
-        function getPendingCountForUser() {
-            loadLeaveRequests();
+        async function getPendingCountForUser() {
+            await loadLeaveRequests();
             const userRole = getUserRoleWithFallback();
             const userEmail = (currentUser?.email || '').toLowerCase();
             const isTeamLead = isEmailTeamLead(userEmail);
             
             console.log('🔍 getPendingCountForUser - Role:', userRole, 'Email:', userEmail, 'IsTeamLead:', isTeamLead);
-            console.log('📋 Total leave requests in localStorage:', leaveRequests.length);
+            console.log('📋 Total leave requests in Firestore:', leaveRequests.length);
             
             let count = 0;
             
@@ -15406,10 +15443,10 @@ async function markProjectComplete(projectId) {
         }
         
         // Update HR leave requests badge
-        function updateHRLeaveRequestsBadge() {
+        async function updateHRLeaveRequestsBadge() {
             const badge = document.getElementById('hrLeaveRequestsBadge');
             if (badge) {
-                const count = getPendingCountForUser();
+                const count = await getPendingCountForUser();
                 badge.textContent = count;
                 badge.style.display = count > 0 ? 'inline' : 'none';
             }
@@ -15452,7 +15489,7 @@ async function markProjectComplete(projectId) {
             showLoading();
             
             try {
-                loadLeaveRequests();
+                await loadLeaveRequests();
                 
                 const userRole = getUserRoleWithFallback();
                 const userEmail = (currentUser?.email || '').toLowerCase();
@@ -15597,7 +15634,7 @@ async function markProjectComplete(projectId) {
                     ${pendingRequests.length > 0 ? `
                         <div class="action-section" style="margin-bottom: 2rem; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 0 12px 12px 0;">
                             <h3 style="color: #b45309; margin-bottom: 1rem;">⏳ Pending Leave Requests (${pendingRequests.length})</h3>
-                            ${pendingRequests.map((req) => renderLeaveApprovalCard(req, leaveRequests.findIndex(r => r.id === req.id))).join('')}
+                            ${pendingRequests.map((req) => renderLeaveApprovalCard(req)).join('')}
                         </div>
                     ` : `
                         <div class="info-message" style="margin-bottom: 2rem; text-align: center; padding: 3rem; background: #f0fdf4; border-radius: 12px;">
@@ -15632,10 +15669,11 @@ async function markProjectComplete(projectId) {
         }
         
         // Render leave approval card (with approve/reject buttons)
-        function renderLeaveApprovalCard(request, index) {
+        function renderLeaveApprovalCard(request) {
             const flowInfo = request.approvalFlow || {};
             const currentStage = request.currentStage || 1;
             const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
+            const docId = request.docId; // Use Firestore document ID
             
             let progressHtml = '';
             if (flowInfo.stages && flowInfo.stages.length > 0) {
@@ -15719,10 +15757,10 @@ async function markProjectComplete(projectId) {
                         </div>
                         
                         <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 130px;">
-                            <button class="btn btn-success" onclick="approveLeaveRequest(${index})" style="padding: 0.75rem 1.5rem;">
+                            <button class="btn btn-success" onclick="approveLeaveRequest('${docId}')" style="padding: 0.75rem 1.5rem;">
                                 ✅ Approve
                             </button>
-                            <button class="btn btn-danger" onclick="rejectLeaveRequest(${index})" style="padding: 0.75rem 1.5rem;">
+                            <button class="btn btn-danger" onclick="rejectLeaveRequest('${docId}')" style="padding: 0.75rem 1.5rem;">
                                 ❌ Reject
                             </button>
                         </div>
@@ -15768,37 +15806,54 @@ async function markProjectComplete(projectId) {
             `;
         }
         
-        // Approve leave request
-        function approveLeaveRequest(index) {
+        // Approve leave request (using Firestore docId)
+        async function approveLeaveRequest(docId) {
             const comment = prompt('Add an approval comment (optional):');
             
-            loadLeaveRequests();
-            if (leaveRequests[index]) {
-                const request = leaveRequests[index];
+            try {
+                showLoading();
+                
+                // Get the request from Firestore
+                const docRef = db.collection('leaveRequests').doc(docId);
+                const doc = await docRef.get();
+                
+                if (!doc.exists) {
+                    alert('❌ Leave request not found');
+                    hideLoading();
+                    return;
+                }
+                
+                const request = doc.data();
                 const flowInfo = request.approvalFlow || {};
                 const currentStage = request.currentStage || 1;
                 const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
                 
-                request['stage' + currentStage + 'Status'] = 'approved';
-                request['stage' + currentStage + 'ApprovedAt'] = new Date().toISOString();
-                request['stage' + currentStage + 'ApprovedBy'] = currentUser?.email || 'Approver';
-                request['stage' + currentStage + 'ApprovedByName'] = currentUser?.name || currentUser?.email || 'Approver';
+                // Prepare update data
+                const updateData = {};
+                updateData['stage' + currentStage + 'Status'] = 'approved';
+                updateData['stage' + currentStage + 'ApprovedAt'] = new Date().toISOString();
+                updateData['stage' + currentStage + 'ApprovedBy'] = currentUser?.email || 'Approver';
+                updateData['stage' + currentStage + 'ApprovedByName'] = currentUser?.name || currentUser?.email || 'Approver';
                 if (comment) {
-                    request['stage' + currentStage + 'Comments'] = comment;
+                    updateData['stage' + currentStage + 'Comments'] = comment;
                 }
                 
                 if (currentStage >= totalStages) {
-                    request.status = 'approved';
-                    request.currentStage = totalStages + 1;
-                    request.hrComment = comment || (request.hrComment || 'Approved');
+                    updateData.status = 'approved';
+                    updateData.currentStage = totalStages + 1;
+                    updateData.hrComment = comment || (request.hrComment || 'Approved');
                 } else {
-                    request.currentStage = currentStage + 1;
+                    updateData.currentStage = currentStage + 1;
                 }
                 
-                request.processedAt = new Date().toISOString();
-                request.processedBy = currentUser?.email || 'Approver';
+                updateData.processedAt = new Date().toISOString();
+                updateData.processedBy = currentUser?.email || 'Approver';
                 
-                saveLeaveRequests();
+                // Update in Firestore
+                await docRef.update(updateData);
+                console.log('✅ Leave request approved in Firestore:', docId);
+                
+                hideLoading();
                 showHRLeaveApproval();
                 updateHRLeaveRequestsBadge();
                 
@@ -15807,11 +15862,15 @@ async function markProjectComplete(projectId) {
                 } else {
                     alert('✅ Approved! Forwarded to Stage ' + (currentStage + 1));
                 }
+            } catch (error) {
+                console.error('❌ Error approving leave request:', error);
+                hideLoading();
+                alert('❌ Error approving request: ' + error.message);
             }
         }
         
-        // Reject leave request
-        function rejectLeaveRequest(index) {
+        // Reject leave request (using Firestore docId)
+        async function rejectLeaveRequest(docId) {
             const comment = prompt('Please provide a reason for rejection:');
             
             if (!comment) {
@@ -15819,27 +15878,48 @@ async function markProjectComplete(projectId) {
                 return;
             }
             
-            loadLeaveRequests();
-            if (leaveRequests[index]) {
-                const request = leaveRequests[index];
+            try {
+                showLoading();
+                
+                // Get the request from Firestore
+                const docRef = db.collection('leaveRequests').doc(docId);
+                const doc = await docRef.get();
+                
+                if (!doc.exists) {
+                    alert('❌ Leave request not found');
+                    hideLoading();
+                    return;
+                }
+                
+                const request = doc.data();
                 const currentStage = request.currentStage || 1;
                 
-                request['stage' + currentStage + 'Status'] = 'rejected';
-                request['stage' + currentStage + 'Comments'] = comment;
-                request['stage' + currentStage + 'RejectedAt'] = new Date().toISOString();
-                request['stage' + currentStage + 'RejectedBy'] = currentUser?.email || 'Approver';
+                // Prepare update data
+                const updateData = {};
+                updateData['stage' + currentStage + 'Status'] = 'rejected';
+                updateData['stage' + currentStage + 'Comments'] = comment;
+                updateData['stage' + currentStage + 'RejectedAt'] = new Date().toISOString();
+                updateData['stage' + currentStage + 'RejectedBy'] = currentUser?.email || 'Approver';
                 
-                request.status = 'rejected';
-                request.hrComment = comment;
-                request.processedAt = new Date().toISOString();
-                request.processedBy = currentUser?.email || 'Approver';
-                request.currentStage = 0;
+                updateData.status = 'rejected';
+                updateData.hrComment = comment;
+                updateData.processedAt = new Date().toISOString();
+                updateData.processedBy = currentUser?.email || 'Approver';
+                updateData.currentStage = 0;
                 
-                saveLeaveRequests();
+                // Update in Firestore
+                await docRef.update(updateData);
+                console.log('✅ Leave request rejected in Firestore:', docId);
+                
+                hideLoading();
                 showHRLeaveApproval();
                 updateHRLeaveRequestsBadge();
                 
                 alert('❌ Leave request rejected.');
+            } catch (error) {
+                console.error('❌ Error rejecting leave request:', error);
+                hideLoading();
+                alert('❌ Error rejecting request: ' + error.message);
             }
         }
         
@@ -15853,7 +15933,7 @@ async function markProjectComplete(projectId) {
             showLoading();
             
             try {
-                loadLeaveRequests();
+                await loadLeaveRequests();
                 
                 const myEmail = currentUser ? currentUser.email : '';
                 const myRequests = leaveRequests.filter(r => r.submittedBy === myEmail);
@@ -16140,8 +16220,8 @@ async function markProjectComplete(projectId) {
             }
         }
         
-        // Submit employee leave request
-        function submitEmployeeLeave(event) {
+        // Submit employee leave request (to Firestore)
+        async function submitEmployeeLeave(event) {
             event.preventDefault();
             
             const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
@@ -16176,27 +16256,37 @@ async function markProjectComplete(projectId) {
                 currentStage: 1,
                 submittedAt: new Date().toISOString(),
                 submittedBy: currentUser ? currentUser.email : 'Anonymous',
+                submittedByUid: currentUser ? currentUser.uid : null,
                 approvalFlow: flowInfo,
                 stage1Status: 'pending',
                 stage2Status: flowInfo.totalStages >= 2 ? 'pending' : 'not_required',
                 stage3Status: flowInfo.totalStages >= 3 ? 'pending' : 'not_required'
             };
             
-            loadLeaveRequests();
-            leaveRequests.push(request);
-            saveLeaveRequests();
-            
-            closeModal('employeeLeaveModal');
-            showEmployeeLeaveRequest();
-            updateHRLeaveRequestsBadge();
-            
-            let confirmMsg = '✅ Leave request submitted successfully!\n\n';
-            if (selectedTeamLead) {
-                confirmMsg += 'Your request has been sent to ' + selectedTeamLead.split('@')[0] + ' for approval.';
-            } else {
-                confirmMsg += 'Your request is pending approval.';
+            try {
+                showLoading();
+                
+                // Save to Firestore
+                const docRef = await db.collection('leaveRequests').add(request);
+                console.log('✅ Leave request saved to Firestore with ID:', docRef.id);
+                
+                hideLoading();
+                closeModal('employeeLeaveModal');
+                showEmployeeLeaveRequest();
+                updateHRLeaveRequestsBadge();
+                
+                let confirmMsg = '✅ Leave request submitted successfully!\n\n';
+                if (selectedTeamLead) {
+                    confirmMsg += 'Your request has been sent to ' + selectedTeamLead.split('@')[0] + ' for approval.';
+                } else {
+                    confirmMsg += 'Your request is pending approval.';
+                }
+                alert(confirmMsg);
+            } catch (error) {
+                console.error('❌ Error saving leave request:', error);
+                hideLoading();
+                alert('❌ Error submitting request: ' + error.message);
             }
-            alert(confirmMsg);
         }
         
         // Make functions globally accessible

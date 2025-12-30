@@ -5025,7 +5025,7 @@ body.is-ios .nav-menu {
                     </a>
                 </li>
                 <li id="designerAnalyticsNavItem" style="display: none;">
-                    <a href="#" onclick="showDesignerWeeklyAnalytics()" id="nav-designer-analytics">
+                    <a href="#" onclick="showDesignerWeeklyAnalytics(); return false;" id="nav-designer-analytics">
                         <span class="nav-icon">📊</span>Designer Hours
                     </a>
                 </li>
@@ -6419,7 +6419,7 @@ body.is-ios .nav-menu {
                 } else if (emailLower.startsWith('director@') || emailLower.includes('.director@')) {
                     roleForCheck = 'director';
                     currentUserRole = 'director';
-                } else if (emailLower.startsWith('hr@') || emailLower.includes('.hr@')) {
+                } else if (emailLower.startsWith('hr@') || emailLower.includes('.hr@') || emailLower === 'paul.a@edanbrook.com') {
                     roleForCheck = 'hr';
                     currentUserRole = 'hr';
                 } else if (emailLower.startsWith('bdm@') || emailLower.includes('.bdm@')) {
@@ -6456,6 +6456,17 @@ body.is-ios .nav-menu {
             const isManagement = ['coo', 'director'].includes(roleForCheck);
             const isBDM = roleForCheck === 'bdm';
             const isHR = roleForCheck === 'hr';
+            
+            console.log('==========================================');
+            console.log('🔍 NAVIGATION VISIBILITY DEBUG');
+            console.log('==========================================');
+            console.log('👤 roleForCheck:', roleForCheck);
+            console.log('👤 isDesigner:', isDesigner);
+            console.log('👤 isManagement:', isManagement);
+            console.log('👤 isBDM:', isBDM);
+            console.log('👤 isHR:', isHR);
+            console.log('📊 Designer Analytics visible for HR or Management:', isManagement || isHR);
+            console.log('==========================================');
 
             // --- Menu Visibility ---
             setDisplay('newProposalNavItem', isBDM);
@@ -6474,6 +6485,9 @@ body.is-ios .nav-menu {
             setDisplay('timesheetNavItem', isDesigner);
             setDisplay('myAnalyticsNavItem', isDesigner); // Designer sees their own analytics
             setDisplay('designerAnalyticsNavItem', isManagement || isHR); // Designer Hours Analytics for COO/Director/HR
+            console.log('📊 designerAnalyticsNavItem visibility set to:', isManagement || isHR);
+            console.log('📊 isManagement:', isManagement, '| isHR:', isHR);
+            console.log('📊 Menu element:', document.getElementById('designerAnalyticsNavItem'));
             setDisplay('designerAllocationsNavItem', isDesigner); // SHOW New Menu
 
             setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR);
@@ -15177,7 +15191,7 @@ async function markProjectComplete(projectId) {
             }
             
             // PRIORITY 3: Detect HR by email
-            if (email.startsWith('hr@') || email === 'hr@edanbrook.com' || email === 'hr@edanbrook.in') {
+            if (email.startsWith('hr@') || email === 'hr@edanbrook.com' || email === 'hr@edanbrook.in' || email === 'paul.a@edanbrook.com') {
                 console.log('🎯 Role = HR (from email pattern)');
                 return 'hr';
             }
@@ -24900,19 +24914,37 @@ async function updateDirectorRequestsBadge() {
  * Show Designer Weekly Hours Analytics Dashboard (Director/HR View)
  */
 async function showDesignerWeeklyAnalytics() {
+    console.log('==========================================');
+    console.log('🔍 showDesignerWeeklyAnalytics CALLED');
+    console.log('==========================================');
+    console.log('👤 Current User:', currentUser?.email);
+    console.log('👤 Current Role:', currentUserRole);
+    
     setActiveNav('nav-designer-analytics');
     const main = document.getElementById('mainContent');
+    if (!main) {
+        console.error('❌ mainContent element not found!');
+        return;
+    }
     main.style.display = 'block';
     showLoading();
 
     try {
-        const response = await apiCall('timesheets?action=designer_weekly_report');
+        console.log('📡 Calling API: timesheets?action=designer_weekly_report');
+        console.log('📡 API_BASE:', typeof API_BASE !== 'undefined' ? API_BASE : 'NOT DEFINED');
         
-        if (!response.success) {
-            throw new Error(response.error || 'Failed to load designer weekly report');
+        const response = await apiCall('timesheets?action=designer_weekly_report');
+        console.log('📡 API Response:', response);
+        
+        if (!response || !response.success) {
+            throw new Error(response?.error || 'Failed to load designer weekly report');
         }
 
-        const { designers, weeklyTotals, monthlyTotals, summary } = response.data;
+        const { designers, weeklyTotals, monthlyTotals, summary } = response.data || {};
+        
+        if (!designers || !summary) {
+            throw new Error('Invalid data received from API');
+        }
         
         main.innerHTML = renderDesignerAnalyticsDashboard(designers, weeklyTotals, monthlyTotals, summary);
         
@@ -24924,6 +24956,7 @@ async function showDesignerWeeklyAnalytics() {
             <div class="card" style="padding: 3rem; text-align: center;">
                 <h3 style="color: var(--danger);">⚠️ Error Loading Analytics</h3>
                 <p style="color: var(--text-light); margin: 1rem 0;">${error.message}</p>
+                <p style="color: var(--text-light); font-size: 0.85rem;">Check console (F12) for details</p>
                 <button onclick="showDesignerWeeklyAnalytics()" class="btn btn-primary">🔄 Retry</button>
             </div>
         `;

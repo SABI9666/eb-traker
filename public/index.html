@@ -20492,7 +20492,7 @@ Examples:
         console.log('✅ All designer functions implemented directly');
         
         // ============================================
-        // ✅ COO TIME REQUEST FUNCTIONS
+        // ✅ COO TIME REQUEST FUNCTIONS - UPDATED WITH DIRECTOR APPROVED ALLOCATION
         // ============================================
         
         window.showCOOTimeRequests = async function() {
@@ -20510,27 +20510,33 @@ Examples:
                 showLoading();
                 setActiveNav('nav-time-requests');
                 
-                const response = await apiCall('time-requests?status=pending');
-                console.log('📥 Time requests response:', response);
+                // Fetch BOTH pending requests AND approved requests pending allocation
+                const [pendingResponse, approvedResponse] = await Promise.all([
+                    apiCall('time-requests?status=pending'),
+                    apiCall('time-requests?status=approved')
+                ]);
                 
-                if (!response.success) {
-                    throw new Error('Failed to load time requests');
-                }
+                console.log('📥 Pending time requests:', pendingResponse);
+                console.log('📥 Approved requests:', approvedResponse);
                 
-                const requests = response.data || [];
+                const pendingRequests = pendingResponse.success ? (pendingResponse.data || []) : [];
+                // Filter approved requests that haven't been allocated to designer yet
+                const allApproved = approvedResponse.success ? (approvedResponse.data || []) : [];
+                const approvedRequests = allApproved.filter(req => 
+                    req.allocatedToDesigner !== true
+                );
                 
-                let requestsHtml = '';
-                
-                if (requests.length === 0) {
-                    requestsHtml = `
-                        <div style="text-align: center; padding: 3rem; color: #666;">
-                            <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
-                            <h3>All Caught Up!</h3>
-                            <p>No pending time requests to review.</p>
+                // Build Pending Requests HTML
+                let pendingHtml = '';
+                if (pendingRequests.length === 0) {
+                    pendingHtml = `
+                        <div style="text-align: center; padding: 2rem; color: #666; background: #f9fafb; border-radius: 12px;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+                            <p>No pending requests to review.</p>
                         </div>
                     `;
                 } else {
-                    requestsHtml = requests.map(req => `
+                    pendingHtml = pendingRequests.map(req => `
                         <div class="card" style="margin-bottom: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                             <div style="padding: 1.5rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
@@ -20590,6 +20596,70 @@ Examples:
                     `).join('');
                 }
                 
+                // Build Approved Requests Pending Allocation HTML (COO only)
+                let approvedHtml = '';
+                if (userRole === 'coo') {
+                    if (approvedRequests.length === 0) {
+                        approvedHtml = `
+                            <div style="text-align: center; padding: 2rem; color: #666; background: #f0fdf4; border-radius: 12px;">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+                                <p>No approved requests waiting for allocation.</p>
+                            </div>
+                        `;
+                    } else {
+                        approvedHtml = approvedRequests.map(req => `
+                            <div class="card" style="margin-bottom: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 5px solid #10b981;">
+                                <div style="padding: 1.5rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                        <div>
+                                            <h3 style="margin: 0 0 0.25rem 0;">${req.projectName || 'Unknown Project'}</h3>
+                                            <small style="color: #666;">${req.projectCode || 'N/A'} - ${req.clientCompany || 'N/A'}</small>
+                                        </div>
+                                        <span style="background: #10b981; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">✅ Director Approved</span>
+                                    </div>
+                                    
+                                    <div style="margin: 1rem 0; padding: 1rem; background: #f0fdf4; border-radius: 8px;">
+                                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                                            <div>
+                                                <small style="color: #666;">Requested By</small>
+                                                <div style="font-weight: 600;">${req.designerName || 'Unknown'}</div>
+                                            </div>
+                                            <div>
+                                                <small style="color: #666;">Approved Hours</small>
+                                                <div style="font-weight: 700; color: #10b981; font-size: 1.2rem;">${req.approvedHours || req.requestedHours || 0}h</div>
+                                            </div>
+                                            <div>
+                                                <small style="color: #666;">Approved By</small>
+                                                <div style="font-weight: 600;">${req.reviewedBy || 'Director'}</div>
+                                            </div>
+                                            <div>
+                                                <small style="color: #666;">Approved Date</small>
+                                                <div style="font-weight: 600;">${req.reviewedAt ? new Date(req.reviewedAt.seconds ? req.reviewedAt.seconds * 1000 : req.reviewedAt).toLocaleDateString() : 'N/A'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    ${req.reviewComment ? `
+                                    <div style="margin: 1rem 0;">
+                                        <strong>Director's Comment:</strong>
+                                        <p style="margin: 0.5rem 0; padding: 1rem; background: #f0fdf4; border-left: 3px solid #10b981; color: #555;">
+                                            ${req.reviewComment}
+                                        </p>
+                                    </div>
+                                    ` : ''}
+                                    
+                                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                                        <button onclick="showAllocateToDesignerModal('${req.id}', '${req.projectId}', ${req.approvedHours || req.requestedHours || 0}, '${(req.projectName || '').replace(/'/g, "\\'")}')" 
+                                                style="flex: 1; padding: 0.75rem 1rem; border-radius: 8px; border: none; background: #1e40af; color: white; cursor: pointer; font-weight: 600; font-size: 1rem;">
+                                            🎯 Allocate to Designer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+                
                 const mainContent = document.getElementById('mainContent');
                 mainContent.style.display = 'block';
                 mainContent.innerHTML = `
@@ -20599,15 +20669,43 @@ Examples:
                     </div>
                     
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-                        <div style="background: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <div style="font-size: 2rem; font-weight: 700; color: #ff9800;">${requests.length}</div>
-                            <div style="color: #666;">Pending Requests</div>
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid #ff9800;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #ff9800;">${pendingRequests.length}</div>
+                            <div style="color: #666;">Pending Review</div>
+                        </div>
+                        ${userRole === 'coo' ? `
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid #10b981;">
+                            <div style="font-size: 2rem; font-weight: 700; color: #10b981;">${approvedRequests.length}</div>
+                            <div style="color: #666;">Ready to Allocate</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${userRole === 'coo' && approvedRequests.length > 0 ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="background: #10b981; color: white; padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.9rem; animation: pulse 2s infinite;">⚡ ACTION NEEDED</span>
+                            Director Approved - Ready to Allocate
+                        </h3>
+                        <div class="approved-requests-list">
+                            ${approvedHtml}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div>
+                        <h3 style="margin-bottom: 1rem;">📋 Pending Requests</h3>
+                        <div class="requests-list">
+                            ${pendingHtml}
                         </div>
                     </div>
                     
-                    <div class="requests-list">
-                        ${requestsHtml}
-                    </div>
+                    <style>
+                        @keyframes pulse {
+                            0%, 100% { opacity: 1; }
+                            50% { opacity: 0.7; }
+                        }
+                    </style>
                 `;
                 
             } catch (error) {
@@ -20623,6 +20721,166 @@ Examples:
                         </button>
                     </div>
                 `;
+            } finally {
+                hideLoading();
+            }
+        };
+        
+        // ============================================
+        // NEW: Allocate Approved Hours to Designer Modal
+        // ============================================
+        window.showAllocateToDesignerModal = async function(requestId, projectId, approvedHours, projectName) {
+            console.log('🎯 showAllocateToDesignerModal called', { requestId, projectId, approvedHours, projectName });
+            closeAllModals();
+            
+            try {
+                showLoading();
+                
+                // Fetch project to get assigned designers
+                const projectResponse = await apiCall(`projects?id=${projectId}`);
+                console.log('📥 Project response:', projectResponse);
+                
+                hideLoading();
+                
+                if (!projectResponse.success || !projectResponse.data) {
+                    throw new Error('Failed to load project details');
+                }
+                
+                const project = projectResponse.data;
+                const assignedDesigners = project.assignedDesigners || [];
+                const designerNames = project.designerNames || {};
+                
+                // Build designer options
+                let designerOptions = '';
+                if (assignedDesigners.length === 0) {
+                    designerOptions = '<option value="">No designers assigned to this project</option>';
+                } else {
+                    designerOptions = '<option value="">Select a designer...</option>';
+                    assignedDesigners.forEach(designerUid => {
+                        const name = designerNames[designerUid] || designerUid;
+                        designerOptions += `<option value="${designerUid}" data-name="${name}">${name}</option>`;
+                    });
+                }
+                
+                // Create modal
+                const modalHtml = `
+                    <div class="modal-overlay" id="allocateDesignerModalOverlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;" onclick="if(event.target.id === 'allocateDesignerModalOverlay') { this.remove(); document.body.classList.remove('modal-open'); }">
+                        <div class="modal-content" style="max-width: 500px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                            <div class="modal-header" style="padding: 1.5rem; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white;">
+                                <h2 style="margin: 0;">🎯 Allocate Approved Hours</h2>
+                            </div>
+                            
+                            <div class="modal-body" style="padding: 1.5rem;">
+                                <div style="background: #f0fdf4; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid #86efac;">
+                                    <div style="font-weight: 600; color: #065f46; font-size: 1.1rem;">${projectName}</div>
+                                    <div style="color: #047857; font-size: 1.5rem; font-weight: 700; margin-top: 0.5rem;">
+                                        ${approvedHours}h <span style="font-size: 0.9rem; font-weight: 400;">approved by Director</span>
+                                    </div>
+                                </div>
+                                
+                                <input type="hidden" id="allocateRequestId" value="${requestId}">
+                                <input type="hidden" id="allocateProjectId" value="${projectId}">
+                                <input type="hidden" id="allocateApprovedHours" value="${approvedHours}">
+                                
+                                <div style="margin-bottom: 1.25rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Select Designer <span style="color: red;">*</span></label>
+                                    <select id="allocateDesignerSelect" required
+                                            style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
+                                            onchange="updateAllocateDesignerName()">
+                                        ${designerOptions}
+                                    </select>
+                                    <input type="hidden" id="allocateDesignerName" value="">
+                                </div>
+                                
+                                <div style="margin-bottom: 1.25rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Hours to Allocate <span style="color: red;">*</span></label>
+                                    <input type="number" id="allocateHoursInput" 
+                                           value="${approvedHours}" min="0.5" max="${approvedHours}" step="0.5" required
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box;">
+                                    <small style="color: #6b7280;">Maximum: ${approvedHours}h (as approved by Director)</small>
+                                </div>
+                            </div>
+                            
+                            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                                <button type="button" onclick="document.getElementById('allocateDesignerModalOverlay').remove(); document.body.classList.remove('modal-open');"
+                                        style="padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid #d1d5db; background: white; cursor: pointer; font-weight: 600;">
+                                    Cancel
+                                </button>
+                                <button type="button" onclick="submitAllocateToDesigner()"
+                                        style="padding: 0.75rem 1.5rem; border-radius: 8px; border: none; background: #1e40af; color: white; cursor: pointer; font-weight: 600;">
+                                    ✅ Allocate Hours
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                document.body.classList.add('modal-open');
+                
+            } catch (error) {
+                hideLoading();
+                console.error('❌ Error showing allocate modal:', error);
+                alert('Error loading project designers: ' + error.message);
+            }
+        };
+        
+        // Update designer name hidden field when selection changes
+        window.updateAllocateDesignerName = function() {
+            const select = document.getElementById('allocateDesignerSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            const nameInput = document.getElementById('allocateDesignerName');
+            nameInput.value = selectedOption.dataset.name || '';
+        };
+        
+        // Submit allocation to designer
+        window.submitAllocateToDesigner = async function() {
+            console.log('📤 submitAllocateToDesigner called');
+            
+            const requestId = document.getElementById('allocateRequestId').value;
+            const projectId = document.getElementById('allocateProjectId').value;
+            const designerUid = document.getElementById('allocateDesignerSelect').value;
+            const designerName = document.getElementById('allocateDesignerName').value;
+            const hours = parseFloat(document.getElementById('allocateHoursInput').value);
+            
+            if (!designerUid) {
+                alert('Please select a designer');
+                return;
+            }
+            
+            if (!hours || hours <= 0) {
+                alert('Please enter valid hours to allocate');
+                return;
+            }
+            
+            try {
+                showLoading();
+                
+                const response = await apiCall(`time-requests?id=${requestId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'allocate',
+                        targetDesignerUid: designerUid,
+                        targetDesignerName: designerName,
+                        allocatedHours: hours
+                    })
+                });
+                
+                console.log('📥 Allocate response:', response);
+                
+                if (response.success) {
+                    document.getElementById('allocateDesignerModalOverlay')?.remove();
+                    document.body.classList.remove('modal-open');
+                    alert(`✅ Successfully allocated ${hours}h to ${designerName}!`);
+                    showCOOTimeRequests(); // Refresh the list
+                } else {
+                    throw new Error(response.error || 'Failed to allocate hours');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error allocating hours:', error);
+                alert('Error: ' + error.message);
             } finally {
                 hideLoading();
             }
@@ -20751,7 +21009,7 @@ Examples:
             }
         };
         
-        console.log('✅ COO Time Request functions registered');
+        console.log('✅ COO Time Request functions registered (with Director Approved Allocation)');
     </script>
 
     <div id="cooProjectNumberSection" style="display: none;">

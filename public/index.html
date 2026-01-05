@@ -25047,38 +25047,43 @@ function toggleDesignHours() {
 }
   
 
-// ✅ GLOBAL FILE UPLOAD FUNCTION
-    async function uploadFileDirectly(file, proposalId, fileType) {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`🚀 Uploading: ${file.name}`);
+// ✅ GLOBAL FILE UPLOAD FUNCTION - Attached to window for global access
+window.uploadFileDirectly = async function(file, proposalId, fileType) {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🚀 Uploading: ${file.name}`);
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        // CRITICAL: Send empty string if no proposalId - backend converts to null
+        formData.append('proposalId', proposalId || ''); 
+        formData.append('fileType', fileType || 'project');
         
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            // CRITICAL: Send empty string if no proposalId - backend converts to null
-            formData.append('proposalId', proposalId || ''); 
-            formData.append('fileType', fileType || 'project');
-            
-            // ✅ FIX: Use 'files/upload-file' endpoint that backend expects
-            const response = await apiCall('files/upload-file', {
-                method: 'POST',
-                body: formData
-                // Note: Content-Type header is NOT set here; 
-                // apiCall helper handles FormData correctly
-            });
-            
-            if (!response.success) {
-                throw new Error(response.error || 'Upload failed');
-            }
-            
-            console.log('✅ Upload successful!');
-            return response.data;
-            
-        } catch (error) {
-            console.error('❌ UPLOAD FAILED:', file.name, error.message);
-            throw error;
+        // ✅ FIX: Use 'files/upload-file' endpoint that backend expects
+        const response = await apiCall('files/upload-file', {
+            method: 'POST',
+            body: formData
+            // Note: Content-Type header is NOT set here; 
+            // apiCall helper handles FormData correctly
+        });
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Upload failed');
         }
+        
+        console.log('✅ Upload successful!');
+        return response.data;
+        
+    } catch (error) {
+        console.error('❌ UPLOAD FAILED:', file.name, error.message);
+        throw error;
     }
+};
+
+// Also keep as regular function for backward compatibility
+async function uploadFileDirectly(file, proposalId, fileType) {
+    return window.uploadFileDirectly(file, proposalId, fileType);
+}
 
 
         function switchDesignerTab(tabName) {

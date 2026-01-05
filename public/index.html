@@ -15249,14 +15249,54 @@ async function markProjectComplete(projectId) {
         let leaveRequests = [];
         
         // Load leave requests from Firestore
+        // FIXED: Load leave requests - handles both createdAt and submittedAt fields
         async function loadLeaveRequests() {
             try {
                 console.log('📂 Loading leave requests from Firestore...');
-                const snapshot = await db.collection('leaveRequests').orderBy('submittedAt', 'desc').get();
+                let snapshot;
+                
+                // Try createdAt first (backend uses this)
+                try {
+                    snapshot = await db.collection('leaveRequests').orderBy('createdAt', 'desc').get();
+                } catch (e1) {
+                    console.log('⚠️ createdAt ordering failed, trying submittedAt...');
+                    try {
+                        snapshot = await db.collection('leaveRequests').orderBy('submittedAt', 'desc').get();
+                    } catch (e2) {
+                        console.log('⚠️ submittedAt also failed, fetching without order...');
+                        snapshot = await db.collection('leaveRequests').get();
+                    }
+                }
+                
                 leaveRequests = [];
                 snapshot.forEach(doc => {
-                    leaveRequests.push({ ...doc.data(), docId: doc.id });
+                    const data = doc.data();
+                    // Normalize data to handle field name differences between frontend/backend
+                    leaveRequests.push({ 
+                        ...data, 
+                        docId: doc.id,
+                        // Ensure flowType is accessible (backend stores at root, not nested)
+                        flowType: data.flowType || data.approvalFlow?.flowType || 'default_flow',
+                        // Map numberOfDays to totalDays for frontend
+                        totalDays: data.totalDays || data.numberOfDays || 1,
+                        // Map date fields
+                        fromDate: data.fromDate || data.startDate,
+                        toDate: data.toDate || data.endDate,
+                        // Ensure employee info is available
+                        employeeName: data.employeeName || data.submittedByName || data.submittedBy?.split('@')[0] || 'Unknown'
+                    });
                 });
+                
+                // Sort by date if not already ordered
+                leaveRequests.sort((a, b) => {
+                    const getDate = (item) => {
+                        const d = item.createdAt || item.submittedAt;
+                        if (!d) return new Date(0);
+                        return d.toDate ? d.toDate() : new Date(d);
+                    };
+                    return getDate(b) - getDate(a);
+                });
+                
                 console.log('✅ Loaded', leaveRequests.length, 'leave requests from Firestore');
                 return leaveRequests;
             } catch (error) {
@@ -15530,14 +15570,22 @@ async function markProjectComplete(projectId) {
                 
                 leaveRequests.forEach(req => {
                     if (req.status !== 'pending') return;
-                    const flow = req.approvalFlow?.flowType || 'standard_flow';
+                    
+                    // FIX: Access flowType directly (backend stores at root level, not nested)
+                    const flow = req.flowType || req.approvalFlow?.flowType || 'default_flow';
                     const stage = req.currentStage || 1;
                     const assignedTeamLead = (req.selectedTeamLead || '').toLowerCase();
                     
-                    console.log('📝 Checking request:', req.id, '| Flow:', flow, '| Stage:', stage, '| Assigned TL:', assignedTeamLead);
+                    // FIX: Check specific stage status, not just overall status
+                    const stage1Status = req.stage1Status || 'pending';
+                    const stage2Status = req.stage2Status || 'pending';
+                    const stage3Status = req.stage3Status || 'pending';
+                    
+                    console.log('📝 Checking request:', req.docId, '| Flow:', flow, '| Stage:', stage, 
+                                '| S1:', stage1Status, '| S2:', stage2Status, '| S3:', stage3Status);
                     
                     // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
-                    if (isTeamLead && flow === 'designer_flow' && stage === 1) {
+                    if (isTeamLead && flow === 'designer_flow' && stage === 1 && stage1Status === 'pending') {
                         // Check if this request is assigned to THIS team lead using flexible matching
                         if (isSameTeamLead(userEmail, assignedTeamLead)) {
                             console.log('✅ Matched for Team Lead approval (designer flow stage 1)');
@@ -15547,22 +15595,26 @@ async function markProjectComplete(projectId) {
                     
                     // COO approvals
                     if (userRole === 'coo') {
-                        console.log('🔍 COO check - Flow:', flow, 'Stage:', stage);
-                        // Stage 1 for standard_flow, teamlead_flow, default_flow
-                        if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
+                        console.log('🔍 COO check - Flow:', flow, 'Stage:', stage, 'Stage1Approver:', req.stage1ApproverType);
+                        // Stage 1 for standard_flow, teamlead_flow, default_flow where COO is stage1 approver
+                        if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && 
+                            stage === 1 && stage1Status === 'pending' &&
+                            (req.stage1ApproverType === 'coo' || !req.stage1ApproverType)) {
                             console.log('✅ Matched for COO approval (standard/teamlead/default flow stage 1)');
                             pendingRequests.push({...req, myApprovalStage: 1, myRole: 'coo'});
                         }
                         // Stage 3 for designer_flow (final approval for designers)
-                        if (flow === 'designer_flow' && stage === 3) {
+                        if (flow === 'designer_flow' && stage === 3 && stage3Status === 'pending' &&
+                            req.stage3ApproverType === 'coo') {
                             console.log('✅ Matched for COO approval (designer flow stage 3 - final)');
                             pendingRequests.push({...req, myApprovalStage: 3, myRole: 'coo'});
                         }
                     }
                     
-                    // HR approvals - Stage 2 for all multi-stage flows
+                    // HR approvals - Stage 2 for all multi-stage flows where HR is stage2 approver
                     if (userRole === 'hr') {
-                        if ((flow === 'standard_flow' || flow === 'designer_flow' || flow === 'default_flow' || flow === 'teamlead_flow') && stage === 2) {
+                        if (stage === 2 && stage2Status === 'pending' &&
+                            (req.stage2ApproverType === 'hr' || !req.stage2ApproverType)) {
                             console.log('✅ Matched for HR approval (stage 2)');
                             pendingRequests.push({...req, myApprovalStage: 2, myRole: 'hr'});
                         }
@@ -15570,11 +15622,15 @@ async function markProjectComplete(projectId) {
                     
                     // Director approvals - Stage 3 for standard/default, Stage 1 for HR/COO leaves
                     if (userRole === 'director') {
-                        if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) {
+                        if ((flow === 'standard_flow' || flow === 'default_flow') && 
+                            stage === 3 && stage3Status === 'pending' &&
+                            req.stage3ApproverType === 'director') {
                             console.log('✅ Matched for Director approval (stage 3)');
                             pendingRequests.push({...req, myApprovalStage: 3, myRole: 'director'});
                         }
-                        if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) {
+                        if ((flow === 'hr_flow' || flow === 'coo_flow') && 
+                            stage === 1 && stage1Status === 'pending' &&
+                            req.stage1ApproverType === 'director') {
                             console.log('✅ Matched for Director approval (hr/coo flow stage 1)');
                             pendingRequests.push({...req, myApprovalStage: 1, myRole: 'director'});
                         }
@@ -15613,8 +15669,9 @@ async function markProjectComplete(projectId) {
                 
                 const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
                 const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
+                const allPendingInSystem = leaveRequests.filter(r => r.status === 'pending').length;
                 
-                console.log('📊 Dashboard stats - Pending:', pendingRequests.length, 'Approved:', approvedRequests.length, 'Rejected:', rejectedRequests.length);
+                console.log('📊 Dashboard stats - My Pending:', pendingRequests.length, '| All Pending:', allPendingInSystem, '| Approved:', approvedRequests.length, '| Rejected:', rejectedRequests.length);
                 
                 main.innerHTML = `
                     ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
@@ -15639,15 +15696,19 @@ async function markProjectComplete(projectId) {
                     <div class="dashboard-stats" style="margin-bottom: 2rem;">
                         <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
                             <div class="stat-number">${pendingRequests.length}</div>
-                            <div class="stat-label">Pending My Approval</div>
+                            <div class="stat-label">⏳ Pending My Approval</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe);">
+                            <div class="stat-number">${allPendingInSystem}</div>
+                            <div class="stat-label">📋 Total Pending (System)</div>
                         </div>
                         <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
                             <div class="stat-number">${approvedRequests.length}</div>
-                            <div class="stat-label">Total Approved</div>
+                            <div class="stat-label">✅ Total Approved</div>
                         </div>
                         <div class="stat-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca);">
                             <div class="stat-number">${rejectedRequests.length}</div>
-                            <div class="stat-label">Total Rejected</div>
+                            <div class="stat-label">❌ Total Rejected</div>
                         </div>
                     </div>
                     
@@ -15690,35 +15751,59 @@ async function markProjectComplete(projectId) {
         
         // Render leave approval card (with approve/reject buttons)
         function renderLeaveApprovalCard(request) {
+            // FIX: Handle both old format (approvalFlow object) and new format (flat fields)
             const flowInfo = request.approvalFlow || {};
             const currentStage = request.currentStage || 1;
-            const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
+            const totalStages = request.totalStages || flowInfo.totalStages || flowInfo.stages?.length || 1;
             const docId = request.docId; // Use Firestore document ID
             
             // Check if current user is HR
             const userRole = getUserRoleWithFallback();
             const isHRUser = userRole === 'hr';
             
-            let progressHtml = '';
+            // Build stage labels from approverType fields if no stages array exists
+            let stageLabels = [];
             if (flowInfo.stages && flowInfo.stages.length > 0) {
+                stageLabels = flowInfo.stages;
+            } else {
+                // Build from flat fields
+                const stage1Type = request.stage1ApproverType;
+                const stage2Type = request.stage2ApproverType;
+                const stage3Type = request.stage3ApproverType;
+                
+                if (stage1Type) stageLabels.push(stage1Type.toUpperCase() + ' Approval');
+                if (stage2Type) stageLabels.push(stage2Type.toUpperCase() + ' Approval');
+                if (stage3Type) stageLabels.push(stage3Type.toUpperCase() + ' Approval');
+            }
+            
+            let progressHtml = '';
+            if (stageLabels.length > 0) {
                 progressHtml = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">';
-                flowInfo.stages.forEach((stage, idx) => {
+                stageLabels.forEach((stage, idx) => {
                     const stageNum = idx + 1;
                     let bgColor = '#f3f4f6';
                     let textColor = '#6b7280';
                     let icon = '⏳';
                     
-                    if (stageNum < currentStage) {
+                    // Check stage status
+                    const stageStatus = request[`stage${stageNum}Status`] || 'pending';
+                    
+                    if (stageStatus === 'approved') {
                         bgColor = '#d1fae5';
                         textColor = '#065f46';
                         icon = '✅';
-                    } else if (stageNum === currentStage) {
+                    } else if (stageNum === currentStage && stageStatus === 'pending') {
                         bgColor = '#dbeafe';
                         textColor = '#1e40af';
                         icon = '🔄';
+                    } else if (stageStatus === 'rejected') {
+                        bgColor = '#fee2e2';
+                        textColor = '#991b1b';
+                        icon = '❌';
                     }
                     
-                    progressHtml += '<span style="background: ' + bgColor + '; color: ' + textColor + '; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500;">' + icon + ' ' + stage + '</span>';
+                    const stageLabel = typeof stage === 'object' ? stage.label : stage;
+                    progressHtml += '<span style="background: ' + bgColor + '; color: ' + textColor + '; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500;">' + icon + ' ' + stageLabel + '</span>';
                 });
                 progressHtml += '</div>';
             }
@@ -22922,257 +23007,248 @@ async function showPendingTimeRequests() {
     }
 }
 
+/**
+         * Show COO Time Request Dashboard
+         */
+          async function showCOOTimeRequests() {
+            // FIX: Use the correct global variable 'currentUserRole'
+            const userRole = currentUserRole ? currentUserRole.trim().toLowerCase() : '';
+            if (!['coo', 'director'].includes(userRole)) {
+                alert('Access denied. COO/Director only.');
+                return;
+            }
+    try {
+        showLoading();
+        setActiveNav('nav-time-requests');
+        
+        const response = await apiCall('time-requests?status=pending');
+        
+        if (!response.success) {
+            throw new Error('Failed to load time requests');
+        }
+        
+        const requests = response.data || [];
+        
+        let requestsHtml = '';
+        
+        if (requests.length === 0) {
+            requestsHtml = `
+                <div style="text-align: center; padding: 3rem; color: #666;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                    <h3>All Caught Up!</h3>
+                    <p>No pending time requests to review.</p>
+                </div>
+            `;
+        } else {
+            requestsHtml = requests.map(req => `
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div style="padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="margin: 0 0 0.25rem 0;">${req.projectName}</h3>
+                                <small style="color: #666;">${req.projectCode} - ${req.clientCompany}</small>
+                            </div>
+                            <span class="badge" style="background: #ff9800;">Pending Review</span>
+                        </div>
+                        
+                        <div style="margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                                <div>
+                                    <small style="color: #666;">Requested By</small>
+                                    <div style="font-weight: 600;">${req.designerName}</div>
+                                </div>
+                                <div>
+                                    <small style="color: #666;">Additional Hours</small>
+                                    <div style="font-weight: 600; color: #2196F3; font-size: 1.2rem;">${req.requestedHours}h</div>
+                                </div>
+                                <div>
+                                    <small style="color: #666;">Current Usage</small>
+                                    <div style="font-weight: 600;">${req.currentHoursLogged}h / ${req.currentAllocatedHours}h</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <strong>Reason for Additional Time:</strong>
+                            <p style="margin: 0.5rem 0; padding: 1rem; background: #fff; border-left: 3px solid #2196F3; color: #555;">
+                                ${req.reason}
+                            </p>
+                        </div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <small style="color: #666;">
+                                Submitted: ${req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleString() : 'N/A'}
+                            </small>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                            <button onclick="approveTimeRequest('${req.id}', ${req.requestedHours})" 
+                                    class="btn btn-success" style="flex: 1;">
+                                ✅ Approve ${req.requestedHours}h
+                            </button>
+                            <button onclick="showRejectTimeRequestModal('${req.id}')" 
+                                    class="btn btn-danger" style="flex: 1;">
+                                ❌ Reject
+                            </button>
+                            <button onclick="showRequestInfoModal('${req.id}')" 
+                                    class="btn btn-outline">
+                                💬 Request Info
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        const mainContent = document.getElementById('mainContent');
+        mainContent.innerHTML = `
+            <div class="page-header">
+                <h2>⏱️ Additional Time Requests</h2>
+                <p class="subtitle">Review and approve/reject designer requests for additional hours</p>
+            </div>
+            
+            <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-number">${requests.length}</div>
+                    <div class="stat-label">Pending Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${requests.reduce((sum, r) => sum + r.requestedHours, 0).toFixed(1)}h</div>
+                    <div class="stat-label">Total Hours Requested</div>
+                </div>
+            </div>
+            
+            ${requestsHtml}
+        `;
+        
+        hideLoading();
+        
+    } catch (error) {
+        console.error('Error loading COO time requests:', error);
+        alert('Error: ' + error.message);
+        hideLoading();
+    }
+}
 
-/* ============================================
-   DUPLICATE COO TIME REQUEST FUNCTIONS COMMENTED OUT
-   Using window.showCOOTimeRequests (line ~20498) instead
-   ============================================
-// /**
-//          * Show COO Time Request Dashboard
-//          */
-//           async function showCOOTimeRequests() {
-//             // FIX: Use the correct global variable 'currentUserRole'
-//             const userRole = currentUserRole ? currentUserRole.trim().toLowerCase() : '';
-//             if (!['coo', 'director'].includes(userRole)) {
-//                 alert('Access denied. COO/Director only.');
-//                 return;
-//             }
-//     try {
-//         showLoading();
-//         setActiveNav('nav-time-requests');
-//         
-//         const response = await apiCall('time-requests?status=pending');
-//         
-//         if (!response.success) {
-//             throw new Error('Failed to load time requests');
-//         }
-//         
-//         const requests = response.data || [];
-//         
-//         let requestsHtml = '';
-//         
-//         if (requests.length === 0) {
-//             requestsHtml = `
-//                 <div style="text-align: center; padding: 3rem; color: #666;">
-//                     <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
-//                     <h3>All Caught Up!</h3>
-//                     <p>No pending time requests to review.</p>
-//                 </div>
-//             `;
-//         } else {
-//             requestsHtml = requests.map(req => `
-//                 <div class="card" style="margin-bottom: 1.5rem;">
-//                     <div style="padding: 1.5rem;">
-//                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-//                             <div>
-//                                 <h3 style="margin: 0 0 0.25rem 0;">${req.projectName}</h3>
-//                                 <small style="color: #666;">${req.projectCode} - ${req.clientCompany}</small>
-//                             </div>
-//                             <span class="badge" style="background: #ff9800;">Pending Review</span>
-//                         </div>
-//                         
-//                         <div style="margin: 1rem 0; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-//                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-//                                 <div>
-//                                     <small style="color: #666;">Requested By</small>
-//                                     <div style="font-weight: 600;">${req.designerName}</div>
-//                                 </div>
-//                                 <div>
-//                                     <small style="color: #666;">Additional Hours</small>
-//                                     <div style="font-weight: 600; color: #2196F3; font-size: 1.2rem;">${req.requestedHours}h</div>
-//                                 </div>
-//                                 <div>
-//                                     <small style="color: #666;">Current Usage</small>
-//                                     <div style="font-weight: 600;">${req.currentHoursLogged}h / ${req.currentAllocatedHours}h</div>
-//                                 </div>
-//                             </div>
-//                         </div>
-//                         
-//                         <div style="margin: 1rem 0;">
-//                             <strong>Reason for Additional Time:</strong>
-//                             <p style="margin: 0.5rem 0; padding: 1rem; background: #fff; border-left: 3px solid #2196F3; color: #555;">
-//                                 ${req.reason}
-//                             </p>
-//                         </div>
-//                         
-//                         <div style="margin: 1rem 0;">
-//                             <small style="color: #666;">
-//                                 Submitted: ${req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleString() : 'N/A'}
-//                             </small>
-//                         </div>
-//                         
-//                         <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ddd;">
-//                             <button onclick="approveTimeRequest('${req.id}', ${req.requestedHours})" 
-//                                     class="btn btn-success" style="flex: 1;">
-//                                 ✅ Approve ${req.requestedHours}h
-//                             </button>
-//                             <button onclick="showRejectTimeRequestModal('${req.id}')" 
-//                                     class="btn btn-danger" style="flex: 1;">
-//                                 ❌ Reject
-//                             </button>
-//                             <button onclick="showRequestInfoModal('${req.id}')" 
-//                                     class="btn btn-outline">
-//                                 💬 Request Info
-//                             </button>
-//                         </div>
-//                     </div>
-//                 </div>
-//             `).join('');
-//         }
-//         
-//         const mainContent = document.getElementById('mainContent');
-//         mainContent.innerHTML = `
-//             <div class="page-header">
-//                 <h2>⏱️ Additional Time Requests</h2>
-//                 <p class="subtitle">Review and approve/reject designer requests for additional hours</p>
-//             </div>
-//             
-//             <div class="dashboard-stats" style="margin-bottom: 2rem;">
-//                 <div class="stat-card">
-//                     <div class="stat-number">${requests.length}</div>
-//                     <div class="stat-label">Pending Requests</div>
-//                 </div>
-//                 <div class="stat-card">
-//                     <div class="stat-number">${requests.reduce((sum, r) => sum + r.requestedHours, 0).toFixed(1)}h</div>
-//                     <div class="stat-label">Total Hours Requested</div>
-//                 </div>
-//             </div>
-//             
-//             ${requestsHtml}
-//         `;
-//         
-//         hideLoading();
-//         
-//     } catch (error) {
-//         console.error('Error loading COO time requests:', error);
-//         alert('Error: ' + error.message);
-//         hideLoading();
-//     }
-// }
-// 
-// /**
-//  * Approve Time Request
-//  */
-// async function approveTimeRequest(requestId, hours) {
-//     const comment = prompt(`Approve ${hours}h additional time?\n\nOptional comment for designer:`);
-//     
-//     if (comment === null) return; // Cancelled
-//     
-//     try {
-//         showLoading();
-//         
-//         const response = await apiCall(`time-requests?id=${requestId}`, {
-//             method: 'PUT',
-//             headers: { 'Content-Type': 'application/json' },
-//             body: JSON.stringify({
-//                 action: 'approve',
-//                 approvedHours: hours,
-//                 comment: comment || 'Approved',
-//                 applyToTimesheet: true
-//             })
-//         });
-//         
-//         if (response.success) {
-//             alert(`✅ Approved ${hours}h additional time!`);
-//             // --- ADD THIS LINE ---
-//            // You might need to pass designerEmail to this function or let backend fetch it
-//            triggerEmailNotification('time_request.approved', { 
-//            requestId: requestId,
-//            hours: hours 
-//     });
-//     // --------------------
-//             showCOOTimeRequests(); // Refresh list
-//         } else {
-//             throw new Error(response.error || 'Failed to approve');
-//         }
-//         
-//     } catch (error) {
-//         console.error('Error approving time request:', error);
-//         alert('Error: ' + error.message);
-//     } finally {
-//         hideLoading();
-//     }
-// }
-// 
-// /**
-//  * Show Reject Time Request Modal
-//  */
-// function showRejectTimeRequestModal(requestId) {
-//     closeAllModals();
-//     
-//     const modalHtml = `
-//         <div class="modal-overlay" id="rejectModalOverlay" onclick="handleModalOverlayClick(event, 'rejectModalOverlay')">
-//             <div class="modal-content" style="max-width: 500px;">
-//                 <div class="modal-header">
-//                     <h2>❌ Reject Time Request</h2>
-//                     <span class="close-modal" onclick="closeRejectModal()">&times;</span>
-//                 </div>
-//                 
-//                 <div class="modal-body">
-//                     <input type="hidden" id="rejectRequestId" value="${requestId}">
-//                     <div class="form-group">
-//                         <label>Reason for Rejection <span class="required">*</span></label>
-//                         <textarea id="rejectComment" class="form-control" rows="4" 
-//                                   placeholder="Explain why this request is being rejected..." required></textarea>
-//                     </div>
-//                 </div>
-//                 
-//                 <div class="modal-footer">
-//                     <button type="button" onclick="closeRejectModal()" class="btn btn-outline">Cancel</button>
-//                     <button type="button" onclick="submitRejectTimeRequest()" class="btn btn-danger">
-//                         Reject Request
-//                     </button>
-//                 </div>
-//             </div>
-//         </div>
-//     `;
-//     
-//     document.body.insertAdjacentHTML('beforeend', modalHtml);
-// }
-// 
-// /**
-//  * Submit Rejection
-//  */
-// async function submitRejectTimeRequest() {
-//     const requestId = document.getElementById('rejectRequestId').value;
-//     const comment = document.getElementById('rejectComment').value.trim();
-//     
-//     if (!comment || comment.length < 10) {
-//         alert('Please provide a detailed reason for rejection (at least 10 characters)');
-//         return;
-//     }
-//     
-//     try {
-//         showLoading();
-//         
-//         const response = await apiCall(`time-requests?id=${requestId}`, {
-//             method: 'PUT',
-//             headers: { 'Content-Type': 'application/json' },
-//             body: JSON.stringify({
-//                 action: 'reject',
-//                 comment: comment
-//             })
-//         });
-//         
-//         if (response.success) {
-//             closeRejectModal();
-//             alert('❌ Request rejected');
-//             showCOOTimeRequests(); // Refresh list
-//         } else {
-//             throw new Error(response.error || 'Failed to reject');
-//         }
-//         
-//     } catch (error) {
-//         console.error('Error rejecting time request:', error);
-//         alert('Error: ' + error.message);
-//     } finally {
-//         hideLoading();
-//     }
-// }
+/**
+ * Approve Time Request
+ */
+async function approveTimeRequest(requestId, hours) {
+    const comment = prompt(`Approve ${hours}h additional time?\n\nOptional comment for designer:`);
+    
+    if (comment === null) return; // Cancelled
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`time-requests?id=${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'approve',
+                approvedHours: hours,
+                comment: comment || 'Approved',
+                applyToTimesheet: true
+            })
+        });
+        
+        if (response.success) {
+            alert(`✅ Approved ${hours}h additional time!`);
+            // --- ADD THIS LINE ---
+           // You might need to pass designerEmail to this function or let backend fetch it
+           triggerEmailNotification('time_request.approved', { 
+           requestId: requestId,
+           hours: hours 
+    });
+    // --------------------
+            showCOOTimeRequests(); // Refresh list
+        } else {
+            throw new Error(response.error || 'Failed to approve');
+        }
+        
+    } catch (error) {
+        console.error('Error approving time request:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
 
-   END OF COMMENTED DUPLICATE FUNCTIONS
-   ============================================ */
+/**
+ * Show Reject Time Request Modal
+ */
+function showRejectTimeRequestModal(requestId) {
+    closeAllModals();
+    
+    const modalHtml = `
+        <div class="modal-overlay" id="rejectModalOverlay" onclick="handleModalOverlayClick(event, 'rejectModalOverlay')">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>❌ Reject Time Request</h2>
+                    <span class="close-modal" onclick="closeRejectModal()">&times;</span>
+                </div>
+                
+                <div class="modal-body">
+                    <input type="hidden" id="rejectRequestId" value="${requestId}">
+                    <div class="form-group">
+                        <label>Reason for Rejection <span class="required">*</span></label>
+                        <textarea id="rejectComment" class="form-control" rows="4" 
+                                  placeholder="Explain why this request is being rejected..." required></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" onclick="closeRejectModal()" class="btn btn-outline">Cancel</button>
+                    <button type="button" onclick="submitRejectTimeRequest()" class="btn btn-danger">
+                        Reject Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
+/**
+ * Submit Rejection
+ */
+async function submitRejectTimeRequest() {
+    const requestId = document.getElementById('rejectRequestId').value;
+    const comment = document.getElementById('rejectComment').value.trim();
+    
+    if (!comment || comment.length < 10) {
+        alert('Please provide a detailed reason for rejection (at least 10 characters)');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`time-requests?id=${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'reject',
+                comment: comment
+            })
+        });
+        
+        if (response.success) {
+            closeRejectModal();
+            alert('❌ Request rejected');
+            showCOOTimeRequests(); // Refresh list
+        } else {
+            throw new Error(response.error || 'Failed to reject');
+        }
+        
+    } catch (error) {
+        console.error('Error rejecting time request:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
 
 /**
  * Modal Close Functions - Fix for stuck modals

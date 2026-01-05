@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.0.0 - Cache Version 33 (Multi-Level Leave Approval System)
+// Version: 5.0.0 - Cache Version 35 (COO Time Request Allocation Fix)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v33';
-const STATIC_CACHE = 'ebtracker-static-v33';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v33';
+const CACHE_NAME = 'ebtracker-v35';
+const STATIC_CACHE = 'ebtracker-static-v35';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v35';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v33: Installing...');
+  console.log('🔧 Service Worker v35: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v33: Caching static assets');
+        console.log('📦 Service Worker v35: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v33: Static assets cached');
+        console.log('✅ Service Worker v35: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v33: Cache failed', error);
+        console.error('❌ Service Worker v35: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v33: Activating...');
+  console.log('🚀 Service Worker v35: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v33: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v35: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v33: Activated - Old caches cleared');
+        console.log('✅ Service Worker v35: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,12 +78,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v33: Notifying clients to refresh');
+        console.log('📢 Service Worker v35: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v33',
-            message: 'New version available with Multi-Level Leave Approval System! Please refresh.'
+            version: 'v35',
+            message: 'New version available with COO Time Request Allocation Fix! Please refresh.'
           });
         });
       })
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v33', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v35', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -474,4 +474,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v33: Loaded successfully - Multi-Level Leave Approval System enabled');
+console.log('✅ Service Worker v35: Loaded successfully - COO Time Request Allocation Fix enabled');

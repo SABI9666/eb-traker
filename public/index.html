@@ -15249,50 +15249,95 @@ async function markProjectComplete(projectId) {
         let leaveRequests = [];
         
         // Load leave requests from Firestore
-        // FIXED: Load leave requests - handles both createdAt and submittedAt fields
+        // FIXED: Load leave requests via API (instead of direct Firestore access)
         async function loadLeaveRequests() {
+            console.log('📂 Loading leave requests via API...');
+            leaveRequests = [];
+            
             try {
-                console.log('📂 Loading leave requests from Firestore...');
-                let snapshot;
+                // Use API endpoint for management users (HR, COO, Director)
+                const userRole = getUserRoleWithFallback();
+                let endpoint = 'leave-requests/my-requests'; // Default for regular users
                 
-                // Try createdAt first (backend uses this)
-                try {
-                    snapshot = await db.collection('leaveRequests').orderBy('createdAt', 'desc').get();
-                } catch (e1) {
-                    console.log('⚠️ createdAt ordering failed, trying submittedAt...');
-                    try {
-                        snapshot = await db.collection('leaveRequests').orderBy('submittedAt', 'desc').get();
-                    } catch (e2) {
-                        console.log('⚠️ submittedAt also failed, fetching without order...');
-                        snapshot = await db.collection('leaveRequests').get();
-                    }
+                if (['hr', 'coo', 'director'].includes(userRole)) {
+                    endpoint = 'leave-requests/all/requests'; // All requests for management
                 }
                 
-                leaveRequests = [];
+                console.log('📌 Fetching from API endpoint:', endpoint);
+                const response = await apiCall(endpoint);
+                
+                if (response && response.success && response.data) {
+                    leaveRequests = response.data.map(req => ({
+                        ...req,
+                        docId: req.id || req.docId,
+                        // Normalize fields
+                        flowType: req.flowType || req.approvalFlow?.flowType || 'default_flow',
+                        totalDays: req.totalDays || req.numberOfDays || 1,
+                        fromDate: req.fromDate || req.startDate,
+                        toDate: req.toDate || req.endDate,
+                        employeeName: req.employeeName || req.submittedByName || 'Unknown',
+                        status: req.status || 'pending'
+                    }));
+                    
+                    console.log('✅ Loaded', leaveRequests.length, 'leave requests via API');
+                    
+                    if (leaveRequests.length > 0) {
+                        console.log('📋 Sample request:', JSON.stringify(leaveRequests[0], null, 2));
+                    }
+                } else {
+                    console.warn('⚠️ API returned no data or error:', response);
+                    // Fallback to direct Firestore if API fails
+                    await loadLeaveRequestsFromFirestore();
+                }
+                
+                return leaveRequests;
+            } catch (error) {
+                console.error('❌ Error loading leave requests via API:', error);
+                console.log('📌 Falling back to direct Firestore access...');
+                // Fallback to direct Firestore
+                await loadLeaveRequestsFromFirestore();
+                return leaveRequests;
+            }
+        }
+        
+        // Fallback: Load leave requests directly from Firestore
+        async function loadLeaveRequestsFromFirestore() {
+            console.log('📂 Fallback: Loading leave requests from Firestore...');
+            leaveRequests = [];
+            
+            try {
+                const snapshot = await db.collection('leaveRequests').get();
+                
+                console.log('📊 Firestore returned', snapshot.size, 'documents');
+                
+                if (snapshot.empty) {
+                    console.log('⚠️ No leave requests found in Firestore');
+                    return leaveRequests;
+                }
+                
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    // Normalize data to handle field name differences between frontend/backend
                     leaveRequests.push({ 
                         ...data, 
                         docId: doc.id,
-                        // Ensure flowType is accessible (backend stores at root, not nested)
+                        id: doc.id,
                         flowType: data.flowType || data.approvalFlow?.flowType || 'default_flow',
-                        // Map numberOfDays to totalDays for frontend
                         totalDays: data.totalDays || data.numberOfDays || 1,
-                        // Map date fields
                         fromDate: data.fromDate || data.startDate,
                         toDate: data.toDate || data.endDate,
-                        // Ensure employee info is available
-                        employeeName: data.employeeName || data.submittedByName || data.submittedBy?.split('@')[0] || 'Unknown'
+                        employeeName: data.employeeName || data.submittedByName || (data.submittedBy ? data.submittedBy.split('@')[0] : 'Unknown'),
+                        status: data.status || 'pending'
                     });
                 });
                 
-                // Sort by date if not already ordered
+                // Sort by date
                 leaveRequests.sort((a, b) => {
                     const getDate = (item) => {
                         const d = item.createdAt || item.submittedAt;
                         if (!d) return new Date(0);
-                        return d.toDate ? d.toDate() : new Date(d);
+                        if (d.toDate) return d.toDate();
+                        if (d.seconds) return new Date(d.seconds * 1000);
+                        return new Date(d);
                     };
                     return getDate(b) - getDate(a);
                 });
@@ -15300,7 +15345,7 @@ async function markProjectComplete(projectId) {
                 console.log('✅ Loaded', leaveRequests.length, 'leave requests from Firestore');
                 return leaveRequests;
             } catch (error) {
-                console.error('❌ Error loading leave requests:', error);
+                console.error('❌ Firestore fallback also failed:', error);
                 leaveRequests = [];
                 return leaveRequests;
             }
@@ -15340,29 +15385,91 @@ async function markProjectComplete(projectId) {
         
         // DEBUG: View all leave requests in console
         async function debugLeaveRequests() {
+            console.log('==========================================');
+            console.log('🔍 DEBUG: Testing Leave Requests Access');
+            console.log('==========================================');
+            
+            const userRole = getUserRoleWithFallback();
+            console.log('📌 Current user role:', userRole);
+            console.log('📌 API_BASE:', API_BASE);
+            
+            // Test API access
+            try {
+                console.log('📌 Testing API endpoint: leave-requests/all/requests');
+                const apiResponse = await apiCall('leave-requests/all/requests');
+                console.log('📌 API Response:', apiResponse);
+                if (apiResponse && apiResponse.success) {
+                    console.log('✅ API returned', apiResponse.data?.length || 0, 'records');
+                }
+            } catch (apiError) {
+                console.error('❌ API test failed:', apiError);
+            }
+            
+            // Test Firestore access
+            try {
+                console.log('📌 Testing direct Firestore access...');
+                const testSnapshot = await db.collection('leaveRequests').limit(5).get();
+                console.log('📌 Firestore returned', testSnapshot.size, 'documents');
+                testSnapshot.forEach(doc => {
+                    console.log('   Doc:', doc.id, '- Status:', doc.data().status);
+                });
+            } catch (firestoreError) {
+                console.error('❌ Firestore test failed:', firestoreError);
+            }
+            
+            // Load via main function
             await loadLeaveRequests();
             console.log('==========================================');
-            console.log('🔍 DEBUG: All Leave Requests in Firestore');
+            console.log('🔍 DEBUG: Loaded Leave Requests');
             console.log('==========================================');
             if (leaveRequests.length === 0) {
-                console.log('⚠️ No leave requests found in Firestore');
+                console.log('⚠️ No leave requests loaded');
+                console.log('💡 Check browser Network tab for API errors');
             } else {
                 leaveRequests.forEach((req, idx) => {
                     console.log(`\n📝 Request #${idx + 1}:`);
                     console.log('   Doc ID:', req.docId);
-                    console.log('   ID:', req.id);
                     console.log('   Employee:', req.employeeName);
                     console.log('   Status:', req.status);
                     console.log('   Current Stage:', req.currentStage);
-                    console.log('   Flow Type:', req.approvalFlow?.flowType);
-                    console.log('   Selected Team Lead:', req.selectedTeamLead);
-                    console.log('   Submitted By:', req.submittedBy);
+                    console.log('   Flow Type:', req.flowType);
+                    console.log('   Stage1 Approver:', req.stage1ApproverType);
+                    console.log('   Stage1 Status:', req.stage1Status);
                 });
             }
             console.log('==========================================');
             return leaveRequests;
         }
         window.debugLeaveRequests = debugLeaveRequests;
+        
+        // Quick test function for API and Firestore
+        async function testFirestore() {
+            console.log('🧪 Testing connections...');
+            try {
+                // Test API
+                console.log('📌 Testing API...');
+                const apiTest = await apiCall('leave-requests/all/requests');
+                console.log('   API leave-requests:', apiTest?.success ? (apiTest.data?.length || 0) + ' records' : 'FAILED');
+                
+                // Test Firestore
+                console.log('📌 Testing Firestore...');
+                const collections = ['leaveRequests', 'users', 'projects'];
+                for (const col of collections) {
+                    try {
+                        const snap = await db.collection(col).limit(1).get();
+                        console.log(`   ${col}: ${snap.size} docs (sample)`);
+                    } catch (e) {
+                        console.log(`   ${col}: FAILED - ${e.message}`);
+                    }
+                }
+                console.log('✅ Connection tests complete');
+            } catch (e) {
+                console.error('❌ Tests failed:', e);
+            }
+        }
+        window.testFirestore = testFirestore;
+        window.loadLeaveRequests = loadLeaveRequests;
+        window.loadLeaveRequestsFromFirestore = loadLeaveRequestsFromFirestore;
         
         // Check if current user is a Team Lead
         function isCurrentUserTeamLead() {

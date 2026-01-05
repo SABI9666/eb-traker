@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.0.0 - Cache Version 36 (File Upload Fix)
+// Version: 5.0.0 - Cache Version 37 (File Upload Fix)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v36';
-const STATIC_CACHE = 'ebtracker-static-v36';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v36';
+const CACHE_NAME = 'ebtracker-v37';
+const STATIC_CACHE = 'ebtracker-static-v37';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v37';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v36: Installing...');
+  console.log('🔧 Service Worker v37: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v36: Caching static assets');
+        console.log('📦 Service Worker v37: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v36: Static assets cached');
+        console.log('✅ Service Worker v37: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v36: Cache failed', error);
+        console.error('❌ Service Worker v37: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v36: Activating...');
+  console.log('🚀 Service Worker v37: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v36: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v37: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v36: Activated - Old caches cleared');
+        console.log('✅ Service Worker v37: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,11 +78,11 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v36: Notifying clients to refresh');
+        console.log('📢 Service Worker v37: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v36',
+            version: 'v37',
             message: 'New version available with File Upload Fix! Please refresh.'
           });
         });
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v36', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v37', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -474,4 +474,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v36: Loaded successfully - File Upload Fix enabled');
+console.log('✅ Service Worker v37: Loaded successfully - File Upload Fix enabled');

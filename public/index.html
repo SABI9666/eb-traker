@@ -8109,7 +8109,28 @@ async function showTimesheetForm(projectId = null) {
             
             <div class="card" style="max-width: 600px;">
                 <form id="timesheetForm" onsubmit="submitTimesheet(event)">
+                    <!-- Work Type Selection -->
                     <div class="form-group">
+                        <label>Work Type *</label>
+                        <select class="form-control" id="timesheetWorkType" onchange="handleWorkTypeChange()" required>
+                            <option value="project">📁 Project Work</option>
+                            <option value="training">📚 Training</option>
+                            <option value="sample_designing">🎨 Sample Designing</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Non-Project Info Banner -->
+                    <div id="nonProjectInfoBanner" style="display: none; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span id="nonProjectIcon" style="font-size: 1.5rem;">📚</span>
+                            <div>
+                                <strong id="nonProjectTitle">Training Hours</strong>
+                                <p style="margin: 0; font-size: 0.85rem; opacity: 0.9;">These hours will be tracked separately</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="projectSelectionGroup">
                         <label>Project *</label>
                         <select class="form-control" id="timesheetProjectId" onchange="checkProjectAllocation()" required>
                             <option value="">Select a project</option>
@@ -12281,6 +12302,79 @@ async function showDesignerAllocations() {
             `;
         }).join('');
 
+        // Fetch training and sample designing hours for current user
+        let trainingHours = 0;
+        let sampleDesigningHours = 0;
+        let trainingEntries = [];
+        let sampleEntries = [];
+        
+        try {
+            const timesheetsResponse = await apiCall(`timesheets?designerUid=${currentUser.uid}`);
+            if (timesheetsResponse.success && timesheetsResponse.data) {
+                timesheetsResponse.data.forEach(entry => {
+                    if (entry.workType === 'training' || entry.projectId === 'TRAINING') {
+                        trainingHours += parseFloat(entry.hours) || 0;
+                        trainingEntries.push(entry);
+                    } else if (entry.workType === 'sample_designing' || entry.projectId === 'SAMPLE_DESIGNING') {
+                        sampleDesigningHours += parseFloat(entry.hours) || 0;
+                        sampleEntries.push(entry);
+                    }
+                });
+            }
+        } catch (e) {
+            console.log('Could not fetch non-project hours:', e);
+        }
+
+        // Build non-project hours section
+        const hasNonProjectHours = trainingHours > 0 || sampleDesigningHours > 0;
+        const nonProjectHoursSection = `
+            <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; color: #1f2937;">📊 Non-Project Hours</h3>
+                    <button onclick="showNonProjectHoursDetails()" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        View Details
+                    </button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <!-- Training Hours Card -->
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.25rem; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 2rem;">📚</span>
+                            <div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Training</div>
+                                <div style="font-size: 1.75rem; font-weight: 700;">${trainingHours.toFixed(1)}h</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">${trainingEntries.length} session(s) logged</div>
+                    </div>
+                    
+                    <!-- Sample Designing Hours Card -->
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1.25rem; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 2rem;">🎨</span>
+                            <div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Sample Designing</div>
+                                <div style="font-size: 1.75rem; font-weight: 700;">${sampleDesigningHours.toFixed(1)}h</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">${sampleEntries.length} session(s) logged</div>
+                    </div>
+                    
+                    <!-- Total Non-Project Hours -->
+                    <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 1.25rem; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 2rem;">⏱️</span>
+                            <div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Total Non-Project</div>
+                                <div style="font-size: 1.75rem; font-weight: 700;">${(trainingHours + sampleDesigningHours).toFixed(1)}h</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Combined hours this period</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
         main.innerHTML = `
             <div class="page-header">
                 <h2>⏳ Project Allocations</h2>
@@ -12288,6 +12382,9 @@ async function showDesignerAllocations() {
             </div>
             
             ${renderDashboardAnnouncements()}
+            
+            <!-- Non-Project Hours Section -->
+            ${nonProjectHoursSection}
 
             <div class="card">
                 <table class="data-table">
@@ -12320,6 +12417,136 @@ async function showDesignerAllocations() {
 
 // ✅ Make showDesignerAllocations globally accessible
 window.showDesignerAllocations = showDesignerAllocations;
+
+// ============================================
+// ✅ Show Non-Project Hours Details Modal
+// ============================================
+window.showNonProjectHoursDetails = async function() {
+    showLoading();
+    
+    try {
+        const response = await apiCall(`timesheets?designerUid=${currentUser.uid}`);
+        
+        let trainingEntries = [];
+        let sampleEntries = [];
+        
+        if (response.success && response.data) {
+            response.data.forEach(entry => {
+                if (entry.workType === 'training' || entry.projectId === 'TRAINING') {
+                    trainingEntries.push(entry);
+                } else if (entry.workType === 'sample_designing' || entry.projectId === 'SAMPLE_DESIGNING') {
+                    sampleEntries.push(entry);
+                }
+            });
+        }
+        
+        // Sort by date descending
+        trainingEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+        sampleEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        const totalTraining = trainingEntries.reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+        const totalSample = sampleEntries.reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+        
+        const formatDate = (dateStr) => {
+            if (!dateStr) return 'N/A';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        };
+        
+        const buildEntriesTable = (entries, type) => {
+            if (entries.length === 0) {
+                return `<p style="text-align: center; color: #666; padding: 1rem;">No ${type} hours logged yet.</p>`;
+            }
+            
+            return `
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="background: #f3f4f6;">
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e5e7eb;">Date</th>
+                            <th style="padding: 0.75rem; text-align: center; border-bottom: 2px solid #e5e7eb;">Hours</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e5e7eb;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${entries.map(e => `
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <td style="padding: 0.75rem;">${formatDate(e.date)}</td>
+                                <td style="padding: 0.75rem; text-align: center; font-weight: 600; color: var(--primary-blue);">${parseFloat(e.hours).toFixed(1)}h</td>
+                                <td style="padding: 0.75rem; color: #666;">${e.description || 'No description'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        };
+        
+        const modalHtml = `
+            <div class="modal-overlay" id="nonProjectHoursModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;" onclick="if(event.target.id === 'nonProjectHoursModal') this.remove();">
+                <div class="modal-content" style="max-width: 800px; width: 95%; background: white; border-radius: 12px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div class="modal-header" style="padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0;">📊 Non-Project Hours Details</h2>
+                        <span onclick="document.getElementById('nonProjectHoursModal').remove();" style="cursor: pointer; font-size: 2rem; opacity: 0.8;">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+                        <!-- Summary Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                                <div style="font-size: 1.5rem;">📚</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${totalTraining.toFixed(1)}h</div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Training</div>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                                <div style="font-size: 1.5rem;">🎨</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${totalSample.toFixed(1)}h</div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Sample Designing</div>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                                <div style="font-size: 1.5rem;">⏱️</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${(totalTraining + totalSample).toFixed(1)}h</div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Total</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Training Hours Section -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="margin: 0 0 1rem 0; color: #667eea; display: flex; align-items: center; gap: 0.5rem;">
+                                📚 Training Hours (${trainingEntries.length} entries)
+                            </h3>
+                            <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                ${buildEntriesTable(trainingEntries, 'training')}
+                            </div>
+                        </div>
+                        
+                        <!-- Sample Designing Hours Section -->
+                        <div>
+                            <h3 style="margin: 0 0 1rem 0; color: #f5576c; display: flex; align-items: center; gap: 0.5rem;">
+                                🎨 Sample Designing Hours (${sampleEntries.length} entries)
+                            </h3>
+                            <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                ${buildEntriesTable(sampleEntries, 'sample designing')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+                        <button onclick="document.getElementById('nonProjectHoursModal').remove();" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        console.error('Error loading non-project hours:', error);
+        alert('Error loading details: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+};
 
      async function showProjectFilesModal(projectId, projectName) {
     console.log('📂 Opening files for project:', projectId, projectName);
@@ -19617,21 +19844,71 @@ async function submitProposalAllocation() {
         console.log('✅ Modal helper functions registered');
         
         // ============================================
+        // ✅ WORK TYPE CHANGE HANDLER (Training/Sample Designing)
+        // ============================================
+        window.handleWorkTypeChange = function() {
+            const workType = document.getElementById('timesheetWorkType')?.value;
+            const projectGroup = document.getElementById('projectSelectionGroup');
+            const projectSelect = document.getElementById('timesheetProjectId');
+            const nonProjectBanner = document.getElementById('nonProjectInfoBanner');
+            const nonProjectIcon = document.getElementById('nonProjectIcon');
+            const nonProjectTitle = document.getElementById('nonProjectTitle');
+            const allocationInfo = document.getElementById('timesheetAllocationInfo');
+            
+            if (workType === 'project') {
+                // Show project selection
+                if (projectGroup) projectGroup.style.display = 'block';
+                if (projectSelect) projectSelect.required = true;
+                if (nonProjectBanner) nonProjectBanner.style.display = 'none';
+                if (allocationInfo) allocationInfo.style.display = 'block';
+            } else {
+                // Hide project selection for Training/Sample Designing
+                if (projectGroup) projectGroup.style.display = 'none';
+                if (projectSelect) {
+                    projectSelect.required = false;
+                    projectSelect.value = '';
+                }
+                if (allocationInfo) allocationInfo.style.display = 'none';
+                
+                // Show appropriate banner
+                if (nonProjectBanner) {
+                    nonProjectBanner.style.display = 'block';
+                    if (workType === 'training') {
+                        nonProjectBanner.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                        if (nonProjectIcon) nonProjectIcon.textContent = '📚';
+                        if (nonProjectTitle) nonProjectTitle.textContent = 'Training Hours';
+                    } else if (workType === 'sample_designing') {
+                        nonProjectBanner.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+                        if (nonProjectIcon) nonProjectIcon.textContent = '🎨';
+                        if (nonProjectTitle) nonProjectTitle.textContent = 'Sample Designing Hours';
+                    }
+                }
+            }
+        };
+        
+        // ============================================
         // ✅ SUBMIT TIMESHEET FUNCTION - MUST BE DEFINED EARLY
         // ============================================
         window.submitTimesheet = async function() {
             console.log('📝 submitTimesheet called');
             
+            const workType = document.getElementById('timesheetWorkType')?.value || 'project';
             const projectId = document.getElementById('timesheetProjectId')?.value;
             const date = document.getElementById('timesheetDate')?.value;
             const hours = parseFloat(document.getElementById('timesheetHours')?.value);
             const description = document.getElementById('timesheetDescription')?.value?.trim();
             
-            console.log('📝 Form data:', { projectId, date, hours, description });
+            console.log('📝 Form data:', { workType, projectId, date, hours, description });
             
             // Validation
-            if (!projectId || !date || !hours || !description) {
+            if (!date || !hours || !description) {
                 alert('Please fill all required fields');
+                return;
+            }
+            
+            // Project is required only for project work
+            if (workType === 'project' && !projectId) {
+                alert('Please select a project');
                 return;
             }
             
@@ -19640,31 +19917,33 @@ async function submitProposalAllocation() {
                 return;
             }
 
-            // Frontend allocation check
-            const projectSelect = document.getElementById('timesheetProjectId');
-            if (projectSelect) {
-                const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-                const allocated = parseFloat(selectedOption?.dataset?.allocated) || 0;
-                const logged = parseFloat(selectedOption?.dataset?.logged) || 0;
-                const newTotal = logged + hours;
+            // For project work, do allocation check
+            if (workType === 'project') {
+                const projectSelect = document.getElementById('timesheetProjectId');
+                if (projectSelect) {
+                    const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+                    const allocated = parseFloat(selectedOption?.dataset?.allocated) || 0;
+                    const logged = parseFloat(selectedOption?.dataset?.logged) || 0;
+                    const newTotal = logged + hours;
 
-                if (newTotal > allocated && allocated > 0) {
-                    console.warn(`Allocation exceeded: ${newTotal} > ${allocated}`);
-                    
-                    const allocationData = {
-                        totalHours: logged,
-                        allocatedHours: allocated,
-                        exceededBy: newTotal - allocated
-                    };
-                    const timesheetData = { projectId, date, hours, description };
+                    if (newTotal > allocated && allocated > 0) {
+                        console.warn(`Allocation exceeded: ${newTotal} > ${allocated}`);
+                        
+                        const allocationData = {
+                            totalHours: logged,
+                            allocatedHours: allocated,
+                            exceededBy: newTotal - allocated
+                        };
+                        const timesheetData = { projectId, date, hours, description };
 
-                    closeTimesheetModal();
-                    if (typeof showRequestAdditionalTimeModal === 'function') {
-                        showRequestAdditionalTimeModal(allocationData, timesheetData);
-                    } else {
-                        alert('You have exceeded your allocated hours (' + allocated + 'h). Please contact COO for additional time.');
+                        closeTimesheetModal();
+                        if (typeof showRequestAdditionalTimeModal === 'function') {
+                            showRequestAdditionalTimeModal(allocationData, timesheetData);
+                        } else {
+                            alert('You have exceeded your allocated hours (' + allocated + 'h). Please contact COO for additional time.');
+                        }
+                        return;
                     }
-                    return;
                 }
             }
             
@@ -19672,17 +19951,35 @@ async function submitProposalAllocation() {
                 showLoading();
                 console.log('📤 Submitting timesheet to API...');
                 
+                // Build request body based on work type
+                const requestBody = {
+                    date,
+                    hours,
+                    description,
+                    workType
+                };
+                
+                if (workType === 'project') {
+                    requestBody.projectId = projectId;
+                } else {
+                    // For training/sample designing, use special project IDs
+                    requestBody.projectId = workType === 'training' ? 'TRAINING' : 'SAMPLE_DESIGNING';
+                    requestBody.isNonProjectWork = true;
+                }
+                
                 const response = await apiCall('timesheets', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ projectId, date, hours, description })
+                    body: JSON.stringify(requestBody)
                 });
                 
                 console.log('📥 API Response:', response);
                 
                 if (response.success) {
                     closeTimesheetModal();
-                    alert(`✅ ${hours} hours logged successfully for ${date}!`);
+                    const workTypeLabel = workType === 'training' ? 'Training' : 
+                                          workType === 'sample_designing' ? 'Sample Designing' : 'Project';
+                    alert(`✅ ${hours} hours logged successfully for ${workTypeLabel} on ${date}!`);
                     
                     // Refresh the designer allocations view
                     if (typeof showDesignerAllocations === 'function') {
@@ -20050,7 +20347,19 @@ async function submitProposalAllocation() {
                             
                             <div class="modal-body" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
                                 <form id="timesheetForm" onsubmit="event.preventDefault(); submitTimesheet();">
+                                    
+                                    <!-- Work Type Selection -->
                                     <div class="form-group" style="margin-bottom: 1rem;">
+                                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Work Type <span style="color: red;">*</span></label>
+                                        <select id="timesheetWorkType" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px;" onchange="handleWorkTypeChange()" required>
+                                            <option value="project">📁 Project Work</option>
+                                            <option value="training">📚 Training</option>
+                                            <option value="sample_designing">🎨 Sample Designing</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Project Selection (shown only for Project Work) -->
+                                    <div class="form-group" id="projectSelectionGroup" style="margin-bottom: 1rem;">
                                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Project <span style="color: red;">*</span></label>
                                         <select id="timesheetProjectId" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px;" required>
                                             <option value="">Select a project...</option>
@@ -20062,6 +20371,17 @@ async function submitProposalAllocation() {
                                                 </option>
                                             `).join('')}
                                         </select>
+                                    </div>
+                                    
+                                    <!-- Training/Sample Info Banner -->
+                                    <div id="nonProjectInfoBanner" style="display: none; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; margin-bottom: 1rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <span id="nonProjectIcon" style="font-size: 1.5rem;">📚</span>
+                                            <div>
+                                                <strong id="nonProjectTitle">Training Hours</strong>
+                                                <p style="margin: 0; font-size: 0.85rem; opacity: 0.9;">These hours will be tracked separately from project work</p>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="form-group" style="margin-bottom: 1rem;">

@@ -17237,7 +17237,7 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         const estimationHours = parseFloat(project.estimation?.totalHours || 0);
         const estimationUsedTonnage = project.estimation?.usedTonnageForDesign || false;
         
-        // SCENARIO B: Previously saved Max Hours (from manual COO entry)
+        // SCENARIO B: Previously saved Max Hours (from manual COO entry OR approved budget change)
         const savedMaxHours = parseFloat(project.maxAllocatedHours || 0);
         
         // Already allocated hours in the system
@@ -17247,8 +17247,21 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         let isLocked = false;
         let hoursSource = '';
         
+        // ============================================
+        // ✅ NEW FIX: Check if budget was changed/approved
+        // If maxAllocatedHours > estimationHours, it means Director approved a budget increase
+        // Always use the larger value as it represents the current approved budget
+        // ============================================
+        
         // LOGIC FLOW:
-        if (estimationHours > 0 && !estimationUsedTonnage) {
+        if (savedMaxHours > 0 && savedMaxHours > estimationHours) {
+            // ✅ PRIORITY: Budget was changed/approved by Director - use maxAllocatedHours
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_approved_budget_change';
+            console.log('✅ Using approved budget change:', savedMaxHours, '(original estimation was:', estimationHours, ')');
+            
+        } else if (estimationHours > 0 && !estimationUsedTonnage) {
             // ✅ SCENARIO A: Estimator entered HOURS directly
             totalBudget = estimationHours;
             isLocked = true;
@@ -17299,7 +17312,9 @@ async function showCooMultiDesignerAllocationModal(projectId) {
             totalHoursInput.style.border = '2px solid #10b981';
             totalHoursInput.style.fontWeight = '700';
             
-            if (hoursSource === 'from_estimation_hours') {
+            if (hoursSource === 'from_approved_budget_change') {
+                totalHoursInput.title = "🔒 Locked: Budget approved by Director (increased from original)";
+            } else if (hoursSource === 'from_estimation_hours') {
                 totalHoursInput.title = "🔒 Locked: Hours from Estimator (not tonnage)";
             } else if (hoursSource === 'from_coo_manual_tonnage') {
                 totalHoursInput.title = "🔒 Locked: Hours manually entered by COO (tonnage case)";

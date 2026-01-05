@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.0.0 - Cache Version 38 (Leave API Fix)
+// Version: 5.0.0 - Cache Version 39 (Budget Change Fix)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v38';
-const STATIC_CACHE = 'ebtracker-static-v38';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v38';
+const CACHE_NAME = 'ebtracker-v39';
+const STATIC_CACHE = 'ebtracker-static-v39';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v39';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v38: Installing...');
+  console.log('🔧 Service Worker v39: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v38: Caching static assets');
+        console.log('📦 Service Worker v39: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v38: Static assets cached');
+        console.log('✅ Service Worker v39: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v38: Cache failed', error);
+        console.error('❌ Service Worker v39: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v38: Activating...');
+  console.log('🚀 Service Worker v39: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v38: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v39: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v38: Activated - Old caches cleared');
+        console.log('✅ Service Worker v39: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,12 +78,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v38: Notifying clients to refresh');
+        console.log('📢 Service Worker v39: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v38',
-            message: 'New version available with Leave API Fix! Please refresh.'
+            version: 'v39',
+            message: 'New version available with Budget Change Fix! Please refresh.'
           });
         });
       })
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v38', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v39', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -474,4 +474,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v38: Loaded successfully - Leave API Fix enabled');
+console.log('✅ Service Worker v39: Loaded successfully - Budget Change Fix enabled');

@@ -16635,6 +16635,99 @@ async function markProjectComplete(projectId) {
                 const docRef = await db.collection('leaveRequests').add(request);
                 console.log('✅ Leave request saved to Firestore with ID:', docRef.id);
                 
+                // ============================================
+                // SEND EMAIL NOTIFICATIONS
+                // ============================================
+                try {
+                    await triggerEmailNotification('leave.submitted', {
+                        employeeName: request.employeeName,
+                        department: request.department,
+                        fromDate: request.fromDate,
+                        toDate: request.toDate,
+                        totalDays: request.totalDays,
+                        reason: request.reason,
+                        emergencyContact: request.emergencyContact,
+                        selectedTeamLead: request.selectedTeamLead,
+                        submittedBy: request.submittedBy
+                    });
+                    console.log('✅ Leave request email notifications sent');
+                } catch (emailError) {
+                    console.warn('⚠️ Email notification failed (non-fatal):', emailError);
+                }
+                
+                // ============================================
+                // CREATE IN-APP NOTIFICATIONS FOR COO, DIRECTOR, HR
+                // ============================================
+                const notificationMessage = `🏖️ New Leave Request: ${request.employeeName} - ${request.totalDays} day(s) from ${request.fromDate} to ${request.toDate}`;
+                
+                // Notify COO
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'coo',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ COO notification created');
+                } catch (e) { console.warn('⚠️ COO notification failed:', e); }
+                
+                // Notify Director
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'director',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ Director notification created');
+                } catch (e) { console.warn('⚠️ Director notification failed:', e); }
+                
+                // Notify HR
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'hr',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ HR notification created');
+                } catch (e) { console.warn('⚠️ HR notification failed:', e); }
+                
+                // Notify Team Lead if selected
+                if (selectedTeamLead) {
+                    try {
+                        // Find team lead UID by email
+                        const teamLeadSnapshot = await db.collection('users').where('email', '==', selectedTeamLead).get();
+                        if (!teamLeadSnapshot.empty) {
+                            const teamLeadUid = teamLeadSnapshot.docs[0].id;
+                            await apiCall('notifications', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    type: 'leave_request',
+                                    recipientRole: 'design_lead',
+                                    recipientUid: teamLeadUid,
+                                    message: notificationMessage,
+                                    notes: `Requires your approval. Reason: ${request.reason}`,
+                                    priority: 'high'
+                                })
+                            });
+                            console.log('✅ Team Lead notification created');
+                        }
+                    } catch (e) { console.warn('⚠️ Team Lead notification failed:', e); }
+                }
+                
                 hideLoading();
                 closeModal('employeeLeaveModal');
                 showEmployeeLeaveRequest();
@@ -19249,6 +19342,8 @@ async function showAllocateProjectModal(projectId) {
         else if (n.type === 'project_assigned') icon = '👤';
         else if (n.type === 'invoice.created') icon = '💰';
         else if (n.type?.includes('submitted')) icon = '📤';
+        else if (n.type === 'leave_request') icon = '🏖️';
+        else if (n.type?.includes('leave')) icon = '🏖️';
 
         // Ensure message exists, fallback if missing
         const message = n.message || 'New activity on your project.';

@@ -20377,6 +20377,8 @@ async function submitProposalAllocation() {
                     const entryDateForEdit = entryDate && !isNaN(entryDate.getTime()) 
                         ? entryDate.toISOString().split('T')[0] 
                         : '';
+                    const escapedDescription = (entry.description || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const escapedProjectName = (entry.projectName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     return `
                     <tr>
                         <td>${formattedDate}</td>
@@ -20384,17 +20386,15 @@ async function submitProposalAllocation() {
                         <td><strong>${parseFloat(entry.hours || 0).toFixed(2)}h</strong></td>
                         <td>${entry.description || 'No description'}</td>
                         <td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: ${entry.status === 'approved' ? '#d4edda' : '#fff3cd'}; color: ${entry.status === 'approved' ? '#155724' : '#856404'};">${entry.status || 'Pending'}</span></td>
-                        <td>
-                            ${entry.status !== 'approved' ? `
-                                <button onclick="editTimesheetEntry('${entry.id}', '${entry.projectId || ''}', '${entryDateForEdit}', ${parseFloat(entry.hours || 0)}, '${(entry.description || '').replace(/'/g, "\\'")}', '${entry.projectName || ''}')" 
-                                    class="btn btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--accent-blue); color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 0.25rem;">
-                                    ✏️ Edit
-                                </button>
-                                <button onclick="deleteTimesheetEntry('${entry.id}')" 
-                                    class="btn btn-sm btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                    🗑️ Delete
-                                </button>
-                            ` : '<span style="color: var(--text-light);">-</span>'}
+                        <td style="white-space: nowrap;">
+                            <button onclick="editTimesheetEntry('${entry.id}', '${entry.projectId || ''}', '${entryDateForEdit}', ${parseFloat(entry.hours || 0)}, '${escapedDescription}', '${escapedProjectName}')" 
+                                class="btn btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--accent-blue); color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 0.25rem;">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="deleteTimesheetEntry('${entry.id}')" 
+                                class="btn btn-sm btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                🗑️ Delete
+                            </button>
                         </td>
                     </tr>
                 `}).join('') : `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-light);">No timesheet entries yet. Click "Log Hours" to add your first entry.</td></tr>`;
@@ -24609,11 +24609,15 @@ async function loadDesignerTimesheet() {
                         <td>${entry.hours}h</td>
                         <td>${entry.description || '-'}</td>
                         <td><span class="status-badge status-${entry.status || 'pending'}">${entry.status || 'Pending'}</span></td>
-                        <td>
-                            ${entry.status === 'pending' ? 
-                                `<button onclick="editTimesheetEntry('${entry.id}')" class="btn btn-sm">Edit</button>
-                                 <button onclick="deleteTimesheetEntry('${entry.id}')" class="btn btn-sm btn-danger">Delete</button>` 
-                                : '-'}
+                        <td style="white-space: nowrap;">
+                            <button onclick="editTimesheetEntry('${entry.id}', '${entry.projectId || ''}', '${entry.date ? new Date(entry.date.seconds ? entry.date.seconds * 1000 : entry.date).toISOString().split('T')[0] : ''}', ${entry.hours || 0}, '${(entry.description || '').replace(/'/g, "\\'")}', '${(entry.projectName || '').replace(/'/g, "\\'")}')" 
+                                class="btn btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--accent-blue); color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 0.25rem;">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="deleteTimesheetEntry('${entry.id}')" 
+                                class="btn btn-sm btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                🗑️ Delete
+                            </button>
                         </td>
                     </tr>
                 `}).join('');

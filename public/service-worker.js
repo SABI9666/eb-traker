@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.1.0 - Cache Version 40 (Timesheet Edit & Delete)
+// Version: 5.1.1 - Cache Version 41 (Timesheet Edit & Delete)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v40';
-const STATIC_CACHE = 'ebtracker-static-v40';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v40';
+const CACHE_NAME = 'ebtracker-v41';
+const STATIC_CACHE = 'ebtracker-static-v41';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v41';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v40: Installing...');
+  console.log('🔧 Service Worker v41: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v40: Caching static assets');
+        console.log('📦 Service Worker v41: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v40: Static assets cached');
+        console.log('✅ Service Worker v41: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v40: Cache failed', error);
+        console.error('❌ Service Worker v41: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v40: Activating...');
+  console.log('🚀 Service Worker v41: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v40: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v41: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v40: Activated - Old caches cleared');
+        console.log('✅ Service Worker v41: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,11 +78,11 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v40: Notifying clients to refresh');
+        console.log('📢 Service Worker v41: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v40',
+            version: 'v41',
             message: 'New version available with Timesheet Edit & Delete! Please refresh.'
           });
         });
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v40', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v41', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -474,4 +474,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v40: Loaded successfully - Timesheet Edit & Delete enabled');
+console.log('✅ Service Worker v41: Loaded successfully - Timesheet Edit & Delete for All Entries');

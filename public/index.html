@@ -24633,8 +24633,11 @@ async function loadDesignerTimesheet() {
 }
 
 
-async function deleteTimesheetEntry(entryId) {
-    if (!confirm('Delete this timesheet entry?')) return;
+// ============================================
+// DELETE TIMESHEET ENTRY FUNCTION
+// ============================================
+window.deleteTimesheetEntry = async function(entryId) {
+    if (!confirm('Are you sure you want to delete this timesheet entry?')) return;
     
     try {
         showLoading();
@@ -24657,7 +24660,7 @@ async function deleteTimesheetEntry(entryId) {
     } finally {
         hideLoading();
     }
-}
+};
 
 // ============================================
 // EDIT TIMESHEET ENTRY FUNCTION

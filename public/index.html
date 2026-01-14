@@ -28054,20 +28054,18 @@ async function loadScreeningList() {
     try {
         showLoading && showLoading();
         const res = await apiCall('screening?path=list');
-        screeningData.screenings = res.success && res.data ? res.data : getScreeningDemoData();
-    } catch(e) { screeningData.screenings = getScreeningDemoData(); }
+        if (res.success && res.data) {
+            screeningData.screenings = res.data;
+        } else {
+            screeningData.screenings = [];
+        }
+    } catch(e) { 
+        console.error('Failed to load screenings:', e);
+        screeningData.screenings = []; 
+    }
     renderScreeningList(screeningData.screenings);
     updateScreeningStats();
     hideLoading && hideLoading();
-}
-
-function getScreeningDemoData() {
-    return [
-        { id:'s1', candidateName:'Rahul Sharma', candidateEmail:'rahul@email.com', candidatePhone:'+91 98765 43210', position:'Steel Detailer', status:'submitted', scores:{percentage:86,technical:3.6,behavioral:3.4,critical:3.3}, sentAt:'2026-01-10T10:00:00Z', submittedAt:'2026-01-11T14:00:00Z', token:'demo1', experience:'3 years', currentCompany:'ABC Steel', expectedSalary:'₹45,000', strengths:'Strong Tekla skills, Detail oriented', motivation:'Looking for growth opportunities' },
-        { id:'s2', candidateName:null, candidateEmail:'priya@email.com', position:'Junior Designer', status:'pending', scores:null, sentAt:'2026-01-13T09:00:00Z', token:'demo2' },
-        { id:'s3', candidateName:'Amit Kumar', candidateEmail:'amit@email.com', candidatePhone:'+91 87654 32109', position:'BIM Coordinator', status:'reviewed', scores:{percentage:92,technical:3.8,behavioral:3.7,critical:3.6}, sentAt:'2026-01-08T11:00:00Z', submittedAt:'2026-01-09T16:00:00Z', reviewedAt:'2026-01-10T10:00:00Z', decision:'Selected', token:'demo3', experience:'5 years', expectedSalary:'₹65,000', strengths:'Excellent coordination, Leadership' },
-        { id:'s4', candidateName:null, candidateEmail:'neha@email.com', position:'Checker', status:'pending', scores:null, sentAt:'2026-01-14T08:00:00Z', token:'demo4' }
-    ];
 }
 
 function renderScreeningList(list) {

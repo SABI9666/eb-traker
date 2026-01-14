@@ -1,497 +1,1122 @@
-// ============================================
-// EBTracker Service Worker - FULL FEATURED
-// Version: 5.4.0 - Cache Version 44 (HR Candidate Screening Module Added)
-// ============================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDANBROOK - Interview Assessment Form</title>
+    <link rel="icon" type="image/png" href="/icons/icon-32x32.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-const CACHE_NAME = 'ebtracker-v44';
-const STATIC_CACHE = 'ebtracker-static-v44';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v44';
+        :root {
+            --primary: #00b8b8;
+            --primary-dark: #009999;
+            --secondary: #1e3a5f;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --background: #f8fafc;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
 
-// Static assets to cache immediately
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/candidate-screening.html',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
-];
-
-// URLs to always fetch from network (never cache)
-const NETWORK_ONLY = [
-  '/api/',
-  'render.com',
-  'firebase',
-  'firestore',
-  'googleapis.com'
-];
-
-// ==============================
-// INSTALL EVENT
-// ==============================
-self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v44: Installing...');
-  
-  event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
-        console.log('📦 Service Worker v44: Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        console.log('✅ Service Worker v44: Static assets cached');
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker v44: Cache failed', error);
-      })
-  );
-});
-
-// ==============================
-// ACTIVATE EVENT
-// ==============================
-self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v44: Activating...');
-  
-  // List of valid cache names to keep
-  const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
-  
-  event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            // Delete any cache that's not in our valid list
-            if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v44: Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-      .then(() => {
-        console.log('✅ Service Worker v44: Activated - Old caches cleared');
-        return self.clients.claim();
-      })
-      .then(() => {
-        // Notify all clients that cache has been updated
-        return self.clients.matchAll({ type: 'window' });
-      })
-      .then((clients) => {
-        console.log('📢 Service Worker v44: Notifying clients to refresh');
-        clients.forEach(client => {
-          client.postMessage({ 
-            type: 'CACHE_UPDATED',
-            version: 'v44',
-            message: 'New version available with HR Candidate Screening! Please refresh.'
-          });
-        });
-      })
-  );
-});
-
-// ==============================
-// FETCH EVENT - Network First with Cache Fallback
-// ==============================
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-  
-  // Skip non-GET requests (POST, PUT, DELETE should always go to network)
-  if (request.method !== 'GET') {
-    return;
-  }
-  
-  // Skip chrome-extension and other non-http requests
-  if (!url.protocol.startsWith('http')) {
-    return;
-  }
-  
-  // Skip blob URLs (used for file downloads)
-  if (url.protocol === 'blob:') {
-    return;
-  }
-  
-  // Check if this URL should always go to network
-  const shouldSkipCache = NETWORK_ONLY.some(pattern => 
-    url.href.includes(pattern) || url.pathname.includes(pattern)
-  );
-  
-  // Skip API calls and Firebase - always go to network
-  if (shouldSkipCache) {
-    event.respondWith(
-      fetch(request)
-        .catch((error) => {
-          console.warn('⚠️ Network request failed:', url.href, error);
-          return new Response(
-            JSON.stringify({ 
-              error: 'Offline', 
-              message: 'You are offline. Please check your connection.',
-              offline: true
-            }),
-            { 
-              status: 503,
-              headers: { 'Content-Type': 'application/json' } 
-            }
-          );
-        })
-    );
-    return;
-  }
-  
-  // For static assets - Cache First
-  if (isStaticAsset(url.pathname)) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-  
-  // For HTML pages - Network First with Cache Fallback
-  event.respondWith(networkFirst(request));
-});
-
-// ==============================
-// CACHING STRATEGIES
-// ==============================
-
-// Cache First Strategy (for static assets)
-async function cacheFirst(request) {
-  try {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      // Return cached version immediately
-      // Also fetch new version in background to update cache
-      fetchAndCache(request);
-      return cachedResponse;
-    }
-    
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.warn('⚠️ Cache first failed for:', request.url);
-    return offlineFallback();
-  }
-}
-
-// Network First Strategy (for dynamic content)
-async function networkFirst(request) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.warn('⚠️ Network first failed, trying cache:', request.url);
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    return offlineFallback();
-  }
-}
-
-// Background fetch and cache update
-async function fetchAndCache(request) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-  } catch (error) {
-    // Silently fail - we already returned cached version
-  }
-}
-
-// Check if URL is a static asset
-function isStaticAsset(pathname) {
-  const staticExtensions = [
-    '.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', 
-    '.ico', '.woff', '.woff2', '.ttf', '.eot', '.webp'
-  ];
-  return staticExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
-}
-
-// Offline fallback response
-function offlineFallback() {
-  return new Response(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>EBTracker - Offline</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-dark);
+            line-height: 1.6;
+            min-height: 100vh;
         }
-        .offline-container {
-          background: white;
-          border-radius: 20px;
-          padding: 3rem;
-          text-align: center;
-          max-width: 400px;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--secondary) 0%, #2d4a6f 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .offline-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
+
+        .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        h1 {
-          color: #1f2937;
-          margin-bottom: 1rem;
-          font-size: 1.5rem;
+
+        .logo-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
         }
-        p {
-          color: #6b7280;
-          margin-bottom: 2rem;
-          line-height: 1.6;
+
+        .logo-text span:first-child {
+            color: var(--primary);
         }
-        .retry-btn {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: white;
-          border: none;
-          padding: 1rem 2rem;
-          border-radius: 10px;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
+
+        .logo-text span:last-child {
+            color: white;
         }
-        .retry-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+
+        .logo-subtitle {
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            color: var(--primary);
+            margin-top: -5px;
         }
-        .retry-btn:active {
-          transform: translateY(0);
+
+        .header-title {
+            flex: 1;
         }
-        .status-info {
-          margin-top: 1.5rem;
-          padding: 1rem;
-          background: #f3f4f6;
-          border-radius: 10px;
-          font-size: 0.85rem;
-          color: #6b7280;
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
         }
-      </style>
-    </head>
-    <body>
-      <div class="offline-container">
-        <div class="offline-icon">📡</div>
-        <h1>You're Offline</h1>
-        <p>Please check your internet connection and try again. EBTracker requires an active connection to sync your data.</p>
-        <button class="retry-btn" onclick="window.location.reload()">🔄 Try Again</button>
-        <div class="status-info">
-          <strong>Tip:</strong> Your data is safe! Any unsaved changes will sync when you're back online.
+
+        .header-title p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Form Sections */
+        .form-section {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--secondary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-number {
+            background: var(--primary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group label .required {
+            color: var(--danger);
+            margin-left: 2px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="tel"],
+        .form-group input[type="date"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--white);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 184, 184, 0.15);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Rating Scale */
+        .rating-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            gap: 0.5rem;
+        }
+
+        .rating-item:last-child {
+            border-bottom: none;
+        }
+
+        .rating-label {
+            flex: 1;
+            min-width: 200px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .rating-options {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .rating-option {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            padding: 0.4rem 0.75rem;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .rating-option:hover {
+            border-color: var(--primary);
+            background: rgba(0, 184, 184, 0.05);
+        }
+
+        .rating-option input {
+            display: none;
+        }
+
+        .rating-option.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .rating-option.excellent.selected { background: #10b981; border-color: #10b981; }
+        .rating-option.good.selected { background: #3b82f6; border-color: #3b82f6; }
+        .rating-option.fair.selected { background: #f59e0b; border-color: #f59e0b; }
+        .rating-option.poor.selected { background: #ef4444; border-color: #ef4444; }
+
+        /* Submit Button */
+        .submit-section {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 184, 184, 0.35);
+        }
+
+        .btn-submit:disabled {
+            background: var(--text-light);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Progress Indicator */
+        .progress-bar {
+            background: var(--border);
+            height: 6px;
+            border-radius: 3px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 3px;
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--white);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .success-message.show {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .success-icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .success-message h2 {
+            color: var(--success);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .success-message p {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Invalid Token Page */
+        .invalid-token {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--white);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: 4rem auto;
+        }
+
+        .invalid-token.show {
+            display: block;
+        }
+
+        .invalid-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+
+        .invalid-token h2 {
+            color: var(--danger);
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+                padding: 1rem;
+            }
+
+            .form-section {
+                padding: 1.25rem;
+            }
+
+            .rating-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .rating-options {
+                margin-top: 0.5rem;
+            }
+
+            .btn-submit {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(135deg, rgba(0, 184, 184, 0.1), rgba(0, 184, 184, 0.05));
+            border: 1px solid rgba(0, 184, 184, 0.3);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .info-box-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .info-box-content {
+            font-size: 0.95rem;
+            color: var(--text-dark);
+        }
+
+        .info-box-content strong {
+            color: var(--secondary);
+        }
+
+        /* Already Submitted */
+        .already-submitted {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--white);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .already-submitted.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-text">
+                <span>E</span><span>B</span>
+            </div>
+            <div class="logo-subtitle">EDANBROOK</div>
         </div>
-      </div>
-      <script>
-        // Auto-retry when connection is restored
-        window.addEventListener('online', () => {
-          window.location.reload();
+        <div class="header-title">
+            <h1>Interview Assessment Form</h1>
+            <p>Candidate Self-Evaluation</p>
+        </div>
+    </header>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p style="margin-top: 1rem; color: var(--text-light);">Submitting your response...</p>
+    </div>
+
+    <!-- Invalid Token Message -->
+    <div class="container">
+        <div class="invalid-token" id="invalidToken">
+            <div class="invalid-icon">🔗</div>
+            <h2>Invalid or Expired Link</h2>
+            <p>This screening link is invalid or has expired. Please contact HR for a new link.</p>
+        </div>
+    </div>
+
+    <!-- Already Submitted Message -->
+    <div class="container">
+        <div class="already-submitted" id="alreadySubmitted">
+            <div class="success-icon">✅</div>
+            <h2 style="color: var(--primary);">Already Submitted</h2>
+            <p>You have already submitted your assessment. Thank you for your response!</p>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="container">
+        <div class="success-message" id="successMessage">
+            <div class="success-icon">🎉</div>
+            <h2>Thank You!</h2>
+            <p>Your interview assessment has been submitted successfully. Our HR team will review your response and get back to you soon.</p>
+        </div>
+    </div>
+
+    <!-- Main Form -->
+    <div class="container" id="formContainer">
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <form id="screeningForm">
+            <!-- Hidden Fields -->
+            <input type="hidden" id="screeningToken" name="token">
+            <input type="hidden" id="positionId" name="positionId">
+
+            <!-- Section 1: Candidate Information -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span class="section-number">1</span>
+                    Candidate Information
+                </h2>
+                
+                <div class="info-box">
+                    <span class="info-box-icon">ℹ️</span>
+                    <div class="info-box-content">
+                        Please fill in your details accurately. Fields marked with <span style="color: var(--danger);">*</span> are required.
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name <span class="required">*</span></label>
+                        <input type="text" id="candidateName" name="candidateName" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address <span class="required">*</span></label>
+                        <input type="email" id="candidateEmail" name="candidateEmail" required placeholder="your.email@example.com">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone Number <span class="required">*</span></label>
+                        <input type="tel" id="candidatePhone" name="candidatePhone" required placeholder="+91 98765 43210">
+                    </div>
+                    <div class="form-group">
+                        <label>Position Applied For</label>
+                        <input type="text" id="positionApplied" name="positionApplied" readonly>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Current/Previous Company</label>
+                        <input type="text" id="currentCompany" name="currentCompany" placeholder="Company name">
+                    </div>
+                    <div class="form-group">
+                        <label>Years of Experience</label>
+                        <select id="experience" name="experience">
+                            <option value="">Select...</option>
+                            <option value="fresher">Fresher (0-1 years)</option>
+                            <option value="junior">Junior (1-3 years)</option>
+                            <option value="mid">Mid-Level (3-5 years)</option>
+                            <option value="senior">Senior (5-8 years)</option>
+                            <option value="expert">Expert (8+ years)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Technical Skills Self-Assessment -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span class="section-number">2</span>
+                    Technical Skills & Knowledge
+                </h2>
+
+                <div class="info-box">
+                    <span class="info-box-icon">💡</span>
+                    <div class="info-box-content">
+                        <strong>Rate yourself honestly</strong> on the following technical competencies. This helps us understand your strengths and areas for growth.
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Relevant Experience in the Field</span>
+                    <div class="rating-options" data-field="relevantExperience">
+                        <label class="rating-option excellent"><input type="radio" name="relevantExperience" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="relevantExperience" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="relevantExperience" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="relevantExperience" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Knowledge of Industry/Field</span>
+                    <div class="rating-options" data-field="industryKnowledge">
+                        <label class="rating-option excellent"><input type="radio" name="industryKnowledge" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="industryKnowledge" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="industryKnowledge" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="industryKnowledge" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Problem-Solving Ability</span>
+                    <div class="rating-options" data-field="problemSolving">
+                        <label class="rating-option excellent"><input type="radio" name="problemSolving" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="problemSolving" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="problemSolving" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="problemSolving" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Technical Expertise (Software/Tools)</span>
+                    <div class="rating-options" data-field="technicalExpertise">
+                        <label class="rating-option excellent"><input type="radio" name="technicalExpertise" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="technicalExpertise" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="technicalExpertise" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="technicalExpertise" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Ability to Learn New Skills</span>
+                    <div class="rating-options" data-field="learningAbility">
+                        <label class="rating-option excellent"><input type="radio" name="learningAbility" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="learningAbility" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="learningAbility" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="learningAbility" value="poor">Limited</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Behavioral & Soft Skills -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span class="section-number">3</span>
+                    Behavioral & Soft Skills
+                </h2>
+
+                <div class="rating-item">
+                    <span class="rating-label">Teamwork & Collaboration</span>
+                    <div class="rating-options" data-field="teamwork">
+                        <label class="rating-option excellent"><input type="radio" name="teamwork" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="teamwork" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="teamwork" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="teamwork" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Leadership & Initiative</span>
+                    <div class="rating-options" data-field="leadership">
+                        <label class="rating-option excellent"><input type="radio" name="leadership" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="leadership" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="leadership" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="leadership" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Adaptability & Flexibility</span>
+                    <div class="rating-options" data-field="adaptability">
+                        <label class="rating-option excellent"><input type="radio" name="adaptability" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="adaptability" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="adaptability" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="adaptability" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Work Ethic & Motivation</span>
+                    <div class="rating-options" data-field="workEthic">
+                        <label class="rating-option excellent"><input type="radio" name="workEthic" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="workEthic" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="workEthic" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="workEthic" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Communication Skills</span>
+                    <div class="rating-options" data-field="communication">
+                        <label class="rating-option excellent"><input type="radio" name="communication" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="communication" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="communication" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="communication" value="poor">Limited</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Problem-Solving & Critical Thinking -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span class="section-number">4</span>
+                    Problem-Solving & Critical Thinking
+                </h2>
+
+                <div class="rating-item">
+                    <span class="rating-label">Ability to Handle Stress</span>
+                    <div class="rating-options" data-field="stressHandling">
+                        <label class="rating-option excellent"><input type="radio" name="stressHandling" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="stressHandling" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="stressHandling" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="stressHandling" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Logical Thinking & Analysis</span>
+                    <div class="rating-options" data-field="logicalThinking">
+                        <label class="rating-option excellent"><input type="radio" name="logicalThinking" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="logicalThinking" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="logicalThinking" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="logicalThinking" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Creativity & Innovation</span>
+                    <div class="rating-options" data-field="creativity">
+                        <label class="rating-option excellent"><input type="radio" name="creativity" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="creativity" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="creativity" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="creativity" value="poor">Limited</label>
+                    </div>
+                </div>
+
+                <div class="rating-item">
+                    <span class="rating-label">Decision-Making Skills</span>
+                    <div class="rating-options" data-field="decisionMaking">
+                        <label class="rating-option excellent"><input type="radio" name="decisionMaking" value="excellent">Excellent</label>
+                        <label class="rating-option good"><input type="radio" name="decisionMaking" value="good">Good</label>
+                        <label class="rating-option fair"><input type="radio" name="decisionMaking" value="fair">Fair</label>
+                        <label class="rating-option poor"><input type="radio" name="decisionMaking" value="poor">Limited</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Additional Information -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span class="section-number">5</span>
+                    Additional Information
+                </h2>
+
+                <div class="form-group">
+                    <label>What do you consider your greatest strengths?</label>
+                    <textarea id="strengths" name="strengths" placeholder="Describe your key strengths and how they would benefit this role..." rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>What areas would you like to improve or develop?</label>
+                    <textarea id="improvements" name="improvements" placeholder="Share areas where you're looking to grow..." rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Key Achievements (Professional or Academic)</label>
+                    <textarea id="achievements" name="achievements" placeholder="Describe 2-3 notable achievements that demonstrate your capabilities..." rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Why are you interested in this position at EDANBROOK?</label>
+                    <textarea id="motivation" name="motivation" placeholder="Tell us what attracts you to this opportunity..." rows="4"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Expected Salary (Monthly)</label>
+                        <input type="text" id="expectedSalary" name="expectedSalary" placeholder="e.g., ₹50,000 - ₹60,000">
+                    </div>
+                    <div class="form-group">
+                        <label>Available to Start From</label>
+                        <input type="date" id="availableFrom" name="availableFrom">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Any additional comments or questions?</label>
+                    <textarea id="additionalComments" name="additionalComments" placeholder="Anything else you'd like us to know..." rows="3"></textarea>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="submit-section">
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    <span>📤</span> Submit Assessment
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2026 EDANBROOK. All rights reserved.</p>
+        <p style="margin-top: 0.5rem; font-size: 0.85rem;">Your information is kept confidential and used only for recruitment purposes.</p>
+    </footer>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+        
+        // ============================================
+        // INITIALIZE
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeForm();
+            setupRatingOptions();
+            setupProgressTracking();
+            setupFormSubmission();
         });
-      </script>
-    </body>
-    </html>
-  `, {
-    headers: { 'Content-Type': 'text/html' }
-  });
-}
 
-// ==============================
-// PUSH NOTIFICATIONS
-// ==============================
-self.addEventListener('push', (event) => {
-  console.log('📬 Push notification received');
-  
-  let data = {
-    title: 'EBTracker',
-    body: 'New notification from EBTracker',
-    icon: '/icons/icon-192x192.png',
-    url: '/'
-  };
-  
-  if (event.data) {
-    try {
-      data = { ...data, ...event.data.json() };
-    } catch (e) {
-      data.body = event.data.text();
-    }
-  }
-  
-  const options = {
-    body: data.body,
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
-    vibrate: [100, 50, 100],
-    tag: data.tag || 'ebtracker-notification',
-    renotify: true,
-    requireInteraction: data.requireInteraction || false,
-    data: {
-      url: data.url || '/',
-      timestamp: Date.now()
-    },
-    actions: data.actions || []
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
+        // ============================================
+        // FORM INITIALIZATION
+        // ============================================
+        function initializeForm() {
+            // Get token from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            if (!token) {
+                showInvalidToken();
+                return;
+            }
 
-// Handle notification click
-self.addEventListener('notificationclick', (event) => {
-  console.log('🔔 Notification clicked');
-  event.notification.close();
-  
-  const urlToOpen = event.notification.data?.url || '/';
-  
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // If app is already open, focus it
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(urlToOpen);
-            return client.focus();
-          }
+            // Validate token and load screening details
+            validateToken(token);
         }
-        // Otherwise open new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
+
+        async function validateToken(token) {
+            try {
+                const response = await fetch(`${API_BASE}/api/screening/validate?token=${token}`);
+                const data = await response.json();
+                
+                if (data.success && data.valid) {
+                    // Populate form with screening details
+                    document.getElementById('screeningToken').value = token;
+                    document.getElementById('positionApplied').value = data.data?.position || '';
+                    document.getElementById('positionId').value = data.data?.positionId || '';
+                    
+                    // Pre-fill candidate email if available
+                    if (data.data?.candidateEmail) {
+                        document.getElementById('candidateEmail').value = data.data.candidateEmail;
+                    }
+                    
+                    // Show form
+                    document.getElementById('formContainer').style.display = 'block';
+                } else if (data.alreadySubmitted) {
+                    showAlreadySubmitted();
+                } else if (data.expired) {
+                    showExpiredToken();
+                } else {
+                    showInvalidToken();
+                }
+            } catch (error) {
+                console.error('Error validating token:', error);
+                showConnectionError();
+            }
         }
-      })
-  );
-});
 
-// Handle notification close
-self.addEventListener('notificationclose', (event) => {
-  console.log('🔕 Notification closed');
-});
+        function showInvalidToken() {
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('invalidToken').classList.add('show');
+        }
+        
+        function showExpiredToken() {
+            document.getElementById('formContainer').style.display = 'none';
+            const container = document.getElementById('invalidToken');
+            container.querySelector('h2').textContent = 'Link Expired';
+            container.querySelector('p').textContent = 'This assessment link has expired. Please contact HR to request a new link.';
+            container.classList.add('show');
+        }
+        
+        function showConnectionError() {
+            document.getElementById('formContainer').style.display = 'none';
+            const container = document.getElementById('invalidToken');
+            container.querySelector('h2').textContent = 'Connection Error';
+            container.querySelector('p').textContent = 'Unable to connect to the server. Please check your internet connection and try again.';
+            container.classList.add('show');
+        }
 
-// ==============================
-// MESSAGE HANDLER
-// ==============================
-self.addEventListener('message', (event) => {
-  console.log('📨 Message received:', event.data);
-  
-  if (!event.data) return;
-  
-  switch (event.data.type) {
-    case 'SKIP_WAITING':
-      console.log('⏭️ Skip waiting requested');
-      self.skipWaiting();
-      break;
-      
-    case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v44', cache: CACHE_NAME });
-      break;
-      
-    case 'CLEAR_CACHE':
-      console.log('🗑️ Clear cache requested');
-      caches.keys().then(names => {
-        names.forEach(name => caches.delete(name));
-      }).then(() => {
-        event.ports[0]?.postMessage({ success: true });
-      });
-      break;
-      
-    case 'CACHE_URLS':
-      if (event.data.urls && Array.isArray(event.data.urls)) {
-        caches.open(DYNAMIC_CACHE).then(cache => {
-          cache.addAll(event.data.urls);
-        });
-      }
-      break;
-      
-    case 'FORCE_REFRESH':
-      console.log('🔄 Force refresh requested');
-      caches.keys().then(names => {
-        return Promise.all(names.map(name => caches.delete(name)));
-      }).then(() => {
-        event.ports[0]?.postMessage({ success: true, message: 'All caches cleared' });
-      });
-      break;
-      
-    default:
-      console.log('Unknown message type:', event.data.type);
-  }
-});
+        function showAlreadySubmitted() {
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('alreadySubmitted').classList.add('show');
+        }
 
-// ==============================
-// PERIODIC BACKGROUND SYNC (if supported)
-// ==============================
-self.addEventListener('periodicsync', (event) => {
-  console.log('🔄 Periodic sync:', event.tag);
-  
-  if (event.tag === 'update-cache') {
-    event.waitUntil(
-      caches.open(DYNAMIC_CACHE).then(cache => {
-        return cache.addAll(STATIC_ASSETS);
-      })
-    );
-  }
-});
+        // ============================================
+        // RATING OPTIONS
+        // ============================================
+        function setupRatingOptions() {
+            document.querySelectorAll('.rating-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    // Remove selected from siblings
+                    const parent = this.parentElement;
+                    parent.querySelectorAll('.rating-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Add selected to clicked
+                    this.classList.add('selected');
+                    
+                    // Check the radio
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                    }
+                    
+                    // Update progress
+                    updateProgress();
+                });
+            });
+        }
 
-// ==============================
-// BACKGROUND SYNC (for offline actions)
-// ==============================
-self.addEventListener('sync', (event) => {
-  console.log('🔄 Background sync:', event.tag);
-  
-  if (event.tag === 'sync-announcements') {
-    event.waitUntil(syncAnnouncements());
-  }
-  
-  if (event.tag === 'sync-leave-requests') {
-    event.waitUntil(syncLeaveRequests());
-  }
-  
-  if (event.tag === 'sync-screening-data') {
-    event.waitUntil(syncScreeningData());
-  }
-});
+        // ============================================
+        // PROGRESS TRACKING
+        // ============================================
+        function setupProgressTracking() {
+            // Track all form inputs for progress
+            const formInputs = document.querySelectorAll('#screeningForm input, #screeningForm select, #screeningForm textarea');
+            formInputs.forEach(input => {
+                input.addEventListener('change', updateProgress);
+                input.addEventListener('input', updateProgress);
+            });
+        }
 
-// Sync announcements when back online
-async function syncAnnouncements() {
-  console.log('📢 Syncing announcements...');
-  return Promise.resolve();
-}
+        function updateProgress() {
+            const form = document.getElementById('screeningForm');
+            const requiredFields = form.querySelectorAll('[required]');
+            const ratingGroups = document.querySelectorAll('.rating-options');
+            const textareas = form.querySelectorAll('textarea');
+            
+            let totalFields = requiredFields.length + ratingGroups.length + textareas.length;
+            let filledFields = 0;
+            
+            // Check required fields
+            requiredFields.forEach(field => {
+                if (field.value.trim()) filledFields++;
+            });
+            
+            // Check rating groups
+            ratingGroups.forEach(group => {
+                if (group.querySelector('input:checked')) filledFields++;
+            });
+            
+            // Check textareas
+            textareas.forEach(ta => {
+                if (ta.value.trim()) filledFields++;
+            });
+            
+            const progress = Math.round((filledFields / totalFields) * 100);
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
 
-// Sync leave requests when back online
-async function syncLeaveRequests() {
-  console.log('🏖️ Syncing leave requests...');
-  return Promise.resolve();
-}
+        // ============================================
+        // FORM SUBMISSION
+        // ============================================
+        function setupFormSubmission() {
+            document.getElementById('screeningForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Validate required fields
+                if (!validateForm()) {
+                    return;
+                }
+                
+                // Show loading
+                document.getElementById('loadingOverlay').classList.add('show');
+                document.getElementById('submitBtn').disabled = true;
+                
+                // Collect form data
+                const formData = collectFormData();
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/screening/submit`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccess();
+                    } else {
+                        throw new Error(data.error || 'Failed to submit');
+                    }
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                    alert('Failed to submit assessment. Please check your internet connection and try again.');
+                    document.getElementById('loadingOverlay').classList.remove('show');
+                    document.getElementById('submitBtn').disabled = false;
+                }
+            });
+        }
 
-// Sync screening data when back online
-async function syncScreeningData() {
-  console.log('📝 Syncing screening data...');
-  return Promise.resolve();
-}
+        function validateForm() {
+            const form = document.getElementById('screeningForm');
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.style.borderColor = 'var(--danger)';
+                    isValid = false;
+                } else {
+                    field.style.borderColor = '';
+                }
+            });
+            
+            if (!isValid) {
+                alert('Please fill in all required fields.');
+            }
+            
+            return isValid;
+        }
 
-// ==============================
-// ERROR HANDLING
-// ==============================
-self.addEventListener('error', (event) => {
-  console.error('❌ Service Worker Error:', event.error);
-});
+        function collectFormData() {
+            const form = document.getElementById('screeningForm');
+            const formData = new FormData(form);
+            
+            // Convert to object
+            const data = {
+                token: formData.get('token'),
+                positionId: formData.get('positionId'),
+                candidateInfo: {
+                    name: formData.get('candidateName'),
+                    email: formData.get('candidateEmail'),
+                    phone: formData.get('candidatePhone'),
+                    currentCompany: formData.get('currentCompany'),
+                    experience: formData.get('experience')
+                },
+                technicalSkills: {
+                    relevantExperience: formData.get('relevantExperience'),
+                    industryKnowledge: formData.get('industryKnowledge'),
+                    problemSolving: formData.get('problemSolving'),
+                    technicalExpertise: formData.get('technicalExpertise'),
+                    learningAbility: formData.get('learningAbility')
+                },
+                behavioralSkills: {
+                    teamwork: formData.get('teamwork'),
+                    leadership: formData.get('leadership'),
+                    adaptability: formData.get('adaptability'),
+                    workEthic: formData.get('workEthic'),
+                    communication: formData.get('communication')
+                },
+                criticalThinking: {
+                    stressHandling: formData.get('stressHandling'),
+                    logicalThinking: formData.get('logicalThinking'),
+                    creativity: formData.get('creativity'),
+                    decisionMaking: formData.get('decisionMaking')
+                },
+                additionalInfo: {
+                    strengths: formData.get('strengths'),
+                    improvements: formData.get('improvements'),
+                    achievements: formData.get('achievements'),
+                    motivation: formData.get('motivation'),
+                    expectedSalary: formData.get('expectedSalary'),
+                    availableFrom: formData.get('availableFrom'),
+                    additionalComments: formData.get('additionalComments')
+                },
+                submittedAt: new Date().toISOString()
+            };
+            
+            // Calculate scores
+            data.scores = calculateScores(data);
+            
+            return data;
+        }
 
-self.addEventListener('unhandledrejection', (event) => {
-  console.error('❌ Unhandled Promise Rejection:', event.reason);
-});
+        function calculateScores(data) {
+            const scoreMap = { excellent: 4, good: 3, fair: 2, poor: 1 };
+            
+            const technicalScores = Object.values(data.technicalSkills).filter(v => v).map(v => scoreMap[v] || 0);
+            const behavioralScores = Object.values(data.behavioralSkills).filter(v => v).map(v => scoreMap[v] || 0);
+            const criticalScores = Object.values(data.criticalThinking).filter(v => v).map(v => scoreMap[v] || 0);
+            
+            const avgTechnical = technicalScores.length ? (technicalScores.reduce((a, b) => a + b, 0) / technicalScores.length) : 0;
+            const avgBehavioral = behavioralScores.length ? (behavioralScores.reduce((a, b) => a + b, 0) / behavioralScores.length) : 0;
+            const avgCritical = criticalScores.length ? (criticalScores.reduce((a, b) => a + b, 0) / criticalScores.length) : 0;
+            
+            const overallScore = (avgTechnical + avgBehavioral + avgCritical) / 3;
+            
+            return {
+                technical: avgTechnical.toFixed(2),
+                behavioral: avgBehavioral.toFixed(2),
+                critical: avgCritical.toFixed(2),
+                overall: overallScore.toFixed(2),
+                percentage: ((overallScore / 4) * 100).toFixed(0)
+            };
+        }
 
-console.log('✅ Service Worker v44: Loaded successfully - HR Candidate Screening Module Added');
+        function showSuccess() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('successMessage').classList.add('show');
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

@@ -521,6 +521,9 @@
         <div class="progress-bar">
             <div class="progress-fill" id="progressFill"></div>
         </div>
+        
+        <!-- Job Description Display -->
+        <div id="jobDescriptionDisplay" style="display:none;"></div>
 
         <form id="screeningForm">
             <!-- Hidden Fields -->
@@ -846,9 +849,23 @@
         }
 
         async function validateToken(token) {
+            console.log('🔍 Validating token:', token);
             try {
                 const response = await fetch(`${API_BASE}/api/screening/validate?token=${token}`);
+                console.log('📡 Response status:', response.status);
+                
+                if (!response.ok) {
+                    console.error('❌ API returned error status:', response.status);
+                    if (response.status === 404) {
+                        showEndpointNotFound();
+                        return;
+                    }
+                    showConnectionError();
+                    return;
+                }
+                
                 const data = await response.json();
+                console.log('📋 API response:', data);
                 
                 if (data.success && data.valid) {
                     // Populate form with screening details
@@ -856,24 +873,61 @@
                     document.getElementById('positionApplied').value = data.data?.position || '';
                     document.getElementById('positionId').value = data.data?.positionId || '';
                     
-                    // Pre-fill candidate email if available
-                    if (data.data?.candidateEmail) {
-                        document.getElementById('candidateEmail').value = data.data.candidateEmail;
+                    // Show job description if available
+                    if (data.data?.jobDescription) {
+                        const jobDescEl = document.getElementById('jobDescriptionDisplay');
+                        if (jobDescEl) {
+                            jobDescEl.innerHTML = `
+                                <div style="background:#f0f9ff;padding:1.25rem;border-radius:10px;margin-bottom:1.5rem;border-left:4px solid #00b8b8;">
+                                    <h3 style="margin:0 0 0.75rem;color:#1e3a5f;font-size:1rem;">📋 Job Description - ${data.data.position}</h3>
+                                    <p style="margin:0;color:#4b5563;white-space:pre-wrap;">${data.data.jobDescription}</p>
+                                    ${data.data.experienceRequired ? `<p style="margin:0.75rem 0 0;color:#059669;font-weight:500;">Experience Required: ${data.data.experienceRequired}</p>` : ''}
+                                </div>
+                            `;
+                            jobDescEl.style.display = 'block';
+                        }
                     }
                     
                     // Show form
                     document.getElementById('formContainer').style.display = 'block';
-                } else if (data.alreadySubmitted) {
-                    showAlreadySubmitted();
+                    console.log('✅ Form displayed successfully');
+                } else if (data.closed) {
+                    showClosedScreening();
                 } else if (data.expired) {
                     showExpiredToken();
                 } else {
+                    console.log('❌ Token validation failed:', data.error);
                     showInvalidToken();
                 }
             } catch (error) {
-                console.error('Error validating token:', error);
+                console.error('❌ Error validating token:', error);
                 showConnectionError();
             }
+        }
+        
+        function showClosedScreening() {
+            document.getElementById('formContainer').style.display = 'none';
+            const container = document.getElementById('invalidToken');
+            container.innerHTML = `
+                <div class="status-icon">🚫</div>
+                <h2 style="color:#6b7280;">Screening Closed</h2>
+                <p>This position is no longer accepting applications.</p>
+                <p style="color:#6b7280;font-size:0.9rem;margin-top:1rem;">Please contact HR for other opportunities.</p>
+            `;
+            container.classList.add('show');
+        }
+        
+        function showEndpointNotFound() {
+            document.getElementById('formContainer').style.display = 'none';
+            const container = document.getElementById('invalidToken');
+            container.innerHTML = `
+                <div class="status-icon">🔧</div>
+                <h2 style="color:#f59e0b;">API Not Deployed</h2>
+                <p>The screening API endpoint is not available.</p>
+                <p style="color:#6b7280;font-size:0.9rem;margin-top:1rem;">Please ensure <code>screening.js</code> is deployed to the backend.</p>
+                <button onclick="location.reload()" style="margin-top:1rem;padding:0.75rem 2rem;background:#00b8b8;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">🔄 Try Again</button>
+            `;
+            container.classList.add('show');
         }
 
         function showInvalidToken() {
@@ -892,8 +946,17 @@
         function showConnectionError() {
             document.getElementById('formContainer').style.display = 'none';
             const container = document.getElementById('invalidToken');
-            container.querySelector('h2').textContent = 'Connection Error';
-            container.querySelector('p').textContent = 'Unable to connect to the server. Please check your internet connection and try again.';
+            container.innerHTML = `
+                <div class="status-icon">⚠️</div>
+                <h2 style="color:#f59e0b;">Backend Not Available</h2>
+                <p>Unable to validate your screening link. This could mean:</p>
+                <ul style="text-align:left;margin:1rem auto;max-width:300px;color:#6b7280;">
+                    <li>The server is starting up (wait 30 seconds)</li>
+                    <li>The screening API is not deployed</li>
+                    <li>Network connection issue</li>
+                </ul>
+                <button onclick="location.reload()" style="margin-top:1rem;padding:0.75rem 2rem;background:#00b8b8;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">🔄 Try Again</button>
+            `;
             container.classList.add('show');
         }
 

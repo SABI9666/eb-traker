@@ -23653,11 +23653,9 @@ async function showPendingTimeRequests() {
 //     } catch (error) {
 //         console.error('Error rejecting time request:', error);
 //         alert('Error: ' + error.message);
-//     } finally {
-//         hideLoading();
-//     }
 // }
 
+/* ============================================
    END OF COMMENTED DUPLICATE FUNCTIONS
    ============================================ */
 
@@ -28211,7 +28209,7 @@ window.viewScreeningResult = function(id) {
                 ${s.improvements?`<div style="margin-bottom:1rem;"><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Areas to Improve</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.improvements}</div></div>`:''}
                 ${s.achievements?`<div style="margin-bottom:1rem;"><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Achievements</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.achievements}</div></div>`:''}
                 ${s.motivation?`<div><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Why Join EDANBROOK?</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.motivation}</div></div>`:''}
-            </div>`:'<div style="background:#fef3c7;padding:2.5rem;border-radius:12px;text-align:center;margin-bottom:1.5rem;"><div style="font-size:4rem;margin-bottom:1rem;">⏳</div><p style="color:#92400e;margin:0;font-size:1.1rem;font-weight:500;">Waiting for candidate to complete</p><p style="color:#a16207;margin:0.5rem 0 0;font-size:0.9rem;">Sent: ${s.sentAt?new Date(s.sentAt).toLocaleString('en-IN'):'-'}</p></div>'}
+            </div>`:`<div style="background:#fef3c7;padding:2.5rem;border-radius:12px;text-align:center;margin-bottom:1.5rem;"><div style="font-size:4rem;margin-bottom:1rem;">⏳</div><p style="color:#92400e;margin:0;font-size:1.1rem;font-weight:500;">Waiting for candidate to complete</p><p style="color:#a16207;margin:0.5rem 0 0;font-size:0.9rem;">Sent: ${s.sentAt?new Date(s.sentAt).toLocaleString('en-IN'):'-'}</p></div>`}
             <div style="background:#f8fafc;padding:1.5rem;border-radius:12px;">
                 <h3 style="margin:0 0 1rem;font-size:1rem;">📅 Timeline</h3>
                 <div style="border-left:3px solid #e5e7eb;padding-left:1.5rem;margin-left:0.5rem;">

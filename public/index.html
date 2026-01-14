@@ -28420,7 +28420,7 @@ window.confirmApproval = async function(id) {
 async function submitDecision(id, decision, approvalData) {
     try { 
         showLoading && showLoading(); 
-        await apiCall('screening?path=review', { 
+        const res = await apiCall('screening?path=review', { 
             method: 'POST', 
             body: JSON.stringify({
                 screeningId: id,
@@ -28432,31 +28432,40 @@ async function submitDecision(id, decision, approvalData) {
                 sendEmail: approvalData?.sendEmail
             }) 
         }); 
-    } catch(e) {
-        console.error('Decision error:', e);
-    }
-    
-    const s = screeningData.screenings.find(x => x.id === id);
-    if (s) { 
-        s.status = 'reviewed'; 
-        s.decision = decision; 
-        s.reviewedAt = new Date().toISOString();
-        if (approvalData) {
-            s.interviewDateTime = approvalData.interviewDateTime;
-            s.meetingLink = approvalData.meetingLink;
+        
+        const s = screeningData.screenings.find(x => x.id === id);
+        if (s) { 
+            s.status = 'reviewed'; 
+            s.decision = decision; 
+            s.reviewedAt = new Date().toISOString();
+            if (approvalData) {
+                s.interviewDateTime = approvalData.interviewDateTime;
+                s.meetingLink = approvalData.meetingLink;
+            }
         }
+        
+        closeViewScrModal(); 
+        renderScreeningList(screeningData.screenings); 
+        updateScreeningStats();
+        hideLoading && hideLoading();
+        
+        if (decision === 'Selected') {
+            if (res?.emailSent) {
+                alert('✅ Candidate approved!\n\n📧 Interview invitation email sent successfully to the candidate.');
+            } else if (approvalData?.sendEmail) {
+                alert('✅ Candidate approved!\n\n⚠️ Email could not be sent. Please check:\n- Backend EMAIL_USER and EMAIL_PASS are configured\n- The email service is working\n\nYou may need to send the invitation manually.');
+            } else {
+                alert('✅ Candidate approved! Interview details saved.');
+            }
+        } else {
+            alert('❌ Candidate rejected.');
+        }
+        
+    } catch(e) {
+        hideLoading && hideLoading();
+        console.error('Decision error:', e);
+        alert('❌ Error: ' + (e.message || 'Failed to save decision'));
     }
-    
-    closeViewScrModal(); 
-    renderScreeningList(screeningData.screenings); 
-    updateScreeningStats();
-    
-    if (decision === 'Selected') {
-        alert('✅ Candidate approved! Interview invitation ' + (approvalData?.sendEmail ? 'sent to their email.' : 'saved.'));
-    } else {
-        alert('❌ Candidate rejected.');
-    }
-    hideLoading && hideLoading();
 }
 
 window.removeScreening = async function(id) {

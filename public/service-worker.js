@@ -1,16 +1,17 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.3.0 - Cache Version 43 (Timesheet Functions Fixed - Early Definition)
+// Version: 5.4.0 - Cache Version 44 (HR Candidate Screening Module Added)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v43';
-const STATIC_CACHE = 'ebtracker-static-v43';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v43';
+const CACHE_NAME = 'ebtracker-v44';
+const STATIC_CACHE = 'ebtracker-static-v44';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v44';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/candidate-screening.html',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png'
@@ -29,20 +30,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v43: Installing...');
+  console.log('🔧 Service Worker v44: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v43: Caching static assets');
+        console.log('📦 Service Worker v44: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v43: Static assets cached');
+        console.log('✅ Service Worker v44: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v43: Cache failed', error);
+        console.error('❌ Service Worker v44: Cache failed', error);
       })
   );
 });
@@ -51,7 +52,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v43: Activating...');
+  console.log('🚀 Service Worker v44: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +64,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v43: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v44: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v43: Activated - Old caches cleared');
+        console.log('✅ Service Worker v44: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,12 +79,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v43: Notifying clients to refresh');
+        console.log('📢 Service Worker v44: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v43',
-            message: 'New version available with Timesheet Edit & Delete Fixed! Please refresh.'
+            version: 'v44',
+            message: 'New version available with HR Candidate Screening! Please refresh.'
           });
         });
       })
@@ -396,7 +397,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v43', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v44', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -458,6 +459,10 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-leave-requests') {
     event.waitUntil(syncLeaveRequests());
   }
+  
+  if (event.tag === 'sync-screening-data') {
+    event.waitUntil(syncScreeningData());
+  }
 });
 
 // Sync announcements when back online
@@ -468,7 +473,13 @@ async function syncAnnouncements() {
 
 // Sync leave requests when back online
 async function syncLeaveRequests() {
-  console.log('🖐️ Syncing leave requests...');
+  console.log('🏖️ Syncing leave requests...');
+  return Promise.resolve();
+}
+
+// Sync screening data when back online
+async function syncScreeningData() {
+  console.log('📝 Syncing screening data...');
   return Promise.resolve();
 }
 
@@ -483,4 +494,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v43: Loaded successfully - Timesheet Functions Fixed (Early Definition)');
+console.log('✅ Service Worker v44: Loaded successfully - HR Candidate Screening Module Added');

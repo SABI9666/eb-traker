@@ -850,41 +850,51 @@
                 const response = await fetch(`${API_BASE}/api/screening/validate?token=${token}`);
                 const data = await response.json();
                 
-                if (data.success) {
-                    if (data.data.status === 'submitted') {
-                        showAlreadySubmitted();
-                        return;
-                    }
-                    
+                if (data.success && data.valid) {
                     // Populate form with screening details
                     document.getElementById('screeningToken').value = token;
-                    document.getElementById('positionApplied').value = data.data.position || '';
-                    document.getElementById('positionId').value = data.data.positionId || '';
+                    document.getElementById('positionApplied').value = data.data?.position || '';
+                    document.getElementById('positionId').value = data.data?.positionId || '';
                     
-                    // Pre-fill candidate info if available
-                    if (data.data.candidateName) {
-                        document.getElementById('candidateName').value = data.data.candidateName;
-                    }
-                    if (data.data.candidateEmail) {
+                    // Pre-fill candidate email if available
+                    if (data.data?.candidateEmail) {
                         document.getElementById('candidateEmail').value = data.data.candidateEmail;
                     }
                     
                     // Show form
                     document.getElementById('formContainer').style.display = 'block';
+                } else if (data.alreadySubmitted) {
+                    showAlreadySubmitted();
+                } else if (data.expired) {
+                    showExpiredToken();
                 } else {
                     showInvalidToken();
                 }
             } catch (error) {
                 console.error('Error validating token:', error);
-                // For demo/development, show form anyway
-                document.getElementById('screeningToken').value = token;
-                document.getElementById('formContainer').style.display = 'block';
+                showConnectionError();
             }
         }
 
         function showInvalidToken() {
             document.getElementById('formContainer').style.display = 'none';
             document.getElementById('invalidToken').classList.add('show');
+        }
+        
+        function showExpiredToken() {
+            document.getElementById('formContainer').style.display = 'none';
+            const container = document.getElementById('invalidToken');
+            container.querySelector('h2').textContent = 'Link Expired';
+            container.querySelector('p').textContent = 'This assessment link has expired. Please contact HR to request a new link.';
+            container.classList.add('show');
+        }
+        
+        function showConnectionError() {
+            document.getElementById('formContainer').style.display = 'none';
+            const container = document.getElementById('invalidToken');
+            container.querySelector('h2').textContent = 'Connection Error';
+            container.querySelector('p').textContent = 'Unable to connect to the server. Please check your internet connection and try again.';
+            container.classList.add('show');
         }
 
         function showAlreadySubmitted() {
@@ -996,8 +1006,9 @@
                     }
                 } catch (error) {
                     console.error('Error submitting form:', error);
-                    // For demo, show success anyway
-                    showSuccess();
+                    alert('Failed to submit assessment. Please check your internet connection and try again.');
+                    document.getElementById('loadingOverlay').classList.remove('show');
+                    document.getElementById('submitBtn').disabled = false;
                 }
             });
         }

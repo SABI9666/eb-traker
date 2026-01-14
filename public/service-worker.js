@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.2.0 - Cache Version 42 (Timesheet Edit & Delete Fixed)
+// Version: 5.3.0 - Cache Version 43 (Timesheet Functions Fixed - Early Definition)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v42';
-const STATIC_CACHE = 'ebtracker-static-v42';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v42';
+const CACHE_NAME = 'ebtracker-v43';
+const STATIC_CACHE = 'ebtracker-static-v43';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v43';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -29,20 +29,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v42: Installing...');
+  console.log('🔧 Service Worker v43: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v42: Caching static assets');
+        console.log('📦 Service Worker v43: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v42: Static assets cached');
+        console.log('✅ Service Worker v43: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v42: Cache failed', error);
+        console.error('❌ Service Worker v43: Cache failed', error);
       })
   );
 });
@@ -51,7 +51,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v42: Activating...');
+  console.log('🚀 Service Worker v43: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -63,14 +63,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v42: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v43: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v42: Activated - Old caches cleared');
+        console.log('✅ Service Worker v43: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -78,11 +78,11 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v42: Notifying clients to refresh');
+        console.log('📢 Service Worker v43: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v42',
+            version: 'v43',
             message: 'New version available with Timesheet Edit & Delete Fixed! Please refresh.'
           });
         });
@@ -396,7 +396,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v42', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v43', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -414,6 +414,15 @@ self.addEventListener('message', (event) => {
           cache.addAll(event.data.urls);
         });
       }
+      break;
+      
+    case 'FORCE_REFRESH':
+      console.log('🔄 Force refresh requested');
+      caches.keys().then(names => {
+        return Promise.all(names.map(name => caches.delete(name)));
+      }).then(() => {
+        event.ports[0]?.postMessage({ success: true, message: 'All caches cleared' });
+      });
       break;
       
     default:
@@ -459,7 +468,7 @@ async function syncAnnouncements() {
 
 // Sync leave requests when back online
 async function syncLeaveRequests() {
-  console.log('🏖️ Syncing leave requests...');
+  console.log('🖐️ Syncing leave requests...');
   return Promise.resolve();
 }
 
@@ -474,4 +483,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v42: Loaded successfully - Timesheet Edit & Delete Fixed');
+console.log('✅ Service Worker v43: Loaded successfully - Timesheet Functions Fixed (Early Definition)');

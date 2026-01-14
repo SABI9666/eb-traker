@@ -5135,10 +5135,11 @@ body.is-ios .nav-menu {
     </script>
     <script>
       // ============================================
-      // CACHE BUSTER - Version 1.0.3-final-20251125
+      // CACHE BUSTER - Version 1.0.4-timesheet-fix-20260114
       // ============================================
-      console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
-      console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
+      console.log('🚀 EBTracker v1.0.4-timesheet-fix loaded at:', new Date().toISOString());
+      console.log('💾 Script timestamp: 2026-01-14T18:00:00Z');
+      console.log('✅ Timesheet Edit/Delete functions: Early Definition Pattern');
       
        
         const firebaseConfig = {
@@ -5377,6 +5378,264 @@ body.is-ios .nav-menu {
                 modal.style.display = 'none';
             }
         };
+        
+        // ============================================
+        // TIMESHEET EDIT/DELETE FUNCTIONS - EARLY DEFINITION
+        // These MUST be defined before any timesheet rendering
+        // ============================================
+        
+        // Store reference for the full implementation
+        let _editTimesheetEntryImpl = null;
+        let _deleteTimesheetEntryImpl = null;
+        
+        // DELETE TIMESHEET ENTRY - Global function
+        window.deleteTimesheetEntry = async function(entryId) {
+            console.log('🗑️ deleteTimesheetEntry called with ID:', entryId);
+            
+            // If full implementation is set, use it
+            if (_deleteTimesheetEntryImpl) {
+                return _deleteTimesheetEntryImpl(entryId);
+            }
+            
+            // Inline implementation
+            if (!confirm('Are you sure you want to delete this timesheet entry?')) return;
+            
+            try {
+                if (typeof showLoading === 'function') showLoading();
+                const response = await apiCall(`timesheets?id=${entryId}`, { method: 'DELETE' });
+                
+                if (response.success) {
+                    alert('✅ Entry deleted successfully');
+                    // Refresh the timesheet view
+                    if (typeof showTimesheet === 'function') {
+                        showTimesheet();
+                    } else if (typeof loadDesignerTimesheet === 'function') {
+                        loadDesignerTimesheet();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    throw new Error(response.error || 'Failed to delete');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                if (typeof hideLoading === 'function') hideLoading();
+            }
+        };
+        
+        // EDIT TIMESHEET ENTRY - Global function
+        window.editTimesheetEntry = async function(entryId, projectId, date, hours, description, projectName) {
+            console.log('✏️ editTimesheetEntry called:', { entryId, projectId, date, hours, description, projectName });
+            
+            // If full implementation is set, use it
+            if (_editTimesheetEntryImpl) {
+                return _editTimesheetEntryImpl(entryId, projectId, date, hours, description, projectName);
+            }
+            
+            // Inline implementation - show edit modal
+            // Close any existing modal
+            if (typeof closeModal === 'function') closeModal();
+            
+            // Show loading while fetching projects
+            if (typeof showLoading === 'function') showLoading();
+            
+            let projectOptions = '';
+            try {
+                // Fetch designer's assigned projects for the dropdown
+                const projectsResponse = await apiCall('projects?assignedToMe=true');
+                if (projectsResponse.success) {
+                    const projects = projectsResponse.data || [];
+                    const assignedProjects = projects.filter(p => 
+                        (currentUser && p.assignedDesigners && p.assignedDesigners.includes(currentUser.uid)) ||
+                        (currentUser && p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid))
+                    );
+                    
+                    projectOptions = assignedProjects.map(p => `
+                        <option value="${p.id}" ${p.id === projectId ? 'selected' : ''}>
+                            ${p.projectCode || ''} - ${p.projectName}
+                        </option>
+                    `).join('');
+                    
+                    // Add non-project options
+                    projectOptions += `
+                        <option value="TRAINING" ${projectId === 'TRAINING' ? 'selected' : ''}>Training</option>
+                        <option value="SAMPLE_DESIGNING" ${projectId === 'SAMPLE_DESIGNING' ? 'selected' : ''}>Sample Designing</option>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error fetching projects:', e);
+                projectOptions = `<option value="${projectId}" selected>${projectName || 'Current Project'}</option>`;
+            }
+            
+            if (typeof hideLoading === 'function') hideLoading();
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.id = 'editTimesheetModal';
+            modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 550px; width: 90%; background: white; border-radius: 16px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e40af, #3b82f6); color: white;">
+                        <h2 style="margin: 0; font-size: 1.25rem;">✏️ Edit Timesheet Entry</h2>
+                        <span onclick="closeEditTimesheetModal()" style="cursor: pointer; font-size: 1.75rem; opacity: 0.8; transition: opacity 0.2s;">&times;</span>
+                    </div>
+                    <div class="modal-body" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
+                        <form id="editTimesheetForm">
+                            <input type="hidden" id="editTimesheetEntryId" value="${entryId}">
+                            <input type="hidden" id="editTimesheetOldProjectId" value="${projectId}">
+                            
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1f2937;">
+                                    📁 Project <span style="color: #ef4444;">*</span>
+                                </label>
+                                <select id="editTimesheetProjectId" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1rem; background: white;">
+                                    ${projectOptions}
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1f2937;">
+                                    📅 Date <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="date" id="editTimesheetDate" value="${date}" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1f2937;">
+                                    ⏱️ Hours <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="number" id="editTimesheetHours" value="${hours}" min="0.25" max="24" step="0.25" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1f2937;">
+                                    📝 Description
+                                </label>
+                                <textarea id="editTimesheetDescription" rows="3"
+                                          style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 1rem; resize: vertical;">${description || ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer" style="padding: 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 1rem; background: #f9fafb;">
+                        <button type="button" onclick="closeEditTimesheetModal()" 
+                                style="padding: 0.75rem 1.5rem; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            Cancel
+                        </button>
+                        <button type="button" onclick="submitEditTimesheet()" 
+                                style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            💾 Save Changes
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            document.body.classList.add('modal-open');
+            
+            // Focus on hours input
+            setTimeout(() => {
+                const hoursInput = document.getElementById('editTimesheetHours');
+                if (hoursInput) hoursInput.focus();
+            }, 100);
+        };
+        
+        // Close edit timesheet modal
+        window.closeEditTimesheetModal = function() {
+            const modal = document.getElementById('editTimesheetModal');
+            if (modal) {
+                modal.remove();
+            }
+            document.body.classList.remove('modal-open');
+        };
+        
+        // Submit timesheet edit
+        window.submitEditTimesheet = async function() {
+            const entryId = document.getElementById('editTimesheetEntryId')?.value;
+            const oldProjectId = document.getElementById('editTimesheetOldProjectId')?.value;
+            const newProjectId = document.getElementById('editTimesheetProjectId')?.value;
+            const date = document.getElementById('editTimesheetDate')?.value;
+            const hours = parseFloat(document.getElementById('editTimesheetHours')?.value);
+            const description = document.getElementById('editTimesheetDescription')?.value?.trim();
+            
+            console.log('💾 Updating timesheet:', { entryId, oldProjectId, newProjectId, date, hours, description });
+            
+            // Validation
+            if (!entryId) {
+                alert('⚠️ Entry ID is missing');
+                return;
+            }
+            
+            if (!newProjectId) {
+                alert('⚠️ Please select a project');
+                return;
+            }
+            
+            if (!date) {
+                alert('⚠️ Please select a date');
+                return;
+            }
+            
+            if (!hours || hours <= 0) {
+                alert('⚠️ Please enter valid hours (greater than 0)');
+                return;
+            }
+            
+            if (hours > 24) {
+                alert('⚠️ Hours cannot exceed 24 per entry');
+                return;
+            }
+            
+            // Confirm if project is changing
+            if (newProjectId !== oldProjectId) {
+                if (!confirm('You are changing the project for this entry. Hours will be moved from the old project to the new one. Continue?')) {
+                    return;
+                }
+            }
+            
+            try {
+                if (typeof showLoading === 'function') showLoading();
+                
+                const updateData = {
+                    projectId: newProjectId,
+                    date: date,
+                    hours: hours,
+                    description: description || ''
+                };
+                
+                const response = await apiCall(`timesheets?id=${entryId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (response.success) {
+                    alert('✅ Timesheet entry updated successfully!');
+                    closeEditTimesheetModal();
+                    
+                    // Refresh the timesheet view
+                    if (typeof showTimesheet === 'function') {
+                        showTimesheet();
+                    } else if (typeof loadDesignerTimesheet === 'function') {
+                        loadDesignerTimesheet();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    throw new Error(response.error || 'Failed to update timesheet entry');
+                }
+            } catch (error) {
+                console.error('Error updating timesheet:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                if (typeof hideLoading === 'function') hideLoading();
+            }
+        };
+        
+        console.log('✅ Timesheet Edit/Delete functions defined globally');
         
         window.viewBDMFiles = function(projectId, proposalId) {
             console.log('📁 viewBDMFiles called with:', projectId, proposalId);

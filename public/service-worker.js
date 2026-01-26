@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.5.0 - Cache Version 45 (Design File Upload & Approval Feature Added)
+// Version: 5.6.0 - Cache Version 46 (Design File Upload & Approval Feature)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v45';
-const STATIC_CACHE = 'ebtracker-static-v45';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v45';
+const CACHE_NAME = 'ebtracker-v46';
+const STATIC_CACHE = 'ebtracker-static-v46';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v46';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -17,34 +17,58 @@ const STATIC_ASSETS = [
   '/icons/icon-512x512.png'
 ];
 
+// External scripts to cache
+const EXTERNAL_SCRIPTS = [
+  'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js'
+];
+
 // URLs to always fetch from network (never cache)
 const NETWORK_ONLY = [
   '/api/',
   'render.com',
   'firebase',
   'firestore',
-  'googleapis.com'
+  'googleapis.com',
+  'firebasestorage.googleapis.com'
 ];
 
 // ==============================
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v45: Installing...');
+  console.log('🔧 Service Worker v46: Installing...');
   
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
-        console.log('📦 Service Worker v45: Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        console.log('✅ Service Worker v45: Static assets cached');
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker v45: Cache failed', error);
-      })
+    Promise.all([
+      // Cache static assets
+      caches.open(STATIC_CACHE)
+        .then((cache) => {
+          console.log('📦 Service Worker v46: Caching static assets');
+          return cache.addAll(STATIC_ASSETS);
+        }),
+      // Cache external scripts (Firebase SDK including Storage)
+      caches.open(DYNAMIC_CACHE)
+        .then((cache) => {
+          console.log('📦 Service Worker v46: Caching Firebase SDK');
+          return Promise.all(
+            EXTERNAL_SCRIPTS.map(url => 
+              cache.add(url).catch(err => {
+                console.warn('⚠️ Failed to cache:', url, err);
+              })
+            )
+          );
+        })
+    ])
+    .then(() => {
+      console.log('✅ Service Worker v46: All assets cached (including Firebase Storage SDK)');
+      return self.skipWaiting();
+    })
+    .catch((error) => {
+      console.error('❌ Service Worker v46: Cache failed', error);
+    })
   );
 });
 
@@ -52,7 +76,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v45: Activating...');
+  console.log('🚀 Service Worker v46: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -64,14 +88,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v45: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v46: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v45: Activated - Old caches cleared');
+        console.log('✅ Service Worker v46: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -79,11 +103,11 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v45: Notifying clients to refresh');
+        console.log('📢 Service Worker v46: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v45',
+            version: 'v46',
             message: 'New version available with Design File Upload & Approval! Please refresh.'
           });
         });
@@ -397,7 +421,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v45', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v46', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -467,29 +491,60 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-design-files') {
     event.waitUntil(syncDesignFiles());
   }
+  
+  if (event.tag === 'sync-timesheets') {
+    event.waitUntil(syncTimesheets());
+  }
 });
 
 // Sync announcements when back online
 async function syncAnnouncements() {
   console.log('📢 Syncing announcements...');
+  // Notify clients to retry pending announcements
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_ANNOUNCEMENTS', timestamp: Date.now() });
+  });
   return Promise.resolve();
 }
 
 // Sync leave requests when back online
 async function syncLeaveRequests() {
   console.log('🏖️ Syncing leave requests...');
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_LEAVE_REQUESTS', timestamp: Date.now() });
+  });
   return Promise.resolve();
 }
 
 // Sync screening data when back online
 async function syncScreeningData() {
   console.log('📝 Syncing screening data...');
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_SCREENING', timestamp: Date.now() });
+  });
   return Promise.resolve();
 }
 
 // Sync design files when back online
 async function syncDesignFiles() {
   console.log('📐 Syncing design files...');
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_DESIGN_FILES', timestamp: Date.now() });
+  });
+  return Promise.resolve();
+}
+
+// Sync timesheets when back online
+async function syncTimesheets() {
+  console.log('⏱️ Syncing timesheets...');
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_TIMESHEETS', timestamp: Date.now() });
+  });
   return Promise.resolve();
 }
 
@@ -504,4 +559,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v45: Loaded successfully - Design File Upload & Approval Feature Added');
+console.log('✅ Service Worker v46: Loaded successfully - Design File Upload & Approval + Firebase Storage SDK');

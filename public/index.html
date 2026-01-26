@@ -4807,6 +4807,258 @@ body.is-ios .nav-menu {
     margin-left: 0.5rem;
 }
 
+/* ====== DESIGN FILE UPLOAD & APPROVAL STYLES ====== */
+.design-files-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e2e8f0;
+}
+
+.design-files-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.design-files-header h3 {
+    margin: 0;
+    color: #1e3a5f;
+    font-size: 1.1rem;
+}
+
+.design-file-card {
+    background: white;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.design-file-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+
+.design-file-info {
+    flex: 1;
+}
+
+.design-file-name {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.design-file-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.design-file-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.status-uploaded { background: #dbeafe; color: #1e40af; }
+.status-pending_approval { background: #fef3c7; color: #92400e; }
+.status-approved { background: #dcfce7; color: #166534; }
+.status-rejected { background: #fee2e2; color: #991b1b; }
+.status-sent { background: #d1fae5; color: #065f46; }
+
+.design-file-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Upload Modal Styles */
+.upload-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-dropzone:hover, .upload-dropzone.dragover {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.upload-dropzone.has-file {
+    border-color: #10b981;
+    background: #ecfdf5;
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.upload-text {
+    color: #64748b;
+    margin-bottom: 5px;
+}
+
+.upload-hint {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.selected-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #f0fdf4;
+    border-radius: 8px;
+    margin-top: 15px;
+    border: 1px solid #86efac;
+}
+
+.selected-file-icon {
+    font-size: 1.5rem;
+}
+
+.selected-file-details {
+    flex: 1;
+}
+
+.selected-file-name {
+    font-weight: 600;
+    color: #166534;
+}
+
+.selected-file-size {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* COO Approval Section Styles */
+.approval-queue-section {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 1.5rem;
+    border: 2px solid #f59e0b;
+}
+
+.approval-queue-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.approval-queue-header h3 {
+    margin: 0;
+    color: #92400e;
+}
+
+.approval-count-badge {
+    background: #dc2626;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.approval-item {
+    background: white;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.approval-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.approval-item-project {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.approval-item-file {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.approval-item-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 12px;
+}
+
+.approval-item-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Send to Client Modal */
+.client-preview-box {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    border: 1px solid #e2e8f0;
+}
+
+.client-preview-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.client-preview-value {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.custom-message-input {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.custom-message-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js">
         function switchDesignerTab(tabName) {
@@ -5038,6 +5290,12 @@ body.is-ios .nav-menu {
                     <a href="#" onclick="showHRLeaveApproval()" id="nav-hr-leave">
                         <span class="nav-icon">📋</span>Leave Approval
                         <span class="notification-count" id="hrLeaveRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                    </a>
+                </li>
+                <li id="designApprovalNavItem" style="display: none;">
+                    <a href="#" onclick="showDesignFileApprovals(); return false;" id="nav-design-approvals">
+                        <span class="nav-icon">📐</span>Design Approvals
+                        <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
                     </a>
                 </li>
                 <li id="hrLeaveReportsNavItem" style="display: none;">
@@ -6580,6 +6838,14 @@ body.is-ios .nav-menu {
             const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck) || isTeamLead;
             console.log('✅ Can Approve Leave:', canApproveLeave);
             setDisplay('hrLeaveApprovalNavItem', canApproveLeave);
+            
+            // Design Approval nav visible to COO and Director
+            setDisplay('designApprovalNavItem', ['coo', 'director'].includes(roleForCheck));
+            
+            // Update design approval badge
+            if (['coo', 'director'].includes(roleForCheck)) {
+                updateDesignApprovalVisibility();
+            }
             
             // Show Leave Request for all roles EXCEPT HR, COO, Director
             // Note: Team Leads CAN submit their own leave requests (they see both menus)
@@ -12328,6 +12594,10 @@ async function showDesignerAllocations() {
                         <button class="btn btn-secondary btn-sm" 
                                 onclick="showProjectFilesModal('${p.id}', '${p.projectName.replace(/'/g, "\\'")}')">
                             📂 View Files
+                        </button>
+                        <button class="btn btn-info btn-sm" 
+                                onclick="openDesignUploadModal('${p.id}', '${p.projectName.replace(/'/g, "\\'")}')">
+                            📐 Upload Design
                         </button>
                         <button class="btn btn-primary btn-sm" 
                                 onclick="showTimesheetModal('${p.id}')"
@@ -28486,7 +28756,847 @@ window.exportScreeningData = function() {
 
 console.log('✅ HR Candidate Screening Module loaded');
 
+// ============================================
+// DESIGN FILE UPLOAD & APPROVAL SYSTEM
+// ============================================
+
+// Global variables for design files
+let currentDesignFile = null;
+let pendingDesignApprovals = [];
+
+// ============================================
+// UPLOAD MODAL FUNCTIONS
+// ============================================
+
+function openDesignUploadModal(projectId, projectName) {
+    document.getElementById('designUploadProjectId').value = projectId;
+    document.getElementById('designUploadProjectName').value = projectName;
+    document.getElementById('designUploadProjectDisplay').textContent = projectName;
+    
+    // Reset form
+    document.getElementById('designFileInput').value = '';
+    document.getElementById('designClientEmail').value = '';
+    document.getElementById('designClientName').value = '';
+    document.getElementById('designNotes').value = '';
+    clearSelectedFile();
+    
+    document.getElementById('designFileUploadModal').style.display = 'flex';
+}
+window.openDesignUploadModal = openDesignUploadModal;
+
+function closeDesignUploadModal() {
+    document.getElementById('designFileUploadModal').style.display = 'none';
+    currentDesignFile = null;
+}
+window.closeDesignUploadModal = closeDesignUploadModal;
+
+function handleDesignFileSelect(input) {
+    const file = input.files[0];
+    if (file) {
+        if (file.type !== 'application/pdf') {
+            showNotification('Please select a PDF file', 'error');
+            input.value = '';
+            return;
+        }
+        
+        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+            showNotification('File size must be less than 50MB', 'error');
+            input.value = '';
+            return;
+        }
+        
+        currentDesignFile = file;
+        
+        document.getElementById('selectedFileName').textContent = file.name;
+        document.getElementById('selectedFileSize').textContent = formatFileSizeDesign(file.size);
+        document.getElementById('selectedFileInfo').style.display = 'flex';
+        document.getElementById('designDropzone').classList.add('has-file');
+    }
+}
+window.handleDesignFileSelect = handleDesignFileSelect;
+
+function clearSelectedFile() {
+    currentDesignFile = null;
+    document.getElementById('designFileInput').value = '';
+    document.getElementById('selectedFileInfo').style.display = 'none';
+    document.getElementById('designDropzone').classList.remove('has-file');
+}
+window.clearSelectedFile = clearSelectedFile;
+
+function formatFileSizeDesign(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function uploadDesignFile() {
+    const projectId = document.getElementById('designUploadProjectId').value;
+    const projectName = document.getElementById('designUploadProjectName').value;
+    const clientEmail = document.getElementById('designClientEmail').value.trim();
+    const clientName = document.getElementById('designClientName').value.trim();
+    const notes = document.getElementById('designNotes').value.trim();
+    
+    // Validation
+    if (!currentDesignFile) {
+        showNotification('Please select a PDF file to upload', 'error');
+        return;
+    }
+    
+    if (!clientEmail || !clientEmail.includes('@')) {
+        showNotification('Please enter a valid client email', 'error');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        // 1. Upload file to Firebase Storage
+        const storageRef = firebase.storage().ref();
+        const timestamp = Date.now();
+        const fileName = `design_files/${projectId}/${timestamp}_${currentDesignFile.name}`;
+        const fileRef = storageRef.child(fileName);
+        
+        const uploadTask = await fileRef.put(currentDesignFile);
+        const fileUrl = await uploadTask.ref.getDownloadURL();
+        
+        // 2. Create design file record in database
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'upload_design_file',
+                data: {
+                    fileName: currentDesignFile.name,
+                    fileUrl: fileUrl,
+                    fileSize: currentDesignFile.size,
+                    clientEmail: clientEmail,
+                    clientName: clientName,
+                    notes: notes
+                }
+            })
+        });
+        
+        if (response.success) {
+            showNotification('Design file uploaded successfully!', 'success');
+            closeDesignUploadModal();
+            
+            // Refresh the designer portal view
+            if (typeof showDesignerAllocations === 'function') {
+                showDesignerAllocations();
+            }
+        } else {
+            throw new Error(response.error || 'Upload failed');
+        }
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        showNotification('Failed to upload: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.uploadDesignFile = uploadDesignFile;
+
+
+// ============================================
+// SUBMIT FOR APPROVAL
+// ============================================
+
+async function submitDesignForApproval(designFileId, projectId) {
+    if (!confirm('Submit this design file for COO approval?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'submit_design_for_approval',
+                data: {
+                    designFileId: designFileId
+                }
+            })
+        });
+        
+        if (response.success) {
+            showNotification('Design file submitted for approval!', 'success');
+            
+            // Refresh the view
+            if (typeof showDesignerAllocations === 'function') {
+                showDesignerAllocations();
+            }
+        } else {
+            throw new Error(response.error || 'Submission failed');
+        }
+        
+    } catch (error) {
+        console.error('Submission error:', error);
+        showNotification('Failed to submit: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.submitDesignForApproval = submitDesignForApproval;
+
+
+// ============================================
+// COO APPROVAL FUNCTIONS
+// ============================================
+
+async function showDesignFileApprovals() {
+    setActiveNav('nav-design-approvals');
+    const main = document.getElementById('mainContent');
+    main.style.display = 'block';
+    showLoading();
+    
+    try {
+        // Fetch pending approvals
+        const response = await apiCall('projects?action=get_design_files&status=pending_approval');
+        
+        if (!response.success) {
+            throw new Error('Failed to load design files');
+        }
+        
+        pendingDesignApprovals = response.data || [];
+        
+        // Update badge
+        const badge = document.getElementById('designApprovalBadge');
+        if (badge) {
+            badge.textContent = pendingDesignApprovals.length;
+            badge.style.display = pendingDesignApprovals.length > 0 ? 'inline' : 'none';
+        }
+        
+        let content = '';
+        
+        if (pendingDesignApprovals.length === 0) {
+            content = `
+                <div class="empty-state">
+                    <h3>✅ No Pending Approvals</h3>
+                    <p>All design files have been reviewed.</p>
+                </div>
+            `;
+        } else {
+            const items = pendingDesignApprovals.map(file => `
+                <div class="approval-item">
+                    <div class="approval-item-header">
+                        <div>
+                            <div class="approval-item-project">${file.projectName}</div>
+                            <div class="approval-item-file">📄 ${file.fileName}</div>
+                        </div>
+                        <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ Preview</a>
+                    </div>
+                    <div class="approval-item-meta">
+                        <span>👤 Submitted by: <strong>${file.uploadedByName}</strong></span>
+                        <span>📧 Client: <strong>${file.clientEmail}</strong></span>
+                        <span>🕐 ${file.submittedAt ? new Date(file.submittedAt.seconds ? file.submittedAt.seconds * 1000 : file.submittedAt).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <div class="approval-item-actions">
+                        <button class="btn btn-success" onclick="openDesignApprovalModal('${file.id}', '${file.projectId}')">
+                            ✅ Review & Approve
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            content = `
+                <div class="approval-queue-section" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #e2e8f0;">
+                    <div class="approval-queue-header">
+                        <h3 style="color: #1e293b;">📐 Design Files Pending Approval</h3>
+                        <span class="approval-count-badge">${pendingDesignApprovals.length}</span>
+                    </div>
+                    ${items}
+                </div>
+            `;
+        }
+        
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>📐 Design File Approvals</h2>
+                <p class="subtitle">Review and approve design files before they are sent to clients.</p>
+            </div>
+            ${content}
+        `;
+        
+    } catch (error) {
+        console.error('Error loading approvals:', error);
+        main.innerHTML = `<div class="error-message">Error loading design approvals: ${error.message}</div>`;
+    } finally {
+        hideLoading();
+    }
+}
+window.showDesignFileApprovals = showDesignFileApprovals;
+
+
+// ============================================
+// APPROVAL MODAL FUNCTIONS
+// ============================================
+
+function openDesignApprovalModal(designFileId, projectId) {
+    const file = pendingDesignApprovals.find(f => f.id === designFileId);
+    if (!file) {
+        showNotification('Design file not found', 'error');
+        return;
+    }
+    
+    document.getElementById('approvalDesignFileId').value = designFileId;
+    document.getElementById('approvalProjectId').value = projectId;
+    
+    document.getElementById('approvalProjectName').textContent = file.projectName;
+    document.getElementById('approvalClientCompany').textContent = file.clientCompany || 'N/A';
+    document.getElementById('approvalFileName').textContent = file.fileName;
+    document.getElementById('approvalSubmittedBy').textContent = file.uploadedByName;
+    document.getElementById('approvalClientEmail').textContent = file.clientEmail;
+    document.getElementById('approvalPreviewLink').href = file.fileUrl;
+    
+    // Show designer notes if present
+    if (file.designerNotes) {
+        document.getElementById('approvalDesignerNotes').style.display = 'block';
+        document.getElementById('approvalDesignerNotesText').textContent = file.designerNotes;
+    } else {
+        document.getElementById('approvalDesignerNotes').style.display = 'none';
+    }
+    
+    // Reset form
+    document.getElementById('approvalNotes').value = '';
+    document.getElementById('rejectionReason').value = '';
+    document.getElementById('rejectionReasonSection').style.display = 'none';
+    document.getElementById('approveDesignBtn').style.display = 'inline-block';
+    document.getElementById('confirmRejectBtn').style.display = 'none';
+    
+    document.getElementById('designApprovalModal').style.display = 'flex';
+}
+window.openDesignApprovalModal = openDesignApprovalModal;
+
+function closeDesignApprovalModal() {
+    document.getElementById('designApprovalModal').style.display = 'none';
+}
+window.closeDesignApprovalModal = closeDesignApprovalModal;
+
+function toggleRejectionMode() {
+    const rejectionSection = document.getElementById('rejectionReasonSection');
+    const approveBtn = document.getElementById('approveDesignBtn');
+    const rejectBtn = document.getElementById('confirmRejectBtn');
+    
+    if (rejectionSection.style.display === 'none') {
+        rejectionSection.style.display = 'block';
+        approveBtn.style.display = 'none';
+        rejectBtn.style.display = 'inline-block';
+    } else {
+        rejectionSection.style.display = 'none';
+        approveBtn.style.display = 'inline-block';
+        rejectBtn.style.display = 'none';
+    }
+}
+window.toggleRejectionMode = toggleRejectionMode;
+
+async function approveDesignFile() {
+    const designFileId = document.getElementById('approvalDesignFileId').value;
+    const projectId = document.getElementById('approvalProjectId').value;
+    const notes = document.getElementById('approvalNotes').value.trim();
+    
+    if (!confirm('Approve this design file? The designer will be able to send it to the client.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'approve_design_file',
+                data: {
+                    designFileId: designFileId,
+                    notes: notes
+                }
+            })
+        });
+        
+        if (response.success) {
+            showNotification('Design file approved successfully!', 'success');
+            closeDesignApprovalModal();
+            showDesignFileApprovals(); // Refresh list
+        } else {
+            throw new Error(response.error || 'Approval failed');
+        }
+        
+    } catch (error) {
+        console.error('Approval error:', error);
+        showNotification('Failed to approve: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.approveDesignFile = approveDesignFile;
+
+async function rejectDesignFile() {
+    const designFileId = document.getElementById('approvalDesignFileId').value;
+    const projectId = document.getElementById('approvalProjectId').value;
+    const rejectionReason = document.getElementById('rejectionReason').value.trim();
+    
+    if (!rejectionReason) {
+        showNotification('Please provide a reason for rejection', 'error');
+        return;
+    }
+    
+    if (!confirm('Reject this design file? The designer will be notified.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'reject_design_file',
+                data: {
+                    designFileId: designFileId,
+                    rejectionReason: rejectionReason
+                }
+            })
+        });
+        
+        if (response.success) {
+            showNotification('Design file rejected. Designer has been notified.', 'success');
+            closeDesignApprovalModal();
+            showDesignFileApprovals(); // Refresh list
+        } else {
+            throw new Error(response.error || 'Rejection failed');
+        }
+        
+    } catch (error) {
+        console.error('Rejection error:', error);
+        showNotification('Failed to reject: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.rejectDesignFile = rejectDesignFile;
+
+
+// ============================================
+// SEND TO CLIENT FUNCTIONS
+// ============================================
+
+async function openSendToClientModal(designFileId, projectId) {
+    showLoading();
+    
+    try {
+        // Fetch the design file details
+        const response = await apiCall(`projects?action=get_design_files&projectId=${projectId}`);
+        
+        if (!response.success) {
+            throw new Error('Failed to load design file');
+        }
+        
+        const file = (response.data || []).find(f => f.id === designFileId);
+        if (!file) {
+            throw new Error('Design file not found');
+        }
+        
+        if (file.status !== 'approved') {
+            showNotification('This design file has not been approved yet', 'error');
+            return;
+        }
+        
+        document.getElementById('sendDesignFileId').value = designFileId;
+        document.getElementById('sendProjectId').value = projectId;
+        
+        document.getElementById('sendProjectName').textContent = file.projectName;
+        document.getElementById('sendFileName').textContent = file.fileName;
+        document.getElementById('sendClientEmail').textContent = file.clientEmail;
+        document.getElementById('sendClientName').textContent = file.clientName ? `(${file.clientName})` : '';
+        
+        document.getElementById('sendCustomMessage').value = '';
+        
+        document.getElementById('sendToClientModal').style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.openSendToClientModal = openSendToClientModal;
+
+function closeSendToClientModal() {
+    document.getElementById('sendToClientModal').style.display = 'none';
+}
+window.closeSendToClientModal = closeSendToClientModal;
+
+async function sendDesignToClient() {
+    const designFileId = document.getElementById('sendDesignFileId').value;
+    const projectId = document.getElementById('sendProjectId').value;
+    const customMessage = document.getElementById('sendCustomMessage').value.trim();
+    
+    const clientEmail = document.getElementById('sendClientEmail').textContent;
+    
+    if (!confirm(`Send the design file to ${clientEmail}?`)) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'send_design_to_client',
+                data: {
+                    designFileId: designFileId,
+                    customMessage: customMessage
+                }
+            })
+        });
+        
+        if (response.success) {
+            showNotification(`Design file sent successfully to ${clientEmail}!`, 'success');
+            closeSendToClientModal();
+            
+            // Refresh the designer portal
+            if (typeof showDesignerAllocations === 'function') {
+                showDesignerAllocations();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to send');
+        }
+        
+    } catch (error) {
+        console.error('Send error:', error);
+        showNotification('Failed to send: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.sendDesignToClient = sendDesignToClient;
+
+
+// ============================================
+// UPDATE ROLE VISIBILITY FUNCTION
+// ============================================
+
+function updateDesignApprovalVisibility() {
+    const isCOO = currentUser && currentUser.role === 'coo';
+    const isDirector = currentUser && currentUser.role === 'director';
+    
+    const navItem = document.getElementById('designApprovalNavItem');
+    if (navItem) {
+        navItem.style.display = (isCOO || isDirector) ? 'block' : 'none';
+    }
+    
+    // Fetch pending count for badge
+    if (isCOO || isDirector) {
+        apiCall('projects?action=get_design_files&status=pending_approval').then(response => {
+            if (response.success) {
+                const count = (response.data || []).length;
+                const badge = document.getElementById('designApprovalBadge');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
+        }).catch(() => {});
+    }
+}
+window.updateDesignApprovalVisibility = updateDesignApprovalVisibility;
+
+
+// ============================================
+// RENDER DESIGN FILES FOR PROJECT (Designer View)
+// ============================================
+
+async function renderDesignFilesSection(projectId, containerElement) {
+    try {
+        const response = await apiCall(`projects?action=get_design_files&projectId=${projectId}`);
+        
+        if (!response.success) {
+            return '<p style="color: #64748b;">Unable to load design files</p>';
+        }
+        
+        const files = response.data || [];
+        
+        if (files.length === 0) {
+            return `
+                <div class="design-files-section">
+                    <div class="design-files-header">
+                        <h3>📐 Design Files</h3>
+                    </div>
+                    <p style="color: #64748b; text-align: center; padding: 20px;">No design files uploaded yet.</p>
+                </div>
+            `;
+        }
+        
+        const fileCards = files.map(file => {
+            let actionButton = '';
+            
+            if (file.status === 'uploaded') {
+                actionButton = `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${projectId}')">📤 Submit for Approval</button>`;
+            } else if (file.status === 'pending_approval') {
+                actionButton = `<span class="design-file-status status-pending_approval">⏳ Pending Approval</span>`;
+            } else if (file.status === 'approved') {
+                actionButton = `<button class="btn btn-success btn-sm" onclick="openSendToClientModal('${file.id}', '${projectId}')">📧 Send to Client</button>`;
+            } else if (file.status === 'rejected') {
+                actionButton = `<span class="design-file-status status-rejected">❌ Rejected</span>`;
+            } else if (file.status === 'sent') {
+                actionButton = `<span class="design-file-status status-sent">✅ Sent to Client</span>`;
+            }
+            
+            return `
+                <div class="design-file-card">
+                    <div class="design-file-info">
+                        <div class="design-file-name">📄 ${file.fileName}</div>
+                        <div class="design-file-meta">
+                            Client: ${file.clientEmail} | 
+                            Size: ${formatFileSizeDesign(file.fileSize || 0)} |
+                            ${file.uploadedAt ? new Date(file.uploadedAt.seconds ? file.uploadedAt.seconds * 1000 : file.uploadedAt).toLocaleDateString() : 'N/A'}
+                        </div>
+                    </div>
+                    <div class="design-file-actions">
+                        <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ View</a>
+                        ${actionButton}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="design-files-section">
+                <div class="design-files-header">
+                    <h3>📐 Design Files</h3>
+                </div>
+                ${fileCards}
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error rendering design files:', error);
+        return '<p style="color: #ef4444;">Error loading design files</p>';
+    }
+}
+window.renderDesignFilesSection = renderDesignFilesSection;
+
+console.log('✅ Design File Upload & Approval Module loaded');
+
 
 </script>
+
+<!-- ============================================
+     DESIGN FILE UPLOAD & APPROVAL MODALS
+     ============================================ -->
+
+<!-- Design File Upload Modal -->
+<div id="designFileUploadModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+            <h3>📤 Upload Design File</h3>
+            <button class="close-btn" onclick="closeDesignUploadModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="designUploadProjectId">
+            <input type="hidden" id="designUploadProjectName">
+            
+            <!-- Project Info Display -->
+            <div class="client-preview-box" style="margin-bottom: 20px;">
+                <div class="client-preview-label">Project</div>
+                <div class="client-preview-value" id="designUploadProjectDisplay">-</div>
+            </div>
+            
+            <!-- File Upload Zone -->
+            <div class="form-group">
+                <label>Design File (PDF) <span style="color: red;">*</span></label>
+                <div class="upload-dropzone" id="designDropzone" onclick="document.getElementById('designFileInput').click()">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Click to upload or drag and drop</div>
+                    <div class="upload-hint">PDF files only (Max 50MB)</div>
+                </div>
+                <input type="file" id="designFileInput" accept=".pdf" style="display: none;" onchange="handleDesignFileSelect(this)">
+                <div id="selectedFileInfo" class="selected-file-info" style="display: none;">
+                    <span class="selected-file-icon">📄</span>
+                    <div class="selected-file-details">
+                        <div class="selected-file-name" id="selectedFileName">-</div>
+                        <div class="selected-file-size" id="selectedFileSize">-</div>
+                    </div>
+                    <button type="button" onclick="clearSelectedFile()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">✕</button>
+                </div>
+            </div>
+            
+            <!-- Client Email -->
+            <div class="form-group">
+                <label>Client Email <span style="color: red;">*</span></label>
+                <input type="email" id="designClientEmail" class="form-control" placeholder="client@company.com" required>
+                <small style="color: #64748b;">This is where the design file will be sent after approval</small>
+            </div>
+            
+            <!-- Client Name (Optional) -->
+            <div class="form-group">
+                <label>Client Contact Name (Optional)</label>
+                <input type="text" id="designClientName" class="form-control" placeholder="John Smith">
+            </div>
+            
+            <!-- Notes -->
+            <div class="form-group">
+                <label>Notes (Optional)</label>
+                <textarea id="designNotes" class="form-control" rows="2" placeholder="Any notes for the COO reviewer..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDesignUploadModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="uploadDesignFile()">
+                📤 Upload File
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- COO Design Approval Modal -->
+<div id="designApprovalModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>📐 Review Design File</h3>
+            <button class="close-btn" onclick="closeDesignApprovalModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="approvalDesignFileId">
+            <input type="hidden" id="approvalProjectId">
+            
+            <!-- File Details -->
+            <div class="client-preview-box">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <div class="client-preview-label">Project</div>
+                        <div class="client-preview-value" id="approvalProjectName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Client</div>
+                        <div class="client-preview-value" id="approvalClientCompany">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">File Name</div>
+                        <div class="client-preview-value" id="approvalFileName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Submitted By</div>
+                        <div class="client-preview-value" id="approvalSubmittedBy">-</div>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <div class="client-preview-label">Client Email (Will receive file)</div>
+                        <div class="client-preview-value" id="approvalClientEmail" style="color: #2563eb;">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Preview Button -->
+            <div style="text-align: center; margin: 20px 0;">
+                <a id="approvalPreviewLink" href="#" target="_blank" class="btn btn-secondary">
+                    👁️ Preview Design File
+                </a>
+            </div>
+            
+            <!-- Designer Notes -->
+            <div id="approvalDesignerNotes" style="display: none;">
+                <label style="font-weight: 600; color: #1e293b;">Designer Notes:</label>
+                <p id="approvalDesignerNotesText" style="background: #f8fafc; padding: 12px; border-radius: 8px; color: #475569; margin-top: 8px;"></p>
+            </div>
+            
+            <!-- Approval/Rejection Notes -->
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Your Notes (Optional)</label>
+                <textarea id="approvalNotes" class="form-control" rows="3" placeholder="Add any notes or feedback..."></textarea>
+            </div>
+            
+            <!-- Rejection Reason (shown when rejecting) -->
+            <div id="rejectionReasonSection" class="form-group" style="display: none;">
+                <label>Rejection Reason <span style="color: red;">*</span></label>
+                <textarea id="rejectionReason" class="form-control" rows="3" placeholder="Please explain why this design file cannot be approved..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button class="btn btn-danger" onclick="toggleRejectionMode()">
+                ❌ Reject
+            </button>
+            <div>
+                <button class="btn btn-secondary" onclick="closeDesignApprovalModal()">Cancel</button>
+                <button class="btn btn-success" id="approveDesignBtn" onclick="approveDesignFile()">
+                    ✅ Approve
+                </button>
+                <button class="btn btn-danger" id="confirmRejectBtn" onclick="rejectDesignFile()" style="display: none;">
+                    ❌ Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Send to Client Modal -->
+<div id="sendToClientModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+            <h3>📧 Send Design to Client</h3>
+            <button class="close-btn" onclick="closeSendToClientModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="sendDesignFileId">
+            <input type="hidden" id="sendProjectId">
+            
+            <!-- Success Banner -->
+            <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5rem;">✅</span>
+                    <div>
+                        <strong style="color: #166534;">Design Approved!</strong>
+                        <p style="margin: 5px 0 0 0; color: #15803d; font-size: 0.9rem;">Ready to send to the client</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Send Details -->
+            <div class="client-preview-box">
+                <div style="display: grid; gap: 12px;">
+                    <div>
+                        <div class="client-preview-label">Project</div>
+                        <div class="client-preview-value" id="sendProjectName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">File</div>
+                        <div class="client-preview-value" id="sendFileName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Sending To</div>
+                        <div class="client-preview-value" id="sendClientEmail" style="color: #2563eb; font-size: 1.1rem;">-</div>
+                        <div id="sendClientName" style="color: #64748b; font-size: 0.9rem; margin-top: 3px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Custom Message -->
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Custom Message (Optional)</label>
+                <textarea id="sendCustomMessage" class="custom-message-input" placeholder="Add a personalized message to include in the email to the client..."></textarea>
+                <small style="color: #64748b;">This will appear in the email body sent to the client</small>
+            </div>
+            
+            <!-- Warning -->
+            <div style="background: #fef3c7; padding: 12px 15px; border-radius: 8px; margin-top: 15px;">
+                <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
+                    ⚠️ <strong>Note:</strong> Once sent, the client will receive a professional email with a download link to the design file.
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSendToClientModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="sendDesignToClient()">
+                📧 Send to Client
+            </button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

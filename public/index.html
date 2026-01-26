@@ -5336,81 +5336,23 @@ body.is-ios .nav-menu {
     </div>
 </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js">
-        function switchDesignerTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.doc-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Update content visibility
-            document.getElementById('designer-drawings-content').style.display = 'none';
-            document.getElementById('designer-specs-content').style.display = 'none';
-            
-            if (tabName === 'drawings') {
-                document.getElementById('designer-drawings-content').style.display = 'block';
-            } else {
-                document.getElementById('designer-specs-content').style.display = 'block';
-            }
-        }
-
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js">
-        function switchDesignerTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.doc-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Update content visibility
-            document.getElementById('designer-drawings-content').style.display = 'none';
-            document.getElementById('designer-specs-content').style.display = 'none';
-            
-            if (tabName === 'drawings') {
-                document.getElementById('designer-drawings-content').style.display = 'block';
-            } else {
-                document.getElementById('designer-specs-content').style.display = 'block';
-            }
-        }
-
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js">
-        function switchDesignerTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.doc-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Update content visibility
-            document.getElementById('designer-drawings-content').style.display = 'none';
-            document.getElementById('designer-specs-content').style.display = 'none';
-            
-            if (tabName === 'drawings') {
-                document.getElementById('designer-drawings-content').style.display = 'block';
-            } else {
-                document.getElementById('designer-specs-content').style.display = 'block';
-            }
-        }
-
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
     <script>
       // ============================================
       // CACHE BUSTER - Version 1.0.3-final-20251125
       // ============================================
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
-      
-       
-        const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -5422,10 +5364,10 @@ body.is-ios .nav-menu {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
+
 
         const authorizedUsers = {
             estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
@@ -6713,16 +6655,29 @@ body.is-ios .nav-menu {
 
             // 1. Update User Info - Get role with email fallback
             let roleForCheck = (currentUserRole || '').trim().toLowerCase();
+            const userEmail = (currentUser?.email || '').toLowerCase();
+            
+            // Define COO and Director emails for direct check
+            const COO_EMAILS = ['coo@edanbrook.com', 'coo2@edanbrook.com'];
+            const DIRECTOR_EMAILS = ['director@edanbrook.com', 'ajit@edanbrook.com'];
+            
+            // Check if user is COO or Director by email (highest priority)
+            const isCOOByEmail = COO_EMAILS.includes(userEmail);
+            const isDirectorByEmail = DIRECTOR_EMAILS.includes(userEmail);
+            
+            console.log('👤 User email:', userEmail);
+            console.log('👤 Is COO by email:', isCOOByEmail);
+            console.log('👤 Is Director by email:', isDirectorByEmail);
             
             // If role is empty or 'employee', try to detect from email
             if (!roleForCheck || roleForCheck === 'employee' || roleForCheck === '') {
                 const emailLower = (currentUser?.email || '').toLowerCase();
                 console.log('⚠️ Role is empty/employee, checking email:', emailLower);
                 
-                if (emailLower.startsWith('coo@') || emailLower.includes('.coo@')) {
+                if (emailLower.startsWith('coo@') || emailLower.includes('.coo@') || isCOOByEmail) {
                     roleForCheck = 'coo';
                     currentUserRole = 'coo'; // Update global for consistency
-                } else if (emailLower.startsWith('director@') || emailLower.includes('.director@')) {
+                } else if (emailLower.startsWith('director@') || emailLower.includes('.director@') || isDirectorByEmail) {
                     roleForCheck = 'director';
                     currentUserRole = 'director';
                 } else if (emailLower.startsWith('hr@') || emailLower.includes('.hr@') || emailLower === 'paul.a@edanbrook.com') {
@@ -6742,6 +6697,18 @@ body.is-ios .nav-menu {
                     currentUserRole = 'designer';
                 }
                 console.log('✅ Role after email detection:', roleForCheck);
+            }
+            
+            // Force COO/Director role if email matches (override any Firestore role)
+            if (isCOOByEmail && roleForCheck !== 'coo') {
+                console.log('⚠️ Forcing COO role based on email');
+                roleForCheck = 'coo';
+                currentUserRole = 'coo';
+            }
+            if (isDirectorByEmail && roleForCheck !== 'director') {
+                console.log('⚠️ Forcing Director role based on email');
+                roleForCheck = 'director';
+                currentUserRole = 'director';
             }
             
             userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;
@@ -6839,12 +6806,46 @@ body.is-ios .nav-menu {
             console.log('✅ Can Approve Leave:', canApproveLeave);
             setDisplay('hrLeaveApprovalNavItem', canApproveLeave);
             
-            // Design Approval nav visible to COO and Director
-            setDisplay('designApprovalNavItem', ['coo', 'director'].includes(roleForCheck));
+            // Design Approval nav visible to COO and Director (also check by email)
+            const canApproveDesign = ['coo', 'director'].includes(roleForCheck) || isCOOByEmail || isDirectorByEmail;
+            console.log('==========================================');
+            console.log('📐 DESIGN APPROVAL NAV DEBUG');
+            console.log('📐 roleForCheck:', roleForCheck);
+            console.log('📐 currentUserRole (raw):', currentUserRole);
+            console.log('📐 isCOOByEmail:', isCOOByEmail);
+            console.log('📐 isDirectorByEmail:', isDirectorByEmail);
+            console.log('📐 canApproveDesign:', canApproveDesign);
+            console.log('==========================================');
             
-            // Update design approval badge
-            if (['coo', 'director'].includes(roleForCheck)) {
+            // Set display
+            setDisplay('designApprovalNavItem', canApproveDesign);
+            
+            // Force show for COO/Director (extra safety)
+            if (canApproveDesign) {
+                const designNavItem = document.getElementById('designApprovalNavItem');
+                if (designNavItem) {
+                    designNavItem.style.display = 'block';
+                    designNavItem.style.visibility = 'visible';
+                    designNavItem.removeAttribute('hidden');
+                    console.log('📐 ✅ Design Approval Nav - FORCED VISIBLE');
+                    console.log('📐 Nav item element:', designNavItem);
+                } else {
+                    console.error('📐 ❌ Design Approval Nav - Element NOT FOUND in DOM!');
+                }
+                
+                // Also update the badge
                 updateDesignApprovalVisibility();
+                
+                // Double-check with delay (in case of render timing)
+                setTimeout(() => {
+                    const navItem = document.getElementById('designApprovalNavItem');
+                    if (navItem && navItem.style.display !== 'block') {
+                        navItem.style.display = 'block';
+                        console.log('📐 ✅ Design Approval Nav - DELAYED FORCE VISIBLE');
+                    }
+                }, 500);
+            } else {
+                console.log('📐 ⚠️ User is NOT COO or Director, hiding Design Approval Nav');
             }
             
             // Show Leave Request for all roles EXCEPT HR, COO, Director
@@ -12689,6 +12690,121 @@ async function showDesignerAllocations() {
             </div>
         `;
 
+        // Fetch designer's design files for tracking
+        let designFilesHtml = '';
+        try {
+            console.log('📐 Fetching design files...');
+            const designFilesResponse = await apiCall('projects?action=get_design_files');
+            console.log('📐 Design files response:', designFilesResponse);
+            
+            if (designFilesResponse.success && designFilesResponse.data && designFilesResponse.data.length > 0) {
+                const designFiles = designFilesResponse.data;
+                
+                const getStatusBadge = (status) => {
+                    const badges = {
+                        'uploaded': '<span class="design-file-status status-uploaded">📤 Uploaded</span>',
+                        'pending_approval': '<span class="design-file-status status-pending_approval">⏳ Pending Approval</span>',
+                        'approved': '<span class="design-file-status status-approved">✅ Approved</span>',
+                        'rejected': '<span class="design-file-status status-rejected">❌ Rejected</span>',
+                        'sent': '<span class="design-file-status status-sent">📧 Sent to Client</span>'
+                    };
+                    return badges[status] || '<span class="design-file-status">Unknown</span>';
+                };
+                
+                const getActionButton = (file) => {
+                    if (file.status === 'uploaded') {
+                        return `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit for Approval</button>`;
+                    } else if (file.status === 'approved') {
+                        return `<button class="btn btn-success btn-sm" onclick="openSendToClientModal('${file.id}', '${file.projectId}')">📧 Send to Client</button>`;
+                    } else if (file.status === 'rejected') {
+                        return `<button class="btn btn-warning btn-sm" onclick="openDesignUploadModal('${file.projectId}', '${file.projectName.replace(/'/g, "\\'")}')">🔄 Upload Revised</button>`;
+                    }
+                    return '';
+                };
+                
+                const fileRows = designFiles.map(file => {
+                    const uploadDate = file.uploadedAt ? new Date(file.uploadedAt.seconds ? file.uploadedAt.seconds * 1000 : file.uploadedAt).toLocaleDateString() : 'N/A';
+                    const isLink = file.isExternalLink || file.uploadType === 'link';
+                    const fileIcon = isLink ? '🔗' : '📄';
+                    const typeLabel = isLink ? 'Link' : 'PDF';
+                    return `
+                        <tr>
+                            <td><strong>${file.projectName || 'Unknown'}</strong></td>
+                            <td>
+                                <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
+                                    ${fileIcon} ${file.fileName}
+                                </a>
+                                <br><small style="color: #64748b;">${typeLabel}</small>
+                            </td>
+                            <td>${file.clientEmail || 'N/A'}</td>
+                            <td>${uploadDate}</td>
+                            <td>${getStatusBadge(file.status)}</td>
+                            <td>
+                                <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ View</a>
+                                ${getActionButton(file)}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                designFilesHtml = `
+                    <div class="card" style="margin-bottom: 1.5rem; border: 2px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; color: #1e3a5f;">📐 My Design Files</h3>
+                            <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">${designFiles.length} file(s)</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>File</th>
+                                        <th>Client Email</th>
+                                        <th>Uploaded</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${fileRows}
+                                </tbody>
+                            </table>
+                        </div>
+                        ${designFiles.some(f => f.status === 'rejected') ? `
+                            <div style="margin-top: 1rem; padding: 12px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #ef4444;">
+                                <strong style="color: #991b1b;">⚠️ Rejected Files:</strong>
+                                <span style="color: #7f1d1d;"> Please review COO feedback and upload revised versions.</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                // Show empty state
+                designFilesHtml = `
+                    <div class="card" style="margin-bottom: 1.5rem; border: 2px dashed #cbd5e1; background: #f8fafc;">
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📐</div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: #1e3a5f;">My Design Files</h3>
+                            <p style="color: #64748b; margin-bottom: 1rem;">No design files uploaded yet.</p>
+                            <p style="color: #94a3b8; font-size: 0.9rem;">Use the "📐 Upload Design" button on your projects below to upload design files for client approval.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('❌ Could not fetch design files:', e);
+            designFilesHtml = `
+                <div class="card" style="margin-bottom: 1.5rem; border: 2px dashed #fca5a5; background: #fef2f2;">
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: #991b1b;">Could not load design files</h3>
+                        <p style="color: #7f1d1d; margin-bottom: 1rem;">${e.message || 'Unknown error'}</p>
+                        <button class="btn btn-secondary btn-sm" onclick="showDesignerAllocations()">🔄 Retry</button>
+                    </div>
+                </div>
+            `;
+        }
+
         main.innerHTML = `
             <div class="page-header">
                 <h2>⏳ Project Allocations</h2>
@@ -12696,6 +12812,9 @@ async function showDesignerAllocations() {
             </div>
             
             ${renderDashboardAnnouncements()}
+            
+            <!-- My Design Files Section -->
+            ${designFilesHtml}
             
             <!-- Non-Project Hours Section -->
             ${nonProjectHoursSection}
@@ -14931,8 +15050,9 @@ async function markProjectComplete(projectId) {
                 progressText.textContent = 'Uploading to cloud...';
                 
                 // Check if Firebase Storage is available
-                if (typeof firebase !== 'undefined' && firebase.storage) {
-                    const storageRef = firebase.storage().ref();
+                const storageInstance = window.storage || (typeof firebase !== 'undefined' && firebase.storage ? firebase.storage() : null);
+                if (storageInstance) {
+                    const storageRef = storageInstance.ref();
                     const fileName = `news-images/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
                     const uploadTask = storageRef.child(fileName).put(file);
                     
@@ -28763,6 +28883,7 @@ console.log('✅ HR Candidate Screening Module loaded');
 // Global variables for design files
 let currentDesignFile = null;
 let pendingDesignApprovals = [];
+let currentUploadType = 'file'; // 'file' or 'link'
 
 // ============================================
 // UPLOAD MODAL FUNCTIONS
@@ -28778,15 +28899,47 @@ function openDesignUploadModal(projectId, projectName) {
     document.getElementById('designClientEmail').value = '';
     document.getElementById('designClientName').value = '';
     document.getElementById('designNotes').value = '';
+    document.getElementById('designExternalLink').value = '';
+    document.getElementById('designLinkTitle').value = '';
     clearSelectedFile();
+    
+    // Reset to file upload type
+    setUploadType('file');
     
     document.getElementById('designFileUploadModal').style.display = 'flex';
 }
 window.openDesignUploadModal = openDesignUploadModal;
 
+// Toggle between file and link upload
+function setUploadType(type) {
+    currentUploadType = type;
+    
+    const fileSection = document.getElementById('fileUploadSection');
+    const linkSection = document.getElementById('linkUploadSection');
+    const fileBtnEl = document.getElementById('uploadTypeFile');
+    const linkBtnEl = document.getElementById('uploadTypeLink');
+    const uploadBtn = document.getElementById('designUploadBtn');
+    
+    if (type === 'file') {
+        fileSection.style.display = 'block';
+        linkSection.style.display = 'none';
+        fileBtnEl.className = 'btn btn-primary';
+        linkBtnEl.className = 'btn btn-secondary';
+        uploadBtn.innerHTML = '📤 Upload File';
+    } else {
+        fileSection.style.display = 'none';
+        linkSection.style.display = 'block';
+        fileBtnEl.className = 'btn btn-secondary';
+        linkBtnEl.className = 'btn btn-primary';
+        uploadBtn.innerHTML = '🔗 Submit Link';
+    }
+}
+window.setUploadType = setUploadType;
+
 function closeDesignUploadModal() {
     document.getElementById('designFileUploadModal').style.display = 'none';
     currentDesignFile = null;
+    currentUploadType = 'file';
 }
 window.closeDesignUploadModal = closeDesignUploadModal;
 
@@ -28838,48 +28991,90 @@ async function uploadDesignFile() {
     const clientName = document.getElementById('designClientName').value.trim();
     const notes = document.getElementById('designNotes').value.trim();
     
-    // Validation
-    if (!currentDesignFile) {
-        showNotification('Please select a PDF file to upload', 'error');
-        return;
-    }
-    
+    // Common validation
     if (!clientEmail || !clientEmail.includes('@')) {
         showNotification('Please enter a valid client email', 'error');
         return;
     }
     
+    // Validate based on upload type
+    if (currentUploadType === 'file') {
+        if (!currentDesignFile) {
+            showNotification('Please select a PDF file to upload', 'error');
+            return;
+        }
+    } else {
+        // Link validation
+        const externalLink = document.getElementById('designExternalLink').value.trim();
+        const linkTitle = document.getElementById('designLinkTitle').value.trim();
+        
+        if (!externalLink) {
+            showNotification('Please enter the external link', 'error');
+            return;
+        }
+        
+        if (!externalLink.startsWith('http://') && !externalLink.startsWith('https://')) {
+            showNotification('Please enter a valid URL starting with http:// or https://', 'error');
+            return;
+        }
+        
+        if (!linkTitle) {
+            showNotification('Please enter a title/name for the link', 'error');
+            return;
+        }
+    }
+    
     showLoading();
     
     try {
-        // 1. Upload file to Firebase Storage
-        const storageRef = firebase.storage().ref();
-        const timestamp = Date.now();
-        const fileName = `design_files/${projectId}/${timestamp}_${currentDesignFile.name}`;
-        const fileRef = storageRef.child(fileName);
+        let fileUrl, fileName, fileSize;
         
-        const uploadTask = await fileRef.put(currentDesignFile);
-        const fileUrl = await uploadTask.ref.getDownloadURL();
+        if (currentUploadType === 'file') {
+            // Upload file to Firebase Storage
+            const storageInstance = window.storage || firebase.storage();
+            const storageRef = storageInstance.ref();
+            const timestamp = Date.now();
+            const storagePath = `design_files/${projectId}/${timestamp}_${currentDesignFile.name}`;
+            const fileRef = storageRef.child(storagePath);
+            
+            const uploadTask = await fileRef.put(currentDesignFile);
+            fileUrl = await uploadTask.ref.getDownloadURL();
+            fileName = currentDesignFile.name;
+            fileSize = currentDesignFile.size;
+        } else {
+            // Use external link
+            fileUrl = document.getElementById('designExternalLink').value.trim();
+            fileName = document.getElementById('designLinkTitle').value.trim();
+            fileSize = 0;
+        }
         
-        // 2. Create design file record in database
+        // Create design file record in database
         const response = await apiCall(`projects?id=${projectId}`, {
             method: 'PUT',
             body: JSON.stringify({
                 action: 'upload_design_file',
                 data: {
-                    fileName: currentDesignFile.name,
+                    fileName: fileName,
                     fileUrl: fileUrl,
-                    fileSize: currentDesignFile.size,
+                    fileSize: fileSize,
                     clientEmail: clientEmail,
                     clientName: clientName,
-                    notes: notes
+                    notes: notes,
+                    uploadType: currentUploadType, // 'file' or 'link'
+                    isExternalLink: currentUploadType === 'link'
                 }
             })
         });
         
         if (response.success) {
-            showNotification('Design file uploaded successfully!', 'success');
+            const typeLabel = currentUploadType === 'file' ? 'File' : 'Link';
+            showNotification(`✅ Design ${typeLabel.toLowerCase()} uploaded! You can now submit it for COO approval.`, 'success');
             closeDesignUploadModal();
+            
+            // Alert user about next step
+            setTimeout(() => {
+                alert(`✅ ${typeLabel} uploaded successfully!\n\n📋 Next Step:\nFind your file in "My Design Files" section and click "Submit for Approval" to send it to COO for review.`);
+            }, 500);
             
             // Refresh the designer portal view
             if (typeof showDesignerAllocations === 'function') {
@@ -28979,12 +29174,17 @@ async function showDesignFileApprovals() {
                 </div>
             `;
         } else {
-            const items = pendingDesignApprovals.map(file => `
+            const items = pendingDesignApprovals.map(file => {
+                const isLink = file.isExternalLink || file.uploadType === 'link';
+                const fileIcon = isLink ? '🔗' : '📄';
+                const typeLabel = isLink ? 'External Link' : 'PDF File';
+                return `
                 <div class="approval-item">
                     <div class="approval-item-header">
                         <div>
                             <div class="approval-item-project">${file.projectName}</div>
-                            <div class="approval-item-file">📄 ${file.fileName}</div>
+                            <div class="approval-item-file">${fileIcon} ${file.fileName}</div>
+                            <small style="color: #64748b; font-size: 0.8rem;">${typeLabel}</small>
                         </div>
                         <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ Preview</a>
                     </div>
@@ -28999,7 +29199,7 @@ async function showDesignFileApprovals() {
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
             
             content = `
                 <div class="approval-queue-section" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #e2e8f0;">
@@ -29050,6 +29250,19 @@ function openDesignApprovalModal(designFileId, projectId) {
     document.getElementById('approvalSubmittedBy').textContent = file.uploadedByName;
     document.getElementById('approvalClientEmail').textContent = file.clientEmail;
     document.getElementById('approvalPreviewLink').href = file.fileUrl;
+    
+    // Show file type (PDF or External Link)
+    const isLink = file.isExternalLink || file.uploadType === 'link';
+    const fileTypeEl = document.getElementById('approvalFileType');
+    if (isLink) {
+        fileTypeEl.innerHTML = '<span style="color: #0891b2;">🔗 External Link</span>';
+    } else {
+        fileTypeEl.innerHTML = '<span style="color: #059669;">📄 PDF File</span>';
+    }
+    
+    // Update preview button text
+    const previewBtn = document.getElementById('approvalPreviewLink');
+    previewBtn.textContent = isLink ? '🔗 Open Link' : '👁️ Preview PDF';
     
     // Show designer notes if present
     if (file.designerNotes) {
@@ -29281,17 +29494,24 @@ window.sendDesignToClient = sendDesignToClient;
 // ============================================
 
 function updateDesignApprovalVisibility() {
-    const isCOO = currentUser && currentUser.role === 'coo';
-    const isDirector = currentUser && currentUser.role === 'director';
+    const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase().trim() : '';
+    const isCOO = userRole === 'coo';
+    const isDirector = userRole === 'director';
+    
+    console.log('📐 updateDesignApprovalVisibility - userRole:', userRole, 'isCOO:', isCOO, 'isDirector:', isDirector);
     
     const navItem = document.getElementById('designApprovalNavItem');
     if (navItem) {
         navItem.style.display = (isCOO || isDirector) ? 'block' : 'none';
+        console.log('📐 Nav item display set to:', navItem.style.display);
+    } else {
+        console.error('📐 designApprovalNavItem not found!');
     }
     
     // Fetch pending count for badge
     if (isCOO || isDirector) {
         apiCall('projects?action=get_design_files&status=pending_approval').then(response => {
+            console.log('📐 Pending approvals response:', response);
             if (response.success) {
                 const count = (response.data || []).length;
                 const badge = document.getElementById('designApprovalBadge');
@@ -29300,10 +29520,35 @@ function updateDesignApprovalVisibility() {
                     badge.style.display = count > 0 ? 'inline' : 'none';
                 }
             }
-        }).catch(() => {});
+        }).catch((err) => {
+            console.error('📐 Error fetching pending approvals:', err);
+        });
     }
 }
 window.updateDesignApprovalVisibility = updateDesignApprovalVisibility;
+
+// Debug function to manually show design approval menu (call from console: showDesignApprovalMenu())
+window.showDesignApprovalMenu = function() {
+    const navItem = document.getElementById('designApprovalNavItem');
+    if (navItem) {
+        navItem.style.display = 'block';
+        navItem.style.visibility = 'visible';
+        console.log('📐 Design Approval Menu manually shown');
+        alert('Design Approval menu should now be visible. Check the sidebar.');
+    } else {
+        console.error('📐 designApprovalNavItem element not found!');
+        alert('Error: designApprovalNavItem element not found in the page!');
+    }
+};
+
+// Debug function to check current user role
+window.checkUserRole = function() {
+    console.log('=== USER ROLE DEBUG ===');
+    console.log('currentUser:', currentUser);
+    console.log('currentUser.role:', currentUser ? currentUser.role : 'N/A');
+    console.log('currentUserRole:', currentUserRole);
+    alert('Check console for user role details.\n\ncurrentUserRole: ' + currentUserRole + '\ncurrentUser.role: ' + (currentUser ? currentUser.role : 'N/A'));
+};
 
 
 // ============================================
@@ -29406,22 +29651,51 @@ console.log('✅ Design File Upload & Approval Module loaded');
                 <div class="client-preview-value" id="designUploadProjectDisplay">-</div>
             </div>
             
-            <!-- File Upload Zone -->
+            <!-- Upload Type Toggle -->
             <div class="form-group">
-                <label>Design File (PDF) <span style="color: red;">*</span></label>
-                <div class="upload-dropzone" id="designDropzone" onclick="document.getElementById('designFileInput').click()">
-                    <div class="upload-icon">📄</div>
-                    <div class="upload-text">Click to upload or drag and drop</div>
-                    <div class="upload-hint">PDF files only (Max 50MB)</div>
+                <label>Upload Type <span style="color: red;">*</span></label>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button type="button" id="uploadTypeFile" class="btn btn-primary" onclick="setUploadType('file')" style="flex: 1;">
+                        📄 Upload PDF File
+                    </button>
+                    <button type="button" id="uploadTypeLink" class="btn btn-secondary" onclick="setUploadType('link')" style="flex: 1;">
+                        🔗 Add External Link
+                    </button>
                 </div>
-                <input type="file" id="designFileInput" accept=".pdf" style="display: none;" onchange="handleDesignFileSelect(this)">
-                <div id="selectedFileInfo" class="selected-file-info" style="display: none;">
-                    <span class="selected-file-icon">📄</span>
-                    <div class="selected-file-details">
-                        <div class="selected-file-name" id="selectedFileName">-</div>
-                        <div class="selected-file-size" id="selectedFileSize">-</div>
+            </div>
+            
+            <!-- File Upload Zone (shown by default) -->
+            <div id="fileUploadSection">
+                <div class="form-group">
+                    <label>Design File (PDF) <span style="color: red;">*</span></label>
+                    <div class="upload-dropzone" id="designDropzone" onclick="document.getElementById('designFileInput').click()">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Click to upload or drag and drop</div>
+                        <div class="upload-hint">PDF files only (Max 50MB)</div>
                     </div>
-                    <button type="button" onclick="clearSelectedFile()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">✕</button>
+                    <input type="file" id="designFileInput" accept=".pdf" style="display: none;" onchange="handleDesignFileSelect(this)">
+                    <div id="selectedFileInfo" class="selected-file-info" style="display: none;">
+                        <span class="selected-file-icon">📄</span>
+                        <div class="selected-file-details">
+                            <div class="selected-file-name" id="selectedFileName">-</div>
+                            <div class="selected-file-size" id="selectedFileSize">-</div>
+                        </div>
+                        <button type="button" onclick="clearSelectedFile()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">✕</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Link Upload Section (hidden by default) -->
+            <div id="linkUploadSection" style="display: none;">
+                <div class="form-group">
+                    <label>External Link <span style="color: red;">*</span></label>
+                    <input type="url" id="designExternalLink" class="form-control" placeholder="https://drive.google.com/file/d/..." style="margin-bottom: 8px;">
+                    <small style="color: #64748b;">Paste link from Google Drive, Dropbox, OneDrive, or any file sharing service</small>
+                </div>
+                <div class="form-group">
+                    <label>Link Title/File Name <span style="color: red;">*</span></label>
+                    <input type="text" id="designLinkTitle" class="form-control" placeholder="Project_Design_v1.pdf">
+                    <small style="color: #64748b;">A descriptive name for the linked file</small>
                 </div>
             </div>
             
@@ -29446,8 +29720,8 @@ console.log('✅ Design File Upload & Approval Module loaded');
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeDesignUploadModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="uploadDesignFile()">
-                📤 Upload File
+            <button class="btn btn-primary" id="designUploadBtn" onclick="uploadDesignFile()">
+                📤 Upload
             </button>
         </div>
     </div>
@@ -29481,11 +29755,15 @@ console.log('✅ Design File Upload & Approval Module loaded');
                         <div class="client-preview-value" id="approvalFileName">-</div>
                     </div>
                     <div>
+                        <div class="client-preview-label">Type</div>
+                        <div class="client-preview-value" id="approvalFileType">-</div>
+                    </div>
+                    <div>
                         <div class="client-preview-label">Submitted By</div>
                         <div class="client-preview-value" id="approvalSubmittedBy">-</div>
                     </div>
-                    <div style="grid-column: span 2;">
-                        <div class="client-preview-label">Client Email (Will receive file)</div>
+                    <div>
+                        <div class="client-preview-label">Client Email</div>
                         <div class="client-preview-value" id="approvalClientEmail" style="color: #2563eb;">-</div>
                     </div>
                 </div>
@@ -29597,6 +29875,30 @@ console.log('✅ Design File Upload & Approval Module loaded');
         </div>
     </div>
 </div>
+
+<!-- Safety script to force show Design Approval menu for COO/Director -->
+<script>
+// Run after page is fully loaded
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        // Check if user is logged in and is COO/Director
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.email) {
+            const email = currentUser.email.toLowerCase();
+            const COO_EMAILS = ['coo@edanbrook.com', 'coo2@edanbrook.com'];
+            const DIRECTOR_EMAILS = ['director@edanbrook.com', 'ajit@edanbrook.com'];
+            
+            if (COO_EMAILS.includes(email) || DIRECTOR_EMAILS.includes(email)) {
+                const navItem = document.getElementById('designApprovalNavItem');
+                if (navItem) {
+                    navItem.style.display = 'block';
+                    navItem.style.visibility = 'visible';
+                    console.log('📐 SAFETY SCRIPT: Design Approval Nav forced visible for', email);
+                }
+            }
+        }
+    }, 2000); // Wait 2 seconds for login to complete
+});
+</script>
 
 </body>
 </html>

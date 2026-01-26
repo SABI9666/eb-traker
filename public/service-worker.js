@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.4.0 - Cache Version 44 (HR Candidate Screening Module Added)
+// Version: 5.5.0 - Cache Version 45 (Design File Upload & Approval Feature Added)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v44';
-const STATIC_CACHE = 'ebtracker-static-v44';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v44';
+const CACHE_NAME = 'ebtracker-v45';
+const STATIC_CACHE = 'ebtracker-static-v45';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v45';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -30,20 +30,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v44: Installing...');
+  console.log('🔧 Service Worker v45: Installing...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('📦 Service Worker v44: Caching static assets');
+        console.log('📦 Service Worker v45: Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker v44: Static assets cached');
+        console.log('✅ Service Worker v45: Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('❌ Service Worker v44: Cache failed', error);
+        console.error('❌ Service Worker v45: Cache failed', error);
       })
   );
 });
@@ -52,7 +52,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v44: Activating...');
+  console.log('🚀 Service Worker v45: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -64,14 +64,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v44: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v45: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v44: Activated - Old caches cleared');
+        console.log('✅ Service Worker v45: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -79,12 +79,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v44: Notifying clients to refresh');
+        console.log('📢 Service Worker v45: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v44',
-            message: 'New version available with HR Candidate Screening! Please refresh.'
+            version: 'v45',
+            message: 'New version available with Design File Upload & Approval! Please refresh.'
           });
         });
       })
@@ -397,7 +397,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v44', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v45', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -463,6 +463,10 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-screening-data') {
     event.waitUntil(syncScreeningData());
   }
+  
+  if (event.tag === 'sync-design-files') {
+    event.waitUntil(syncDesignFiles());
+  }
 });
 
 // Sync announcements when back online
@@ -483,6 +487,12 @@ async function syncScreeningData() {
   return Promise.resolve();
 }
 
+// Sync design files when back online
+async function syncDesignFiles() {
+  console.log('📐 Syncing design files...');
+  return Promise.resolve();
+}
+
 // ==============================
 // ERROR HANDLING
 // ==============================
@@ -494,4 +504,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v44: Loaded successfully - HR Candidate Screening Module Added');
+console.log('✅ Service Worker v45: Loaded successfully - Design File Upload & Approval Feature Added');

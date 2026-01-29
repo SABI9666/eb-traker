@@ -5138,6 +5138,7 @@ body.is-ios .nav-menu {
                                 <div class="role-btn" data-role="coo">COO</div>
                                 <div class="role-btn" data-role="director">Director</div>
                                 <div class="role-btn" data-role="designer">Designer</div>
+                                <div class="role-btn" data-role="document_controller">Doc Controller</div>
                                 <div class="role-btn" data-role="accounts">Accounts</div>
                                 <div class="role-btn" data-role="hr">HR</div>
                             </div>
@@ -5298,6 +5299,12 @@ body.is-ios .nav-menu {
                         <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
                     </a>
                 </li>
+                <li id="documentControllerNavItem" style="display: none;">
+                    <a href="#" onclick="showDocumentControllerDashboard(); return false;" id="nav-document-controller">
+                        <span class="nav-icon">📄</span>Document Controller
+                        <span id="dcPendingBadge" class="nav-badge" style="display: none;">0</span>
+                    </a>
+                </li>
                 <li id="hrLeaveReportsNavItem" style="display: none;">
                     <a href="#" onclick="showHRLeaveReports()" id="nav-hr-leave-reports">
                         <span class="nav-icon">📊</span>Leave Reports
@@ -5346,14 +5353,13 @@ body.is-ios .nav-menu {
       // ============================================
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -5365,11 +5371,9 @@ body.is-ios .nav-menu {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
-
 
 
         const authorizedUsers = {
@@ -6663,14 +6667,17 @@ body.is-ios .nav-menu {
             // Define COO and Director emails for direct check
             const COO_EMAILS = ['coo@edanbrook.com', 'coo2@edanbrook.com'];
             const DIRECTOR_EMAILS = ['director@edanbrook.com', 'ajit@edanbrook.com'];
+            const DC_EMAILS = ['iva@edanbrook.com', 'dc@edanbrook.com']; // Document Controller emails
             
             // Check if user is COO or Director by email (highest priority)
             const isCOOByEmail = COO_EMAILS.includes(userEmail);
             const isDirectorByEmail = DIRECTOR_EMAILS.includes(userEmail);
+            const isDCByEmail = DC_EMAILS.includes(userEmail);
             
             console.log('👤 User email:', userEmail);
             console.log('👤 Is COO by email:', isCOOByEmail);
             console.log('👤 Is Director by email:', isDirectorByEmail);
+            console.log('👤 Is DC by email:', isDCByEmail);
             
             // If role is empty or 'employee', try to detect from email
             if (!roleForCheck || roleForCheck === 'employee' || roleForCheck === '') {
@@ -6683,6 +6690,9 @@ body.is-ios .nav-menu {
                 } else if (emailLower.startsWith('director@') || emailLower.includes('.director@') || isDirectorByEmail) {
                     roleForCheck = 'director';
                     currentUserRole = 'director';
+                } else if (isDCByEmail || emailLower === 'iva@edanbrook.com' || emailLower === 'dc@edanbrook.com') {
+                    roleForCheck = 'document_controller';
+                    currentUserRole = 'document_controller';
                 } else if (emailLower.startsWith('hr@') || emailLower.includes('.hr@') || emailLower === 'paul.a@edanbrook.com') {
                     roleForCheck = 'hr';
                     currentUserRole = 'hr';
@@ -6713,6 +6723,12 @@ body.is-ios .nav-menu {
                 roleForCheck = 'director';
                 currentUserRole = 'director';
             }
+            // Force Document Controller role if email matches
+            if (isDCByEmail && roleForCheck !== 'document_controller') {
+                console.log('⚠️ Forcing Document Controller role based on email');
+                roleForCheck = 'document_controller';
+                currentUserRole = 'document_controller';
+            }
             
             userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;
             userRoleDisplay.textContent = roleForCheck.replace('_', ' ').toUpperCase();
@@ -6732,6 +6748,7 @@ body.is-ios .nav-menu {
             const isManagement = ['coo', 'director'].includes(roleForCheck);
             const isBDM = roleForCheck === 'bdm';
             const isHR = roleForCheck === 'hr';
+            const isDC = roleForCheck === 'document_controller' || isDCByEmail;
             
             console.log('==========================================');
             console.log('🔍 NAVIGATION VISIBILITY DEBUG');
@@ -6741,22 +6758,23 @@ body.is-ios .nav-menu {
             console.log('👤 isManagement:', isManagement);
             console.log('👤 isBDM:', isBDM);
             console.log('👤 isHR:', isHR);
+            console.log('👤 isDC (Document Controller):', isDC);
             console.log('📊 Designer Analytics visible for HR or Management:', isManagement || isHR);
             console.log('==========================================');
 
             // --- Menu Visibility ---
             setDisplay('newProposalNavItem', isBDM);
-            setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR); // Analytics for BDM/COO/Director
-            setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR);
+            setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR && !isDC); // Analytics for BDM/COO/Director
+            setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR && !isDC);
             setDisplay('settingsNavItem', roleForCheck === 'director');
             
             // Designer Specifics: Hide Dashboard & Proposals, Show specific tools
             setDisplay('dashboardNavItem', false); // Dashboard hidden for all users // Hide for Designer & Mgmt (Mgmt has Executive Dash)
-            setDisplay('proposalsNavItem', !isDesigner && !isHR); // HIDE All Proposals for Designer and HR
-            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR); // HIDE File Manager for HR
+            setDisplay('proposalsNavItem', !isDesigner && !isHR && !isDC); // HIDE All Proposals for Designer, HR, and DC
+            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR && !isDC); // HIDE File Manager for HR and DC
             
             // Designer specific menus
-            setDisplay('projectsNavItem', isManagement && !isHR); // Designers use "My Tasks" or "Allocations"
+            setDisplay('projectsNavItem', isManagement && !isHR && !isDC); // Designers use "My Tasks" or "Allocations"
             setDisplay('tasksNavItem', isDesigner);
             setDisplay('timesheetNavItem', isDesigner);
             setDisplay('myAnalyticsNavItem', isDesigner); // Designer sees their own analytics
@@ -6766,18 +6784,18 @@ body.is-ios .nav-menu {
             console.log('📊 Menu element:', document.getElementById('designerAnalyticsNavItem'));
             setDisplay('designerAllocationsNavItem', isDesigner); // SHOW New Menu
 
-            setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR);
-            setDisplay('executiveMonitoringNavItem', isManagement && !isHR); // Executive Dashboard ENABLED for COO & Director
-            setDisplay('timeRequestsNavItem', isManagement && !isHR);
+            setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR && !isDC);
+            setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
+            setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
             
             // HR Specific - Show HR Announcements and Leave Approval menus
             setDisplay('hrAnnouncementsNavItem', isHR);
             setDisplay('hrLeaveReportsNavItem', isHR); // Leave Reports - HR Only
-            setDisplay('hrScreeningNavItem', isHR || ['coo', 'director'].includes(roleForCheck)); // HR Screening
+            setDisplay('hrScreeningNavItem', (isHR || ['coo', 'director'].includes(roleForCheck)) && !isDC); // HR Screening
             
-            // Hide Activities from HR (HR has their own dashboard)
-            setDisplay('activitiesNavItem', !isHR);
+            // Hide Activities from HR and DC (HR has their own dashboard, DC has DC dashboard)
+            setDisplay('activitiesNavItem', !isHR && !isDC);
             
             // Check if current user is a Team Lead (Designer Team Leads - 5 Total)
             // These 5 emails are the ONLY team leads who can approve designer leaves
@@ -6851,6 +6869,19 @@ body.is-ios .nav-menu {
                 console.log('📐 ⚠️ User is NOT COO or Director, hiding Design Approval Nav');
             }
             
+            // Document Controller Nav - Only for DC users
+            setDisplay('documentControllerNavItem', isDC);
+            if (isDC) {
+                console.log('📄 ✅ Document Controller Nav - VISIBLE');
+                const dcNavItem = document.getElementById('documentControllerNavItem');
+                if (dcNavItem) {
+                    dcNavItem.style.display = 'block';
+                    dcNavItem.style.visibility = 'visible';
+                }
+                // Update DC pending badge
+                updateDCPendingBadge();
+            }
+            
             // Show Leave Request for all roles EXCEPT HR, COO, Director
             // Note: Team Leads CAN submit their own leave requests (they see both menus)
             const showLeaveRequest = !isHR && !['coo', 'director'].includes(roleForCheck);
@@ -6880,6 +6911,8 @@ body.is-ios .nav-menu {
                 showDesignerAllocations(); // Redirect Designer to new view immediately
             } else if (isHR) {
                 showHRDashboard(); // Redirect HR to HR Dashboard
+            } else if (isDC) {
+                showDocumentControllerDashboard(); // Redirect DC to Document Controller Dashboard
             } else if (isBDM || isManagement) {
                 showProposals();
             } else {
@@ -12718,9 +12751,12 @@ async function showDesignerAllocations() {
                     if (file.status === 'uploaded') {
                         return `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit for Approval</button>`;
                     } else if (file.status === 'approved') {
-                        return `<button class="btn btn-success btn-sm" onclick="openSendToClientModal('${file.id}', '${file.projectId}')">📧 Send to Client</button>`;
+                        // Designers cannot send to client - Document Controller handles this
+                        return `<span class="badge" style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px;">✅ Awaiting DC</span>`;
                     } else if (file.status === 'rejected') {
                         return `<button class="btn btn-warning btn-sm" onclick="openDesignUploadModal('${file.projectId}', '${file.projectName.replace(/'/g, "\\'")}')">🔄 Upload Revised</button>`;
+                    } else if (file.status === 'sent') {
+                        return `<span class="badge" style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 6px;">📧 Sent by DC</span>`;
                     }
                     return '';
                 };
@@ -12739,7 +12775,6 @@ async function showDesignerAllocations() {
                                 </a>
                                 <br><small style="color: #64748b;">${typeLabel}</small>
                             </td>
-                            <td>${file.clientEmail || 'N/A'}</td>
                             <td>${uploadDate}</td>
                             <td>${getStatusBadge(file.status)}</td>
                             <td>
@@ -12762,7 +12797,6 @@ async function showDesignerAllocations() {
                                     <tr>
                                         <th>Project</th>
                                         <th>File</th>
-                                        <th>Client Email</th>
                                         <th>Uploaded</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -28899,8 +28933,6 @@ function openDesignUploadModal(projectId, projectName) {
     
     // Reset form
     document.getElementById('designFileInput').value = '';
-    document.getElementById('designClientEmail').value = '';
-    document.getElementById('designClientName').value = '';
     document.getElementById('designNotes').value = '';
     document.getElementById('designExternalLink').value = '';
     document.getElementById('designLinkTitle').value = '';
@@ -28990,15 +29022,7 @@ function formatFileSizeDesign(bytes) {
 async function uploadDesignFile() {
     const projectId = document.getElementById('designUploadProjectId').value;
     const projectName = document.getElementById('designUploadProjectName').value;
-    const clientEmail = document.getElementById('designClientEmail').value.trim();
-    const clientName = document.getElementById('designClientName').value.trim();
     const notes = document.getElementById('designNotes').value.trim();
-    
-    // Common validation
-    if (!clientEmail || !clientEmail.includes('@')) {
-        showNotification('Please enter a valid client email', 'error');
-        return;
-    }
     
     // Validate based on upload type
     if (currentUploadType === 'file') {
@@ -29051,7 +29075,7 @@ async function uploadDesignFile() {
             fileSize = 0;
         }
         
-        // Create design file record in database
+        // Create design file record in database (Client details will be added by DC)
         const response = await apiCall(`projects?id=${projectId}`, {
             method: 'PUT',
             body: JSON.stringify({
@@ -29060,8 +29084,6 @@ async function uploadDesignFile() {
                     fileName: fileName,
                     fileUrl: fileUrl,
                     fileSize: fileSize,
-                    clientEmail: clientEmail,
-                    clientName: clientName,
                     notes: notes,
                     uploadType: currentUploadType, // 'file' or 'link'
                     isExternalLink: currentUploadType === 'link'
@@ -29493,6 +29515,432 @@ window.sendDesignToClient = sendDesignToClient;
 
 
 // ============================================
+// DOCUMENT CONTROLLER (DC) PORTAL FUNCTIONS
+// ============================================
+
+// Update DC pending badge
+async function updateDCPendingBadge() {
+    try {
+        const response = await apiCall('projects?action=get_approved_design_files');
+        if (response.success && response.data) {
+            const pendingCount = response.data.filter(f => f.status === 'approved').length;
+            const badge = document.getElementById('dcPendingBadge');
+            if (badge) {
+                badge.textContent = pendingCount;
+                badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error updating DC badge:', error);
+    }
+}
+window.updateDCPendingBadge = updateDCPendingBadge;
+
+// Show Document Controller Dashboard
+async function showDocumentControllerDashboard() {
+    const mainContent = document.getElementById('mainContent');
+    
+    // Set active nav
+    document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
+    const navLink = document.getElementById('nav-document-controller');
+    if (navLink) navLink.classList.add('active');
+    
+    mainContent.innerHTML = `
+        <div class="page-header">
+            <h2>📄 Document Controller Portal</h2>
+            <p class="subtitle">Manage approved design files and send to clients</p>
+        </div>
+        <div class="loading-spinner">Loading approved design files...</div>
+    `;
+    
+    try {
+        // Fetch all approved design files (COO approved, ready for client)
+        const response = await apiCall('projects?action=get_approved_design_files');
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to load design files');
+        }
+        
+        const allFiles = response.data || [];
+        
+        // Separate by status
+        const approvedFiles = allFiles.filter(f => f.status === 'approved');
+        const sentFiles = allFiles.filter(f => f.status === 'sent');
+        
+        // Stats section
+        const statsHtml = `
+            <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                <div class="stat-card" style="border-left-color: #f59e0b;">
+                    <div class="stat-number" style="color: #f59e0b;">${approvedFiles.length}</div>
+                    <div class="stat-label">Pending to Send</div>
+                </div>
+                <div class="stat-card" style="border-left-color: #10b981;">
+                    <div class="stat-number" style="color: #10b981;">${sentFiles.length}</div>
+                    <div class="stat-label">Sent to Clients</div>
+                </div>
+                <div class="stat-card" style="border-left-color: #3b82f6;">
+                    <div class="stat-number" style="color: #3b82f6;">${allFiles.length}</div>
+                    <div class="stat-label">Total Files</div>
+                </div>
+            </div>
+        `;
+        
+        // Build pending files section
+        let pendingHtml = '';
+        if (approvedFiles.length > 0) {
+            const pendingRows = approvedFiles.map(file => {
+                const approvalDate = file.approvedAt ? new Date(file.approvedAt.seconds ? file.approvedAt.seconds * 1000 : file.approvedAt).toLocaleDateString() : 'N/A';
+                const isLink = file.isExternalLink || file.uploadType === 'link';
+                const fileIcon = isLink ? '🔗' : '📄';
+                
+                return `
+                    <tr>
+                        <td><strong>${file.projectName || 'Unknown Project'}</strong><br><small style="color: #64748b;">${file.projectCode || ''}</small></td>
+                        <td>
+                            <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
+                                ${fileIcon} ${file.fileName}
+                            </a>
+                        </td>
+                        <td>${file.uploadedByName || 'Designer'}</td>
+                        <td>${file.approvedByName || 'COO'}</td>
+                        <td>${approvalDate}</td>
+                        <td>
+                            <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ Preview</a>
+                            <button class="btn btn-success btn-sm" onclick="dcSendToClient('${file.id}', '${file.projectId}')">
+                                📧 Send to Client
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            pendingHtml = `
+                <div class="card" style="margin-bottom: 2rem; border: 2px solid #f59e0b;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; color: #d97706;">⏳ Ready to Send to Client</h3>
+                        <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">${approvedFiles.length} file(s)</span>
+                    </div>
+                    <p style="color: #64748b; margin-bottom: 1rem;">These files have been approved by COO and are ready to be sent to clients. Enter client details when sending.</p>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>File</th>
+                                    <th>Uploaded By</th>
+                                    <th>Approved By</th>
+                                    <th>Approved Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pendingRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } else {
+            pendingHtml = `
+                <div class="card" style="margin-bottom: 2rem; border: 2px dashed #cbd5e1; background: #f8fafc;">
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: #1e3a5f;">No Pending Files</h3>
+                        <p style="color: #64748b;">All approved design files have been sent to clients.</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Build sent files section
+        let sentHtml = '';
+        if (sentFiles.length > 0) {
+            const sentRows = sentFiles.map(file => {
+                const sentDate = file.sentAt ? new Date(file.sentAt.seconds ? file.sentAt.seconds * 1000 : file.sentAt).toLocaleDateString() : 'N/A';
+                const isLink = file.isExternalLink || file.uploadType === 'link';
+                const fileIcon = isLink ? '🔗' : '📄';
+                
+                return `
+                    <tr>
+                        <td><strong>${file.projectName || 'Unknown Project'}</strong></td>
+                        <td>
+                            <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
+                                ${fileIcon} ${file.fileName}
+                            </a>
+                        </td>
+                        <td style="color: #2563eb;">${file.clientEmail || 'N/A'}</td>
+                        <td>${sentDate}</td>
+                        <td>${file.sentBy || 'DC'}</td>
+                        <td>
+                            <span class="badge" style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px;">📧 Sent</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            sentHtml = `
+                <div class="card" style="margin-bottom: 2rem; border: 2px solid #10b981;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; color: #059669;">📧 Sent to Clients</h3>
+                        <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">${sentFiles.length} file(s)</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>File</th>
+                                    <th>Sent To</th>
+                                    <th>Sent Date</th>
+                                    <th>Sent By</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${sentRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        mainContent.innerHTML = `
+            <div class="page-header">
+                <h2>📄 Document Controller Portal</h2>
+                <p class="subtitle">Manage approved design files and send to clients</p>
+            </div>
+            ${statsHtml}
+            ${pendingHtml}
+            ${sentHtml}
+        `;
+        
+        // Update badge
+        updateDCPendingBadge();
+        
+    } catch (error) {
+        console.error('Error loading DC dashboard:', error);
+        mainContent.innerHTML = `
+            <div class="page-header">
+                <h2>📄 Document Controller Portal</h2>
+                <p class="subtitle">Manage approved design files and send to clients</p>
+            </div>
+            <div class="card" style="text-align: center; padding: 3rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                <h3 style="color: #dc2626;">Error Loading Files</h3>
+                <p style="color: #64748b;">${error.message}</p>
+                <button class="btn btn-primary" onclick="showDocumentControllerDashboard()">🔄 Retry</button>
+            </div>
+        `;
+    }
+}
+window.showDocumentControllerDashboard = showDocumentControllerDashboard;
+
+// DC Send to Client function
+async function dcSendToClient(designFileId, projectId) {
+    // First fetch file details to show confirmation
+    try {
+        showLoading();
+        const response = await apiCall(`projects?action=get_design_file&fileId=${designFileId}`);
+        
+        if (!response.success || !response.data) {
+            throw new Error('Could not load file details');
+        }
+        
+        const file = response.data;
+        hideLoading();
+        
+        // Get client email from project if not on file
+        let clientEmail = file.clientEmail || '';
+        let clientName = file.clientName || '';
+        
+        // Show send modal with client details form
+        const modal = document.createElement('div');
+        modal.id = 'dcSendModal';
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>📧 Send Design to Client</h3>
+                    <button class="close-btn" onclick="closeDCSendModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Success Banner -->
+                    <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.5rem;">✅</span>
+                            <div>
+                                <strong style="color: #166534;">COO Approved!</strong>
+                                <p style="margin: 5px 0 0 0; color: #15803d; font-size: 0.9rem;">Ready to send to the client</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- File Details -->
+                    <div class="client-preview-box" style="background: #f8fafc; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Project</div>
+                                <div style="font-weight: 600;">${file.projectName || 'Unknown'}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">File</div>
+                                <div style="font-weight: 600;">${file.fileName}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Uploaded By</div>
+                                <div style="font-weight: 500;">${file.uploadedByName || 'Designer'}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Approved By</div>
+                                <div style="font-weight: 500;">${file.approvedByName || 'COO'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Button -->
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary">
+                            👁️ Preview File Before Sending
+                        </a>
+                    </div>
+                    
+                    <!-- Client Details Section -->
+                    <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; border: 1px solid #bae6fd; margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 15px 0; color: #0369a1; font-size: 1rem;">
+                            📬 Client Delivery Details
+                        </h4>
+                        
+                        <!-- Client Email -->
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="font-weight: 600;">Client Email <span style="color: red;">*</span></label>
+                            <input type="email" id="dcClientEmail" class="form-control" value="${clientEmail}" placeholder="client@company.com" required>
+                            <small style="color: #64748b;">Primary recipient of the design file</small>
+                        </div>
+                        
+                        <!-- Client Name -->
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="font-weight: 600;">Client Contact Name (Optional)</label>
+                            <input type="text" id="dcClientName" class="form-control" value="${clientName}" placeholder="John Smith">
+                            <small style="color: #64748b;">Name to use in email greeting</small>
+                        </div>
+                        
+                        <!-- CC Emails -->
+                        <div class="form-group">
+                            <label style="font-weight: 600;">CC Additional Recipients (Optional)</label>
+                            <input type="text" id="dcCCEmails" class="form-control" placeholder="email1@company.com, email2@company.com">
+                            <small style="color: #64748b;">Separate multiple emails with commas</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Message -->
+                    <div class="form-group">
+                        <label style="font-weight: 600;">Custom Message (Optional)</label>
+                        <textarea id="dcCustomMessage" class="form-control" rows="3" placeholder="Add a personalized message to include in the email to the client..."></textarea>
+                        <small style="color: #64748b;">This will appear in the email body sent to the client</small>
+                    </div>
+                    
+                    <!-- Warning -->
+                    <div style="background: #fef3c7; padding: 12px 15px; border-radius: 8px; margin-top: 15px;">
+                        <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
+                            ⚠️ <strong>Note:</strong> The client will receive a professional email with a download link to the design file. CC recipients will also receive a copy.
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeDCSendModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="confirmDCSendToClient('${designFileId}', '${projectId}')">
+                        📧 Send to Client
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+    } catch (error) {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Error: ' + error.message, 'error');
+    }
+}
+window.dcSendToClient = dcSendToClient;
+
+function closeDCSendModal() {
+    const modal = document.getElementById('dcSendModal');
+    if (modal) modal.remove();
+}
+window.closeDCSendModal = closeDCSendModal;
+
+async function confirmDCSendToClient(designFileId, projectId) {
+    const clientEmail = document.getElementById('dcClientEmail')?.value.trim() || '';
+    const clientName = document.getElementById('dcClientName')?.value.trim() || '';
+    const ccEmails = document.getElementById('dcCCEmails')?.value.trim() || '';
+    const customMessage = document.getElementById('dcCustomMessage')?.value.trim() || '';
+    
+    // Validate client email
+    if (!clientEmail || !clientEmail.includes('@')) {
+        showNotification('Please enter a valid client email address', 'error');
+        return;
+    }
+    
+    // Parse and validate CC emails
+    let ccList = [];
+    if (ccEmails) {
+        ccList = ccEmails.split(',').map(e => e.trim()).filter(e => e && e.includes('@'));
+        const invalidEmails = ccEmails.split(',').map(e => e.trim()).filter(e => e && !e.includes('@'));
+        if (invalidEmails.length > 0) {
+            showNotification('Some CC email addresses are invalid: ' + invalidEmails.join(', '), 'error');
+            return;
+        }
+    }
+    
+    const ccDisplay = ccList.length > 0 ? `\nCC: ${ccList.join(', ')}` : '';
+    if (!confirm(`Send this design file to:\n${clientEmail}${ccDisplay}\n\nProceed?`)) {
+        return;
+    }
+    
+    closeDCSendModal();
+    showLoading();
+    
+    try {
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'send_design_to_client',
+                data: {
+                    designFileId: designFileId,
+                    clientEmail: clientEmail,
+                    clientName: clientName,
+                    ccEmails: ccList,
+                    customMessage: customMessage,
+                    sentBy: currentUser?.email || 'Document Controller'
+                }
+            })
+        });
+        
+        if (response.success) {
+            const ccText = ccList.length > 0 ? ` (+ ${ccList.length} CC)` : '';
+            showNotification(`✅ Design file sent successfully to ${clientEmail}${ccText}!`, 'success');
+            
+            // Refresh the DC dashboard
+            showDocumentControllerDashboard();
+        } else {
+            throw new Error(response.error || 'Failed to send');
+        }
+        
+    } catch (error) {
+        console.error('Send error:', error);
+        showNotification('Failed to send: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+window.confirmDCSendToClient = confirmDCSendToClient;
+
+
+// ============================================
 // UPDATE ROLE VISIBILITY FUNCTION
 // ============================================
 
@@ -29702,19 +30150,6 @@ console.log('✅ Design File Upload & Approval Module loaded');
                 </div>
             </div>
             
-            <!-- Client Email -->
-            <div class="form-group">
-                <label>Client Email <span style="color: red;">*</span></label>
-                <input type="email" id="designClientEmail" class="form-control" placeholder="client@company.com" required>
-                <small style="color: #64748b;">This is where the design file will be sent after approval</small>
-            </div>
-            
-            <!-- Client Name (Optional) -->
-            <div class="form-group">
-                <label>Client Contact Name (Optional)</label>
-                <input type="text" id="designClientName" class="form-control" placeholder="John Smith">
-            </div>
-            
             <!-- Notes -->
             <div class="form-group">
                 <label>Notes (Optional)</label>
@@ -29765,10 +30200,9 @@ console.log('✅ Design File Upload & Approval Module loaded');
                         <div class="client-preview-label">Submitted By</div>
                         <div class="client-preview-value" id="approvalSubmittedBy">-</div>
                     </div>
-                    <div>
-                        <div class="client-preview-label">Client Email</div>
-                        <div class="client-preview-value" id="approvalClientEmail" style="color: #2563eb;">-</div>
-                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 6px;">
+                    <small style="color: #92400e;">ℹ️ Client delivery details will be entered by Document Controller when sending.</small>
                 </div>
             </div>
             

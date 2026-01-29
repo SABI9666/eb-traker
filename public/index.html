@@ -5353,15 +5353,13 @@ body.is-ios .nav-menu {
       // ============================================
       console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
-
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
-            authDomain: "eb-tracker-ff945.firebaseapp.com",
-            projectId: "eb-tracker-ff945",
-            storageBucket: "eb-tracker-ff945.firebasestorage.app",
-            messagingSenderId: "854824137821",
-            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+      const firebaseConfig = {
+            apiKey: "AIzaSyAoRjQqAP-3QO9rjoQK7SSZ788lyMmhXmU",
+            authDomain: "eb-tracker-42881.firebaseapp.com",
+            projectId: "eb-tracker-42881",
+            storageBucket: "eb-tracker-42881.firebasestorage.app",
+            messagingSenderId: "922340749018",
+            appId: "1:922340749018:web:68296d8775a79e71b2bfe3"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -5373,11 +5371,9 @@ body.is-ios .nav-menu {
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
-
+        const API_BASE = 'https://eb-tracker-backend.onrender.com';
 
         console.log('🔧 Backend URL configured:', API_BASE);
-
 
 
         const authorizedUsers = {
@@ -29277,7 +29273,7 @@ function openDesignApprovalModal(designFileId, projectId) {
     document.getElementById('approvalClientCompany').textContent = file.clientCompany || 'N/A';
     document.getElementById('approvalFileName').textContent = file.fileName;
     document.getElementById('approvalSubmittedBy').textContent = file.uploadedByName;
-    document.getElementById('approvalClientEmail').textContent = file.clientEmail;
+    // Client email removed - will be entered by Document Controller when sending
     document.getElementById('approvalPreviewLink').href = file.fileUrl;
     
     // Show file type (PDF or External Link)

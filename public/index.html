@@ -5385,7 +5385,7 @@ body.is-ios .nav-menu {
             director: ["director@edanbrook.com", "ajit@edanbrook.com"],
             design_lead: ["aravindhan.tech@edanbrook.in"],
             designer: [],
-            accounts: ["accounts@edanbrook.com", "finance@edanbrook.com"],
+            accounts: ["accounts@edanbrook.com", "accounts1@edanbrook.com", "finance@edanbrook.com"],
             bdm: []
         };
         let currentUser = null;
@@ -6705,7 +6705,7 @@ body.is-ios .nav-menu {
                 } else if (emailLower.startsWith('estimator@') || emailLower.includes('.estimator@')) {
                     roleForCheck = 'estimator';
                     currentUserRole = 'estimator';
-                } else if (emailLower.startsWith('accounts@') || emailLower.includes('.accounts@')) {
+                } else if (emailLower.startsWith('accounts@') || emailLower.startsWith('accounts1@') || emailLower.includes('.accounts@')) {
                     roleForCheck = 'accounts';
                     currentUserRole = 'accounts';
                 } else if (emailLower.includes('.tech@')) {
@@ -13477,99 +13477,62 @@ async function showPayments() {
     setActiveNav('nav-payments');
     const main = document.getElementById('mainContent');
     showLoading();
-    main.innerHTML = ''; // Clear content
+    main.innerHTML = '';
 
     try {
         // All roles need to fetch payments/invoices
-        const response = await apiCall('payments'); // Assumes this hits your invoices.js logic
+        const response = await apiCall('payments');
         if (!response.success) {
             throw new Error(response.error || 'Failed to load payments/invoices');
         }
         const allInvoices = response.data || [];
 
         if (currentUserRole === 'accounts') {
-            // --- START MODIFICATION ---
-            // ACCOUNTANT VIEW: Show projects SUBMITTED BY DESIGN MANAGER (e.g., status 'completed')
-            
-            // 1. Fetch completed projects
-            // We assume a 'completed' status is set by the Design Manager/Designer
-            const projectsResponse = await apiCall('projects?status=completed');
+            // ACCOUNTS VIEW: Full invoice management portal
+
+            // 1. Fetch all projects (not just completed) so accounts can create invoices for any
+            const [projectsResponse, variationsResponse] = await Promise.all([
+                apiCall('projects'),
+                apiCall('variations?status=approved')
+            ]);
             const projects = projectsResponse.success ? projectsResponse.data : [];
-            
-            // 2. Filter out projects that already have an invoice
-            const invoicedProjectIds = new Set(allInvoices.map(inv => inv.projectId));
-            
-            // 3. Get the proposals for these completed projects to get financial data
-            const proposalIds = projects.map(p => p.proposalId).filter(Boolean);
-            let proposalsMap = new Map();
-            if (proposalIds.length > 0) {
-                // Fetch all 'won' proposals and filter.
-                const proposalsResponse = await apiCall('proposals?status=won');
-                if (proposalsResponse.success) {
-                    proposalsResponse.data.forEach(p => proposalsMap.set(p.id, p));
-                }
-            }
+            const approvedVariations = variationsResponse.success ? variationsResponse.data : [];
 
-            // 4. Create the 'projectsToInvoice' list
-            const projectsToInvoice = projects
-               .filter(p => !invoicedProjectIds.has(p.id)) // <-- CORRECTED LINE
-                .map(p => {
-                    // Try to find the matching proposal data
-                    const proposal = proposalsMap.get(p.proposalId);
-                    if (proposal) {
-                        // Combine project and proposal data
-                        return {
-                            ...proposal, // Gets wonDate, clientCompany, projectName, pricing
-                            projectId: p.id, // Ensure we use the project ID
-                            id: proposal.id, // Use proposal ID for invoice creation
-                            status: p.status, // Use the project's 'completed' status
-                            completedDate: p.completedAt || p.updatedAt // Use project completion date
-                        };
-                    }
-                    // Fallback if proposal not found
-                    return {
-                        ...p,
-                        id: p.proposalId, // Fallback to proposalId
-                        wonDate: p.createdAt, // Fallback
-                        completedDate: p.updatedAt
-                    };
-                });
-            
-            // --- END MODIFICATION ---
+            // 2. Get projects that don't have invoices yet
+            const invoicedProjectIds = new Set(allInvoices.filter(inv => !inv.variationId).map(inv => inv.projectId));
+            const projectsToInvoice = projects.filter(p => !invoicedProjectIds.has(p.id));
 
-            // TODO: Add logic to fetch approved variations that need invoicing
+            // 3. Get approved variations that don't have invoices yet
+            const invoicedVariationIds = new Set(allInvoices.filter(inv => inv.variationId).map(inv => inv.variationId));
+            const variationsToInvoice = approvedVariations.filter(v => !invoicedVariationIds.has(v.id));
 
-            renderPaymentsList(allInvoices, projectsToInvoice);
-        } else {
-            // BDM, COO, DIRECTOR VIEW: Show an overview of existing invoices
-            let invoicesToShow = allInvoices;
-
-            if (currentUserRole === 'bdm') {
-                // BDM: Filter to show only their projects
-                // This filtering is done on the frontend
+            renderAccountsPortal(allInvoices, projectsToInvoice, projects, variationsToInvoice);
+        } else if (currentUserRole === 'bdm') {
+            // BDM VIEW: Show only invoices related to their projects
+            const invoicesToShow = allInvoices.filter(inv =>
+                inv.bdmUid === currentUser.uid
+            );
+            // If no bdmUid match, fall back to project-based filtering
+            if (invoicesToShow.length === 0 && allInvoices.length > 0) {
                 const proposalsResponse = await apiCall('proposals');
-                if (!proposalsResponse.success) {
-                    throw new Error('Failed to load proposals for filtering');
-                }
-                // Get all proposal IDs AND project IDs associated with this BDM
-                const myProposalIds = new Set();
-                const myProjectIds = new Set();
-                proposalsResponse.data.forEach(p => {
-                    if (p.createdByUid === currentUser.uid) {
-                        myProposalIds.add(p.id);
-                        if (p.projectId) {
+                if (proposalsResponse.success) {
+                    const myProjectIds = new Set();
+                    proposalsResponse.data.forEach(p => {
+                        if (p.createdByUid === currentUser.uid && p.projectId) {
                             myProjectIds.add(p.projectId);
                         }
-                    }
-                });
-                
-                invoicesToShow = allInvoices.filter(inv => 
-                    myProposalIds.has(inv.proposalId) || myProjectIds.has(inv.projectId)
-                );
+                    });
+                    const filtered = allInvoices.filter(inv => myProjectIds.has(inv.projectId));
+                    renderBDMInvoiceView(filtered);
+                } else {
+                    renderBDMInvoiceView(invoicesToShow);
+                }
+            } else {
+                renderBDMInvoiceView(invoicesToShow);
             }
-            
-            // COO/Director see all, so `invoicesToShow` is already correct for them
-            renderAccountsOverview(invoicesToShow);
+        } else {
+            // COO/Director see all
+            renderAccountsOverview(allInvoices);
         }
 
     } catch (error) {
@@ -13581,99 +13544,238 @@ async function showPayments() {
 }
 
 /**
- * Renders the view for the ACCOUNTANT role.
- * Shows projects ready to be invoiced and a list of existing invoices.
+ * Renders the full Accounts Portal for accountants.
+ * Shows stats, create invoice button, projects to invoice, variations to invoice, and existing invoices.
  */
-function renderPaymentsList(invoices, projectsToInvoice) {
+function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variationsToInvoice) {
     const main = document.getElementById('mainContent');
 
-    // --- START MODIFICATION ---
-    // This code is inside your renderPaymentsList function (line 4305)
+    // Calculate stats
+    const totalInvoices = invoices.length;
+    const pendingInvoices = invoices.filter(i => i.paymentStatus === 'pending').length;
+    const paidInvoices = invoices.filter(i => i.paymentStatus === 'fully_paid').length;
+    const overdueInvoices = invoices.filter(i => {
+        if (i.paymentStatus === 'fully_paid') return false;
+        if (!i.paymentDueDate) return false;
+        const due = i.paymentDueDate?.toDate ? i.paymentDueDate.toDate() : new Date(i.paymentDueDate);
+        return due < new Date();
+    }).length;
+    const totalAmount = invoices.reduce((sum, i) => sum + (parseFloat(i.invoiceAmount) || 0), 0);
+    const paidAmount = invoices.filter(i => i.paymentStatus === 'fully_paid').reduce((sum, i) => sum + (parseFloat(i.invoiceAmount) || 0), 0);
 
-const projectsToInvoiceHtml = projectsToInvoice.length > 0 ? projectsToInvoice.map(p => `
-    <div class="action-item">
-        <div class="action-content">
-            <strong>${p.projectName}</strong>
-            <div class="action-meta">
-                Client: ${p.clientCompany} | Project #: ${p.pricing?.projectNumber || 'N/A'} | Completed: ${formatDate(p.completedDate)}
-            </div>
-        </div>
-        <div class="action-buttons">
-            <button class="btn btn-success btn-sm" onclick="showCreateInvoiceModal('${p.projectId}', '${p.id}')">
-                Create Invoice
-            </button>
-        </div>
-    </div>
-`).join('') : '<p>No new completed projects ready for invoicing.</p>'; // <-- Your current empty state
+    // Projects to invoice HTML
+    const projectsToInvoiceHtml = projectsToInvoice.length > 0 ? projectsToInvoice.map(p => `
+        <tr>
+            <td><strong>${p.projectName || 'N/A'}</strong></td>
+            <td>${p.clientCompany || 'N/A'}</td>
+            <td>${p.projectCode || 'N/A'}</td>
+            <td><span class="proposal-status status-${(p.status || 'active').toLowerCase()}">${p.status || 'active'}</span></td>
+            <td>
+                <button class="btn btn-success btn-sm" onclick="showCreateInvoiceModalNew('${p.id}')">
+                    Create Invoice
+                </button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="5" class="text-center">No projects pending invoicing.</td></tr>';
 
-    // Section for existing invoices
-    const invoicesHtml = invoices.length > 0 ? invoices.map(p => {
-        const statusClass = (p.status || 'draft').toLowerCase().replace(/ /g, '-');
+    // Variations to invoice HTML
+    const variationsHtml = variationsToInvoice.length > 0 ? variationsToInvoice.map(v => `
+        <tr>
+            <td><strong>${v.variationCode || 'N/A'}</strong></td>
+            <td>${v.parentProjectName || 'N/A'}</td>
+            <td>${v.clientCompany || 'N/A'}</td>
+            <td>${v.estimatedHours || 0} hrs</td>
+            <td>${v.scopeDescription || 'N/A'}</td>
+            <td>
+                <button class="btn btn-success btn-sm" onclick="showCreateVariationInvoiceModal('${v.id}', '${v.parentProjectId}')">
+                    Create Variation Invoice
+                </button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="6" class="text-center">No approved variations pending invoicing.</td></tr>';
+
+    // Existing invoices HTML
+    const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
+        const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
+        const dueDateStr = inv.paymentDueDate ? formatDate(inv.paymentDueDate) : 'N/A';
         return `
-        <div class="action-item">
-            <div class="action-content">
-                <strong>Invoice #${p.invoiceNumber} (Project: ${p.projectName || 'N/A'})</strong>
-                <div class="action-meta">
-                    Client: ${p.clientCompany} | Amount: ${p.currency} ${p.amount} | Due: ${formatDate(p.dueDate)}
-                </div>
-            </div>
-            <span class="proposal-status status-${statusClass}">${p.status}</span>
-            <div class="action-buttons">
-                <button class="btn btn-outline btn-sm" onclick="viewPayment('${p.id}')">View</button>
-                <button class="btn btn-primary btn-sm" onclick="showUpdatePaymentModal('${p.id}')">Update Status</button>
-            </div>
-        </div>
-        `}).join('') : '<p>No invoices created yet.</p>';
+        <tr>
+            <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
+            <td>${inv.projectName || 'N/A'}</td>
+            <td>${inv.clientCompany || 'N/A'}</td>
+            <td>${inv.bdmName || 'N/A'}</td>
+            <td>${inv.currency || 'USD'} ${parseFloat(inv.invoiceAmount || 0).toLocaleString()}</td>
+            <td>${dueDateStr}</td>
+            <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
+            <td>
+                <button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')" style="margin-right:4px;">View</button>
+                <button class="btn btn-primary btn-sm" onclick="showUpdatePaymentModal('${inv.id}')">Update</button>
+            </td>
+        </tr>
+        `;
+    }).join('') : '<tr><td colspan="8" class="text-center">No invoices created yet.</td></tr>';
 
     main.innerHTML = `
         <div class="page-header">
-            <h2>Accounts & Payments</h2>
-            <div class="subtitle">Manage project invoices and payment status.</div>
-        </div>
-        
-        <div class="action-section">
-            <h3>Projects Ready for Invoicing</h3>
-            ${projectsToInvoiceHtml}
+            <h2>Accounts Portal</h2>
+            <div class="subtitle">Manage invoices, payments, and variations for all projects.</div>
+            <button class="btn btn-success" onclick="showCreateInvoiceModalNew()" style="margin-top:1rem;">
+                + Create New Invoice
+            </button>
         </div>
 
-        <div class="action-section">
-            <h3>Existing Invoices</h3>
-            ${invoicesHtml}
+        <!-- Stats Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#2563eb;">${totalInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoices</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#f59e0b;">${pendingInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Pending</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#10b981;">${paidInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Paid</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#ef4444;">${overdueInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Overdue</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">USD ${totalAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoiced</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#10b981;">USD ${paidAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Collected</div>
+            </div>
+        </div>
+
+        <!-- Projects Ready for Invoicing -->
+        <div class="card" style="margin-bottom:2rem;">
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0;">Projects Ready for Invoicing</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Client</th>
+                            <th>Project Code</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${projectsToInvoiceHtml}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Approved Variations Ready for Invoicing -->
+        <div class="card" style="margin-bottom:2rem;">
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0;">Approved Variations - Ready for Invoicing</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Variation Code</th>
+                            <th>Parent Project</th>
+                            <th>Client</th>
+                            <th>Est. Hours</th>
+                            <th>Scope</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${variationsHtml}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- All Invoices -->
+        <div class="card">
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0;">All Invoices</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Project</th>
+                            <th>Client</th>
+                            <th>BDM</th>
+                            <th>Amount</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${invoicesHtml}</tbody>
+                </table>
+            </div>
         </div>
     `;
 }
 
 /**
- * Renders the overview table for BDM, COO, and DIRECTOR roles.
+ * Renders the overview table for COO and DIRECTOR roles.
  */
 function renderAccountsOverview(invoices) {
-            const main = document.getElementById('mainContent');
+    const main = document.getElementById('mainContent');
 
-            const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
-                // --- FIX: Use backend field names 'paymentStatus', 'invoiceNo', 'paymentDueDate', 'invoiceAmount' ---
-                const statusClass = (inv.paymentStatus || 'draft').toLowerCase().replace(/ /g, '-');
-                const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left: 8px;">VARIATION</span>' : '';
-                
-                return `
-                <tr>
-                    <td><strong>${inv.invoiceNo || 'undefined'}</strong> ${isVariation}</td>
-                    <td>${inv.projectName || 'N/A'}</td>
-                    <td>${inv.clientCompany || 'N/A'}</td>
-                    <td>${formatDate(inv.createdAt)}</td>
-                    <td>${formatDate(inv.paymentDueDate)}</td>
-                    <td>${inv.currency} ${inv.invoiceAmount || 'undefined'}</td>
-                    <td><span class->"proposal-status status-${statusClass}">${inv.paymentStatus || 'undefined'}</span></td>
-                    <td><button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View</A></td>
-                </tr>
-                `;
-            }).join('') : '<tr><td colspan="8" class="text-center">No invoices found.</td></tr>';
+    // Stats
+    const totalAmount = invoices.reduce((s, i) => s + (parseFloat(i.invoiceAmount) || 0), 0);
+    const paidCount = invoices.filter(i => i.paymentStatus === 'fully_paid').length;
+    const pendingCount = invoices.filter(i => i.paymentStatus === 'pending').length;
+
+    const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
+        const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
+        return `
+        <tr>
+            <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
+            <td>${inv.projectName || 'N/A'}</td>
+            <td>${inv.clientCompany || 'N/A'}</td>
+            <td>${inv.bdmName || 'N/A'}</td>
+            <td>${formatDate(inv.createdAt)}</td>
+            <td>${formatDate(inv.paymentDueDate)}</td>
+            <td>${inv.currency || 'USD'} ${parseFloat(inv.invoiceAmount || 0).toLocaleString()}</td>
+            <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View</button></td>
+        </tr>
+        `;
+    }).join('') : '<tr><td colspan="9" class="text-center">No invoices found.</td></tr>';
 
     main.innerHTML = `
         <div class="page-header">
             <h2>Invoice Overview</h2>
             <div class="subtitle">View all created project and variation invoices.</div>
         </div>
-        
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#2563eb;">${invoices.length}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoices</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#f59e0b;">${pendingCount}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Pending</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#10b981;">${paidCount}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Paid</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">USD ${totalAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoiced</div>
+            </div>
+        </div>
+
         <div class="card">
             <table class="data-table">
                 <thead>
@@ -13681,98 +13783,183 @@ function renderAccountsOverview(invoices) {
                         <th>Invoice #</th>
                         <th>Project</th>
                         <th>Client</th>
-                        <th>Submission Date</th>
+                        <th>BDM</th>
+                        <th>Created</th>
                         <th>Due Date</th>
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    ${invoicesHtml}
-                </tbody>
+                <tbody>${invoicesHtml}</tbody>
             </table>
         </div>
     `;
 }
 
-// This is your existing function from index (53).html (line 4426)
-async function showCreateInvoiceModal(projectId, proposalId) {
-    if (!projectId || !proposalId) {
-        alert('Error: Missing Project ID or Proposal ID.');
-        return;
-    }
+/**
+ * Renders the BDM invoice view - shows invoices assigned to this BDM.
+ */
+function renderBDMInvoiceView(invoices) {
+    const main = document.getElementById('mainContent');
 
+    const totalAmount = invoices.reduce((s, i) => s + (parseFloat(i.invoiceAmount) || 0), 0);
+    const paidCount = invoices.filter(i => i.paymentStatus === 'fully_paid').length;
+
+    const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
+        const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
+        return `
+        <tr>
+            <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
+            <td>${inv.projectName || 'N/A'}</td>
+            <td>${inv.clientCompany || 'N/A'}</td>
+            <td>${inv.currency || 'USD'} ${parseFloat(inv.invoiceAmount || 0).toLocaleString()}</td>
+            <td>${formatDate(inv.paymentDueDate)}</td>
+            <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View Details</button></td>
+        </tr>
+        `;
+    }).join('') : '<tr><td colspan="7" class="text-center">No invoices found for your projects.</td></tr>';
+
+    main.innerHTML = `
+        <div class="page-header">
+            <h2>My Invoices</h2>
+            <div class="subtitle">Invoice details for your projects, updated by the accounts team.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#2563eb;">${invoices.length}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoices</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#10b981;">${paidCount}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Paid</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">USD ${totalAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Value</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Project</th>
+                        <th>Client</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>${invoicesHtml}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * New Create Invoice Modal - supports project selection, BDM assignment, and variations.
+ * @param {string} preselectedProjectId - Optional project ID to preselect
+ */
+async function showCreateInvoiceModalNew(preselectedProjectId) {
     try {
         showLoading();
-        // Fetches proposal data to autofill project name, client, and amount
-        const { success, data: proposal } = await apiCall(`proposals?id=${proposalId}`);
-        if (!success || !proposal) {
-            throw new Error('Failed to load proposal data for autofill');
-        }
-        
+
+        // Fetch projects and BDM users in parallel
+        const [projectsResp, bdmUsersResp] = await Promise.all([
+            apiCall('projects'),
+            apiCall('users?role=bdm')
+        ]);
+
+        const projects = projectsResp.success ? projectsResp.data : [];
+        const bdmUsers = bdmUsersResp.success ? bdmUsersResp.data : [];
+
         hideLoading();
-        
-        const clientCompany = proposal.clientCompany || '';
-        const projectName = proposal.projectName || '';
-        const quoteValue = proposal.pricing?.quoteValue || '0.00';
-        const currency = proposal.pricing?.currency || 'USD';
+
+        // Build project options
+        const projectOptions = projects.map(p =>
+            `<option value="${p.id}" ${p.id === preselectedProjectId ? 'selected' : ''}>${p.projectName} - ${p.clientCompany || 'N/A'} (${p.projectCode || 'N/A'})</option>`
+        ).join('');
+
+        // Build BDM options
+        const bdmOptions = bdmUsers.map(b =>
+            `<option value="${b.uid}" data-name="${b.name}" data-email="${b.email}">${b.name} (${b.email})</option>`
+        ).join('');
+
+        // Get preselected project details
+        const preProject = preselectedProjectId ? projects.find(p => p.id === preselectedProjectId) : null;
 
         const modalHtml = `
             <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-content" style="max-width: 750px;">
                     <div class="modal-header">
                         <h2>Create New Invoice</h2>
-                        <div class="subtitle">For project: ${projectName}</div>
+                        <span class="close-modal" onclick="closeModal()">&times;</span>
                     </div>
-                    
-                    <form id="createInvoiceForm" class="modal-form">
-                        <input type="hidden" id="inv_projectId" value="${projectId}">
-                        <input type="hidden" id="inv_proposalId" value="${proposalId}">
+                    <form id="createInvoiceFormNew" class="modal-form">
+                        <!-- Project Selection -->
+                        <div class="form-group">
+                            <label>Select Project *</label>
+                            <select id="inv_projectId_new" class="form-control" required onchange="onProjectSelectChange()">
+                                <option value="">-- Select a Project --</option>
+                                ${projectOptions}
+                            </select>
+                        </div>
 
-                        <input type="hidden" id="inv_projectName" value="${projectName}">
-                        <input type="hidden" id="inv_clientCompany" value="${clientCompany}">
-                        <input type="hidden" id="inv_currency" value="${currency}">
+                        <!-- Project Info (auto-populated) -->
+                        <div id="inv_projectInfo" style="background:#f1f5f9;padding:1rem;border-radius:8px;margin-bottom:1rem;${preProject ? '' : 'display:none;'}">
+                            <strong>Project Details:</strong>
+                            <div id="inv_projectInfoContent">
+                                ${preProject ? `Client: ${preProject.clientCompany || 'N/A'} | Code: ${preProject.projectCode || 'N/A'} | Value: ${preProject.currency || 'USD'} ${preProject.quoteValue || 'N/A'}` : ''}
+                            </div>
+                        </div>
 
-                        <div class="info-section">
-                            <h4>Autofilled Details</h4>
-                            <p><strong>Project:</strong> ${projectName}</p>
-                            <p><strong>Client:</strong> ${clientCompany}</p>
-                            <p><strong>Quoted Value:</strong> ${currency} ${quoteValue}</p>
+                        <!-- BDM Assignment -->
+                        <div class="form-group">
+                            <label>Assign BDM (Business Development Manager) *</label>
+                            <select id="inv_bdmUid" class="form-control" required>
+                                <option value="">-- Select BDM --</option>
+                                ${bdmOptions}
+                            </select>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Invoice Number *</label>
-                                <input type="text" id="inv_invoiceNo" class="form-control" required>
+                                <input type="text" id="inv_invoiceNo_new" class="form-control" placeholder="e.g., INV-2026-001" required>
                             </div>
                             <div class="form-group">
-                                <label>Invoice Amount *</label>
-                                <input type="number" id="inv_amount" class="form-control" value="${quoteValue}" step="0.01" required>
+                                <label>Invoice Amount (USD) *</label>
+                                <input type="number" id="inv_amount_new" class="form-control" step="0.01" min="0" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Invoice Date *</label>
-                                <input type="date" id="inv_invoiceDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
+                                <input type="date" id="inv_invoiceDate_new" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
                             </div>
                             <div class="form-group">
                                 <label>Payment Due Date *</label>
-                                <input type="date" id="inv_paymentDueDate" class="form-control" required>
+                                <input type="date" id="inv_paymentDueDate_new" class="form-control" required>
                             </div>
                         </div>
-                            <div class="form-group">
-                                <label>Payment Terms</label>
-                                <input type="text" id="inv_paymentTerms" class="form-control" placeholder="e.g., Net 30">
-                            </div>
+                        <div class="form-group">
+                            <label>Payment Terms</label>
+                            <input type="text" id="inv_paymentTerms_new" class="form-control" placeholder="e.g., Net 30, 50% advance" value="Net 30">
+                        </div>
                         <div class="form-group">
                             <label>Milestone / Description</label>
-                            <textarea id="inv_milestoneDescription" class="form-control" rows="3" placeholder="e.g., Final payment for project completion"></textarea>
+                            <textarea id="inv_milestoneDescription_new" class="form-control" rows="3" placeholder="e.g., Phase 1 completion, Final delivery"></textarea>
                         </div>
 
-                        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                        <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:2rem;">
                             <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save & Send Notifications</button>
+                            <button type="submit" class="btn btn-primary">Create Invoice & Notify BDM</button>
                         </div>
                     </form>
                 </div>
@@ -13780,9 +13967,19 @@ async function showCreateInvoiceModal(projectId, proposalId) {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-        // Add submit listener
-        document.getElementById('createInvoiceForm').addEventListener('submit', createInvoiceAction);
+        // Store projects data for dynamic use
+        window._invoiceProjects = projects;
 
+        // Auto-populate if preselected
+        if (preProject) {
+            onProjectSelectChange();
+            // Auto-select BDM if project has one
+            if (preProject.bdmUid) {
+                document.getElementById('inv_bdmUid').value = preProject.bdmUid;
+            }
+        }
+
+        document.getElementById('createInvoiceFormNew').addEventListener('submit', createInvoiceActionNew);
     } catch (error) {
         hideLoading();
         alert(`Error loading invoice form: ${error.message}`);
@@ -13790,130 +13987,98 @@ async function showCreateInvoiceModal(projectId, proposalId) {
 }
 
 /**
- * Handles the submission of the new invoice form.
- * Saves the invoice and triggers notifications to BDM, COO, and Director.
+ * Handles project selection change in the invoice modal - auto-populates info.
  */
-async function createInvoiceAction(event) {
+function onProjectSelectChange() {
+    const projectId = document.getElementById('inv_projectId_new').value;
+    const infoDiv = document.getElementById('inv_projectInfo');
+    const infoContent = document.getElementById('inv_projectInfoContent');
+
+    if (!projectId || !window._invoiceProjects) {
+        infoDiv.style.display = 'none';
+        return;
+    }
+
+    const project = window._invoiceProjects.find(p => p.id === projectId);
+    if (project) {
+        infoDiv.style.display = 'block';
+        infoContent.innerHTML = `Client: ${project.clientCompany || 'N/A'} | Code: ${project.projectCode || 'N/A'} | Value: ${project.currency || 'USD'} ${project.quoteValue || 'N/A'}`;
+        // Auto-select BDM if the project has one
+        if (project.bdmUid) {
+            const bdmSelect = document.getElementById('inv_bdmUid');
+            if (bdmSelect) bdmSelect.value = project.bdmUid;
+        }
+        // Auto-fill amount with quote value if available
+        const amountField = document.getElementById('inv_amount_new');
+        if (amountField && project.quoteValue && !amountField.value) {
+            amountField.value = project.quoteValue;
+        }
+    }
+}
+
+/**
+ * Creates a new invoice from the new modal form.
+ */
+async function createInvoiceActionNew(event) {
     event.preventDefault();
     showLoading();
-    
-    // ***FIX***: Read all data from the form, including new hidden fields
-    const invoiceData = {
-        projectId: document.getElementById('inv_projectId').value,
-        proposalId: document.getElementById('inv_proposalId').value,
-        invoiceNo: document.getElementById('inv_invoiceNo').value,
-        invoiceDate: document.getElementById('inv_invoiceDate').value,
-        amount: parseFloat(document.getElementById('inv_amount').value),
-        paymentDueDate: document.getElementById('inv_paymentDueDate').value,
-        paymentTerms: document.getElementById('inv_paymentTerms').value,
-        milestoneDescription: document.getElementById('inv_milestoneDescription').value,
 
-        // Data from hidden fields for notifications
-        projectName: document.getElementById('inv_projectName').value,
-        clientCompany: document.getElementById('inv_clientCompany').value,
-        currency: document.getElementById('inv_currency').value
-    };
+    const projectId = document.getElementById('inv_projectId_new').value;
+    const bdmSelect = document.getElementById('inv_bdmUid');
+    const selectedBdm = bdmSelect.options[bdmSelect.selectedIndex];
+    const bdmUid = bdmSelect.value;
+    const bdmName = selectedBdm ? selectedBdm.getAttribute('data-name') || '' : '';
+    const bdmEmail = selectedBdm ? selectedBdm.getAttribute('data-email') || '' : '';
 
-    // Validation
-    if (!invoiceData.projectId || !invoiceData.invoiceNo || !invoiceData.invoiceDate || !invoiceData.amount || !invoiceData.paymentDueDate) {
-            alert('Please fill out all required fields (*)');
-            hideLoading();
-            return;
+    const invoiceNo = document.getElementById('inv_invoiceNo_new').value;
+    const amount = parseFloat(document.getElementById('inv_amount_new').value);
+    const invoiceDate = document.getElementById('inv_invoiceDate_new').value;
+    const paymentDueDate = document.getElementById('inv_paymentDueDate_new').value;
+    const paymentTerms = document.getElementById('inv_paymentTerms_new').value;
+    const milestoneDescription = document.getElementById('inv_milestoneDescription_new').value;
+
+    if (!projectId || !invoiceNo || !amount || !invoiceDate || !paymentDueDate || !bdmUid) {
+        alert('Please fill out all required fields (*)');
+        hideLoading();
+        return;
     }
 
     try {
-        // 1. Save the invoice
-        // This POST request is handled by payments (2).js
-        // We send the core data to be saved to the DB
-        const apiPayload = {
-            projectId: invoiceData.projectId,
-            proposalId: invoiceData.proposalId,
-            invoiceNo: invoiceData.invoiceNo,
-            invoiceDate: invoiceData.invoiceDate,
-            amount: invoiceData.amount,
-            paymentDueDate: invoiceData.paymentDueDate,
-            paymentTerms: invoiceData.paymentTerms,
-            milestoneDescription: invoiceData.milestoneDescription,
-            // Pass notification data in case backend needs it
-            projectName: invoiceData.projectName,
-            clientCompany: invoiceData.clientCompany,
-            currency: invoiceData.currency
-        };
-        
-        const response = await apiCall('payments', { 
+        const response = await apiCall('payments', {
             method: 'POST',
-            body: JSON.stringify(apiPayload)
-        });
-
-        if (!response.success || !response.data) {
-            throw new Error(response.error || 'Failed to save invoice');
-        }
-        
-        // ***FIX***: The notification logic is now INSIDE the async function
-        
-        // ============================================================
-        // 🟢 PASTE YOUR NEW CODE HERE
-        // ============================================================
-        await triggerEmailNotification('invoice.saved', {
-            projectId: invoiceData.projectId,
-            invoiceNumber: invoiceData.invoiceNo,
-            amount: invoiceData.currency + ' ' + invoiceData.amount,
-            // Add these two lines so the email template has the data it needs:
-            projectName: invoiceData.projectName,
-            clientName: invoiceData.clientCompany 
-        });
-        // ============================================================
-
-        // 3. Trigger Internal Notifications (Bell Icon)
-        // We need to find the BDM's UID from the proposal.
-        // ***FIX***: This await call is now correctly inside the async function
-        const proposalResponse = await apiCall(`proposals?id=${invoiceData.proposalId}`);
-        const bdmUid = proposalResponse.data?.createdByUid;
-        
-        // ***FIX***: Corrected variable name
-        const notificationMessage = `Invoice ${invoiceData.invoiceNo} created for ${invoiceData.projectName}.`;
-        
-        // Create notifications for COO and Director (role-based)
-        const rolesToNotify = ['coo', 'director'];
-        const notificationPromises = rolesToNotify.map(role => 
-            apiCall('notifications', {
-                method: 'POST',
-                body: JSON.stringify({
-                    type: 'invoice.created',
-                    recipientRole: role,
-                    message: notificationMessage,
-                    projectId: invoiceData.projectId,
-                    proposalId: invoiceData.proposalId
-                })
+            body: JSON.stringify({
+                projectId,
+                invoiceNo,
+                invoiceDate,
+                amount,
+                paymentDueDate,
+                paymentTerms,
+                milestoneDescription,
+                bdmUid,
+                bdmName,
+                bdmEmail,
+                invoiceType: 'project'
             })
-        );
+        });
 
-        // Send a specific notification to the BDM (UID-based)
-        if (bdmUid) {
-            notificationPromises.push(
-                apiCall('notifications', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        type: 'invoice.created',
-                        recipientUid: bdmUid, // Specific user
-                        recipientRole: 'bdm', // Role for context
-                        message: `Invoice ${invoiceData.invoiceNo} was created for your project: ${invoiceData.projectName}.`,
-                        projectId: invoiceData.projectId,
-                        proposalId: invoiceData.proposalId
-                    })
-                })
-            );
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to create invoice');
         }
-        
-        // ***FIX***: This await call is now correctly inside the async function
-        await Promise.all(notificationPromises);
-        console.log('Internal notifications created for BDM, COO, Director.');
-        showNotification('Invoice created and notifications sent!', 'success');
 
+        // Send email notification
+        try {
+            await triggerEmailNotification('invoice.saved', {
+                projectId,
+                invoiceNumber: invoiceNo,
+                amount: 'USD ' + amount
+            });
+        } catch (emailErr) {
+            console.warn('Email notification failed (non-blocking):', emailErr);
+        }
+
+        showNotification('Invoice created successfully! BDM has been notified.', 'success');
         closeModal();
-        showPayments(); // Refresh the payments page
-
-    // ***FIX***: These catch/finally blocks now correctly close the function
+        showPayments();
     } catch (error) {
         alert(`Error creating invoice: ${error.message}`);
     } finally {
@@ -13922,26 +14087,211 @@ async function createInvoiceAction(event) {
 }
 
 /**
+ * Shows modal to create a variation invoice.
+ */
+async function showCreateVariationInvoiceModal(variationId, parentProjectId) {
+    try {
+        showLoading();
+
+        // Fetch variation details, project details, and BDM users
+        const [variationResp, projectResp, bdmUsersResp] = await Promise.all([
+            apiCall(`variations?id=${variationId}`),
+            apiCall(`projects?id=${parentProjectId}`),
+            apiCall('users?role=bdm')
+        ]);
+
+        hideLoading();
+
+        const variation = variationResp.success ? variationResp.data : null;
+        const project = projectResp.success ? projectResp.data : null;
+        const bdmUsers = bdmUsersResp.success ? bdmUsersResp.data : [];
+
+        if (!variation || !project) {
+            alert('Failed to load variation or project details.');
+            return;
+        }
+
+        // Build BDM options
+        const bdmOptions = bdmUsers.map(b =>
+            `<option value="${b.uid}" data-name="${b.name}" data-email="${b.email}" ${b.uid === project.bdmUid ? 'selected' : ''}>${b.name} (${b.email})</option>`
+        ).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h2>Create Variation Invoice</h2>
+                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                    </div>
+                    <form id="createVariationInvoiceForm" class="modal-form">
+                        <input type="hidden" id="var_inv_variationId" value="${variationId}">
+                        <input type="hidden" id="var_inv_projectId" value="${parentProjectId}">
+                        <input type="hidden" id="var_inv_variationCode" value="${variation.variationCode || ''}">
+
+                        <div style="background:#f1f5f9;padding:1rem;border-radius:8px;margin-bottom:1rem;">
+                            <strong>Variation Details:</strong><br>
+                            <span>Code: ${variation.variationCode || 'N/A'}</span> |
+                            <span>Project: ${variation.parentProjectName || project.projectName || 'N/A'}</span> |
+                            <span>Client: ${variation.clientCompany || project.clientCompany || 'N/A'}</span> |
+                            <span>Est. Hours: ${variation.estimatedHours || 0}</span><br>
+                            <span>Scope: ${variation.scopeDescription || 'N/A'}</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Assign BDM *</label>
+                            <select id="var_inv_bdmUid" class="form-control" required>
+                                <option value="">-- Select BDM --</option>
+                                ${bdmOptions}
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Invoice Number *</label>
+                                <input type="text" id="var_inv_invoiceNo" class="form-control" placeholder="e.g., VAR-INV-001" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Invoice Amount (USD) *</label>
+                                <input type="number" id="var_inv_amount" class="form-control" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Invoice Date *</label>
+                                <input type="date" id="var_inv_invoiceDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Payment Due Date *</label>
+                                <input type="date" id="var_inv_paymentDueDate" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Terms</label>
+                            <input type="text" id="var_inv_paymentTerms" class="form-control" placeholder="e.g., Net 30" value="Net 30">
+                        </div>
+                        <div class="form-group">
+                            <label>Description / Notes</label>
+                            <textarea id="var_inv_description" class="form-control" rows="3" placeholder="Variation invoice notes..."></textarea>
+                        </div>
+
+                        <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:2rem;">
+                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Variation Invoice</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('createVariationInvoiceForm').addEventListener('submit', createVariationInvoiceAction);
+
+    } catch (error) {
+        hideLoading();
+        alert(`Error: ${error.message}`);
+    }
+}
+
+/**
+ * Creates a variation invoice.
+ */
+async function createVariationInvoiceAction(event) {
+    event.preventDefault();
+    showLoading();
+
+    const variationId = document.getElementById('var_inv_variationId').value;
+    const projectId = document.getElementById('var_inv_projectId').value;
+    const variationCode = document.getElementById('var_inv_variationCode').value;
+    const bdmSelect = document.getElementById('var_inv_bdmUid');
+    const selectedBdm = bdmSelect.options[bdmSelect.selectedIndex];
+    const bdmUid = bdmSelect.value;
+    const bdmName = selectedBdm ? selectedBdm.getAttribute('data-name') || '' : '';
+    const bdmEmail = selectedBdm ? selectedBdm.getAttribute('data-email') || '' : '';
+
+    const invoiceNo = document.getElementById('var_inv_invoiceNo').value;
+    const amount = parseFloat(document.getElementById('var_inv_amount').value);
+    const invoiceDate = document.getElementById('var_inv_invoiceDate').value;
+    const paymentDueDate = document.getElementById('var_inv_paymentDueDate').value;
+    const paymentTerms = document.getElementById('var_inv_paymentTerms').value;
+    const milestoneDescription = document.getElementById('var_inv_description').value;
+
+    if (!projectId || !invoiceNo || !amount || !invoiceDate || !paymentDueDate || !bdmUid) {
+        alert('Please fill out all required fields (*)');
+        hideLoading();
+        return;
+    }
+
+    try {
+        const response = await apiCall('payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                projectId,
+                invoiceNo,
+                invoiceDate,
+                amount,
+                paymentDueDate,
+                paymentTerms,
+                milestoneDescription,
+                bdmUid,
+                bdmName,
+                bdmEmail,
+                invoiceType: 'variation',
+                variationId,
+                variationCode
+            })
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to create variation invoice');
+        }
+
+        showNotification('Variation invoice created! BDM has been notified.', 'success');
+        closeModal();
+        showPayments();
+    } catch (error) {
+        alert(`Error creating variation invoice: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Legacy create invoice modal - redirects to new modal.
+ */
+async function showCreateInvoiceModal(projectId, proposalId) {
+    showCreateInvoiceModalNew(projectId);
+}
+
+/**
+ * Legacy create invoice action - handled by new flow.
+ */
+async function createInvoiceAction(event) {
+    event.preventDefault();
+    // Redirect to new flow
+    alert('Please use the new invoice creation form.');
+}
+
+/**
  * Shows a read-only modal with invoice details.
  */
 async function viewPayment(paymentId) {
     try {
         showLoading();
-        const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`); // Use 'payments' endpoint
+        const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`);
         if (!success || !invoice) {
             throw new Error('Failed to load invoice details');
         }
         hideLoading();
-        
-        const statusClass = (invoice.status || 'draft').toLowerCase().replace(/ /g, '-');
+
+        const statusClass = (invoice.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = invoice.variationId ? `<span class="proposal-status status-pending" style="margin-left:8px;">VARIATION: ${invoice.variationCode || 'N/A'}</span>` : '';
 
         const modalHtml = `
             <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
                 <div class="modal-content" style="max-width: 800px;">
                     <div class="modal-header">
                         <div>
-                            <h2>Invoice #${invoice.invoiceNumber}</h2>
-                            <div class="subtitle">Project: ${invoice.projectName}</div>
+                            <h2>Invoice #${invoice.invoiceNo || 'N/A'} ${isVariation}</h2>
+                            <div class="subtitle">Project: ${invoice.projectName || 'N/A'}</div>
                         </div>
                         <span class="close-modal" onclick="closeModal()">&times;</span>
                     </div>
@@ -13949,35 +14299,76 @@ async function viewPayment(paymentId) {
                         <div style="margin-bottom: 2rem;">
                             <strong>Status:</strong>
                             <span class="proposal-status status-${statusClass}">
-                                ${invoice.status}
+                                ${invoice.paymentStatus || 'pending'}
                             </span>
                         </div>
-                        
+
                         <div class="allocation-details-section">
                             <h3>Invoice Details</h3>
-                            <div class="details-grid">
+                            <div class="details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                                 <div class="detail-item">
                                     <label>Client:</label>
-                                    <span class="detail-value">${invoice.clientCompany}</span>
+                                    <span class="detail-value">${invoice.clientCompany || 'N/A'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <label>Amount:</label>
-                                    <span class="detail-value">${invoice.currency} ${invoice.amount}</span>
+                                    <label>Project Code:</label>
+                                    <span class="detail-value">${invoice.projectCode || 'N/A'}</span>
                                 </div>
                                 <div class="detail-item">
-                                    <label>Submitted Date:</label>
-                                    <span class="detail-value">${formatDate(invoice.createdAt)}</span>
+                                    <label>Invoice Amount:</label>
+                                    <span class="detail-value">${invoice.currency || 'USD'} ${parseFloat(invoice.invoiceAmount || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Quote Value:</label>
+                                    <span class="detail-value">${invoice.currency || 'USD'} ${parseFloat(invoice.quoteValue || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Invoice Date:</label>
+                                    <span class="detail-value">${formatDate(invoice.invoiceDate)}</span>
                                 </div>
                                 <div class="detail-item">
                                     <label>Due Date:</label>
-                                    <span class="detail-value">${formatDate(invoice.dueDate)}</span>
+                                    <span class="detail-value">${formatDate(invoice.paymentDueDate)}</span>
                                 </div>
-                                <div class="detail-item highlight" style="grid-column: span 2;">
-                                    <label>Notes:</label>
-                                    <p class="detail-value" style="white-space: pre-wrap;">${invoice.notes || 'No notes'}</p>
+                                <div class="detail-item">
+                                    <label>Payment Terms:</label>
+                                    <span class="detail-value">${invoice.paymentTerms || 'N/A'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Balance Outstanding:</label>
+                                    <span class="detail-value">${invoice.currency || 'USD'} ${parseFloat(invoice.balanceOutstanding || 0).toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- BDM Info Section -->
+                        <div class="allocation-details-section" style="margin-top:1.5rem;">
+                            <h3>BDM Information</h3>
+                            <div class="details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                                <div class="detail-item">
+                                    <label>BDM Name:</label>
+                                    <span class="detail-value">${invoice.bdmName || 'Not Assigned'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>BDM Email:</label>
+                                    <span class="detail-value">${invoice.bdmEmail || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${invoice.milestoneDescription ? `
+                        <div class="allocation-details-section" style="margin-top:1.5rem;">
+                            <h3>Description / Notes</h3>
+                            <p style="white-space:pre-wrap;">${invoice.milestoneDescription}</p>
+                        </div>
+                        ` : ''}
+
+                        ${invoice.remarks ? `
+                        <div class="allocation-details-section" style="margin-top:1.5rem;">
+                            <h3>Remarks</h3>
+                            <p style="white-space:pre-wrap;">${invoice.remarks}</p>
+                        </div>
+                        ` : ''}
                     </div>
                     <div class="modal-footer">
                         <button type="button" onclick="closeModal()" class="btn btn-outline">Close</button>
@@ -14005,26 +14396,33 @@ async function showUpdatePaymentModal(paymentId) {
         const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`);
         if (!success || !invoice) throw new Error('Failed to load invoice');
         hideLoading();
-        
-        closeModal(); // Close the view modal if open
 
+        closeModal();
+
+        const currentStatus = invoice.paymentStatus || 'pending';
         const modalHtml = `
            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
                 <div class="modal-content" style="max-width: 500px;">
                     <div class="modal-header">
                         <h2>Update Payment Status</h2>
-                        <div class="subtitle">Invoice #${invoice.invoiceNumber}</div>
+                        <div class="subtitle">Invoice #${invoice.invoiceNo || 'N/A'} | ${invoice.projectName || ''}</div>
                     </div>
                     <form id="updatePaymentForm" class="modal-form">
                         <div class="modal-body">
+                            <div style="background:#f1f5f9;padding:1rem;border-radius:8px;margin-bottom:1rem;">
+                                <strong>Current Status:</strong> <span class="proposal-status status-${currentStatus}">${currentStatus}</span><br>
+                                <strong>Amount:</strong> ${invoice.currency || 'USD'} ${parseFloat(invoice.invoiceAmount || 0).toLocaleString()}<br>
+                                <strong>BDM:</strong> ${invoice.bdmName || 'N/A'}
+                            </div>
                             <div class="form-group">
-                                <label>Status</label>
+                                <label>New Status</label>
                                 <select id="paymentStatus" class="form-control">
-                                    <option value="Submitted" ${invoice.status === 'Submitted' ? 'selected' : ''}>Submitted</option>
-                                    <option value="Paid" ${invoice.status === 'Paid' ? 'selected' : ''}>Paid</option>
-                                    <option value="Partially Paid" ${invoice.status === 'Partially Paid' ? 'selected' : ''}>Partially Paid</option>
-                                    <option value="Overdue" ${invoice.status === 'Overdue' ? 'selected' : ''}>Overdue</option>
-                                    <option value="Cancelled" ${invoice.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                    <option value="Pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="Submitted" ${currentStatus === 'submitted' ? 'selected' : ''}>Submitted</option>
+                                    <option value="Paid" ${currentStatus === 'fully_paid' ? 'selected' : ''}>Paid</option>
+                                    <option value="Partially Paid" ${currentStatus === 'partially_paid' ? 'selected' : ''}>Partially Paid</option>
+                                    <option value="Overdue" ${currentStatus === 'delayed' ? 'selected' : ''}>Overdue</option>
+                                    <option value="Cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -14062,26 +14460,21 @@ async function updatePaymentAction(paymentId) {
 
     try {
         showLoading();
-        // We are PUT-ing to the /api/payments?id=... endpoint
-        // This assumes your backend has a PUT handler at this endpoint.
         const response = await apiCall(`payments?id=${paymentId}`, {
             method: 'PUT',
             body: JSON.stringify({
                 status: newStatus,
-                notes: notes // This should append notes, not overwrite
+                notes: notes
             })
         });
 
         if (!response.success) {
-            console.warn('Payment update API call failed. This requires a PUT handler on your backend /api/payments endpoint.');
-            throw new Error(response.error || 'Failed to update payment. (Check backend PUT handler)');
+            throw new Error(response.error || 'Failed to update payment status');
         }
-        
-        showNotification('Payment status updated!', 'success');
+
+        showNotification('Payment status updated! BDM has been notified.', 'success');
         closeModal();
-        showPayments(); // Refresh view
-        
-        // TODO: Add notifications for 'Paid' status to BDM/COO/Director
+        showPayments();
 
     } catch (error) {
         alert(`Error: ${error.message}`);

@@ -6769,7 +6769,7 @@ body.is-ios .nav-menu {
             setDisplay('newProposalNavItem', isBDM);
             setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR && !isDC); // Analytics for BDM/COO/Director
             setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR && !isDC);
-            setDisplay('settingsNavItem', roleForCheck === 'director');
+            setDisplay('settingsNavItem', roleForCheck === 'director' || userEmail === 'sabin@edanbrook.com');
             
             // Designer Specifics: Hide Dashboard & Proposals, Show specific tools
             setDisplay('dashboardNavItem', false); // Dashboard hidden for all users // Hide for Designer & Mgmt (Mgmt has Executive Dash)
@@ -14525,7 +14525,162 @@ async function markProjectComplete(projectId) {
 
         function showWorkflow() { /* ... (Unchanged) ... */ }
         function showReports() { /* ... (Unchanged) ... */ }
-        function showSettings() { /* ... (Unchanged) ... */ }
+        function showSettings() {
+            setActiveNav('nav-settings');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            main.innerHTML = `
+                <div class="page-header">
+                    <h2>Admin Settings</h2>
+                    <div class="subtitle">Director-only tools and configuration.</div>
+                </div>
+
+                <!-- UID Migration Tool -->
+                <div class="card" style="margin-bottom:2rem;">
+                    <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                        <h3 style="margin:0;">Migrate User UID (Fix Re-registered User)</h3>
+                        <p style="margin:0.5rem 0 0;color:#64748b;font-size:0.85rem;">
+                            Use this when a user was deleted and re-registered. Just enter their email and the system will automatically find the old and new UIDs and transfer all documents.
+                        </p>
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
+                            <strong>Just enter the user's email below.</strong> The system will automatically detect the old UID (from orphaned proposals) and the new UID (from the re-registered account) and migrate everything.
+                        </div>
+                        <form id="uidMigrationForm" onsubmit="runUidMigration(event)">
+                            <div class="form-group">
+                                <label>User Email *</label>
+                                <input type="email" id="migrate_email" class="form-control" placeholder="e.g., sabin@edanbrook.com" required>
+                            </div>
+
+                            <details style="margin-bottom:1rem;">
+                                <summary style="cursor:pointer;color:#64748b;font-size:0.85rem;">Advanced: Enter UIDs manually (optional)</summary>
+                                <div style="padding-top:0.5rem;">
+                                    <div class="form-group">
+                                        <label>Old UID (optional - auto-detected if blank)</label>
+                                        <input type="text" id="migrate_oldUid" class="form-control" placeholder="Leave blank for auto-detect">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>New UID (optional - auto-detected if blank)</label>
+                                        <input type="text" id="migrate_newUid" class="form-control" placeholder="Leave blank for auto-detect">
+                                    </div>
+                                </div>
+                            </details>
+
+                            <button type="submit" class="btn btn-primary" id="migrateBtnSubmit">Migrate All Documents</button>
+                        </form>
+                        <div id="migrationResult" style="margin-top:1rem;"></div>
+                    </div>
+                </div>
+
+                <!-- User Management Section -->
+                <div class="card">
+                    <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                        <h3 style="margin:0;">User Management</h3>
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <button class="btn btn-outline" onclick="loadUsersList()">Load All Users</button>
+                        <div id="usersListContainer" style="margin-top:1rem;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function runUidMigration(event) {
+            event.preventDefault();
+            const email = document.getElementById('migrate_email').value.trim();
+            const oldUid = document.getElementById('migrate_oldUid').value.trim();
+            const newUid = document.getElementById('migrate_newUid').value.trim();
+            const resultDiv = document.getElementById('migrationResult');
+            const submitBtn = document.getElementById('migrateBtnSubmit');
+
+            if (!email && (!oldUid || !newUid)) {
+                resultDiv.innerHTML = '<div style="color:#ef4444;">Please enter the user email, or both UIDs manually.</div>';
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to migrate all documents for ${email || 'this user'}? This will transfer all proposals, projects, payments etc. to the new account.`)) {
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Migrating... (this may take a moment)';
+            resultDiv.innerHTML = '<div style="color:#2563eb;">Searching for old/new UIDs and migrating all documents, please wait...</div>';
+
+            try {
+                const payload = {};
+                if (email) payload.email = email;
+                if (oldUid) payload.oldUid = oldUid;
+                if (newUid) payload.newUid = newUid;
+
+                const response = await apiCall('users', {
+                    method: 'PATCH',
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.success) {
+                    throw new Error(response.error || 'Migration failed');
+                }
+
+                resultDiv.innerHTML = `
+                    <div style="background:#d1fae5;border:1px solid #10b981;border-radius:8px;padding:1rem;">
+                        <strong style="color:#059669;">Migration Successful!</strong><br>
+                        <span><strong>${response.migratedCount}</strong> documents were updated.</span><br>
+                        ${response.oldUid ? `<span style="font-size:0.8rem;color:#064e3b;">Old UID: <code>${response.oldUid}</code></span><br>` : ''}
+                        ${response.newUid ? `<span style="font-size:0.8rem;color:#064e3b;">New UID: <code>${response.newUid}</code></span><br>` : ''}
+                        <br><strong>Migrated:</strong>
+                        <ul style="margin:0.5rem 0;padding-left:1.5rem;max-height:300px;overflow-y:auto;">
+                            ${(response.details || []).map(d => '<li>' + d + '</li>').join('')}
+                        </ul>
+                        <p style="margin-top:0.5rem;color:#064e3b;font-weight:600;">The user can now log in and see all their old proposals, projects, and payments.</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:1rem;">
+                        <strong style="color:#dc2626;">Migration Failed</strong><br>
+                        <span>${error.message}</span>
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Migrate Documents';
+            }
+        }
+
+        async function loadUsersList() {
+            const container = document.getElementById('usersListContainer');
+            container.innerHTML = '<p>Loading users...</p>';
+            try {
+                const response = await apiCall('users?includeInactive=true');
+                if (!response.success) throw new Error(response.error);
+                const users = response.data || [];
+                if (users.length === 0) {
+                    container.innerHTML = '<p>No users found.</p>';
+                    return;
+                }
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>UID</th></tr>
+                        </thead>
+                        <tbody>
+                            ${users.map(u => `
+                                <tr>
+                                    <td>${u.name || 'N/A'}</td>
+                                    <td>${u.email || 'N/A'}</td>
+                                    <td>${u.role || 'N/A'}</td>
+                                    <td><span class="proposal-status status-${u.status || 'active'}">${u.status || 'active'}</span></td>
+                                    <td style="font-size:0.75rem;font-family:monospace;word-break:break-all;">${u.uid || 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                container.innerHTML = `<p style="color:#ef4444;">Error: ${error.message}</p>`;
+            }
+        }
         
         // REPLACED IMPLEMENTATION
         async function showActivities() {

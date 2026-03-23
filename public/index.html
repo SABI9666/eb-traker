@@ -13642,9 +13642,8 @@ async function showPayments() {
             const projects = projectsResponse.success ? projectsResponse.data : [];
             const approvedVariations = variationsResponse.success ? variationsResponse.data : [];
 
-            // 2. Get projects that don't have invoices yet
-            const invoicedProjectIds = new Set(allInvoices.filter(inv => !inv.variationId).map(inv => inv.projectId));
-            const projectsToInvoice = projects.filter(p => !invoicedProjectIds.has(p.id));
+            // 2. Show ALL projects for invoicing (allow multiple invoices per project)
+            const projectsToInvoice = projects;
 
             // 3. Get approved variations that don't have invoices yet
             const invoicedVariationIds = new Set(allInvoices.filter(inv => inv.variationId).map(inv => inv.variationId));
@@ -13707,20 +13706,31 @@ function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variatio
     const totalAmount = invoices.reduce((sum, i) => sum + (parseFloat(i.invoiceAmount) || 0), 0);
     const paidAmount = invoices.filter(i => i.paymentStatus === 'fully_paid').reduce((sum, i) => sum + (parseFloat(i.invoiceAmount) || 0), 0);
 
-    // Projects to invoice HTML
-    const projectsToInvoiceHtml = projectsToInvoice.length > 0 ? projectsToInvoice.map(p => `
+    // Projects to invoice HTML - show existing invoice count per project
+    const invoiceCountByProject = {};
+    invoices.forEach(inv => {
+        if (!inv.variationId && inv.projectId) {
+            invoiceCountByProject[inv.projectId] = (invoiceCountByProject[inv.projectId] || 0) + 1;
+        }
+    });
+
+    const projectsToInvoiceHtml = projectsToInvoice.length > 0 ? projectsToInvoice.map(p => {
+        const existingCount = invoiceCountByProject[p.id] || 0;
+        const countBadge = existingCount > 0 ? `<span style="background:#e0f2fe;color:#1e40af;padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:600;margin-left:6px;">${existingCount} invoice${existingCount > 1 ? 's' : ''}</span>` : '';
+        return `
         <tr>
-            <td><strong>${p.projectName || 'N/A'}</strong></td>
+            <td><strong>${p.projectName || 'N/A'}</strong>${countBadge}</td>
             <td>${p.clientCompany || 'N/A'}</td>
             <td>${p.projectCode || 'N/A'}</td>
             <td><span class="proposal-status status-${(p.status || 'active').toLowerCase()}">${p.status || 'active'}</span></td>
             <td>
                 <button class="btn btn-success btn-sm" onclick="showCreateInvoiceModalNew('${p.id}')">
-                    Create Invoice
+                    + Add Invoice
                 </button>
             </td>
         </tr>
-    `).join('') : '<tr><td colspan="5" class="text-center">No projects pending invoicing.</td></tr>';
+        `;
+    }).join('') : '<tr><td colspan="5" class="text-center">No projects available.</td></tr>';
 
     // Variations to invoice HTML
     const variationsHtml = variationsToInvoice.length > 0 ? variationsToInvoice.map(v => `
@@ -13805,7 +13815,7 @@ function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variatio
         <!-- Projects Ready for Invoicing -->
         <div class="card" style="margin-bottom:2rem;">
             <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
-                <h3 style="margin:0;">Projects Ready for Invoicing</h3>
+                <h3 style="margin:0;">Projects</h3>
             </div>
             <div style="overflow-x:auto;">
                 <table class="data-table">
@@ -14100,9 +14110,28 @@ async function showCreateInvoiceModalNew(preselectedProjectId) {
                                     <input type="text" id="inv_invoiceNo_new" class="form-control" placeholder="e.g., INV-2026-001" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (USD) <span style="color:#ef4444;">*</span></label>
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Currency <span style="color:#ef4444;">*</span></label>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <select id="inv_currency_new" class="form-control" required onchange="onCurrencyChange()" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;flex:1;">
+                                            <option value="USD">🇺🇸 USD - US Dollar</option>
+                                            <option value="GBP">🇬🇧 GBP - British Pound</option>
+                                            <option value="CAD">🇨🇦 CAD - Canadian Dollar</option>
+                                            <option value="AUD">🇦🇺 AUD - Australian Dollar</option>
+                                            <option value="EUR">🇪🇺 EUR - Euro</option>
+                                            <option value="AED">🇦🇪 AED - UAE Dirham</option>
+                                            <option value="SAR">🇸🇦 SAR - Saudi Riyal</option>
+                                            <option value="OTHER">+ Other</option>
+                                        </select>
+                                    </div>
+                                    <input type="text" id="inv_currency_custom" class="form-control" placeholder="Enter currency code (e.g., INR, SGD)" maxlength="5" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;margin-top:0.5rem;display:none;">
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount <span style="color:#ef4444;">*</span></label>
                                     <div style="position:relative;">
-                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <span id="inv_currency_symbol" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
                                         <input type="number" id="inv_amount_new" class="form-control" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
                                     </div>
                                 </div>
@@ -14191,11 +14220,49 @@ function onProjectSelectChange() {
             const bdmSelect = document.getElementById('inv_bdmUid');
             if (bdmSelect) bdmSelect.value = project.bdmUid;
         }
+        // Auto-set currency from project
+        const currencySelect = document.getElementById('inv_currency_new');
+        if (currencySelect && project.currency) {
+            const projectCurrency = project.currency.toUpperCase();
+            const option = Array.from(currencySelect.options).find(o => o.value === projectCurrency);
+            if (option) {
+                currencySelect.value = projectCurrency;
+            } else {
+                currencySelect.value = 'OTHER';
+                const customInput = document.getElementById('inv_currency_custom');
+                if (customInput) {
+                    customInput.style.display = 'block';
+                    customInput.value = projectCurrency;
+                }
+            }
+            onCurrencyChange();
+        }
         // Auto-fill amount with quote value if available
         const amountField = document.getElementById('inv_amount_new');
         if (amountField && project.quoteValue && !amountField.value) {
             amountField.value = project.quoteValue;
         }
+    }
+}
+
+/**
+ * Handles currency selection change - shows/hides custom input and updates symbol.
+ */
+function onCurrencyChange() {
+    const select = document.getElementById('inv_currency_new');
+    const customInput = document.getElementById('inv_currency_custom');
+    const symbolEl = document.getElementById('inv_currency_symbol');
+    if (!select) return;
+
+    const val = select.value;
+    if (customInput) {
+        customInput.style.display = val === 'OTHER' ? 'block' : 'none';
+        if (val === 'OTHER') customInput.focus();
+    }
+
+    const symbols = { USD: '$', GBP: '£', CAD: 'C$', AUD: 'A$', EUR: '€', AED: 'د.إ', SAR: '﷼' };
+    if (symbolEl) {
+        symbolEl.textContent = symbols[val] || (val === 'OTHER' ? '$' : val);
     }
 }
 
@@ -14220,6 +14287,19 @@ async function createInvoiceActionNew(event) {
     const paymentTerms = document.getElementById('inv_paymentTerms_new').value;
     const milestoneDescription = document.getElementById('inv_milestoneDescription_new').value;
 
+    // Get currency
+    const currencySelect = document.getElementById('inv_currency_new');
+    let currency = currencySelect ? currencySelect.value : 'USD';
+    if (currency === 'OTHER') {
+        const customCurrency = document.getElementById('inv_currency_custom');
+        currency = customCurrency ? customCurrency.value.trim().toUpperCase() : 'USD';
+        if (!currency) {
+            alert('Please enter a currency code.');
+            hideLoading();
+            return;
+        }
+    }
+
     if (!projectId || !invoiceNo || !amount || !invoiceDate || !paymentDueDate || !bdmUid) {
         alert('Please fill out all required fields (*)');
         hideLoading();
@@ -14234,6 +14314,7 @@ async function createInvoiceActionNew(event) {
                 invoiceNo,
                 invoiceDate,
                 amount,
+                currency,
                 paymentDueDate,
                 paymentTerms,
                 milestoneDescription,
@@ -14356,7 +14437,24 @@ async function showCreateVariationInvoiceModal(variationId, parentProjectId) {
                                     <input type="text" id="var_inv_invoiceNo" class="form-control" placeholder="e.g., VAR-INV-001" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (USD) <span style="color:#ef4444;">*</span></label>
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Currency <span style="color:#ef4444;">*</span></label>
+                                    <select id="var_inv_currency" class="form-control" onchange="(function(){ const s=document.getElementById('var_inv_currency'); const c=document.getElementById('var_inv_currency_custom'); if(c) c.style.display=s.value==='OTHER'?'block':'none'; })()" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
+                                        <option value="USD" ${(project.currency || 'USD') === 'USD' ? 'selected' : ''}>🇺🇸 USD</option>
+                                        <option value="GBP" ${project.currency === 'GBP' ? 'selected' : ''}>🇬🇧 GBP</option>
+                                        <option value="CAD" ${project.currency === 'CAD' ? 'selected' : ''}>🇨🇦 CAD</option>
+                                        <option value="AUD" ${project.currency === 'AUD' ? 'selected' : ''}>🇦🇺 AUD</option>
+                                        <option value="EUR" ${project.currency === 'EUR' ? 'selected' : ''}>🇪🇺 EUR</option>
+                                        <option value="AED" ${project.currency === 'AED' ? 'selected' : ''}>🇦🇪 AED</option>
+                                        <option value="SAR" ${project.currency === 'SAR' ? 'selected' : ''}>🇸🇦 SAR</option>
+                                        <option value="OTHER">+ Other</option>
+                                    </select>
+                                    <input type="text" id="var_inv_currency_custom" class="form-control" placeholder="Enter currency code" maxlength="5" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;margin-top:0.5rem;display:none;">
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount <span style="color:#ef4444;">*</span></label>
                                     <div style="position:relative;">
                                         <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
                                         <input type="number" id="var_inv_amount" class="form-control" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
@@ -14436,6 +14534,14 @@ async function createVariationInvoiceAction(event) {
     const paymentTerms = document.getElementById('var_inv_paymentTerms').value;
     const milestoneDescription = document.getElementById('var_inv_description').value;
 
+    // Get currency
+    const varCurrencySelect = document.getElementById('var_inv_currency');
+    let varCurrency = varCurrencySelect ? varCurrencySelect.value : 'USD';
+    if (varCurrency === 'OTHER') {
+        const customCurrency = document.getElementById('var_inv_currency_custom');
+        varCurrency = customCurrency ? customCurrency.value.trim().toUpperCase() : 'USD';
+    }
+
     if (!projectId || !invoiceNo || !amount || !invoiceDate || !paymentDueDate || !bdmUid) {
         alert('Please fill out all required fields (*)');
         hideLoading();
@@ -14450,6 +14556,7 @@ async function createVariationInvoiceAction(event) {
                 invoiceNo,
                 invoiceDate,
                 amount,
+                currency: varCurrency,
                 paymentDueDate,
                 paymentTerms,
                 milestoneDescription,
@@ -14764,9 +14871,27 @@ async function showEditInvoiceModal(paymentId) {
                                     <input type="text" id="edit_invoiceNo" class="form-control" value="${invoice.invoiceNo || ''}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
-                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (${invoice.currency || 'USD'}) <span style="color:#ef4444;">*</span></label>
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Currency <span style="color:#ef4444;">*</span></label>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <select id="edit_currency" class="form-control" onchange="onEditCurrencyChange()" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;flex:1;">
+                                            <option value="USD" ${(invoice.currency || 'USD') === 'USD' ? 'selected' : ''}>🇺🇸 USD</option>
+                                            <option value="GBP" ${invoice.currency === 'GBP' ? 'selected' : ''}>🇬🇧 GBP</option>
+                                            <option value="CAD" ${invoice.currency === 'CAD' ? 'selected' : ''}>🇨🇦 CAD</option>
+                                            <option value="AUD" ${invoice.currency === 'AUD' ? 'selected' : ''}>🇦🇺 AUD</option>
+                                            <option value="EUR" ${invoice.currency === 'EUR' ? 'selected' : ''}>🇪🇺 EUR</option>
+                                            <option value="AED" ${invoice.currency === 'AED' ? 'selected' : ''}>🇦🇪 AED</option>
+                                            <option value="SAR" ${invoice.currency === 'SAR' ? 'selected' : ''}>🇸🇦 SAR</option>
+                                            <option value="OTHER" ${!['USD','GBP','CAD','AUD','EUR','AED','SAR'].includes(invoice.currency || 'USD') ? 'selected' : ''}>+ Other</option>
+                                        </select>
+                                    </div>
+                                    <input type="text" id="edit_currency_custom" class="form-control" value="${!['USD','GBP','CAD','AUD','EUR','AED','SAR'].includes(invoice.currency || 'USD') ? (invoice.currency || '') : ''}" placeholder="Enter currency code" maxlength="5" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;margin-top:0.5rem;display:${!['USD','GBP','CAD','AUD','EUR','AED','SAR'].includes(invoice.currency || 'USD') ? 'block' : 'none'};">
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount <span style="color:#ef4444;">*</span></label>
                                     <div style="position:relative;">
-                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <span id="edit_currency_symbol" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">${{USD:'$',GBP:'£',CAD:'C$',AUD:'A$',EUR:'€',AED:'د.إ',SAR:'﷼'}[invoice.currency] || '$'}</span>
                                         <input type="number" id="edit_invoiceAmount" class="form-control" value="${invoice.invoiceAmount || 0}" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
                                     </div>
                                 </div>
@@ -14830,6 +14955,27 @@ async function showEditInvoiceModal(paymentId) {
 /**
  * Saves the edited invoice data.
  */
+/**
+ * Handles currency change in the edit invoice modal.
+ */
+function onEditCurrencyChange() {
+    const select = document.getElementById('edit_currency');
+    const customInput = document.getElementById('edit_currency_custom');
+    const symbolEl = document.getElementById('edit_currency_symbol');
+    if (!select) return;
+
+    const val = select.value;
+    if (customInput) {
+        customInput.style.display = val === 'OTHER' ? 'block' : 'none';
+        if (val === 'OTHER') customInput.focus();
+    }
+
+    const symbols = { USD: '$', GBP: '£', CAD: 'C$', AUD: 'A$', EUR: '€', AED: 'د.إ', SAR: '﷼' };
+    if (symbolEl) {
+        symbolEl.textContent = symbols[val] || (val === 'OTHER' ? '$' : val);
+    }
+}
+
 async function saveEditedInvoice(paymentId) {
     const invoiceNo = document.getElementById('edit_invoiceNo').value;
     const invoiceAmount = document.getElementById('edit_invoiceAmount').value;
@@ -14838,6 +14984,14 @@ async function saveEditedInvoice(paymentId) {
     const paymentTerms = document.getElementById('edit_paymentTerms').value;
     const milestoneDescription = document.getElementById('edit_milestoneDescription').value;
     const remarks = document.getElementById('edit_remarks').value;
+
+    // Get currency
+    const currencySelect = document.getElementById('edit_currency');
+    let currency = currencySelect ? currencySelect.value : 'USD';
+    if (currency === 'OTHER') {
+        const customCurrency = document.getElementById('edit_currency_custom');
+        currency = customCurrency ? customCurrency.value.trim().toUpperCase() : 'USD';
+    }
 
     if (!invoiceNo || !invoiceAmount) {
         alert('Invoice number and amount are required.');
@@ -14853,6 +15007,7 @@ async function saveEditedInvoice(paymentId) {
                 data: {
                     invoiceNo,
                     invoiceAmount: parseFloat(invoiceAmount),
+                    currency,
                     invoiceDate,
                     paymentDueDate,
                     paymentTerms,

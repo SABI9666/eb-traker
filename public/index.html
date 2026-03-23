@@ -13904,70 +13904,104 @@ async function showCreateInvoiceModalNew(preselectedProjectId) {
 
         const modalHtml = `
             <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content" style="max-width: 750px;">
-                    <div class="modal-header">
-                        <h2>Create New Invoice</h2>
-                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                <div class="modal-content" style="max-width: 780px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">📄</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Create New Invoice</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Fill in the details below to generate a new invoice</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
                     </div>
-                    <form id="createInvoiceFormNew" class="modal-form">
-                        <!-- Project Selection -->
-                        <div class="form-group">
-                            <label>Select Project *</label>
-                            <select id="inv_projectId_new" class="form-control" required onchange="onProjectSelectChange()">
-                                <option value="">-- Select a Project --</option>
-                                ${projectOptions}
-                            </select>
+                    <form id="createInvoiceFormNew" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+
+                        <!-- Section: Project & Assignment -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Project & Assignment</div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Select Project <span style="color:#ef4444;">*</span></label>
+                                <select id="inv_projectId_new" class="form-control" required onchange="onProjectSelectChange()" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;transition:border-color 0.2s;">
+                                    <option value="">-- Select a Project --</option>
+                                    ${projectOptions}
+                                </select>
+                            </div>
+
+                            <div id="inv_projectInfo" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);padding:0.85rem 1rem;border-radius:10px;margin-bottom:1rem;border-left:4px solid #2563eb;${preProject ? '' : 'display:none;'}">
+                                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                    <span style="font-size:0.75rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;">Project Details</span>
+                                </div>
+                                <div id="inv_projectInfoContent" style="font-size:0.85rem;color:#334155;">
+                                    ${preProject ? `<div style="display:flex;flex-wrap:wrap;gap:1rem;"><span><strong>Client:</strong> ${preProject.clientCompany || 'N/A'}</span><span><strong>Code:</strong> ${preProject.projectCode || 'N/A'}</span><span><strong>Value:</strong> ${preProject.currency || 'USD'} ${preProject.quoteValue || 'N/A'}</span></div>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Assign BDM <span style="color:#ef4444;">*</span></label>
+                                <select id="inv_bdmUid" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
+                                    <option value="">-- Select BDM --</option>
+                                    ${bdmOptions}
+                                </select>
+                            </div>
                         </div>
 
-                        <!-- Project Info (auto-populated) -->
-                        <div id="inv_projectInfo" style="background:#f1f5f9;padding:1rem;border-radius:8px;margin-bottom:1rem;${preProject ? '' : 'display:none;'}">
-                            <strong>Project Details:</strong>
-                            <div id="inv_projectInfoContent">
-                                ${preProject ? `Client: ${preProject.clientCompany || 'N/A'} | Code: ${preProject.projectCode || 'N/A'} | Value: ${preProject.currency || 'USD'} ${preProject.quoteValue || 'N/A'}` : ''}
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Invoice Details -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Invoice Details</div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Number <span style="color:#ef4444;">*</span></label>
+                                    <input type="text" id="inv_invoiceNo_new" class="form-control" placeholder="e.g., INV-2026-001" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (USD) <span style="color:#ef4444;">*</span></label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <input type="number" id="inv_amount_new" class="form-control" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="inv_invoiceDate_new" class="form-control" value="${new Date().toISOString().split('T')[0]}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Due Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="inv_paymentDueDate_new" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Terms</label>
+                                <input type="text" id="inv_paymentTerms_new" class="form-control" placeholder="e.g., Net 30, 50% advance" value="Net 30" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
                             </div>
                         </div>
 
-                        <!-- BDM Assignment -->
-                        <div class="form-group">
-                            <label>Assign BDM (Business Development Manager) *</label>
-                            <select id="inv_bdmUid" class="form-control" required>
-                                <option value="">-- Select BDM --</option>
-                                ${bdmOptions}
-                            </select>
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Additional Information -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Additional Information</div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Milestone / Description</label>
+                                <textarea id="inv_milestoneDescription_new" class="form-control" rows="3" placeholder="e.g., Phase 1 completion, Final delivery" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;"></textarea>
+                            </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Invoice Number *</label>
-                                <input type="text" id="inv_invoiceNo_new" class="form-control" placeholder="e.g., INV-2026-001" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Invoice Amount (USD) *</label>
-                                <input type="number" id="inv_amount_new" class="form-control" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Invoice Date *</label>
-                                <input type="date" id="inv_invoiceDate_new" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Payment Due Date *</label>
-                                <input type="date" id="inv_paymentDueDate_new" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Payment Terms</label>
-                            <input type="text" id="inv_paymentTerms_new" class="form-control" placeholder="e.g., Net 30, 50% advance" value="Net 30">
-                        </div>
-                        <div class="form-group">
-                            <label>Milestone / Description</label>
-                            <textarea id="inv_milestoneDescription_new" class="form-control" rows="3" placeholder="e.g., Phase 1 completion, Final delivery"></textarea>
-                        </div>
-
-                        <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:2rem;">
-                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Create Invoice & Notify BDM</button>
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Create Invoice</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -14010,7 +14044,7 @@ function onProjectSelectChange() {
     const project = window._invoiceProjects.find(p => p.id === projectId);
     if (project) {
         infoDiv.style.display = 'block';
-        infoContent.innerHTML = `Client: ${project.clientCompany || 'N/A'} | Code: ${project.projectCode || 'N/A'} | Value: ${project.currency || 'USD'} ${project.quoteValue || 'N/A'}`;
+        infoContent.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:1rem;"><span><strong>Client:</strong> ${project.clientCompany || 'N/A'}</span><span><strong>Code:</strong> ${project.projectCode || 'N/A'}</span><span><strong>Value:</strong> ${project.currency || 'USD'} ${project.quoteValue || 'N/A'}</span></div>`;
         // Auto-select BDM if the project has one
         if (project.bdmUid) {
             const bdmSelect = document.getElementById('inv_bdmUid');
@@ -14126,65 +14160,99 @@ async function showCreateVariationInvoiceModal(variationId, parentProjectId) {
 
         const modalHtml = `
             <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content" style="max-width: 700px;">
-                    <div class="modal-header">
-                        <h2>Create Variation Invoice</h2>
-                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                <div class="modal-content" style="max-width: 780px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">📋</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Create Variation Invoice</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Invoice for approved project variation</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
                     </div>
-                    <form id="createVariationInvoiceForm" class="modal-form">
+                    <form id="createVariationInvoiceForm" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
                         <input type="hidden" id="var_inv_variationId" value="${variationId}">
                         <input type="hidden" id="var_inv_projectId" value="${parentProjectId}">
                         <input type="hidden" id="var_inv_variationCode" value="${variation.variationCode || ''}">
 
-                        <div style="background:#f1f5f9;padding:1rem;border-radius:8px;margin-bottom:1rem;">
-                            <strong>Variation Details:</strong><br>
-                            <span>Code: ${variation.variationCode || 'N/A'}</span> |
-                            <span>Project: ${variation.parentProjectName || project.projectName || 'N/A'}</span> |
-                            <span>Client: ${variation.clientCompany || project.clientCompany || 'N/A'}</span> |
-                            <span>Est. Hours: ${variation.estimatedHours || 0}</span><br>
-                            <span>Scope: ${variation.scopeDescription || 'N/A'}</span>
+                        <!-- Section: Variation Details -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Variation Details</div>
+                            <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);padding:0.85rem 1rem;border-radius:10px;border-left:4px solid #2563eb;">
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;font-size:0.85rem;color:#334155;">
+                                    <span><strong>Code:</strong> ${variation.variationCode || 'N/A'}</span>
+                                    <span><strong>Project:</strong> ${variation.parentProjectName || project.projectName || 'N/A'}</span>
+                                    <span><strong>Client:</strong> ${variation.clientCompany || project.clientCompany || 'N/A'}</span>
+                                    <span><strong>Est. Hours:</strong> ${variation.estimatedHours || 0}</span>
+                                </div>
+                                <div style="font-size:0.85rem;color:#334155;margin-top:0.5rem;"><strong>Scope:</strong> ${variation.scopeDescription || 'N/A'}</div>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label>Assign BDM *</label>
-                            <select id="var_inv_bdmUid" class="form-control" required>
-                                <option value="">-- Select BDM --</option>
-                                ${bdmOptions}
-                            </select>
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Assignment & Invoice -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Invoice Details</div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Assign BDM <span style="color:#ef4444;">*</span></label>
+                                <select id="var_inv_bdmUid" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
+                                    <option value="">-- Select BDM --</option>
+                                    ${bdmOptions}
+                                </select>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Number <span style="color:#ef4444;">*</span></label>
+                                    <input type="text" id="var_inv_invoiceNo" class="form-control" placeholder="e.g., VAR-INV-001" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (USD) <span style="color:#ef4444;">*</span></label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <input type="number" id="var_inv_amount" class="form-control" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="var_inv_invoiceDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Due Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="var_inv_paymentDueDate" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Terms</label>
+                                <input type="text" id="var_inv_paymentTerms" class="form-control" placeholder="e.g., Net 30" value="Net 30" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                            </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Invoice Number *</label>
-                                <input type="text" id="var_inv_invoiceNo" class="form-control" placeholder="e.g., VAR-INV-001" required>
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Notes -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Additional Information</div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Description / Notes</label>
+                                <textarea id="var_inv_description" class="form-control" rows="3" placeholder="Variation invoice notes..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;"></textarea>
                             </div>
-                            <div class="form-group">
-                                <label>Invoice Amount (USD) *</label>
-                                <input type="number" id="var_inv_amount" class="form-control" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Invoice Date *</label>
-                                <input type="date" id="var_inv_invoiceDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Payment Due Date *</label>
-                                <input type="date" id="var_inv_paymentDueDate" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Payment Terms</label>
-                            <input type="text" id="var_inv_paymentTerms" class="form-control" placeholder="e.g., Net 30" value="Net 30">
-                        </div>
-                        <div class="form-group">
-                            <label>Description / Notes</label>
-                            <textarea id="var_inv_description" class="form-control" rows="3" placeholder="Variation invoice notes..."></textarea>
                         </div>
 
-                        <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:2rem;">
-                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Create Variation Invoice</button>
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Create Variation Invoice</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -14295,18 +14363,21 @@ async function viewPayment(paymentId) {
 
         const modalHtml = `
             <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content" style="max-width: 800px;">
-                    <div class="modal-header">
-                        <div>
-                            <h2>Invoice #${invoice.invoiceNo || 'N/A'} ${isVariation}</h2>
-                            <div class="subtitle">Project: ${invoice.projectName || 'N/A'}</div>
+                <div class="modal-content" style="max-width: 800px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">📄</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Invoice #${invoice.invoiceNo || 'N/A'} ${isVariation}</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Project: ${invoice.projectName || 'N/A'}</p>
+                            </div>
                         </div>
-                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
                     </div>
-                    <div class="modal-body" style="padding: 2rem;">
-                        <div style="margin-bottom: 2rem;">
+                    <div class="modal-body" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+                        <div style="margin-bottom: 1.5rem;">
                             <strong>Status:</strong>
-                            <span class="proposal-status status-${statusClass}">
+                            <span class="proposal-status status-${statusClass}" style="margin-left:4px;">
                                 ${invoice.paymentStatus || 'pending'}
                             </span>
                         </div>
@@ -14410,21 +14481,34 @@ async function showUpdatePaymentModal(paymentId) {
         const currentStatus = invoice.paymentStatus || 'pending';
         const modalHtml = `
            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content" style="max-width: 500px;">
-                    <div class="modal-header">
-                        <h2>Update Payment Status</h2>
-                        <div class="subtitle">Invoice #${invoice.invoiceNo || 'N/A'} | ${invoice.projectName || ''}</div>
-                    </div>
-                    <form id="updatePaymentForm" class="modal-form">
-                        <div class="modal-body">
-                            <div style="background:#f1f5f9;padding:1rem;border-radius:8px;margin-bottom:1rem;">
-                                <strong>Current Status:</strong> <span class="proposal-status status-${currentStatus}">${currentStatus}</span><br>
-                                <strong>Amount:</strong> ${invoice.currency || 'USD'} ${parseFloat(invoice.invoiceAmount || 0).toLocaleString()}<br>
-                                <strong>BDM:</strong> ${invoice.bdmName || 'N/A'}
+                <div class="modal-content" style="max-width: 580px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">🔄</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Update Payment Status</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Invoice #${invoice.invoiceNo || 'N/A'} &bull; ${invoice.projectName || ''}</p>
                             </div>
-                            <div class="form-group">
-                                <label>New Status</label>
-                                <select id="paymentStatus" class="form-control">
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <form id="updatePaymentForm" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+
+                        <!-- Current Info Card -->
+                        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);padding:0.85rem 1rem;border-radius:10px;margin-bottom:1.5rem;border-left:4px solid #2563eb;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;font-size:0.85rem;color:#334155;">
+                                <span><strong>Current Status:</strong> <span class="proposal-status status-${currentStatus}" style="margin-left:4px;">${currentStatus}</span></span>
+                                <span><strong>BDM:</strong> ${invoice.bdmName || 'N/A'}</span>
+                                <span style="grid-column:span 2;"><strong>Amount:</strong> ${invoice.currency || 'USD'} ${parseFloat(invoice.invoiceAmount || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <!-- Status Update -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Update Status</div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">New Status</label>
+                                <select id="paymentStatus" class="form-control" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
                                     <option value="Pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
                                     <option value="Submitted" ${currentStatus === 'submitted' ? 'selected' : ''}>Submitted</option>
                                     <option value="Paid" ${currentStatus === 'fully_paid' ? 'selected' : ''}>Paid</option>
@@ -14433,14 +14517,19 @@ async function showUpdatePaymentModal(paymentId) {
                                     <option value="Cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Update Notes</label>
-                                <textarea id="paymentNotes" class="form-control" rows="3" placeholder="Add a note about this update..."></textarea>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Update Notes</label>
+                                <textarea id="paymentNotes" class="form-control" rows="3" placeholder="Add a note about this update..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;"></textarea>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Update</button>
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Save Update</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -14507,47 +14596,73 @@ async function showEditInvoiceModal(paymentId) {
 
         const modalHtml = `
            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content" style="max-width: 600px;">
-                    <div class="modal-header">
-                        <h2>Edit Invoice</h2>
-                        <div class="subtitle">Editing Invoice #${invoice.invoiceNo || 'N/A'} | ${invoice.projectName || ''}</div>
-                    </div>
-                    <form id="editInvoiceForm" class="modal-form">
-                        <div class="modal-body">
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-                                <div class="form-group">
-                                    <label>Invoice Number *</label>
-                                    <input type="text" id="edit_invoiceNo" class="form-control" value="${invoice.invoiceNo || ''}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Invoice Amount (${invoice.currency || 'USD'}) *</label>
-                                    <input type="number" id="edit_invoiceAmount" class="form-control" value="${invoice.invoiceAmount || 0}" step="0.01" min="0" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Invoice Date</label>
-                                    <input type="date" id="edit_invoiceDate" class="form-control" value="${invoiceDateVal}">
-                                </div>
-                                <div class="form-group">
-                                    <label>Payment Due Date</label>
-                                    <input type="date" id="edit_paymentDueDate" class="form-control" value="${dueDateVal}">
-                                </div>
-                                <div class="form-group" style="grid-column:span 2;">
-                                    <label>Payment Terms</label>
-                                    <input type="text" id="edit_paymentTerms" class="form-control" value="${invoice.paymentTerms || ''}" placeholder="e.g., Net 30">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Milestone / Description</label>
-                                <textarea id="edit_milestoneDescription" class="form-control" rows="2" placeholder="Invoice description...">${invoice.milestoneDescription || ''}</textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Remarks</label>
-                                <textarea id="edit_remarks" class="form-control" rows="2" placeholder="Additional remarks...">${invoice.remarks || ''}</textarea>
+                <div class="modal-content" style="max-width: 780px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">✏️</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Edit Invoice</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Invoice #${invoice.invoiceNo || 'N/A'} &bull; ${invoice.projectName || ''}</p>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <form id="editInvoiceForm" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+
+                        <!-- Section: Invoice Details -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Invoice Details</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Number <span style="color:#ef4444;">*</span></label>
+                                    <input type="text" id="edit_invoiceNo" class="form-control" value="${invoice.invoiceNo || ''}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (${invoice.currency || 'USD'}) <span style="color:#ef4444;">*</span></label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <input type="number" id="edit_invoiceAmount" class="form-control" value="${invoice.invoiceAmount || 0}" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Date</label>
+                                    <input type="date" id="edit_invoiceDate" class="form-control" value="${invoiceDateVal}" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Due Date</label>
+                                    <input type="date" id="edit_paymentDueDate" class="form-control" value="${dueDateVal}" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Terms</label>
+                                <input type="text" id="edit_paymentTerms" class="form-control" value="${invoice.paymentTerms || ''}" placeholder="e.g., Net 30" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                            </div>
+                        </div>
+
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Additional Information -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Additional Information</div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Milestone / Description</label>
+                                <textarea id="edit_milestoneDescription" class="form-control" rows="2" placeholder="Invoice description..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;">${invoice.milestoneDescription || ''}</textarea>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Remarks</label>
+                                <textarea id="edit_remarks" class="form-control" rows="2" placeholder="Additional remarks..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;">${invoice.remarks || ''}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Save Changes</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
                         </div>
                     </form>
                 </div>

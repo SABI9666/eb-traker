@@ -14538,36 +14538,21 @@ async function markProjectComplete(projectId) {
                 <!-- UID Migration Tool -->
                 <div class="card" style="margin-bottom:2rem;">
                     <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
-                        <h3 style="margin:0;">Migrate User UID (Fix Re-registered User)</h3>
+                        <h3 style="margin:0;">Fix Re-registered User (Migrate Data)</h3>
                         <p style="margin:0.5rem 0 0;color:#64748b;font-size:0.85rem;">
-                            Use this when a user was deleted and re-registered. Just enter their email and the system will automatically find the old and new UIDs and transfer all documents.
+                            If a user was deleted and re-registered, their old proposals/projects won't show. Enter their email to fix it.
                         </p>
                     </div>
                     <div style="padding:1.5rem;">
-                        <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
-                            <strong>Just enter the user's email below.</strong> The system will automatically detect the old UID (from orphaned proposals) and the new UID (from the re-registered account) and migrate everything.
-                        </div>
                         <form id="uidMigrationForm" onsubmit="runUidMigration(event)">
                             <div class="form-group">
-                                <label>User Email *</label>
+                                <label>User Email</label>
                                 <input type="email" id="migrate_email" class="form-control" placeholder="e.g., sabin@edanbrook.com" required>
                             </div>
-
-                            <details style="margin-bottom:1rem;">
-                                <summary style="cursor:pointer;color:#64748b;font-size:0.85rem;">Advanced: Enter UIDs manually (optional)</summary>
-                                <div style="padding-top:0.5rem;">
-                                    <div class="form-group">
-                                        <label>Old UID (optional - auto-detected if blank)</label>
-                                        <input type="text" id="migrate_oldUid" class="form-control" placeholder="Leave blank for auto-detect">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>New UID (optional - auto-detected if blank)</label>
-                                        <input type="text" id="migrate_newUid" class="form-control" placeholder="Leave blank for auto-detect">
-                                    </div>
-                                </div>
-                            </details>
-
-                            <button type="submit" class="btn btn-primary" id="migrateBtnSubmit">Migrate All Documents</button>
+                            <div style="display:flex;gap:1rem;">
+                                <button type="button" class="btn btn-outline" id="migrateScanBtn" onclick="scanUser()">Step 1: Scan</button>
+                                <button type="submit" class="btn btn-primary" id="migrateBtnSubmit">Step 2: Migrate All</button>
+                            </div>
                         </form>
                         <div id="migrationResult" style="margin-top:1rem;"></div>
                     </div>
@@ -14586,65 +14571,104 @@ async function markProjectComplete(projectId) {
             `;
         }
 
+        async function scanUser() {
+            const email = document.getElementById('migrate_email').value.trim();
+            const resultDiv = document.getElementById('migrationResult');
+            const btn = document.getElementById('migrateScanBtn');
+            if (!email) { resultDiv.innerHTML = '<div style="color:#ef4444;">Enter an email first.</div>'; return; }
+
+            btn.disabled = true; btn.textContent = 'Scanning...';
+            resultDiv.innerHTML = '<div style="color:#2563eb;">Scanning Firestore for this user...</div>';
+
+            try {
+                const response = await apiCall(`migrate-user?email=${encodeURIComponent(email)}`);
+                if (!response.success) throw new Error(response.error);
+
+                const oldUidsHtml = (response.oldUids || []).map(o => `
+                    <tr>
+                        <td style="font-family:monospace;font-size:0.8rem;word-break:break-all;">${o.uid}</td>
+                        <td>${o.proposalCount}</td>
+                        <td>${o.projectCount}</td>
+                        <td>${o.paymentCount}</td>
+                        <td>${o.existsInUsers ? 'Yes' : 'No (deleted)'}</td>
+                    </tr>
+                `).join('');
+
+                resultDiv.innerHTML = `
+                    <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:1rem;">
+                        <strong>Scan Results for ${response.email}:</strong><br>
+                        <div style="margin:0.5rem 0;">
+                            Current Auth UID: <code>${response.currentAuthUid}</code><br>
+                            Firestore User Docs: <code>${(response.firestoreUserDocs || []).join(', ') || 'none'}</code><br>
+                            Proposals found by email: <strong>${response.proposalsFoundByEmail}</strong><br>
+                            Projects found by email: <strong>${response.projectsFoundByEmail}</strong>
+                        </div>
+                        ${(response.oldUids || []).length > 0 ? `
+                            <strong>Old UIDs that need migration:</strong>
+                            <table class="data-table" style="margin-top:0.5rem;font-size:0.85rem;">
+                                <thead><tr><th>Old UID</th><th>Proposals</th><th>Projects</th><th>Payments</th><th>In Users?</th></tr></thead>
+                                <tbody>${oldUidsHtml}</tbody>
+                            </table>
+                            <p style="margin-top:0.5rem;color:#059669;font-weight:600;">Click "Step 2: Migrate All" to fix these.</p>
+                        ` : '<p style="color:#059669;font-weight:600;">No migration needed - all data already uses the current UID.</p>'}
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:1rem;"><strong style="color:#dc2626;">Scan Error:</strong> ${error.message}</div>`;
+            } finally {
+                btn.disabled = false; btn.textContent = 'Step 1: Scan';
+            }
+        }
+
         async function runUidMigration(event) {
             event.preventDefault();
             const email = document.getElementById('migrate_email').value.trim();
-            const oldUid = document.getElementById('migrate_oldUid').value.trim();
-            const newUid = document.getElementById('migrate_newUid').value.trim();
             const resultDiv = document.getElementById('migrationResult');
             const submitBtn = document.getElementById('migrateBtnSubmit');
 
-            if (!email && (!oldUid || !newUid)) {
-                resultDiv.innerHTML = '<div style="color:#ef4444;">Please enter the user email, or both UIDs manually.</div>';
+            if (!email) {
+                resultDiv.innerHTML = '<div style="color:#ef4444;">Please enter the user email.</div>';
                 return;
             }
 
-            if (!confirm(`Are you sure you want to migrate all documents for ${email || 'this user'}? This will transfer all proposals, projects, payments etc. to the new account.`)) {
+            if (!confirm(`Migrate ALL documents for ${email}? This will transfer all proposals, projects, payments, etc. to the current account.`)) {
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Migrating... (this may take a moment)';
-            resultDiv.innerHTML = '<div style="color:#2563eb;">Searching for old/new UIDs and migrating all documents, please wait...</div>';
+            submitBtn.textContent = 'Migrating...';
+            resultDiv.innerHTML = '<div style="color:#2563eb;">Migrating all documents, please wait...</div>';
 
             try {
-                const payload = {};
-                if (email) payload.email = email;
-                if (oldUid) payload.oldUid = oldUid;
-                if (newUid) payload.newUid = newUid;
-
-                const response = await apiCall('users', {
-                    method: 'PATCH',
-                    body: JSON.stringify(payload)
+                const response = await apiCall('migrate-user', {
+                    method: 'POST',
+                    body: JSON.stringify({ email })
                 });
 
-                if (!response.success) {
-                    throw new Error(response.error || 'Migration failed');
-                }
+                if (!response.success) throw new Error(response.error || 'Migration failed');
 
                 resultDiv.innerHTML = `
                     <div style="background:#d1fae5;border:1px solid #10b981;border-radius:8px;padding:1rem;">
                         <strong style="color:#059669;">Migration Successful!</strong><br>
                         <span><strong>${response.migratedCount}</strong> documents were updated.</span><br>
-                        ${response.oldUid ? `<span style="font-size:0.8rem;color:#064e3b;">Old UID: <code>${response.oldUid}</code></span><br>` : ''}
-                        ${response.newUid ? `<span style="font-size:0.8rem;color:#064e3b;">New UID: <code>${response.newUid}</code></span><br>` : ''}
+                        <span style="font-size:0.8rem;">Old UIDs: <code>${(response.oldUids || []).join(', ')}</code></span><br>
+                        <span style="font-size:0.8rem;">New UID: <code>${response.newUid}</code></span><br>
                         <br><strong>Migrated:</strong>
-                        <ul style="margin:0.5rem 0;padding-left:1.5rem;max-height:300px;overflow-y:auto;">
+                        <ul style="margin:0.5rem 0;padding-left:1.5rem;max-height:300px;overflow-y:auto;font-size:0.85rem;">
                             ${(response.details || []).map(d => '<li>' + d + '</li>').join('')}
                         </ul>
-                        <p style="margin-top:0.5rem;color:#064e3b;font-weight:600;">The user can now log in and see all their old proposals, projects, and payments.</p>
+                        <p style="margin-top:0.5rem;color:#064e3b;font-weight:600;">Done! Log out and log back in to see all old proposals.</p>
                     </div>
                 `;
             } catch (error) {
                 resultDiv.innerHTML = `
                     <div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:1rem;">
-                        <strong style="color:#dc2626;">Migration Failed</strong><br>
-                        <span>${error.message}</span>
+                        <strong style="color:#dc2626;">Migration Failed:</strong> ${error.message}
                     </div>
                 `;
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Migrate Documents';
+                submitBtn.textContent = 'Step 2: Migrate All';
             }
         }
 

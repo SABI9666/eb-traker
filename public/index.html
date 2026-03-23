@@ -14538,27 +14538,36 @@ async function markProjectComplete(projectId) {
                 <!-- UID Migration Tool -->
                 <div class="card" style="margin-bottom:2rem;">
                     <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
-                        <h3 style="margin:0;">Migrate User UID</h3>
+                        <h3 style="margin:0;">Migrate User UID (Fix Re-registered User)</h3>
                         <p style="margin:0.5rem 0 0;color:#64748b;font-size:0.85rem;">
-                            Use this when a user was deleted and re-registered. This transfers all their old proposals, projects, payments, etc. to their new account.
+                            Use this when a user was deleted and re-registered. Just enter their email and the system will automatically find the old and new UIDs and transfer all documents.
                         </p>
                     </div>
                     <div style="padding:1.5rem;">
-                        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
-                            <strong>How to find the UIDs:</strong><br>
-                            1. <strong>Old UID</strong>: Go to Firebase Console > Firestore > "proposals" collection > find an old proposal by the user > copy the <code>createdByUid</code> value.<br>
-                            2. <strong>New UID</strong>: Go to Firebase Console > Authentication > find the user's email > copy the "User UID" value.
+                        <div style="background:#dbeafe;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1.5rem;">
+                            <strong>Just enter the user's email below.</strong> The system will automatically detect the old UID (from orphaned proposals) and the new UID (from the re-registered account) and migrate everything.
                         </div>
                         <form id="uidMigrationForm" onsubmit="runUidMigration(event)">
                             <div class="form-group">
-                                <label>Old UID (from old proposals/projects)</label>
-                                <input type="text" id="migrate_oldUid" class="form-control" placeholder="e.g., abc123def456..." required>
+                                <label>User Email *</label>
+                                <input type="email" id="migrate_email" class="form-control" placeholder="e.g., sabin@edanbrook.com" required>
                             </div>
-                            <div class="form-group">
-                                <label>New UID (from Firebase Auth after re-registration)</label>
-                                <input type="text" id="migrate_newUid" class="form-control" placeholder="e.g., xyz789ghi012..." required>
-                            </div>
-                            <button type="submit" class="btn btn-primary" id="migrateBtnSubmit">Migrate Documents</button>
+
+                            <details style="margin-bottom:1rem;">
+                                <summary style="cursor:pointer;color:#64748b;font-size:0.85rem;">Advanced: Enter UIDs manually (optional)</summary>
+                                <div style="padding-top:0.5rem;">
+                                    <div class="form-group">
+                                        <label>Old UID (optional - auto-detected if blank)</label>
+                                        <input type="text" id="migrate_oldUid" class="form-control" placeholder="Leave blank for auto-detect">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>New UID (optional - auto-detected if blank)</label>
+                                        <input type="text" id="migrate_newUid" class="form-control" placeholder="Leave blank for auto-detect">
+                                    </div>
+                                </div>
+                            </details>
+
+                            <button type="submit" class="btn btn-primary" id="migrateBtnSubmit">Migrate All Documents</button>
                         </form>
                         <div id="migrationResult" style="margin-top:1rem;"></div>
                     </div>
@@ -14579,32 +14588,34 @@ async function markProjectComplete(projectId) {
 
         async function runUidMigration(event) {
             event.preventDefault();
+            const email = document.getElementById('migrate_email').value.trim();
             const oldUid = document.getElementById('migrate_oldUid').value.trim();
             const newUid = document.getElementById('migrate_newUid').value.trim();
             const resultDiv = document.getElementById('migrationResult');
             const submitBtn = document.getElementById('migrateBtnSubmit');
 
-            if (!oldUid || !newUid) {
-                resultDiv.innerHTML = '<div style="color:#ef4444;">Please enter both UIDs.</div>';
-                return;
-            }
-            if (oldUid === newUid) {
-                resultDiv.innerHTML = '<div style="color:#ef4444;">Old and New UIDs must be different.</div>';
+            if (!email && (!oldUid || !newUid)) {
+                resultDiv.innerHTML = '<div style="color:#ef4444;">Please enter the user email, or both UIDs manually.</div>';
                 return;
             }
 
-            if (!confirm('Are you sure you want to migrate all documents from the old UID to the new UID? This cannot be easily undone.')) {
+            if (!confirm(`Are you sure you want to migrate all documents for ${email || 'this user'}? This will transfer all proposals, projects, payments etc. to the new account.`)) {
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Migrating...';
-            resultDiv.innerHTML = '<div style="color:#2563eb;">Running migration, please wait...</div>';
+            submitBtn.textContent = 'Migrating... (this may take a moment)';
+            resultDiv.innerHTML = '<div style="color:#2563eb;">Searching for old/new UIDs and migrating all documents, please wait...</div>';
 
             try {
+                const payload = {};
+                if (email) payload.email = email;
+                if (oldUid) payload.oldUid = oldUid;
+                if (newUid) payload.newUid = newUid;
+
                 const response = await apiCall('users', {
                     method: 'PATCH',
-                    body: JSON.stringify({ oldUid, newUid })
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.success) {
@@ -14614,12 +14625,14 @@ async function markProjectComplete(projectId) {
                 resultDiv.innerHTML = `
                     <div style="background:#d1fae5;border:1px solid #10b981;border-radius:8px;padding:1rem;">
                         <strong style="color:#059669;">Migration Successful!</strong><br>
-                        <span>${response.migratedCount} documents were updated.</span><br><br>
-                        <strong>Details:</strong>
-                        <ul style="margin:0.5rem 0;padding-left:1.5rem;">
+                        <span><strong>${response.migratedCount}</strong> documents were updated.</span><br>
+                        ${response.oldUid ? `<span style="font-size:0.8rem;color:#064e3b;">Old UID: <code>${response.oldUid}</code></span><br>` : ''}
+                        ${response.newUid ? `<span style="font-size:0.8rem;color:#064e3b;">New UID: <code>${response.newUid}</code></span><br>` : ''}
+                        <br><strong>Migrated:</strong>
+                        <ul style="margin:0.5rem 0;padding-left:1.5rem;max-height:300px;overflow-y:auto;">
                             ${(response.details || []).map(d => '<li>' + d + '</li>').join('')}
                         </ul>
-                        <p style="margin-top:0.5rem;color:#064e3b;">The user can now log in and see all their old proposals, projects, and payments.</p>
+                        <p style="margin-top:0.5rem;color:#064e3b;font-weight:600;">The user can now log in and see all their old proposals, projects, and payments.</p>
                     </div>
                 `;
             } catch (error) {

@@ -6769,7 +6769,7 @@ body.is-ios .nav-menu {
             setDisplay('newProposalNavItem', isBDM);
             setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR && !isDC); // Analytics for BDM/COO/Director
             setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR && !isDC);
-            setDisplay('settingsNavItem', roleForCheck === 'director');
+            setDisplay('settingsNavItem', roleForCheck === 'director' || userEmail === 'sabin@edanbrook.com');
             
             // Designer Specifics: Hide Dashboard & Proposals, Show specific tools
             setDisplay('dashboardNavItem', false); // Dashboard hidden for all users // Hide for Designer & Mgmt (Mgmt has Executive Dash)

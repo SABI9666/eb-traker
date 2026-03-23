@@ -14619,6 +14619,32 @@ async function markProjectComplete(projectId) {
                 });
 
                 if (!response.success) {
+                    // Check if orphaned UIDs were returned for manual selection
+                    if (response.orphanedUids && response.orphanedUids.length > 0) {
+                        const orphanList = response.orphanedUids.map(o =>
+                            `<div style="padding:0.5rem;background:#fff;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:0.5rem;cursor:pointer;"
+                                 onclick="document.getElementById('migrate_oldUid').value='${o.uid}'; document.querySelector('details').open=true;">
+                                <strong>UID:</strong> <code>${o.uid}</code><br>
+                                <strong>Created By:</strong> ${o.createdBy} (${o.createdByName})<br>
+                                <strong>Sample Project:</strong> ${o.sampleProject}
+                            </div>`
+                        ).join('');
+                        resultDiv.innerHTML = `
+                            <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:1rem;">
+                                <strong>Could not auto-match. Found these orphaned accounts:</strong>
+                                <p style="font-size:0.85rem;">Click the one that belongs to <strong>${email}</strong>, then hit "Migrate" again.</p>
+                                ${response.detectedNewUid ? `<p style="font-size:0.8rem;">New UID detected: <code>${response.detectedNewUid}</code></p>` : ''}
+                                <div style="margin-top:0.5rem;">${orphanList}</div>
+                            </div>
+                        `;
+                        // Auto-fill new UID
+                        if (response.detectedNewUid) {
+                            document.getElementById('migrate_newUid').value = response.detectedNewUid;
+                        }
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Migrate All Documents';
+                        return;
+                    }
                     throw new Error(response.error || 'Migration failed');
                 }
 

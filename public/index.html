@@ -6507,6 +6507,18 @@ body.is-ios .nav-menu {
             auth.onAuthStateChanged(async (user) => {
                 console.log('🔐 Auth state changed:', user ? `User logged in (${user.email})` : 'No user');
 
+                // Capture deep link params on first load (before login clears them)
+                if (!window._deepLinkCaptured) {
+                    window._deepLinkCaptured = true;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const action = urlParams.get('action');
+                    const id = urlParams.get('id');
+                    if (action) {
+                        window._pendingDeepLink = { action, id };
+                        console.log('🔗 Deep link captured:', window._pendingDeepLink);
+                    }
+                }
+
                 if (user) {
                     currentUser = user;
                     try {
@@ -6910,19 +6922,20 @@ body.is-ios .nav-menu {
                 updatePendingRequestsBadge();
             }
 
-            // 5. Route to Initial View
-            if (isDesigner) {
-                showDesignerAllocations(); // Redirect Designer to new view immediately
-            } else if (isHR) {
-                showHRDashboard(); // Redirect HR to HR Dashboard
-            } else if (isDC) {
-                showDocumentControllerDashboard(); // Redirect DC to Document Controller Dashboard
-            } else if (roleForCheck === 'accounts') {
-                showPayments(); // Redirect Accounts to their portal
-            } else if (isBDM || isManagement) {
-                showProposals();
+            // 5. Route to Initial View (check deep link first)
+            if (window._pendingDeepLink) {
+                const handled = handleDeepLink(window._pendingDeepLink);
+                window._pendingDeepLink = null;
+                // Clean URL params without reload
+                if (window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                if (!handled) {
+                    // Deep link not applicable, fall through to default routing
+                    routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement);
+                }
             } else {
-                showProposals();
+                routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement);
             }
 
             // 6. Load Notifications
@@ -6940,7 +6953,135 @@ body.is-ios .nav-menu {
 // Initialize retry flag
 showApp.retried = false;
 
-           
+/**
+ * Routes to the default view based on the user's role.
+ */
+function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement) {
+    if (isDesigner) {
+        showDesignerAllocations();
+    } else if (isHR) {
+        showHRDashboard();
+    } else if (isDC) {
+        showDocumentControllerDashboard();
+    } else if (roleForCheck === 'accounts') {
+        showPayments();
+    } else if (isBDM || isManagement) {
+        showProposals();
+    } else {
+        showProposals();
+    }
+}
+
+/**
+ * Handles deep link navigation from email notifications.
+ * Returns true if the deep link was handled, false otherwise.
+ */
+function handleDeepLink(link) {
+    if (!link || !link.action) return false;
+    console.log('🔗 Handling deep link:', link);
+
+    try {
+        switch (link.action) {
+            case 'view-invoice':
+                if (link.id) {
+                    showPayments();
+                    setTimeout(() => viewPayment(link.id), 800);
+                    return true;
+                }
+                showPayments();
+                return true;
+
+            case 'view-payments':
+            case 'invoices':
+                showPayments();
+                return true;
+
+            case 'view-proposal':
+                if (link.id) {
+                    showProposals();
+                    setTimeout(() => viewProposal(link.id), 800);
+                    return true;
+                }
+                showProposals();
+                return true;
+
+            case 'view-proposals':
+            case 'proposals':
+                showProposals();
+                return true;
+
+            case 'view-project':
+                if (link.id) {
+                    showProposals();
+                    setTimeout(() => viewProposal(link.id), 800);
+                    return true;
+                }
+                showProposals();
+                return true;
+
+            case 'time-requests':
+                if (typeof showCOOTimeRequests === 'function') {
+                    showCOOTimeRequests();
+                    return true;
+                }
+                return false;
+
+            case 'variations':
+                showPayments();
+                return true;
+
+            case 'leave-requests':
+                if (typeof showHRLeaveApproval === 'function') {
+                    showHRLeaveApproval();
+                    return true;
+                }
+                return false;
+
+            case 'leave-status':
+                if (typeof showEmployeeLeaveRequest === 'function') {
+                    showEmployeeLeaveRequest();
+                    return true;
+                }
+                return false;
+
+            case 'designer-allocations':
+                if (typeof showDesignerAllocations === 'function') {
+                    showDesignerAllocations();
+                    return true;
+                }
+                return false;
+
+            case 'design-approvals':
+                if (typeof showDesignFileApprovals === 'function') {
+                    showDesignFileApprovals();
+                    return true;
+                }
+                return false;
+
+            case 'document-controller':
+                if (typeof showDocumentControllerDashboard === 'function') {
+                    showDocumentControllerDashboard();
+                    return true;
+                }
+                return false;
+
+            case 'screening':
+                if (typeof showHRScreening === 'function') {
+                    showHRScreening();
+                    return true;
+                }
+                return false;
+
+            default:
+                console.warn('🔗 Unknown deep link action:', link.action);
+                return false;
+        }
+    } catch (err) {
+        console.error('🔗 Deep link error:', err);
+        return false;
+    }
+}
+
         function showLogin() {
             document.getElementById('appContainer').style.display = 'none';
             document.getElementById('loginPage').style.display = 'flex';
@@ -14109,10 +14250,15 @@ async function createInvoiceActionNew(event) {
 
         // Send email notification
         try {
+            const project = window._invoiceProjects ? window._invoiceProjects.find(p => p.id === projectId) : null;
             await triggerEmailNotification('invoice.saved', {
                 projectId,
                 invoiceNumber: invoiceNo,
-                amount: 'USD ' + amount
+                amount: 'USD ' + amount,
+                projectName: project ? project.projectName : '',
+                clientCompany: project ? project.clientCompany : '',
+                bdmEmail,
+                invoiceId: response.data?.id || ''
             });
         } catch (emailErr) {
             console.warn('Email notification failed (non-blocking):', emailErr);

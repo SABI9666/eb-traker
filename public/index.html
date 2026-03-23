@@ -6773,8 +6773,9 @@ body.is-ios .nav-menu {
             
             // Designer Specifics: Hide Dashboard & Proposals, Show specific tools
             setDisplay('dashboardNavItem', false); // Dashboard hidden for all users // Hide for Designer & Mgmt (Mgmt has Executive Dash)
-            setDisplay('proposalsNavItem', !isDesigner && !isHR && !isDC); // HIDE All Proposals for Designer, HR, and DC
-            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR && !isDC); // HIDE File Manager for HR and DC
+            const isAccounts = roleForCheck === 'accounts';
+            setDisplay('proposalsNavItem', !isDesigner && !isHR && !isDC && !isAccounts); // HIDE All Proposals for Designer, HR, DC, and Accounts
+            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR && !isDC && !isAccounts); // HIDE File Manager for HR, DC, and Accounts
             
             // Designer specific menus
             setDisplay('projectsNavItem', isManagement && !isHR && !isDC); // Designers use "My Tasks" or "Allocations"
@@ -6916,6 +6917,8 @@ body.is-ios .nav-menu {
                 showHRDashboard(); // Redirect HR to HR Dashboard
             } else if (isDC) {
                 showDocumentControllerDashboard(); // Redirect DC to Document Controller Dashboard
+            } else if (roleForCheck === 'accounts') {
+                showPayments(); // Redirect Accounts to their portal
             } else if (isBDM || isManagement) {
                 showProposals();
             } else {
@@ -13599,6 +13602,7 @@ function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variatio
         const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
         const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
         const dueDateStr = inv.paymentDueDate ? formatDate(inv.paymentDueDate) : 'N/A';
+        const isPaid = inv.paymentStatus === 'fully_paid';
         return `
         <tr>
             <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
@@ -13609,8 +13613,12 @@ function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variatio
             <td>${dueDateStr}</td>
             <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
             <td>
-                <button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')" style="margin-right:4px;">View</button>
-                <button class="btn btn-primary btn-sm" onclick="showUpdatePaymentModal('${inv.id}')">Update</button>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View</button>
+                    <button class="btn btn-primary btn-sm" onclick="showEditInvoiceModal('${inv.id}')">Edit</button>
+                    <button class="btn btn-sm" onclick="showUpdatePaymentModal('${inv.id}')" style="background:#7c3aed;color:#fff;border:none;">Status</button>
+                    ${!isPaid ? `<button class="btn btn-sm" onclick="confirmDeleteInvoice('${inv.id}', '${(inv.invoiceNo || '').replace(/'/g, "\\'")}')" style="background:#ef4444;color:#fff;border:none;">Delete</button>` : ''}
+                </div>
             </td>
         </tr>
         `;
@@ -14482,6 +14490,160 @@ async function updatePaymentAction(paymentId) {
         hideLoading();
     }
 }
+/**
+ * Shows the Edit Invoice modal with pre-filled data.
+ */
+async function showEditInvoiceModal(paymentId) {
+    try {
+        showLoading();
+        const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`);
+        if (!success || !invoice) throw new Error('Failed to load invoice');
+        hideLoading();
+
+        closeModal();
+
+        const invoiceDateVal = invoice.invoiceDate ? (typeof invoice.invoiceDate === 'string' ? invoice.invoiceDate : (invoice.invoiceDate.toDate ? invoice.invoiceDate.toDate().toISOString().split('T')[0] : new Date(invoice.invoiceDate).toISOString().split('T')[0])) : '';
+        const dueDateVal = invoice.paymentDueDate ? (typeof invoice.paymentDueDate === 'string' ? invoice.paymentDueDate : (invoice.paymentDueDate.toDate ? invoice.paymentDueDate.toDate().toISOString().split('T')[0] : new Date(invoice.paymentDueDate).toISOString().split('T')[0])) : '';
+
+        const modalHtml = `
+           <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h2>Edit Invoice</h2>
+                        <div class="subtitle">Editing Invoice #${invoice.invoiceNo || 'N/A'} | ${invoice.projectName || ''}</div>
+                    </div>
+                    <form id="editInvoiceForm" class="modal-form">
+                        <div class="modal-body">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                                <div class="form-group">
+                                    <label>Invoice Number *</label>
+                                    <input type="text" id="edit_invoiceNo" class="form-control" value="${invoice.invoiceNo || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Invoice Amount (${invoice.currency || 'USD'}) *</label>
+                                    <input type="number" id="edit_invoiceAmount" class="form-control" value="${invoice.invoiceAmount || 0}" step="0.01" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Invoice Date</label>
+                                    <input type="date" id="edit_invoiceDate" class="form-control" value="${invoiceDateVal}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Payment Due Date</label>
+                                    <input type="date" id="edit_paymentDueDate" class="form-control" value="${dueDateVal}">
+                                </div>
+                                <div class="form-group" style="grid-column:span 2;">
+                                    <label>Payment Terms</label>
+                                    <input type="text" id="edit_paymentTerms" class="form-control" value="${invoice.paymentTerms || ''}" placeholder="e.g., Net 30">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Milestone / Description</label>
+                                <textarea id="edit_milestoneDescription" class="form-control" rows="2" placeholder="Invoice description...">${invoice.milestoneDescription || ''}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Remarks</label>
+                                <textarea id="edit_remarks" class="form-control" rows="2" placeholder="Additional remarks...">${invoice.remarks || ''}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        document.getElementById('editInvoiceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveEditedInvoice(paymentId);
+        });
+
+    } catch (error) {
+        hideLoading();
+        alert(`Error: ${error.message}`);
+    }
+}
+
+/**
+ * Saves the edited invoice data.
+ */
+async function saveEditedInvoice(paymentId) {
+    const invoiceNo = document.getElementById('edit_invoiceNo').value;
+    const invoiceAmount = document.getElementById('edit_invoiceAmount').value;
+    const invoiceDate = document.getElementById('edit_invoiceDate').value;
+    const paymentDueDate = document.getElementById('edit_paymentDueDate').value;
+    const paymentTerms = document.getElementById('edit_paymentTerms').value;
+    const milestoneDescription = document.getElementById('edit_milestoneDescription').value;
+    const remarks = document.getElementById('edit_remarks').value;
+
+    if (!invoiceNo || !invoiceAmount) {
+        alert('Invoice number and amount are required.');
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`payments?id=${paymentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'edit_invoice',
+                data: {
+                    invoiceNo,
+                    invoiceAmount: parseFloat(invoiceAmount),
+                    invoiceDate,
+                    paymentDueDate,
+                    paymentTerms,
+                    milestoneDescription,
+                    remarks
+                }
+            })
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to update invoice');
+        }
+
+        showNotification('Invoice updated successfully!', 'success');
+        closeModal();
+        showPayments();
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Confirms and deletes an invoice.
+ */
+async function confirmDeleteInvoice(paymentId, invoiceNo) {
+    if (!confirm(`Are you sure you want to delete Invoice #${invoiceNo}?\n\nThis action cannot be undone. Paid invoices cannot be deleted.`)) {
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`payments?id=${paymentId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to delete invoice');
+        }
+
+        showNotification('Invoice deleted successfully.', 'success');
+        showPayments();
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
 /**
  * Called by Design Manager to mark a project as completed.
  */

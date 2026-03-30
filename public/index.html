@@ -5141,6 +5141,7 @@ body.is-ios .nav-menu {
                                 <div class="role-btn" data-role="document_controller">Doc Controller</div>
                                 <div class="role-btn" data-role="accounts">Accounts</div>
                                 <div class="role-btn" data-role="hr">HR</div>
+                                <div class="role-btn" data-role="it">IT Helpdesk</div>
                             </div>
                             <input type="hidden" id="selectedRole" value="bdm">
                         </div>
@@ -5320,6 +5321,22 @@ body.is-ios .nav-menu {
                         <span class="nav-icon">🏖️</span>Leave Request
                     </a>
                 </li>
+                <li id="itRequestNavItem" style="display: none;">
+                    <a href="#" onclick="showITRequestForm()" id="nav-it-request">
+                        <span class="nav-icon">🖥️</span>IT Request
+                    </a>
+                </li>
+                <li id="itDashboardNavItem" style="display: none;">
+                    <a href="#" onclick="showITDashboard()" id="nav-it-dashboard">
+                        <span class="nav-icon">🛠️</span>IT Dashboard
+                        <span class="notification-count" id="itOpenTicketsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                    </a>
+                </li>
+                <li id="itDepartmentNavItem" style="display: none;">
+                    <a href="#" onclick="showITDepartmentReport()" id="nav-it-department">
+                        <span class="nav-icon">📊</span>IT Department
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -5386,7 +5403,8 @@ body.is-ios .nav-menu {
             design_lead: ["aravindhan.tech@edanbrook.in"],
             designer: [],
             accounts: ["accounts@edanbrook.com", "accounts1@edanbrook.com", "finance@edanbrook.com"],
-            bdm: []
+            bdm: [],
+            it: ["ithelpdesk@edanbrook.com"]
         };
         let currentUser = null;
         let currentUserRole = '';
@@ -6683,16 +6701,19 @@ body.is-ios .nav-menu {
             const COO_EMAILS = ['coo@edanbrook.com', 'coo2@edanbrook.com'];
             const DIRECTOR_EMAILS = ['director@edanbrook.com', 'ajit@edanbrook.com'];
             const DC_EMAILS = ['iva@edanbrook.com', 'dc@edanbrook.com']; // Document Controller emails
+            const IT_EMAILS = ['ithelpdesk@edanbrook.com']; // IT Helpdesk emails
             
             // Check if user is COO or Director by email (highest priority)
             const isCOOByEmail = COO_EMAILS.includes(userEmail);
             const isDirectorByEmail = DIRECTOR_EMAILS.includes(userEmail);
             const isDCByEmail = DC_EMAILS.includes(userEmail);
-            
+            const isITByEmail = IT_EMAILS.includes(userEmail);
+
             console.log('👤 User email:', userEmail);
             console.log('👤 Is COO by email:', isCOOByEmail);
             console.log('👤 Is Director by email:', isDirectorByEmail);
             console.log('👤 Is DC by email:', isDCByEmail);
+            console.log('👤 Is IT by email:', isITByEmail);
             
             // If role is empty or 'employee', try to detect from email
             if (!roleForCheck || roleForCheck === 'employee' || roleForCheck === '') {
@@ -6723,6 +6744,9 @@ body.is-ios .nav-menu {
                 } else if (emailLower.includes('.tech@')) {
                     roleForCheck = 'designer';
                     currentUserRole = 'designer';
+                } else if (isITByEmail || emailLower.startsWith('ithelpdesk@') || emailLower.startsWith('it@')) {
+                    roleForCheck = 'it';
+                    currentUserRole = 'it';
                 }
                 console.log('✅ Role after email detection:', roleForCheck);
             }
@@ -6744,6 +6768,12 @@ body.is-ios .nav-menu {
                 roleForCheck = 'document_controller';
                 currentUserRole = 'document_controller';
             }
+            // Force IT role if email matches
+            if (isITByEmail && roleForCheck !== 'it') {
+                console.log('⚠️ Forcing IT role based on email');
+                roleForCheck = 'it';
+                currentUserRole = 'it';
+            }
             
             userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;
             userRoleDisplay.textContent = roleForCheck.replace('_', ' ').toUpperCase();
@@ -6764,6 +6794,7 @@ body.is-ios .nav-menu {
             const isBDM = roleForCheck === 'bdm';
             const isHR = roleForCheck === 'hr';
             const isDC = roleForCheck === 'document_controller' || isDCByEmail;
+            const isIT = roleForCheck === 'it' || isITByEmail;
             
             console.log('==========================================');
             console.log('🔍 NAVIGATION VISIBILITY DEBUG');
@@ -6774,6 +6805,7 @@ body.is-ios .nav-menu {
             console.log('👤 isBDM:', isBDM);
             console.log('👤 isHR:', isHR);
             console.log('👤 isDC (Document Controller):', isDC);
+            console.log('👤 isIT (IT Helpdesk):', isIT);
             console.log('📊 Designer Analytics visible for HR or Management:', isManagement || isHR);
             console.log('==========================================');
 
@@ -6786,8 +6818,8 @@ body.is-ios .nav-menu {
             // Designer Specifics: Hide Dashboard & Proposals, Show specific tools
             setDisplay('dashboardNavItem', false); // Dashboard hidden for all users // Hide for Designer & Mgmt (Mgmt has Executive Dash)
             const isAccounts = roleForCheck === 'accounts';
-            setDisplay('proposalsNavItem', !isDesigner && !isHR && !isDC && !isAccounts); // HIDE All Proposals for Designer, HR, DC, and Accounts
-            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR && !isDC && !isAccounts); // HIDE File Manager for HR, DC, and Accounts
+            setDisplay('proposalsNavItem', !isDesigner && !isHR && !isDC && !isAccounts && !isIT); // HIDE All Proposals for Designer, HR, DC, Accounts, IT
+            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR && !isDC && !isAccounts && !isIT); // HIDE File Manager for HR, DC, Accounts, IT
             
             // Designer specific menus
             setDisplay('projectsNavItem', isManagement && !isHR && !isDC); // Designers use "My Tasks" or "Allocations"
@@ -6810,8 +6842,8 @@ body.is-ios .nav-menu {
             setDisplay('hrLeaveReportsNavItem', isHR); // Leave Reports - HR Only
             setDisplay('hrScreeningNavItem', (isHR || ['coo', 'director'].includes(roleForCheck)) && !isDC); // HR Screening
             
-            // Hide Activities from HR and DC (HR has their own dashboard, DC has DC dashboard)
-            setDisplay('activitiesNavItem', !isHR && !isDC);
+            // Hide Activities from HR, DC, and IT (they have their own dashboards)
+            setDisplay('activitiesNavItem', !isHR && !isDC && !isIT);
             
             // Check if current user is a Team Lead (Designer Team Leads - 5 Total)
             // These 5 emails are the ONLY team leads who can approve designer leaves
@@ -6898,6 +6930,16 @@ body.is-ios .nav-menu {
                 updateDCPendingBadge();
             }
             
+            // IT Portal Nav Items
+            setDisplay('itDashboardNavItem', isIT); // IT Dashboard - only IT team
+            setDisplay('itRequestNavItem', !isIT && !isDC); // IT Request - all users EXCEPT IT team and DC
+            setDisplay('itDepartmentNavItem', isManagement); // IT Department Report - COO & Director only
+
+            // Update IT open tickets badge
+            if (isIT) {
+                updateITOpenTicketsBadge();
+            }
+
             // Show Leave Request for all roles EXCEPT HR, COO, Director
             // Note: Team Leads CAN submit their own leave requests (they see both menus)
             const showLeaveRequest = !isHR && !['coo', 'director'].includes(roleForCheck);
@@ -6963,6 +7005,8 @@ function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManag
         showHRDashboard();
     } else if (isDC) {
         showDocumentControllerDashboard();
+    } else if (roleForCheck === 'it') {
+        showITDashboard();
     } else if (roleForCheck === 'accounts') {
         showPayments();
     } else if (isBDM || isManagement) {
@@ -31076,6 +31120,580 @@ window.renderDesignFilesSection = renderDesignFilesSection;
 
 console.log('✅ Design File Upload & Approval Module loaded');
 
+// ============================================
+// IT PORTAL - REQUEST FORM, DASHBOARD, DEPARTMENT REPORT
+// ============================================
+
+const IT_CATEGORIES = {
+    hardware: {
+        label: 'Hardware Request',
+        items: ['Desktop Computer', 'Laptop', 'Monitor', 'Keyboard & Mouse', 'Headset', 'Docking Station', 'Printer', 'Scanner', 'UPS/Power Backup', 'Webcam', 'External Hard Drive', 'Other Hardware']
+    },
+    software: {
+        label: 'Software Request',
+        items: ['Operating System', 'Microsoft Office', 'AutoCAD', 'Tekla Structures', 'SDS/2', 'Adobe Suite', 'Antivirus', 'VPN Client', 'Project Management Tool', 'Communication Tool', 'Other Software']
+    },
+    network: {
+        label: 'Network & Connectivity',
+        items: ['Internet Issue', 'Wi-Fi Access', 'VPN Setup', 'Email Configuration', 'Network Drive Access', 'Firewall Exception', 'Other Network Issue']
+    },
+    access: {
+        label: 'Access & Permissions',
+        items: ['New User Account', 'Password Reset', 'Email Account Setup', 'Shared Drive Access', 'Software License', 'Cloud Storage Access', 'Application Access', 'Other Access Request']
+    },
+    maintenance: {
+        label: 'Maintenance & Repair',
+        items: ['Computer Not Working', 'Slow Performance', 'Blue Screen/Crash', 'Data Recovery', 'Virus/Malware Removal', 'Hardware Repair', 'Software Update', 'Other Maintenance']
+    },
+    other: {
+        label: 'Other IT Support',
+        items: ['Training Request', 'Data Backup', 'Equipment Return', 'Workstation Setup', 'Meeting Room Tech Support', 'Other']
+    }
+};
+
+// --- IT Request Form (For all portal users) ---
+async function showITRequestForm() {
+    setActiveNav('nav-it-request');
+    const mainContent = document.getElementById('mainContent');
+
+    // Fetch user's existing requests
+    let myRequests = [];
+    try {
+        const resp = await apiCall('it-tickets/my-requests');
+        if (resp.success) myRequests = resp.data || [];
+    } catch(e) { console.error('Error fetching IT requests:', e); }
+
+    const categoryOptions = Object.entries(IT_CATEGORIES).map(([key, val]) =>
+        `<option value="${key}">${val.label}</option>`
+    ).join('');
+
+    const statusColor = (s) => {
+        switch(s) {
+            case 'open': return '#f59e0b';
+            case 'in_progress': return '#3b82f6';
+            case 'closed': case 'resolved': return '#10b981';
+            case 'on_hold': return '#6b7280';
+            default: return '#6b7280';
+        }
+    };
+
+    const requestRows = myRequests.map(t => `
+        <tr>
+            <td><strong>${t.ticketNumber || '-'}</strong></td>
+            <td>${t.categoryLabel || t.category}</td>
+            <td>${t.item}</td>
+            <td>${t.subject}</td>
+            <td><span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.8rem;font-weight:600;background:${statusColor(t.status)}20;color:${statusColor(t.status)}">${(t.status || '').replace('_',' ').toUpperCase()}</span></td>
+            <td style="font-size:0.85rem;color:#6b7280">${t.createdAt ? new Date(t.createdAt.seconds ? t.createdAt.seconds*1000 : t.createdAt).toLocaleDateString() : '-'}</td>
+            <td>${t.resolution || '-'}</td>
+        </tr>
+    `).join('');
+
+    mainContent.innerHTML = `
+    <div style="max-width:1100px;margin:0 auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+            <div>
+                <h2 style="margin:0;color:#1e293b;">🖥️ IT Support Request</h2>
+                <p style="margin:4px 0 0;color:#64748b;">Submit a request to the IT Helpdesk for hardware, software, access or support</p>
+            </div>
+        </div>
+
+        <div class="card" style="padding:30px;margin-bottom:30px;">
+            <h3 style="margin:0 0 20px;color:#1e3a8a;">📝 New IT Request</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <div class="form-group">
+                    <label style="font-weight:600;">Category <span style="color:#ef4444">*</span></label>
+                    <select id="itCategory" class="form-control" onchange="updateITItems()">
+                        <option value="">Select Category</option>
+                        ${categoryOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600;">Item <span style="color:#ef4444">*</span></label>
+                    <select id="itItem" class="form-control">
+                        <option value="">Select Item</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600;">Priority</label>
+                    <select id="itPriority" class="form-control">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical - Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600;">Subject <span style="color:#ef4444">*</span></label>
+                    <input type="text" id="itSubject" class="form-control" placeholder="Brief subject of your request">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label style="font-weight:600;">Description <span style="color:#ef4444">*</span></label>
+                <textarea id="itDescription" class="form-control" rows="4" placeholder="Please describe your request in detail - include asset tag numbers, software versions, or any relevant information..."></textarea>
+            </div>
+            <div style="text-align:right;margin-top:20px;">
+                <button class="btn btn-primary" onclick="submitITRequest()">🚀 Submit Request</button>
+            </div>
+        </div>
+
+        <div class="card" style="padding:30px;">
+            <h3 style="margin:0 0 20px;color:#1e3a8a;">📋 My IT Requests</h3>
+            ${myRequests.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:30px;">No IT requests submitted yet.</p>' : `
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Ticket #</th><th>Category</th><th>Item</th><th>Subject</th><th>Status</th><th>Date</th><th>Resolution</th>
+                    </tr></thead>
+                    <tbody>${requestRows}</tbody>
+                </table>
+            </div>`}
+        </div>
+    </div>`;
+}
+
+function updateITItems() {
+    const cat = document.getElementById('itCategory').value;
+    const itemSelect = document.getElementById('itItem');
+    itemSelect.innerHTML = '<option value="">Select Item</option>';
+    if (cat && IT_CATEGORIES[cat]) {
+        IT_CATEGORIES[cat].items.forEach(item => {
+            itemSelect.innerHTML += `<option value="${item}">${item}</option>`;
+        });
+    }
+}
+
+async function submitITRequest() {
+    const category = document.getElementById('itCategory').value;
+    const item = document.getElementById('itItem').value;
+    const priority = document.getElementById('itPriority').value;
+    const subject = document.getElementById('itSubject').value.trim();
+    const description = document.getElementById('itDescription').value.trim();
+
+    if (!category || !item || !subject || !description) {
+        return showMessage('Please fill in all required fields.', 'error');
+    }
+
+    try {
+        showMessage('Submitting IT request...', 'info');
+        const resp = await apiCall('it-tickets/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, item, priority, subject, description })
+        });
+        if (resp.success) {
+            showMessage(`IT ticket ${resp.data?.ticketNumber || ''} submitted successfully!`, 'success');
+            showITRequestForm();
+        } else {
+            showMessage(resp.error || 'Failed to submit request', 'error');
+        }
+    } catch(e) {
+        console.error('Submit IT request error:', e);
+        showMessage('Failed to submit IT request', 'error');
+    }
+}
+
+// --- IT Dashboard (For IT Helpdesk users) ---
+async function showITDashboard() {
+    setActiveNav('nav-it-dashboard');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align:center;padding:60px;"><div class="loading-spinner"></div><p>Loading IT Dashboard...</p></div>';
+
+    try {
+        const [dashResp, allResp] = await Promise.all([
+            apiCall('it-tickets/dashboard'),
+            apiCall('it-tickets/all')
+        ]);
+
+        const dash = dashResp.success ? dashResp.data : {};
+        const summary = dash.summary || {};
+        const monthly = dash.monthlyStats || [];
+        const priority = dash.priority || {};
+        const catStats = dash.categoryStats || {};
+        const allTickets = allResp.success ? allResp.data || [] : [];
+
+        const statusColor = (s) => {
+            switch(s) { case 'open': return '#f59e0b'; case 'in_progress': return '#3b82f6'; case 'closed': case 'resolved': return '#10b981'; case 'on_hold': return '#6b7280'; default: return '#6b7280'; }
+        };
+        const priorityColor = (p) => {
+            switch(p) { case 'critical': return '#dc2626'; case 'high': return '#ef4444'; case 'medium': return '#f59e0b'; case 'low': return '#10b981'; default: return '#6b7280'; }
+        };
+
+        // Monthly chart bars
+        const maxMonthly = Math.max(...monthly.map(m => Math.max(m.created, m.closed)), 1);
+        const monthlyBars = monthly.map(m => `
+            <div style="flex:1;text-align:center;min-width:80px;">
+                <div style="display:flex;justify-content:center;gap:4px;align-items:flex-end;height:120px;margin-bottom:8px;">
+                    <div style="width:20px;background:#3b82f6;border-radius:4px 4px 0 0;height:${Math.max((m.created/maxMonthly)*100,4)}px;" title="Created: ${m.created}"></div>
+                    <div style="width:20px;background:#10b981;border-radius:4px 4px 0 0;height:${Math.max((m.closed/maxMonthly)*100,4)}px;" title="Closed: ${m.closed}"></div>
+                </div>
+                <div style="font-size:0.75rem;color:#64748b;">${m.month}</div>
+                <div style="font-size:0.7rem;color:#94a3b8;">${m.created}/${m.closed}</div>
+            </div>
+        `).join('');
+
+        // Category breakdown
+        const catRows = Object.entries(catStats).map(([key, val]) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-weight:500;color:#334155;">${val.label || key}</span>
+                <div style="display:flex;gap:12px;font-size:0.85rem;">
+                    <span style="color:#f59e0b;">Open: ${val.open}</span>
+                    <span style="color:#10b981;">Closed: ${val.closed}</span>
+                    <span style="color:#64748b;">Total: ${val.total}</span>
+                </div>
+            </div>
+        `).join('');
+
+        // All tickets table
+        const ticketRows = allTickets.map(t => `
+            <tr>
+                <td><strong>${t.ticketNumber || '-'}</strong></td>
+                <td>${t.requestedByName || '-'}</td>
+                <td>${t.categoryLabel || t.category}</td>
+                <td>${t.item}</td>
+                <td>${t.subject}</td>
+                <td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${priorityColor(t.priority)};background:${priorityColor(t.priority)}15;">${(t.priority||'medium').toUpperCase()}</span></td>
+                <td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${statusColor(t.status)};background:${statusColor(t.status)}15;">${(t.status||'').replace('_',' ').toUpperCase()}</span></td>
+                <td style="font-size:0.85rem;color:#6b7280;">${t.createdAt ? new Date(t.createdAt.seconds ? t.createdAt.seconds*1000 : t.createdAt).toLocaleDateString() : '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="showITTicketActions('${t.id}')">Manage</button>
+                </td>
+            </tr>
+        `).join('');
+
+        mainContent.innerHTML = `
+        <div style="max-width:1200px;margin:0 auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <div>
+                    <h2 style="margin:0;color:#1e293b;">🛠️ IT Helpdesk Dashboard</h2>
+                    <p style="margin:4px 0 0;color:#64748b;">Manage and track all IT support tickets</p>
+                </div>
+                <div style="font-size:0.85rem;color:#94a3b8;">Last updated: ${new Date().toLocaleString()}</div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="dashboard-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:30px;">
+                <div class="stat-card" style="border-top:4px solid #3b82f6;padding:20px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                    <div style="font-size:2rem;font-weight:700;color:#3b82f6;">${summary.totalTickets || 0}</div>
+                    <div style="color:#64748b;font-weight:500;">Total Tickets</div>
+                </div>
+                <div class="stat-card" style="border-top:4px solid #f59e0b;padding:20px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                    <div style="font-size:2rem;font-weight:700;color:#f59e0b;">${summary.openTickets || 0}</div>
+                    <div style="color:#64748b;font-weight:500;">Open</div>
+                </div>
+                <div class="stat-card" style="border-top:4px solid #3b82f6;padding:20px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                    <div style="font-size:2rem;font-weight:700;color:#3b82f6;">${summary.inProgressTickets || 0}</div>
+                    <div style="color:#64748b;font-weight:500;">In Progress</div>
+                </div>
+                <div class="stat-card" style="border-top:4px solid #10b981;padding:20px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                    <div style="font-size:2rem;font-weight:700;color:#10b981;">${summary.closedTickets || 0}</div>
+                    <div style="color:#64748b;font-weight:500;">Closed</div>
+                </div>
+                <div class="stat-card" style="border-top:4px solid #6b7280;padding:20px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                    <div style="font-size:2rem;font-weight:700;color:#6b7280;">${summary.onHoldTickets || 0}</div>
+                    <div style="color:#64748b;font-weight:500;">On Hold</div>
+                </div>
+                <div class="stat-card" style="border-top:4px solid #8b5cf6;padding:20px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                    <div style="font-size:2rem;font-weight:700;color:#8b5cf6;">${summary.avgResolutionHours || 0}h</div>
+                    <div style="color:#64748b;font-weight:500;">Avg Resolution</div>
+                </div>
+            </div>
+
+            <!-- Priority & Monthly Charts -->
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;margin-bottom:30px;">
+                <div class="card" style="padding:24px;">
+                    <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">🔴 Active by Priority</h3>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fef2f2;border-radius:8px;">
+                            <span style="font-weight:600;color:#dc2626;">Critical</span><span style="font-weight:700;color:#dc2626;">${priority.critical || 0}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff7ed;border-radius:8px;">
+                            <span style="font-weight:600;color:#ef4444;">High</span><span style="font-weight:700;color:#ef4444;">${priority.high || 0}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fffbeb;border-radius:8px;">
+                            <span style="font-weight:600;color:#f59e0b;">Medium</span><span style="font-weight:700;color:#f59e0b;">${priority.medium || 0}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f0fdf4;border-radius:8px;">
+                            <span style="font-weight:600;color:#10b981;">Low</span><span style="font-weight:700;color:#10b981;">${priority.low || 0}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card" style="padding:24px;">
+                    <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">📊 Monthly Tickets (Created vs Closed)</h3>
+                    <div style="display:flex;gap:8px;align-items:flex-end;">
+                        ${monthlyBars || '<p style="color:#94a3b8;">No monthly data yet</p>'}
+                    </div>
+                    <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:0.8rem;">
+                        <span><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:2px;margin-right:4px;"></span>Created</span>
+                        <span><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:2px;margin-right:4px;"></span>Closed</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="card" style="padding:24px;margin-bottom:30px;">
+                <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">📁 Tickets by Category</h3>
+                ${catRows || '<p style="color:#94a3b8;text-align:center;">No category data yet</p>'}
+            </div>
+
+            <!-- All Tickets Table -->
+            <div class="card" style="padding:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h3 style="margin:0;color:#1e3a8a;font-size:1rem;">📋 All Tickets</h3>
+                    <div style="display:flex;gap:8px;">
+                        <select id="itFilterStatus" class="form-control" style="width:auto;padding:6px 12px;font-size:0.85rem;" onchange="filterITTickets()">
+                            <option value="">All Status</option>
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="on_hold">On Hold</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                </div>
+                ${allTickets.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:30px;">No tickets found.</p>' : `
+                <div style="overflow-x:auto;">
+                    <table class="data-table" id="itTicketsTable">
+                        <thead><tr>
+                            <th>Ticket #</th><th>Requester</th><th>Category</th><th>Item</th><th>Subject</th><th>Priority</th><th>Status</th><th>Date</th><th>Action</th>
+                        </tr></thead>
+                        <tbody>${ticketRows}</tbody>
+                    </table>
+                </div>`}
+            </div>
+        </div>`;
+
+    } catch(e) {
+        console.error('Error loading IT dashboard:', e);
+        mainContent.innerHTML = '<div class="card" style="padding:40px;text-align:center;"><p style="color:#ef4444;">Error loading IT Dashboard. Please try again.</p></div>';
+    }
+}
+
+// Manage ticket actions modal
+function showITTicketActions(ticketId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'itTicketModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:500px;width:90%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="margin:0;color:#1e3a8a;">🛠️ Update Ticket</h3>
+            <button onclick="document.getElementById('itTicketModal').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;">&times;</button>
+        </div>
+        <div class="form-group">
+            <label style="font-weight:600;">Status</label>
+            <select id="itTicketStatus" class="form-control">
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="on_hold">On Hold</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label style="font-weight:600;">Resolution / Notes</label>
+            <textarea id="itTicketResolution" class="form-control" rows="3" placeholder="Add resolution notes..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('itTicketModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="updateITTicket('${ticketId}')">💾 Update Ticket</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+}
+
+async function updateITTicket(ticketId) {
+    const status = document.getElementById('itTicketStatus').value;
+    const resolution = document.getElementById('itTicketResolution').value.trim();
+
+    try {
+        const resp = await apiCall(`it-tickets/update/${ticketId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status, resolution, notes: resolution })
+        });
+        if (resp.success) {
+            showMessage('Ticket updated successfully!', 'success');
+            document.getElementById('itTicketModal')?.remove();
+            showITDashboard();
+        } else {
+            showMessage(resp.error || 'Failed to update ticket', 'error');
+        }
+    } catch(e) {
+        console.error('Error updating ticket:', e);
+        showMessage('Failed to update ticket', 'error');
+    }
+}
+
+async function filterITTickets() {
+    // Simple: reload dashboard - the filter is visual
+    showITDashboard();
+}
+
+// Update IT badge
+async function updateITOpenTicketsBadge() {
+    try {
+        const resp = await apiCall('it-tickets/dashboard');
+        if (resp.success) {
+            const open = (resp.data?.summary?.openTickets || 0) + (resp.data?.summary?.inProgressTickets || 0);
+            const badge = document.getElementById('itOpenTicketsBadge');
+            if (badge) {
+                badge.textContent = open;
+                badge.style.display = open > 0 ? 'inline-block' : 'none';
+            }
+        }
+    } catch(e) { console.error('Error updating IT badge:', e); }
+}
+
+// --- IT Department Report (For COO & Director) ---
+async function showITDepartmentReport() {
+    setActiveNav('nav-it-department');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align:center;padding:60px;"><div class="loading-spinner"></div><p>Loading IT Department Report...</p></div>';
+
+    try {
+        const resp = await apiCall('it-tickets/dashboard');
+        const dash = resp.success ? resp.data : {};
+        const summary = dash.summary || {};
+        const monthly = dash.monthlyStats || [];
+        const priority = dash.priority || {};
+        const catStats = dash.categoryStats || {};
+
+        const totalActive = (summary.openTickets || 0) + (summary.inProgressTickets || 0);
+        const resolutionRate = summary.totalTickets > 0 ? Math.round((summary.closedTickets / summary.totalTickets) * 100) : 0;
+
+        // Monthly chart
+        const maxM = Math.max(...monthly.map(m => Math.max(m.created, m.closed)), 1);
+        const monthlyChart = monthly.map(m => `
+            <div style="flex:1;text-align:center;min-width:70px;">
+                <div style="display:flex;justify-content:center;gap:3px;align-items:flex-end;height:100px;margin-bottom:6px;">
+                    <div style="width:18px;background:linear-gradient(180deg,#667eea,#764ba2);border-radius:3px 3px 0 0;height:${Math.max((m.created/maxM)*90,4)}px;" title="Created: ${m.created}"></div>
+                    <div style="width:18px;background:linear-gradient(180deg,#10b981,#059669);border-radius:3px 3px 0 0;height:${Math.max((m.closed/maxM)*90,4)}px;" title="Closed: ${m.closed}"></div>
+                </div>
+                <div style="font-size:0.7rem;color:#64748b;font-weight:500;">${m.month}</div>
+            </div>
+        `).join('');
+
+        // Category donut-style list
+        const catList = Object.entries(catStats).map(([key, val]) => {
+            const pct = summary.totalTickets > 0 ? Math.round((val.total / summary.totalTickets) * 100) : 0;
+            return `
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                <div style="width:40px;text-align:right;font-weight:700;color:#1e3a8a;">${pct}%</div>
+                <div style="flex:1;">
+                    <div style="font-weight:500;color:#334155;">${val.label || key}</div>
+                    <div style="height:6px;background:#e2e8f0;border-radius:3px;margin-top:4px;">
+                        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:3px;"></div>
+                    </div>
+                </div>
+                <div style="font-size:0.85rem;color:#64748b;">${val.total} tickets</div>
+            </div>`;
+        }).join('');
+
+        mainContent.innerHTML = `
+        <div style="max-width:1200px;margin:0 auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <div>
+                    <h2 style="margin:0;color:#1e293b;">📊 IT Department Report</h2>
+                    <p style="margin:4px 0 0;color:#64748b;">Executive overview of IT support operations</p>
+                </div>
+                <div style="font-size:0.85rem;color:#94a3b8;">Generated: ${new Date().toLocaleString()}</div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:30px;">
+                <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:24px;border-radius:16px;color:#fff;">
+                    <div style="font-size:0.85rem;opacity:0.8;">Total Tickets</div>
+                    <div style="font-size:2.5rem;font-weight:700;margin:4px 0;">${summary.totalTickets || 0}</div>
+                    <div style="font-size:0.8rem;opacity:0.7;">All time</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:24px;border-radius:16px;color:#fff;">
+                    <div style="font-size:0.85rem;opacity:0.8;">Active Tickets</div>
+                    <div style="font-size:2.5rem;font-weight:700;margin:4px 0;">${totalActive}</div>
+                    <div style="font-size:0.8rem;opacity:0.7;">Open + In Progress</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#10b981,#059669);padding:24px;border-radius:16px;color:#fff;">
+                    <div style="font-size:0.85rem;opacity:0.8;">Resolution Rate</div>
+                    <div style="font-size:2.5rem;font-weight:700;margin:4px 0;">${resolutionRate}%</div>
+                    <div style="font-size:0.8rem;opacity:0.7;">${summary.closedTickets || 0} resolved</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:24px;border-radius:16px;color:#fff;">
+                    <div style="font-size:0.85rem;opacity:0.8;">Avg Resolution Time</div>
+                    <div style="font-size:2.5rem;font-weight:700;margin:4px 0;">${summary.avgResolutionHours || 0}h</div>
+                    <div style="font-size:0.8rem;opacity:0.7;">Hours per ticket</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px;">
+                <div class="card" style="padding:24px;">
+                    <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">📈 Monthly Trend</h3>
+                    <div style="display:flex;gap:6px;align-items:flex-end;">${monthlyChart}</div>
+                    <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:0.8rem;">
+                        <span><span style="display:inline-block;width:12px;height:12px;background:linear-gradient(180deg,#667eea,#764ba2);border-radius:2px;margin-right:4px;"></span>Created</span>
+                        <span><span style="display:inline-block;width:12px;height:12px;background:linear-gradient(180deg,#10b981,#059669);border-radius:2px;margin-right:4px;"></span>Closed</span>
+                    </div>
+                </div>
+                <div class="card" style="padding:24px;">
+                    <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">🔴 Active Tickets by Priority</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div style="text-align:center;padding:16px;background:#fef2f2;border-radius:12px;">
+                            <div style="font-size:1.8rem;font-weight:700;color:#dc2626;">${priority.critical || 0}</div>
+                            <div style="font-size:0.8rem;color:#991b1b;font-weight:600;">CRITICAL</div>
+                        </div>
+                        <div style="text-align:center;padding:16px;background:#fff7ed;border-radius:12px;">
+                            <div style="font-size:1.8rem;font-weight:700;color:#ef4444;">${priority.high || 0}</div>
+                            <div style="font-size:0.8rem;color:#c2410c;font-weight:600;">HIGH</div>
+                        </div>
+                        <div style="text-align:center;padding:16px;background:#fffbeb;border-radius:12px;">
+                            <div style="font-size:1.8rem;font-weight:700;color:#f59e0b;">${priority.medium || 0}</div>
+                            <div style="font-size:0.8rem;color:#92400e;font-weight:600;">MEDIUM</div>
+                        </div>
+                        <div style="text-align:center;padding:16px;background:#f0fdf4;border-radius:12px;">
+                            <div style="font-size:1.8rem;font-weight:700;color:#10b981;">${priority.low || 0}</div>
+                            <div style="font-size:0.8rem;color:#065f46;font-weight:600;">LOW</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="card" style="padding:24px;margin-bottom:30px;">
+                <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">📁 Tickets by Category</h3>
+                ${catList || '<p style="color:#94a3b8;text-align:center;">No category data available</p>'}
+            </div>
+
+            <!-- Status Overview -->
+            <div class="card" style="padding:24px;">
+                <h3 style="margin:0 0 16px;color:#1e3a8a;font-size:1rem;">📋 Status Overview</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+                    <div style="text-align:center;padding:16px;background:#fffbeb;border-radius:12px;border:2px solid #fef3c7;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#f59e0b;">${summary.openTickets || 0}</div>
+                        <div style="font-size:0.8rem;font-weight:600;color:#92400e;">Open</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;background:#eff6ff;border-radius:12px;border:2px solid #dbeafe;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#3b82f6;">${summary.inProgressTickets || 0}</div>
+                        <div style="font-size:0.8rem;font-weight:600;color:#1e40af;">In Progress</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;background:#f5f5f5;border-radius:12px;border:2px solid #e5e5e5;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#6b7280;">${summary.onHoldTickets || 0}</div>
+                        <div style="font-size:0.8rem;font-weight:600;color:#4b5563;">On Hold</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;background:#f0fdf4;border-radius:12px;border:2px solid #dcfce7;">
+                        <div style="font-size:1.5rem;font-weight:700;color:#10b981;">${summary.closedTickets || 0}</div>
+                        <div style="font-size:0.8rem;font-weight:600;color:#065f46;">Closed / Resolved</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    } catch(e) {
+        console.error('Error loading IT department report:', e);
+        mainContent.innerHTML = '<div class="card" style="padding:40px;text-align:center;"><p style="color:#ef4444;">Error loading IT Department Report.</p></div>';
+    }
+}
+
+console.log('✅ IT Portal Module loaded');
 
 </script>
 

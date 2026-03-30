@@ -31185,6 +31185,34 @@ function itStatusColor(s) {
 function itPriorityColor(p) {
     return { 'critical': '#dc2626', 'high': '#ef4444', 'medium': '#f59e0b', 'low': '#10b981' }[p] || '#6b7280';
 }
+function itFormatDate(ts) {
+    if (!ts) return '-';
+    try {
+        if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+        if (ts._seconds) return new Date(ts._seconds * 1000).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+        if (typeof ts === 'string' || typeof ts === 'number') {
+            const d = new Date(ts);
+            if (!isNaN(d.getTime())) return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+        }
+        if (ts.toDate) return ts.toDate().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+    } catch(e) {}
+    return '-';
+}
+function itFormatDateTime(ts) {
+    if (!ts) return '-';
+    try {
+        let d;
+        if (ts.seconds) d = new Date(ts.seconds * 1000);
+        else if (ts._seconds) d = new Date(ts._seconds * 1000);
+        else if (ts.toDate) d = ts.toDate();
+        else d = new Date(ts);
+        if (!isNaN(d.getTime())) return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+    } catch(e) {}
+    return '-';
+}
+
+// Store tickets data for edit modal
+let _itMyTicketsCache = [];
 
 // --- IT Request Form (For all portal users) ---
 async function showITRequestForm() {
@@ -31201,71 +31229,96 @@ async function showITRequestForm() {
         `<option value="${key}">${val.label}</option>`
     ).join('');
 
+    // Cache for edit modal
+    _itMyTicketsCache = myRequests;
+
     // Build request cards with tracking, edit, delete
     const requestCards = myRequests.map(t => {
         const isOpen = t.status === 'open';
         const isRejected = t.status === 'rejected';
-        const isClosed = ['closed','resolved','issued','delivered'].includes(t.status);
 
-        // Workflow steps
-        const steps = [{label:'Submitted', done:true, icon:'📝'}];
+        // Workflow steps with dates
+        const steps = [{label:'Raised', done:true, icon:'📝', date:itFormatDate(t.createdAt)}];
         if (t.availability === 'in_store') {
-            steps.push({label:'IT Reviewed', done:true, icon:'🔍'});
-            steps.push({label:'In Store', done:true, icon:'📦'});
-            steps.push({label:'Issued', done:t.status==='issued'||t.status==='closed', icon:'✅'});
+            steps.push({label:'IT Reviewed', done:true, icon:'🔍', date:itFormatDate(t.itReviewedAt)});
+            steps.push({label:'In Store', done:true, icon:'📦', date:''});
+            steps.push({label:'Issued', done:t.status==='issued'||t.status==='closed', icon:'✅', date:itFormatDate(t.resolvedAt)});
         } else if (t.availability === 'need_purchase') {
-            steps.push({label:'IT Reviewed', done:true, icon:'🔍'});
-            steps.push({label:'HR Cost Review', done:!!t.hrReviewedAt, icon:'💰'});
-            steps.push({label:'COO Approval', done:!!t.cooApprovedAt, icon:'👔'});
-            steps.push({label:'Director Approval', done:!!t.directorApprovedAt, icon:'🎯'});
-            if (t.status === 'approved') steps.push({label:'Approved', done:true, icon:'✅'});
+            steps.push({label:'IT Reviewed', done:true, icon:'🔍', date:itFormatDate(t.itReviewedAt)});
+            steps.push({label:'HR Review', done:!!t.hrReviewedAt, icon:'💰', date:itFormatDate(t.hrReviewedAt)});
+            steps.push({label:'COO', done:!!t.cooApprovedAt, icon:'👔', date:itFormatDate(t.cooApprovedAt)});
+            steps.push({label:'Director', done:!!t.directorApprovedAt, icon:'🎯', date:itFormatDate(t.directorApprovedAt)});
+            if (t.status === 'approved') steps.push({label:'Approved', done:true, icon:'✅', date:itFormatDate(t.directorApprovedAt)});
         } else {
-            steps.push({label:'IT Review', done:false, icon:'🔍'});
+            steps.push({label:'IT Review', done:false, icon:'🔍', date:'Pending'});
         }
-        if (isRejected) steps.push({label:'Rejected', done:true, icon:'❌'});
+        if (isRejected) steps.push({label:'Rejected', done:true, icon:'❌', date:itFormatDate(t.updatedAt)});
 
         const tracker = steps.map((s,i) => {
             const isLast = i === steps.length - 1;
-            return `<div style="display:flex;align-items:center;gap:0;">
-                <div style="display:flex;flex-direction:column;align-items:center;min-width:60px;">
-                    <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;background:${s.done?(s.label==='Rejected'?'#fef2f2':'#f0fdf4'):'#f8fafc'};border:2px solid ${s.done?(s.label==='Rejected'?'#ef4444':'#10b981'):'#d1d5db'};">${s.icon}</div>
-                    <div style="font-size:0.65rem;color:${s.done?'#334155':'#94a3b8'};font-weight:${s.done?'600':'400'};margin-top:3px;text-align:center;">${s.label}</div>
+            const dotColor = s.done ? (s.label==='Rejected' ? '#ef4444' : '#10b981') : '#d1d5db';
+            const bgColor = s.done ? (s.label==='Rejected' ? '#fef2f2' : '#f0fdf4') : '#f8fafc';
+            return `<div style="display:flex;align-items:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;min-width:68px;">
+                    <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.9rem;background:${bgColor};border:2px solid ${dotColor};">${s.icon}</div>
+                    <div style="font-size:0.7rem;color:${s.done?'#1e293b':'#94a3b8'};font-weight:600;margin-top:4px;text-align:center;line-height:1.2;">${s.label}</div>
+                    ${s.date?`<div style="font-size:0.6rem;color:#94a3b8;margin-top:1px;">${s.date}</div>`:''}
                 </div>
-                ${!isLast?'<div style="width:24px;height:2px;background:'+(s.done?'#10b981':'#e2e8f0')+';margin-bottom:16px;"></div>':''}
+                ${!isLast?`<div style="width:28px;height:2px;background:${s.done?'#10b981':'#e2e8f0'};margin-bottom:24px;"></div>`:''}
             </div>`;
         }).join('');
 
-        // Attachments display
+        // Attachments
         const attachList = (t.attachments && t.attachments.length > 0)
             ? t.attachments.map((a,i)=>`<a href="${a.url}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#eff6ff;border-radius:6px;font-size:0.8rem;color:#3b82f6;text-decoration:none;border:1px solid #dbeafe;">📎 ${a.fileName||'File '+(i+1)}</a>`).join(' ')
             : '';
 
+        const closedDate = (t.resolvedAt) ? itFormatDate(t.resolvedAt) : null;
+
         return `
         <div class="card" style="padding:20px;margin-bottom:16px;border-left:4px solid ${itStatusColor(t.status)};">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
                 <div>
-                    <strong style="color:#1e3a8a;font-size:1.05rem;">${t.ticketNumber||'-'}</strong>
-                    <span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itStatusColor(t.status)};background:${itStatusColor(t.status)}15;margin-left:8px;">${itStatusLabel(t.status)}</span>
+                    <strong style="color:#1e3a8a;font-size:1.1rem;">${t.ticketNumber||'-'}</strong>
+                    <span style="padding:3px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itStatusColor(t.status)};background:${itStatusColor(t.status)}15;margin-left:8px;">${itStatusLabel(t.status)}</span>
                     <span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itPriorityColor(t.priority)};background:${itPriorityColor(t.priority)}15;margin-left:4px;">${(t.priority||'').toUpperCase()}</span>
                 </div>
-                <div style="display:flex;gap:6px;">
-                    ${isOpen?`<button class="btn btn-sm btn-secondary" onclick="showEditITTicketModal('${t.id}','${(t.category||'').replace(/'/g,"\\'")}','${(t.item||'').replace(/'/g,"\\'")}',${t.quantity||1},'${t.priority||'medium'}','${(t.subject||'').replace(/'/g,"\\'")}')">✏️ Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteUserITTicket('${t.id}','${t.ticketNumber}')">🗑️</button>`:''}
+                <div style="display:flex;gap:6px;align-items:center;">
+                    ${isOpen?`<button class="btn btn-sm btn-secondary" onclick="openEditITTicket('${t.id}')" style="font-size:0.8rem;">✏️ Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUserITTicket('${t.id}','${t.ticketNumber}')" style="font-size:0.8rem;">🗑️ Delete</button>`:''}
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;font-size:0.9rem;">
-                <div><span style="color:#64748b;">Category:</span> <strong>${t.categoryLabel||t.category}</strong></div>
-                <div><span style="color:#64748b;">Item:</span> <strong>${t.item}</strong>${t.quantity>1?' (x'+t.quantity+')':''}</div>
-                <div><span style="color:#64748b;">Date:</span> <strong>${t.createdAt?new Date(t.createdAt.seconds?t.createdAt.seconds*1000:t.createdAt).toLocaleDateString():'-'}</strong></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                <div style="padding:10px 14px;background:#f8fafc;border-radius:8px;">
+                    <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">Category</div>
+                    <div style="font-weight:600;color:#1e293b;margin-top:2px;">${t.categoryLabel||t.category}</div>
+                </div>
+                <div style="padding:10px 14px;background:#f8fafc;border-radius:8px;">
+                    <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">Item</div>
+                    <div style="font-weight:600;color:#1e293b;margin-top:2px;">${t.item}${t.quantity>1?' (x'+t.quantity+')':''}</div>
+                </div>
+                <div style="padding:10px 14px;background:#f8fafc;border-radius:8px;">
+                    <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">Raised On</div>
+                    <div style="font-weight:600;color:#1e293b;margin-top:2px;">${itFormatDate(t.createdAt)}</div>
+                </div>
+                <div style="padding:10px 14px;background:${closedDate?'#f0fdf4':'#f8fafc'};border-radius:8px;">
+                    <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">${closedDate?'Closed On':'Expected'}</div>
+                    <div style="font-weight:600;color:${closedDate?'#059669':'#94a3b8'};margin-top:2px;">${closedDate||'In Progress'}</div>
+                </div>
             </div>
-            <div style="font-size:0.9rem;margin-bottom:12px;"><span style="color:#64748b;">Subject:</span> <strong>${t.subject}</strong></div>
-            ${attachList?`<div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;">${attachList}</div>`:''}
-            ${t.estimatedCost?`<div style="font-size:0.9rem;margin-bottom:8px;padding:6px 10px;background:#fef3c7;border-radius:6px;"><span style="color:#92400e;">Estimated Cost:</span> <strong style="color:#d97706;">$${parseFloat(t.estimatedCost).toFixed(2)}</strong>${t.vendor?' | Vendor: '+t.vendor:''}</div>`:''}
-            ${t.resolution?`<div style="font-size:0.9rem;margin-bottom:8px;padding:6px 10px;background:#f0fdf4;border-radius:6px;"><span style="color:#065f46;">Resolution:</span> <strong>${t.resolution}</strong></div>`:''}
+            <div style="padding:10px 14px;background:#f8fafc;border-radius:8px;margin-bottom:14px;">
+                <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:600;">Subject</div>
+                <div style="font-weight:500;color:#1e293b;margin-top:2px;">${t.subject}</div>
+            </div>
+            ${attachList?`<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;">${attachList}</div>`:''}
+            ${t.estimatedCost?`<div style="padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;"><span style="color:#92400e;font-weight:500;">Estimated Cost</span><strong style="color:#d97706;font-size:1.1rem;">$${parseFloat(t.estimatedCost).toFixed(2)}</strong></div>`:''}
+            ${t.resolution?`<div style="padding:8px 12px;background:#f0fdf4;border-radius:8px;margin-bottom:10px;"><span style="color:#065f46;font-weight:600;">Resolution:</span> ${t.resolution}</div>`:''}
 
             <!-- Workflow Tracker -->
-            <div style="display:flex;align-items:flex-start;gap:0;padding:12px 16px;background:#f8fafc;border-radius:10px;overflow-x:auto;">
-                ${tracker}
+            <div style="padding:14px 16px;background:linear-gradient(135deg,#f8fafc,#f0f4f8);border-radius:10px;border:1px solid #e2e8f0;">
+                <div style="font-size:0.75rem;color:#64748b;font-weight:600;text-transform:uppercase;margin-bottom:10px;">Request Progress</div>
+                <div style="display:flex;align-items:flex-start;overflow-x:auto;">
+                    ${tracker}
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -31415,8 +31468,17 @@ async function submitITRequest() {
     }
 }
 
-// Edit user ticket modal (only when status is 'open')
-function showEditITTicketModal(ticketId, category, item, quantity, priority, subject) {
+// Edit user ticket modal - uses cached data (safe from quote issues)
+function openEditITTicket(ticketId) {
+    const t = _itMyTicketsCache.find(x => x.id === ticketId);
+    if (!t) return showMessage('Ticket not found', 'error');
+    const category = t.category || '';
+    const item = t.item || '';
+    const quantity = t.quantity || 1;
+    const priority = t.priority || 'medium';
+    const subject = t.subject || '';
+    const description = t.description || '';
+
     const categoryOptions = Object.entries(IT_CATEGORIES).map(([key, val]) =>
         `<option value="${key}" ${key===category?'selected':''}>${val.label}</option>`
     ).join('');
@@ -31428,10 +31490,14 @@ function showEditITTicketModal(ticketId, category, item, quantity, priority, sub
     modal.id = 'itEditModal';
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
     modal.innerHTML = `
-    <div style="background:#fff;border-radius:16px;max-width:550px;width:92%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+    <div style="background:#fff;border-radius:16px;max-width:580px;width:92%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <h3 style="margin:0;color:#1e3a8a;">✏️ Edit IT Request</h3>
             <button onclick="document.getElementById('itEditModal').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;">&times;</button>
+        </div>
+        <div style="padding:10px 14px;background:#eff6ff;border-radius:8px;margin-bottom:16px;font-size:0.9rem;">
+            <strong style="color:#1e40af;">Ticket: ${t.ticketNumber}</strong>
+            <span style="color:#64748b;margin-left:8px;">You can edit this ticket because it hasn't been reviewed yet.</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <div class="form-group" style="margin:0;">
@@ -31462,7 +31528,11 @@ function showEditITTicketModal(ticketId, category, item, quantity, priority, sub
         </div>
         <div class="form-group" style="margin-top:14px;">
             <label style="font-weight:600;font-size:0.85rem;">Subject</label>
-            <input type="text" id="editItSubject" class="form-control" value="${subject}">
+            <input type="text" id="editItSubject" class="form-control" value="">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+            <label style="font-weight:600;font-size:0.85rem;">Description</label>
+            <textarea id="editItDescription" class="form-control" rows="3"></textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
             <button class="btn btn-secondary" onclick="document.getElementById('itEditModal').remove()">Cancel</button>
@@ -31470,6 +31540,9 @@ function showEditITTicketModal(ticketId, category, item, quantity, priority, sub
         </div>
     </div>`;
     document.body.appendChild(modal);
+    // Set values after DOM insert to avoid quote issues
+    document.getElementById('editItSubject').value = subject;
+    document.getElementById('editItDescription').value = description;
 }
 
 function updateEditITItems() {
@@ -31487,7 +31560,8 @@ async function saveEditITTicket(ticketId) {
         item: document.getElementById('editItItem').value,
         quantity: document.getElementById('editItQuantity').value,
         priority: document.getElementById('editItPriority').value,
-        subject: document.getElementById('editItSubject').value.trim()
+        subject: document.getElementById('editItSubject').value.trim(),
+        description: document.getElementById('editItDescription').value.trim()
     };
     try {
         const resp = await apiCall(`it-tickets/user-edit/${ticketId}`, {
@@ -31559,7 +31633,7 @@ async function showITDashboard() {
         const ticketRows = allTickets.map(t => {
             let actionBtn = '';
             if (t.status === 'open') {
-                actionBtn = `<button class="btn btn-sm btn-primary" onclick="showITReviewModal('${t.id}','${(t.item||'').replace(/'/g,"\\'")}')">Check Store</button>`;
+                actionBtn = `<button class="btn btn-sm btn-primary" onclick="showITReviewModal('${t.id}','${(t.item||'').replace(/'/g,"\\'")}')">Check Store</button> <button class="btn btn-sm btn-danger" onclick="deleteITTicketAdmin('${t.id}','${t.ticketNumber}')" title="Delete">🗑️</button>`;
             } else if (t.status === 'available_in_store') {
                 actionBtn = `<button class="btn btn-sm btn-success" onclick="itIssueItem('${t.id}')">Issue Item</button>`;
             } else {
@@ -31573,7 +31647,7 @@ async function showITDashboard() {
                 <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.subject}</td>
                 <td><span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itPriorityColor(t.priority)};background:${itPriorityColor(t.priority)}15;">${(t.priority||'medium').toUpperCase()}</span></td>
                 <td><span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itStatusColor(t.status)};background:${itStatusColor(t.status)}15;">${itStatusLabel(t.status)}</span></td>
-                <td style="font-size:0.8rem;color:#6b7280;">${t.createdAt?new Date(t.createdAt.seconds?t.createdAt.seconds*1000:t.createdAt).toLocaleDateString():'-'}</td>
+                <td style="font-size:0.8rem;color:#6b7280;">${itFormatDate(t.createdAt)}</td>
                 <td>${actionBtn}</td>
             </tr>`;
         }).join('');
@@ -31838,6 +31912,17 @@ function showITTicketActions(ticketId, currentStatus) {
     document.body.appendChild(modal);
 }
 
+async function deleteITTicketAdmin(ticketId, ticketNumber) {
+    if (!confirm(`Delete ticket ${ticketNumber}? This cannot be undone.`)) return;
+    try {
+        const resp = await apiCall(`it-tickets/${ticketId}`, { method: 'DELETE' });
+        if (resp.success) {
+            showMessage('Ticket deleted', 'success');
+            showITDashboard();
+        } else { showMessage(resp.error || 'Failed to delete', 'error'); }
+    } catch(e) { showMessage('Error deleting ticket', 'error'); }
+}
+
 async function updateITTicket(ticketId) {
     const status = document.getElementById('itTicketStatus').value;
     const resolution = document.getElementById('itTicketResolution').value.trim();
@@ -32040,7 +32125,7 @@ async function showHRITProcurement() {
                     <strong style="color:#1e3a8a;font-size:1.1rem;">${t.ticketNumber}</strong>
                     <span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itPriorityColor(t.priority)};background:${itPriorityColor(t.priority)}15;margin-left:8px;">${(t.priority||'medium').toUpperCase()}</span>
                 </div>
-                <span style="font-size:0.85rem;color:#94a3b8;">${t.createdAt?new Date(t.createdAt.seconds?t.createdAt.seconds*1000:t.createdAt).toLocaleDateString():'-'}</span>
+                <span style="font-size:0.85rem;color:#94a3b8;">${itFormatDate(t.createdAt)}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
                 <div><span style="color:#64748b;font-size:0.85rem;">Requested By:</span><br><strong>${t.requestedByName}</strong> <span style="color:#94a3b8;font-size:0.8rem;">(${t.requestedByRole})</span></div>

@@ -31425,7 +31425,10 @@ async function showITDashboard() {
                     <h2 style="margin:0;color:#1e293b;">🛠️ IT Helpdesk Dashboard</h2>
                     <p style="margin:4px 0 0;color:#64748b;">Manage tickets, check store availability, and process procurement</p>
                 </div>
-                <div style="font-size:0.85rem;color:#94a3b8;">Last updated: ${new Date().toLocaleString()}</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button class="btn btn-primary" onclick="showStockPurchaseModal()" style="white-space:nowrap;">📦 Stock Purchase Request</button>
+                    <div style="font-size:0.85rem;color:#94a3b8;">${new Date().toLocaleString()}</div>
+                </div>
             </div>
 
             <!-- Summary Stats -->
@@ -31515,7 +31518,7 @@ function showITReviewModal(ticketId, itemName) {
     modal.id = 'itTicketModal';
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
     modal.innerHTML = `
-    <div style="background:#fff;border-radius:16px;max-width:520px;width:90%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="background:#fff;border-radius:16px;max-width:600px;width:92%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <h3 style="margin:0;color:#1e3a8a;">🔍 Store Availability Check</h3>
             <button onclick="document.getElementById('itTicketModal').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;">&times;</button>
@@ -31528,9 +31531,30 @@ function showITReviewModal(ticketId, itemName) {
             <label style="font-weight:600;">IT Notes (optional)</label>
             <textarea id="itReviewNotes" class="form-control" rows="2" placeholder="Add notes about availability, specifications, etc."></textarea>
         </div>
+
+        <!-- Purchase Details (shown when Need Purchase is selected) -->
+        <div id="itPurchaseDetails" style="display:none;margin-top:16px;padding:16px;background:#fffbeb;border-radius:10px;border:2px solid #fef3c7;">
+            <h4 style="margin:0 0 14px;color:#92400e;font-size:0.95rem;">🛒 Purchase Details</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;font-size:0.85rem;">Estimated Cost</label>
+                    <input type="number" id="itEstCost" class="form-control" placeholder="0.00" step="0.01" min="0">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;font-size:0.85rem;">Vendor / Supplier</label>
+                    <input type="text" id="itVendor" class="form-control" placeholder="Vendor name">
+                </div>
+            </div>
+            <div class="form-group" style="margin:12px 0 0;">
+                <label style="font-weight:600;font-size:0.85rem;">📎 Upload Quotation (PDF / Word)</label>
+                <input type="file" id="itQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" style="padding:8px;">
+                <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB)</small>
+            </div>
+        </div>
+
         <div style="display:flex;gap:10px;margin-top:20px;">
             <button class="btn btn-success" style="flex:1;" onclick="itReviewTicket('${ticketId}','in_store')">✅ Available in Store</button>
-            <button class="btn btn-warning" style="flex:1;color:#fff;background:#f59e0b;" onclick="itReviewTicket('${ticketId}','need_purchase')">🛒 Need to Purchase</button>
+            <button class="btn btn-warning" style="flex:1;color:#fff;background:#f59e0b;" id="btnNeedPurchase" onclick="itShowPurchaseOrSubmit('${ticketId}')">🛒 Need to Purchase</button>
         </div>
         <div style="text-align:center;margin-top:10px;">
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('itTicketModal').remove()">Cancel</button>
@@ -31539,13 +31563,51 @@ function showITReviewModal(ticketId, itemName) {
     document.body.appendChild(modal);
 }
 
+// Toggle purchase details form, then submit on second click
+function itShowPurchaseOrSubmit(ticketId) {
+    const details = document.getElementById('itPurchaseDetails');
+    if (details && details.style.display === 'none') {
+        details.style.display = 'block';
+        document.getElementById('btnNeedPurchase').textContent = '📤 Submit Purchase Request';
+        document.getElementById('btnNeedPurchase').onclick = () => itReviewTicket(ticketId, 'need_purchase');
+    }
+}
+
 async function itReviewTicket(ticketId, availability) {
     const itNotes = document.getElementById('itReviewNotes')?.value.trim() || '';
+    let body = { availability, itNotes };
+
+    if (availability === 'need_purchase') {
+        body.estimatedCost = document.getElementById('itEstCost')?.value || '';
+        body.vendor = document.getElementById('itVendor')?.value.trim() || '';
+
+        // Upload quotation file if provided
+        const fileInput = document.getElementById('itQuotationFile');
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            if (file.size > 10 * 1024 * 1024) {
+                return showMessage('File size must be under 10MB', 'error');
+            }
+            try {
+                showMessage('Uploading quotation...', 'info');
+                const storageRef = firebase.storage().ref();
+                const fileRef = storageRef.child(`it-quotations/${ticketId}_${Date.now()}_${file.name}`);
+                await fileRef.put(file);
+                body.quotationUrl = await fileRef.getDownloadURL();
+                body.quotationFileName = file.name;
+            } catch(e) {
+                console.error('Quotation upload error:', e);
+                return showMessage('Failed to upload quotation file', 'error');
+            }
+        }
+    }
+
     try {
+        showMessage('Processing...', 'info');
         const resp = await apiCall(`it-tickets/it-review/${ticketId}`, {
             method: 'PUT',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ availability, itNotes })
+            body: JSON.stringify(body)
         });
         if (resp.success) {
             showMessage(resp.message || 'Ticket reviewed!', 'success');
@@ -31623,6 +31685,139 @@ async function updateITTicket(ticketId) {
     } catch(e) { showMessage('Failed to update ticket', 'error'); }
 }
 
+// --- Stock Purchase Request Modal (IT creates for store stock) ---
+function showStockPurchaseModal() {
+    const categoryOptions = Object.entries(IT_CATEGORIES).map(([key, val]) =>
+        `<option value="${key}">${val.label}</option>`
+    ).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'itStockModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:650px;width:92%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="margin:0;color:#1e3a8a;">📦 Stock Purchase Request</h3>
+            <button onclick="document.getElementById('itStockModal').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;">&times;</button>
+        </div>
+        <p style="color:#64748b;margin-bottom:16px;font-size:0.9rem;">Purchase materials for IT store stock. This will go through HR → COO → Director approval.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Category</label>
+                <select id="stockCategory" class="form-control" onchange="updateStockItems()">
+                    <option value="">Select Category</option>
+                    ${categoryOptions}
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Item <span style="color:#ef4444">*</span></label>
+                <select id="stockItem" class="form-control">
+                    <option value="">Select Item</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Quantity <span style="color:#ef4444">*</span></label>
+                <input type="number" id="stockQuantity" class="form-control" value="1" min="1" max="100">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Estimated Cost</label>
+                <input type="number" id="stockCost" class="form-control" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Currency</label>
+                <select id="stockCurrency" class="form-control">
+                    <option value="USD">USD ($)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="GBP">GBP (£)</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Vendor / Supplier</label>
+                <input type="text" id="stockVendor" class="form-control" placeholder="Vendor name">
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+            <label style="font-weight:600;font-size:0.85rem;">Subject <span style="color:#ef4444">*</span></label>
+            <input type="text" id="stockSubject" class="form-control" placeholder="e.g. Purchase 10 Keyboards for stock replenishment">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+            <label style="font-weight:600;font-size:0.85rem;">Description / Justification <span style="color:#ef4444">*</span></label>
+            <textarea id="stockDescription" class="form-control" rows="3" placeholder="Why is this purchase needed? Include specifications, current stock levels, etc."></textarea>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+            <label style="font-weight:600;font-size:0.85rem;">📎 Upload Quotation (PDF / Word / Excel)</label>
+            <input type="file" id="stockQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" style="padding:8px;">
+            <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB)</small>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('itStockModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitStockPurchase()">📤 Submit to HR for Approval</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+}
+
+function updateStockItems() {
+    const cat = document.getElementById('stockCategory').value;
+    const itemSelect = document.getElementById('stockItem');
+    itemSelect.innerHTML = '<option value="">Select Item</option>';
+    if (cat && IT_CATEGORIES[cat]) {
+        IT_CATEGORIES[cat].items.forEach(item => {
+            itemSelect.innerHTML += `<option value="${item}">${item}</option>`;
+        });
+    }
+}
+
+async function submitStockPurchase() {
+    const category = document.getElementById('stockCategory').value;
+    const item = document.getElementById('stockItem').value;
+    const quantity = document.getElementById('stockQuantity').value;
+    const estimatedCost = document.getElementById('stockCost').value;
+    const currency = document.getElementById('stockCurrency').value;
+    const vendor = document.getElementById('stockVendor').value.trim();
+    const subject = document.getElementById('stockSubject').value.trim();
+    const description = document.getElementById('stockDescription').value.trim();
+
+    if (!item || !subject || !description) {
+        return showMessage('Please fill in Item, Subject, and Description.', 'error');
+    }
+
+    let quotationUrl = null, quotationFileName = null;
+    const fileInput = document.getElementById('stockQuotationFile');
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            return showMessage('File size must be under 10MB', 'error');
+        }
+        try {
+            showMessage('Uploading quotation...', 'info');
+            const storageRef = firebase.storage().ref();
+            const fileRef = storageRef.child(`it-quotations/stock_${Date.now()}_${file.name}`);
+            await fileRef.put(file);
+            quotationUrl = await fileRef.getDownloadURL();
+            quotationFileName = file.name;
+        } catch(e) {
+            console.error('Upload error:', e);
+            return showMessage('Failed to upload quotation', 'error');
+        }
+    }
+
+    try {
+        showMessage('Submitting stock purchase request...', 'info');
+        const resp = await apiCall('it-tickets/stock-purchase', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ category, item, quantity, subject, description, vendor, estimatedCost, currency, quotationUrl, quotationFileName })
+        });
+        if (resp.success) {
+            showMessage(`Stock purchase ${resp.data?.ticketNumber||''} submitted to HR!`, 'success');
+            document.getElementById('itStockModal')?.remove();
+            showITDashboard();
+        } else { showMessage(resp.error || 'Failed', 'error'); }
+    } catch(e) { showMessage('Failed to submit stock purchase', 'error'); }
+}
+
 // Update IT badge
 async function updateITOpenTicketsBadge() {
     try {
@@ -31681,7 +31876,10 @@ async function showHRITProcurement() {
                 <span style="color:#64748b;font-size:0.85rem;">Description:</span><br>
                 <span style="color:#334155;">${t.description}</span>
             </div>
-            ${t.itNotes?`<div style="background:#fffbeb;padding:10px;border-radius:8px;margin-bottom:16px;font-size:0.9rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
+            ${t.itNotes?`<div style="background:#fffbeb;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
+            ${t.quotationUrl?`<div style="background:#eff6ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;display:flex;align-items:center;gap:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
+            ${t.itEstimatedCost?`<div style="background:#f0fdf4;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#065f46;">IT Estimated Cost:</strong> $${parseFloat(t.itEstimatedCost).toFixed(2)}${t.itVendor?' | Vendor: '+t.itVendor:''}</div>`:''}
+            ${t.ticketType==='stock_purchase'?`<div style="background:#faf5ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:8px;">IT department stock replenishment request</span></div>`:''}
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
                 <div class="form-group" style="margin:0;">
                     <label style="font-weight:600;font-size:0.85rem;">Estimated Cost <span style="color:#ef4444">*</span></label>
@@ -31872,6 +32070,8 @@ async function showITDepartmentReport() {
                         <div style="font-size:0.95rem;font-weight:600;color:#059669;">${t.hrReviewedByName||'-'}</div>
                     </div>
                 </div>
+                ${t.ticketType==='stock_purchase'?`<div style="padding:8px 12px;background:#faf5ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:6px;">IT department stock replenishment</span></div>`:''}
+                ${t.quotationUrl?`<div style="padding:8px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;display:flex;align-items:center;gap:6px;"><span style="font-size:1.1rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
                 ${t.itNotes?`<div style="padding:8px 12px;background:#fffbeb;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
                 ${t.hrNotes?`<div style="padding:8px 12px;background:#f5f3ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#6d28d9;">HR Notes:</strong> ${t.hrNotes}</div>`:''}
                 ${t.cooNotes?`<div style="padding:8px 12px;background:#fff7ed;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#c2410c;">COO Notes:</strong> ${t.cooNotes}</div>`:''}

@@ -2259,6 +2259,75 @@ body.modal-open {
     opacity: 1;
 }
 
+/* Department Group Styles */
+.nav-department {
+    margin: 0.5rem 0 0.25rem 0;
+    padding: 0;
+}
+
+.nav-department:first-child {
+    margin-top: 0;
+}
+
+.nav-dept-header {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    margin: 0 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #8892a4;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.nav-dept-header:hover {
+    background: #f0f4ff;
+    color: #5a6276;
+}
+
+.nav-dept-header .dept-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    font-size: 0.85rem;
+}
+
+.nav-dept-header .dept-chevron {
+    margin-left: auto;
+    font-size: 0.65rem;
+    transition: transform 0.25s ease;
+    color: #b0b8c8;
+}
+
+.nav-dept-header.collapsed .dept-chevron {
+    transform: rotate(-90deg);
+}
+
+.nav-dept-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    max-height: 1000px;
+    transition: max-height 0.3s ease;
+}
+
+.nav-dept-items.collapsed {
+    max-height: 0;
+    overflow: hidden;
+}
+
+.nav-dept-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    margin: 0.5rem 1.5rem;
+}
+
 /* ============================== */
 /* MAIN CONTENT AREA */
 /* ============================== */
@@ -5209,140 +5278,241 @@ body.is-ios .nav-menu {
         <div class="main-layout">
             <nav class="sidebar">
             <ul class="nav-menu">
-                
-                
-              
-                
-                <li id="newProposalNavItem" style="display: none;">
-                    <a href="#" onclick="showCreateProposalModal()">
-                    <span class="nav-icon">➕</span>New Proposal</a></li>
 
-                <li id="analyticsNavItem" style="display: none;">
-                    <a href="#" onclick="showAnalyticsDashboard()" id="nav-analytics">
-                    <span class="nav-icon">📈</span>Analytics</a>
+                <!-- ========== BUSINESS DEVELOPMENT ========== -->
+                <li class="nav-department" id="deptBDM">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">💼</span>Business Development
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="newProposalNavItem" style="display: none;">
+                            <a href="#" onclick="showCreateProposalModal()">
+                            <span class="nav-icon">➕</span>New Proposal</a>
+                        </li>
+                        <li id="analyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showAnalyticsDashboard()" id="nav-analytics">
+                            <span class="nav-icon">📈</span>Analytics</a>
+                        </li>
+                        <li id="proposalsNavItem"><a href="#" onclick="showProposals()" id="nav-proposals">
+                            <span class="nav-icon">📋</span>All Proposals</a>
+                        </li>
+                        <li id="filesNavItem"><a href="#" onclick="showFileUpload()" id="nav-files">
+                            <span class="nav-icon">📁</span>File Manager</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== ESTIMATION & WORKFLOW ========== -->
+                <li class="nav-department" id="deptEstimation">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🔄</span>Estimation & Workflow
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="workflowNavItem" style="display: none;">
+                            <a href="#" onclick="showWorkflow()" id="nav-workflow">
+                            <span class="nav-icon">🔄</span>Workflow</a>
+                        </li>
+                        <li id="reportsNavItem" style="display: none;">
+                            <a href="#" onclick="showReports()" id="nav-reports">
+                            <span class="nav-icon">📊</span>Reports</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== OPERATIONS & MANAGEMENT ========== -->
+                <li class="nav-department" id="deptOperations">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🏢</span>Operations & Management
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="projectsNavItem" style="display: none;">
+                            <a href="#" onclick="showProjects()" id="nav-projects">
+                            <span class="nav-icon">🏗️</span>Projects</a>
+                        </li>
+                        <li id="executiveMonitoringNavItem" style="display: none;">
+                            <a href="#" onclick="showExecutiveDashboard()">
+                            <span class="nav-icon">📊</span>Executive Dashboard</a>
+                        </li>
+                        <li id="timeRequestsNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOTimeRequests()" id="nav-time-requests">
+                                <span class="nav-icon">⏰</span>Time Requests
+                                <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="allocationRequestsNavItem" style="display: none;">
+                            <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
+                                <span class="nav-icon">📋</span>Allocation Requests
+                                <span class="notification-count" id="directorRequestsBadge" style="display: none; margin-left: 10px; background: var(--danger); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="activitiesNavItem"><a href="#" onclick="showActivities()" id="nav-activities">
+                            <span class="nav-icon">📝</span>Activities</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== FINANCE & ACCOUNTS ========== -->
+                <li class="nav-department" id="deptFinance">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">💰</span>Finance & Accounts
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="paymentsNavItem" style="display: none;">
+                            <a href="#" onclick="showPayments()" id="nav-payments">
+                            <span class="nav-icon">💰</span>Payments</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== DESIGN DEPARTMENT ========== -->
+                <li class="nav-department" id="deptDesign">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🎨</span>Design Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="designerAllocationsNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignerAllocations()" id="nav-designer-alloc">
+                            <span class="nav-icon">⏳</span>Project Allocations</a>
+                        </li>
+                        <li id="tasksNavItem" style="display: none;">
+                            <a href="#" onclick="showTasks()" id="nav-tasks">
+                            <span class="nav-icon">✅</span>My Tasks</a>
+                        </li>
+                        <li id="timesheetNavItem" style="display: none;">
+                            <a href="#" onclick="showTimesheet()" id="nav-timesheet">
+                                <span class="nav-icon">⏱️</span>My Timesheet
+                            </a>
+                        </li>
+                        <li id="myAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showMyAnalytics()" id="nav-my-analytics">
+                                <span class="nav-icon">📊</span>My Analytics
+                            </a>
+                        </li>
+                        <li id="designerAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignerWeeklyAnalytics(); return false;" id="nav-designer-analytics">
+                                <span class="nav-icon">📊</span>Designer Hours
+                            </a>
+                        </li>
+                        <li id="designApprovalNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignFileApprovals(); return false;" id="nav-design-approvals">
+                                <span class="nav-icon">📐</span>Design Approvals
+                                <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== HR DEPARTMENT ========== -->
+                <li class="nav-department" id="deptHR">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">👥</span>HR Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="hrAnnouncementsNavItem" style="display: none;">
+                            <a href="#" onclick="showHRDashboard()" id="nav-hr-announcements">
+                                <span class="nav-icon">📢</span>HR Announcements
+                            </a>
+                        </li>
+                        <li id="hrLeaveApprovalNavItem" style="display: none;">
+                            <a href="#" onclick="showHRLeaveApproval()" id="nav-hr-leave">
+                                <span class="nav-icon">📋</span>Leave Approval
+                                <span class="notification-count" id="hrLeaveRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="hrLeaveReportsNavItem" style="display: none;">
+                            <a href="#" onclick="showHRLeaveReports()" id="nav-hr-leave-reports">
+                                <span class="nav-icon">📊</span>Leave Reports
+                            </a>
+                        </li>
+                        <li id="hrITProcurementNavItem" style="display: none;">
+                            <a href="#" onclick="showHRITProcurement()" id="nav-hr-it-procurement">
+                                <span class="nav-icon">💰</span>IT Procurement
+                                <span class="notification-count" id="hrITPendingBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="hrScreeningNavItem" style="display: none;">
+                            <a href="#" onclick="showHRScreening()" id="nav-hr-screening">
+                                <span class="nav-icon">📝</span>Candidate Screening
+                            </a>
+                        </li>
+                        <li id="employeeLeaveRequestNavItem" style="display: none;">
+                            <a href="#" onclick="showEmployeeLeaveRequest()" id="nav-employee-leave">
+                                <span class="nav-icon">🏖️</span>Leave Request
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== IT DEPARTMENT ========== -->
+                <li class="nav-department" id="deptIT">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🖥️</span>IT Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="itRequestNavItem" style="display: none;">
+                            <a href="#" onclick="showITRequestForm()" id="nav-it-request">
+                                <span class="nav-icon">🖥️</span>IT Request
+                            </a>
+                        </li>
+                        <li id="itDashboardNavItem" style="display: none;">
+                            <a href="#" onclick="showITDashboard()" id="nav-it-dashboard">
+                                <span class="nav-icon">🛠️</span>IT Dashboard
+                                <span class="notification-count" id="itOpenTicketsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="itDepartmentNavItem" style="display: none;">
+                            <a href="#" onclick="showITDepartmentReport()" id="nav-it-department">
+                                <span class="nav-icon">📊</span>IT Department
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== DOCUMENT CONTROL ========== -->
+                <li class="nav-department" id="deptDocControl">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">📄</span>Document Control
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="documentControllerNavItem" style="display: none;">
+                            <a href="#" onclick="showDocumentControllerDashboard(); return false;" id="nav-document-controller">
+                                <span class="nav-icon">📄</span>Document Controller
+                                <span id="dcPendingBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== ADMINISTRATION ========== -->
+                <li class="nav-department" id="deptAdmin">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">⚙️</span>Administration
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="settingsNavItem" style="display: none;">
+                            <a href="#" onclick="showSettings()" id="nav-settings">
+                            <span class="nav-icon">⚙️</span>Settings</a>
+                        </li>
+                    </ul>
                 </li>
 
-                <li id="proposalsNavItem"><a href="#" onclick="showProposals()" id="nav-proposals">
-                    <span class="nav-icon">📋</span>All Proposals</a></li>
-
-                <li id="designerAllocationsNavItem" style="display: none;">
-                    <a href="#" onclick="showDesignerAllocations()" id="nav-designer-alloc">
-                    <span class="nav-icon">⏳</span>Project Allocations</a>
-                </li>
-                <li id="filesNavItem"><a href="#" onclick="showFileUpload()" id="nav-files">
-                    <span class="nav-icon">📁</span>File Manager</a></li>
-                <li id="workflowNavItem" style="display: none;">
-                    <a href="#" onclick="showWorkflow()" id="nav-workflow">
-                    <span class="nav-icon">🔄</span>Workflow</a></li>
-                <li id="reportsNavItem" style="display: none;">
-                    <a href="#" onclick="showReports()" id="nav-reports">
-                    <span class="nav-icon">📊</span>Reports</a></li>
-                <li id="projectsNavItem" style="display: none;">
-                    <a href="#" onclick="showProjects()" id="nav-projects">
-                    <span class="nav-icon">🏗️</span>Projects</a></li>
-                <li id="tasksNavItem" style="display: none;">
-                    <a href="#" onclick="showTasks()" id="nav-tasks">
-                    <span class="nav-icon">✅</span>My Tasks</a></li>
-                <li id="paymentsNavItem" style="display: none;">
-                    <a href="#" onclick="showPayments()" id="nav-payments">
-                    <span class="nav-icon">💰</span>Payments</a></li>
-                <li id="activitiesNavItem"><a href="#" onclick="showActivities()" id="nav-activities">
-                    <span class="nav-icon">📝</span>Activities</a></li>
-                <li id="settingsNavItem" style="display: none;">
-                <a href="#" onclick="showSettings()" id="nav-settings">
-                <span class="nav-icon">⚙️</span>Settings</a></li>
-                <li id="executiveMonitoringNavItem" style="display: none;">
-                 <a href="#" onclick="showExecutiveDashboard()">
-                    <span class="nav-icon">📊</span>Executive Dashboard</a>
-                </li>
-                
-                <li id="timeRequestsNavItem" style="display: none;">
-                    <a href="#" onclick="showCOOTimeRequests()" id="nav-time-requests">
-                        <span class="nav-icon">⏰</span>Time Requests
-                        <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
-                    </a>
-                </li>
-                <li id="allocationRequestsNavItem" style="display: none;">
-                    <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
-                        <span class="nav-icon">📋</span>Allocation Requests
-                        <span class="notification-count" id="directorRequestsBadge" style="display: none; margin-left: 10px; background: var(--danger); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
-                    </a>
-                </li>
-                <li id="timesheetNavItem" style="display: none;">
-                    <a href="#" onclick="showTimesheet()" id="nav-timesheet">
-                        <span class="nav-icon">⏱️</span>My Timesheet
-                    </a>
-                </li>
-                <li id="myAnalyticsNavItem" style="display: none;">
-                    <a href="#" onclick="showMyAnalytics()" id="nav-my-analytics">
-                        <span class="nav-icon">📊</span>My Analytics
-                    </a>
-                </li>
-                <li id="designerAnalyticsNavItem" style="display: none;">
-                    <a href="#" onclick="showDesignerWeeklyAnalytics(); return false;" id="nav-designer-analytics">
-                        <span class="nav-icon">📊</span>Designer Hours
-                    </a>
-                </li>
-                <li id="hrAnnouncementsNavItem" style="display: none;">
-                    <a href="#" onclick="showHRDashboard()" id="nav-hr-announcements">
-                        <span class="nav-icon">📢</span>HR Announcements
-                    </a>
-                </li>
-                <li id="hrLeaveApprovalNavItem" style="display: none;">
-                    <a href="#" onclick="showHRLeaveApproval()" id="nav-hr-leave">
-                        <span class="nav-icon">📋</span>Leave Approval
-                        <span class="notification-count" id="hrLeaveRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
-                    </a>
-                </li>
-                <li id="designApprovalNavItem" style="display: none;">
-                    <a href="#" onclick="showDesignFileApprovals(); return false;" id="nav-design-approvals">
-                        <span class="nav-icon">📐</span>Design Approvals
-                        <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
-                    </a>
-                </li>
-                <li id="documentControllerNavItem" style="display: none;">
-                    <a href="#" onclick="showDocumentControllerDashboard(); return false;" id="nav-document-controller">
-                        <span class="nav-icon">📄</span>Document Controller
-                        <span id="dcPendingBadge" class="nav-badge" style="display: none;">0</span>
-                    </a>
-                </li>
-                <li id="hrLeaveReportsNavItem" style="display: none;">
-                    <a href="#" onclick="showHRLeaveReports()" id="nav-hr-leave-reports">
-                        <span class="nav-icon">📊</span>Leave Reports
-                    </a>
-                </li>
-                <li id="hrITProcurementNavItem" style="display: none;">
-                    <a href="#" onclick="showHRITProcurement()" id="nav-hr-it-procurement">
-                        <span class="nav-icon">💰</span>IT Procurement
-                        <span class="notification-count" id="hrITPendingBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
-                    </a>
-                </li>
-                <li id="hrScreeningNavItem" style="display: none;">
-                    <a href="#" onclick="showHRScreening()" id="nav-hr-screening">
-                        <span class="nav-icon">📝</span>Candidate Screening
-                    </a>
-                </li>
-                <li id="employeeLeaveRequestNavItem" style="display: none;">
-                    <a href="#" onclick="showEmployeeLeaveRequest()" id="nav-employee-leave">
-                        <span class="nav-icon">🏖️</span>Leave Request
-                    </a>
-                </li>
-                <li id="itRequestNavItem" style="display: none;">
-                    <a href="#" onclick="showITRequestForm()" id="nav-it-request">
-                        <span class="nav-icon">🖥️</span>IT Request
-                    </a>
-                </li>
-                <li id="itDashboardNavItem" style="display: none;">
-                    <a href="#" onclick="showITDashboard()" id="nav-it-dashboard">
-                        <span class="nav-icon">🛠️</span>IT Dashboard
-                        <span class="notification-count" id="itOpenTicketsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
-                    </a>
-                </li>
-                <li id="itDepartmentNavItem" style="display: none;">
-                    <a href="#" onclick="showITDepartmentReport()" id="nav-it-department">
-                        <span class="nav-icon">📊</span>IT Department
-                    </a>
-                </li>
             </ul>
         </nav>
 
@@ -6675,6 +6845,34 @@ body.is-ios .nav-menu {
             await auth.signOut();
         }
 
+       // ========== DEPARTMENT MENU FUNCTIONS ==========
+       function toggleDeptMenu(headerEl) {
+           const itemsEl = headerEl.nextElementSibling;
+           if (itemsEl) {
+               headerEl.classList.toggle('collapsed');
+               itemsEl.classList.toggle('collapsed');
+           }
+       }
+
+       function updateDeptGroupVisibility() {
+           // Hide department groups that have no visible menu items
+           document.querySelectorAll('.nav-department').forEach(dept => {
+               const items = dept.querySelectorAll('.nav-dept-items > li');
+               let hasVisibleItem = false;
+               items.forEach(item => {
+                   if (item.style.display !== 'none') {
+                       hasVisibleItem = true;
+                   }
+               });
+               dept.style.display = hasVisibleItem ? 'block' : 'none';
+               // Also hide the divider that follows this department
+               const nextSibling = dept.nextElementSibling;
+               if (nextSibling && nextSibling.classList.contains('nav-dept-divider')) {
+                   nextSibling.style.display = hasVisibleItem ? 'block' : 'none';
+               }
+           });
+       }
+
        function showApp() {
     // Use a small timeout to ensure DOM elements are ready
     setTimeout(async () => {
@@ -6974,6 +7172,9 @@ body.is-ios .nav-menu {
             if (['coo', 'director'].includes(roleForCheck)) {
                 updatePendingRequestsBadge();
             }
+
+            // 4b. Update Department Group Visibility
+            updateDeptGroupVisibility();
 
             // 5. Route to Initial View (check deep link first)
             if (window._pendingDeepLink) {

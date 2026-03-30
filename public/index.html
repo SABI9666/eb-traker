@@ -31201,33 +31201,73 @@ async function showITRequestForm() {
         `<option value="${key}">${val.label}</option>`
     ).join('');
 
-    const requestRows = myRequests.map(t => {
-        // Build workflow tracker
-        const steps = [{label:'Submitted',done:true}];
-        if (t.availability === 'in_store') {
-            steps.push({label:'In Store',done:true});
-            steps.push({label:t.status==='issued'?'Issued':'Pending Issue',done:t.status==='issued'||t.status==='closed'});
-        } else if (t.availability === 'need_purchase') {
-            steps.push({label:'Need Purchase',done:true});
-            steps.push({label:'HR Cost',done:!!t.hrReviewedAt});
-            steps.push({label:'COO',done:!!t.cooApprovedAt});
-            steps.push({label:'Director',done:!!t.directorApprovedAt});
-        } else {
-            steps.push({label:'IT Review',done:false});
-        }
-        const tracker = steps.map(s=>`<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.7rem;color:${s.done?'#059669':'#94a3b8'};"><span style="width:8px;height:8px;border-radius:50%;background:${s.done?'#10b981':'#d1d5db'};display:inline-block;"></span>${s.label}</span>`).join('<span style="color:#d1d5db;font-size:0.7rem;"> → </span>');
+    // Build request cards with tracking, edit, delete
+    const requestCards = myRequests.map(t => {
+        const isOpen = t.status === 'open';
+        const isRejected = t.status === 'rejected';
+        const isClosed = ['closed','resolved','issued','delivered'].includes(t.status);
 
-        return `<tr>
-            <td><strong style="color:#1e3a8a;">${t.ticketNumber||'-'}</strong></td>
-            <td>${t.categoryLabel||t.category}</td>
-            <td>${t.item}${t.quantity>1?' (x'+t.quantity+')':''}</td>
-            <td>${t.subject}</td>
-            <td><span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;background:${itStatusColor(t.status)}15;color:${itStatusColor(t.status)}">${itStatusLabel(t.status)}</span></td>
-            <td style="font-size:0.8rem;">${tracker}</td>
-            <td style="font-size:0.85rem;color:#6b7280">${t.createdAt?new Date(t.createdAt.seconds?t.createdAt.seconds*1000:t.createdAt).toLocaleDateString():'-'}</td>
-            <td>${t.estimatedCost?'$'+parseFloat(t.estimatedCost).toFixed(2):'-'}</td>
-            <td>${t.resolution||'-'}</td>
-        </tr>`;
+        // Workflow steps
+        const steps = [{label:'Submitted', done:true, icon:'📝'}];
+        if (t.availability === 'in_store') {
+            steps.push({label:'IT Reviewed', done:true, icon:'🔍'});
+            steps.push({label:'In Store', done:true, icon:'📦'});
+            steps.push({label:'Issued', done:t.status==='issued'||t.status==='closed', icon:'✅'});
+        } else if (t.availability === 'need_purchase') {
+            steps.push({label:'IT Reviewed', done:true, icon:'🔍'});
+            steps.push({label:'HR Cost Review', done:!!t.hrReviewedAt, icon:'💰'});
+            steps.push({label:'COO Approval', done:!!t.cooApprovedAt, icon:'👔'});
+            steps.push({label:'Director Approval', done:!!t.directorApprovedAt, icon:'🎯'});
+            if (t.status === 'approved') steps.push({label:'Approved', done:true, icon:'✅'});
+        } else {
+            steps.push({label:'IT Review', done:false, icon:'🔍'});
+        }
+        if (isRejected) steps.push({label:'Rejected', done:true, icon:'❌'});
+
+        const tracker = steps.map((s,i) => {
+            const isLast = i === steps.length - 1;
+            return `<div style="display:flex;align-items:center;gap:0;">
+                <div style="display:flex;flex-direction:column;align-items:center;min-width:60px;">
+                    <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;background:${s.done?(s.label==='Rejected'?'#fef2f2':'#f0fdf4'):'#f8fafc'};border:2px solid ${s.done?(s.label==='Rejected'?'#ef4444':'#10b981'):'#d1d5db'};">${s.icon}</div>
+                    <div style="font-size:0.65rem;color:${s.done?'#334155':'#94a3b8'};font-weight:${s.done?'600':'400'};margin-top:3px;text-align:center;">${s.label}</div>
+                </div>
+                ${!isLast?'<div style="width:24px;height:2px;background:'+(s.done?'#10b981':'#e2e8f0')+';margin-bottom:16px;"></div>':''}
+            </div>`;
+        }).join('');
+
+        // Attachments display
+        const attachList = (t.attachments && t.attachments.length > 0)
+            ? t.attachments.map((a,i)=>`<a href="${a.url}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#eff6ff;border-radius:6px;font-size:0.8rem;color:#3b82f6;text-decoration:none;border:1px solid #dbeafe;">📎 ${a.fileName||'File '+(i+1)}</a>`).join(' ')
+            : '';
+
+        return `
+        <div class="card" style="padding:20px;margin-bottom:16px;border-left:4px solid ${itStatusColor(t.status)};">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                <div>
+                    <strong style="color:#1e3a8a;font-size:1.05rem;">${t.ticketNumber||'-'}</strong>
+                    <span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itStatusColor(t.status)};background:${itStatusColor(t.status)}15;margin-left:8px;">${itStatusLabel(t.status)}</span>
+                    <span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itPriorityColor(t.priority)};background:${itPriorityColor(t.priority)}15;margin-left:4px;">${(t.priority||'').toUpperCase()}</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    ${isOpen?`<button class="btn btn-sm btn-secondary" onclick="showEditITTicketModal('${t.id}','${(t.category||'').replace(/'/g,"\\'")}','${(t.item||'').replace(/'/g,"\\'")}',${t.quantity||1},'${t.priority||'medium'}','${(t.subject||'').replace(/'/g,"\\'")}')">✏️ Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteUserITTicket('${t.id}','${t.ticketNumber}')">🗑️</button>`:''}
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;font-size:0.9rem;">
+                <div><span style="color:#64748b;">Category:</span> <strong>${t.categoryLabel||t.category}</strong></div>
+                <div><span style="color:#64748b;">Item:</span> <strong>${t.item}</strong>${t.quantity>1?' (x'+t.quantity+')':''}</div>
+                <div><span style="color:#64748b;">Date:</span> <strong>${t.createdAt?new Date(t.createdAt.seconds?t.createdAt.seconds*1000:t.createdAt).toLocaleDateString():'-'}</strong></div>
+            </div>
+            <div style="font-size:0.9rem;margin-bottom:12px;"><span style="color:#64748b;">Subject:</span> <strong>${t.subject}</strong></div>
+            ${attachList?`<div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;">${attachList}</div>`:''}
+            ${t.estimatedCost?`<div style="font-size:0.9rem;margin-bottom:8px;padding:6px 10px;background:#fef3c7;border-radius:6px;"><span style="color:#92400e;">Estimated Cost:</span> <strong style="color:#d97706;">$${parseFloat(t.estimatedCost).toFixed(2)}</strong>${t.vendor?' | Vendor: '+t.vendor:''}</div>`:''}
+            ${t.resolution?`<div style="font-size:0.9rem;margin-bottom:8px;padding:6px 10px;background:#f0fdf4;border-radius:6px;"><span style="color:#065f46;">Resolution:</span> <strong>${t.resolution}</strong></div>`:''}
+
+            <!-- Workflow Tracker -->
+            <div style="display:flex;align-items:flex-start;gap:0;padding:12px 16px;background:#f8fafc;border-radius:10px;overflow-x:auto;">
+                ${tracker}
+            </div>
+        </div>`;
     }).join('');
 
     mainContent.innerHTML = `
@@ -31291,22 +31331,19 @@ async function showITRequestForm() {
                 <label style="font-weight:600;">Description <span style="color:#ef4444">*</span></label>
                 <textarea id="itDescription" class="form-control" rows="4" placeholder="Please describe your request in detail - include asset tag numbers, software versions, specifications, or any relevant information..."></textarea>
             </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label style="font-weight:600;">📎 Attach Files (optional)</label>
+                <input type="file" id="itAttachFiles" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" multiple style="padding:8px;">
+                <small style="color:#64748b;">PDF, Word, Excel, JPG, PNG - Max 10MB each - Select multiple files</small>
+            </div>
             <div style="text-align:right;margin-top:20px;">
                 <button class="btn btn-primary" onclick="submitITRequest()">🚀 Submit Request</button>
             </div>
         </div>
 
-        <div class="card" style="padding:30px;">
-            <h3 style="margin:0 0 20px;color:#1e3a8a;">📋 My IT Requests (${myRequests.length})</h3>
-            ${myRequests.length===0?'<p style="color:#94a3b8;text-align:center;padding:30px;">No IT requests submitted yet.</p>':`
-            <div style="overflow-x:auto;">
-                <table class="data-table">
-                    <thead><tr>
-                        <th>Ticket #</th><th>Category</th><th>Item</th><th>Subject</th><th>Status</th><th>Workflow</th><th>Date</th><th>Cost</th><th>Resolution</th>
-                    </tr></thead>
-                    <tbody>${requestRows}</tbody>
-                </table>
-            </div>`}
+        <div style="margin-bottom:24px;">
+            <h3 style="color:#1e3a8a;margin-bottom:16px;">📋 My IT Requests (${myRequests.length})</h3>
+            ${myRequests.length===0?'<div class="card" style="padding:40px;text-align:center;"><p style="color:#94a3b8;">No IT requests submitted yet.</p></div>':requestCards}
         </div>
     </div>`;
 }
@@ -31334,12 +31371,37 @@ async function submitITRequest() {
         return showMessage('Please fill in all required fields.', 'error');
     }
 
+    // Upload attachments
+    let attachments = [];
+    const fileInput = document.getElementById('itAttachFiles');
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        const files = Array.from(fileInput.files);
+        for (const f of files) {
+            if (f.size > 10 * 1024 * 1024) {
+                return showMessage(`File "${f.name}" exceeds 10MB limit`, 'error');
+            }
+        }
+        try {
+            showMessage(`Uploading ${files.length} file(s)...`, 'info');
+            const storageRef = firebase.storage().ref();
+            for (const file of files) {
+                const fileRef = storageRef.child(`it-attachments/${Date.now()}_${file.name}`);
+                await fileRef.put(file);
+                const url = await fileRef.getDownloadURL();
+                attachments.push({ url, fileName: file.name });
+            }
+        } catch(e) {
+            console.error('File upload error:', e);
+            return showMessage('Failed to upload file(s)', 'error');
+        }
+    }
+
     try {
         showMessage('Submitting IT request...', 'info');
         const resp = await apiCall('it-tickets/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ category, item, quantity, priority, subject, description })
+            body: JSON.stringify({ category, item, quantity, priority, subject, description, attachments })
         });
         if (resp.success) {
             showMessage(`IT ticket ${resp.data?.ticketNumber||''} submitted successfully!`, 'success');
@@ -31351,6 +31413,104 @@ async function submitITRequest() {
         console.error('Submit IT request error:', e);
         showMessage('Failed to submit IT request', 'error');
     }
+}
+
+// Edit user ticket modal (only when status is 'open')
+function showEditITTicketModal(ticketId, category, item, quantity, priority, subject) {
+    const categoryOptions = Object.entries(IT_CATEGORIES).map(([key, val]) =>
+        `<option value="${key}" ${key===category?'selected':''}>${val.label}</option>`
+    ).join('');
+    const itemOptions = (IT_CATEGORIES[category]?.items || []).map(i =>
+        `<option value="${i}" ${i===item?'selected':''}>${i}</option>`
+    ).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'itEditModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:550px;width:92%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="margin:0;color:#1e3a8a;">✏️ Edit IT Request</h3>
+            <button onclick="document.getElementById('itEditModal').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;">&times;</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Category</label>
+                <select id="editItCategory" class="form-control" onchange="updateEditITItems()">
+                    ${categoryOptions}
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Item</label>
+                <select id="editItItem" class="form-control">
+                    ${itemOptions}
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Quantity</label>
+                <input type="number" id="editItQuantity" class="form-control" value="${quantity}" min="1">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-weight:600;font-size:0.85rem;">Priority</label>
+                <select id="editItPriority" class="form-control">
+                    <option value="low" ${priority==='low'?'selected':''}>Low</option>
+                    <option value="medium" ${priority==='medium'?'selected':''}>Medium</option>
+                    <option value="high" ${priority==='high'?'selected':''}>High</option>
+                    <option value="critical" ${priority==='critical'?'selected':''}>Critical</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+            <label style="font-weight:600;font-size:0.85rem;">Subject</label>
+            <input type="text" id="editItSubject" class="form-control" value="${subject}">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('itEditModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEditITTicket('${ticketId}')">💾 Save Changes</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+}
+
+function updateEditITItems() {
+    const cat = document.getElementById('editItCategory').value;
+    const sel = document.getElementById('editItItem');
+    sel.innerHTML = '';
+    if (cat && IT_CATEGORIES[cat]) {
+        IT_CATEGORIES[cat].items.forEach(i => { sel.innerHTML += `<option value="${i}">${i}</option>`; });
+    }
+}
+
+async function saveEditITTicket(ticketId) {
+    const data = {
+        category: document.getElementById('editItCategory').value,
+        item: document.getElementById('editItItem').value,
+        quantity: document.getElementById('editItQuantity').value,
+        priority: document.getElementById('editItPriority').value,
+        subject: document.getElementById('editItSubject').value.trim()
+    };
+    try {
+        const resp = await apiCall(`it-tickets/user-edit/${ticketId}`, {
+            method: 'PUT', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+        });
+        if (resp.success) {
+            showMessage('Ticket updated!', 'success');
+            document.getElementById('itEditModal')?.remove();
+            showITRequestForm();
+        } else { showMessage(resp.error || 'Failed to update', 'error'); }
+    } catch(e) { showMessage('Error updating ticket', 'error'); }
+}
+
+async function deleteUserITTicket(ticketId, ticketNumber) {
+    if (!confirm(`Delete ticket ${ticketNumber}? This cannot be undone.`)) return;
+    try {
+        const resp = await apiCall(`it-tickets/user-delete/${ticketId}`, { method: 'DELETE' });
+        if (resp.success) {
+            showMessage('Ticket deleted', 'success');
+            showITRequestForm();
+        } else { showMessage(resp.error || 'Failed to delete', 'error'); }
+    } catch(e) { showMessage('Error deleting ticket', 'error'); }
 }
 
 // --- IT Dashboard (For IT Helpdesk users) ---
@@ -31547,7 +31707,7 @@ function showITReviewModal(ticketId, itemName) {
             </div>
             <div class="form-group" style="margin:12px 0 0;">
                 <label style="font-weight:600;font-size:0.85rem;">📎 Upload Quotation (PDF / Word)</label>
-                <input type="file" id="itQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple style="padding:8px;">
+                <input type="file" id="itQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" multiple style="padding:8px;">
                 <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB each) - Select multiple files</small>
             </div>
         </div>
@@ -31757,7 +31917,7 @@ function showStockPurchaseModal() {
         </div>
         <div class="form-group" style="margin-top:10px;">
             <label style="font-weight:600;font-size:0.85rem;">📎 Upload Quotation (PDF / Word / Excel)</label>
-            <input type="file" id="stockQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple style="padding:8px;">
+            <input type="file" id="stockQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" multiple style="padding:8px;">
             <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB each) - Select multiple files</small>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
@@ -31896,6 +32056,7 @@ async function showHRITProcurement() {
             ${(t.quotations&&t.quotations.length>0)?`<div style="background:#eff6ff;padding:12px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotations (${t.quotations.length}):</strong></div>${t.quotations.map((q,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-radius:6px;margin-bottom:4px;border:1px solid #dbeafe;"><span style="color:#3b82f6;font-weight:600;min-width:20px;">${i+1}.</span><a href="${q.url}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:500;">${q.fileName||'Quotation '+(i+1)}</a></div>`).join('')}</div>`:t.quotationUrl?`<div style="background:#eff6ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;display:flex;align-items:center;gap:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
             ${t.itEstimatedCost?`<div style="background:#f0fdf4;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#065f46;">IT Estimated Cost:</strong> $${parseFloat(t.itEstimatedCost).toFixed(2)}${t.itVendor?' | Vendor: '+t.itVendor:''}</div>`:''}
             ${t.ticketType==='stock_purchase'?`<div style="background:#faf5ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:8px;">IT department stock replenishment request</span></div>`:''}
+            ${(t.attachments&&t.attachments.length>0)?`<div style="background:#f8fafc;padding:10px;border-radius:8px;margin-bottom:10px;"><strong style="color:#334155;font-size:0.85rem;">📎 User Attachments:</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${t.attachments.map((a,i)=>`<a href="${a.url}" target="_blank" download style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;font-size:0.8rem;color:#3b82f6;text-decoration:none;font-weight:500;">⬇️ ${a.fileName||'File '+(i+1)}</a>`).join('')}</div></div>`:''}
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
                 <div class="form-group" style="margin:0;">
                     <label style="font-weight:600;font-size:0.85rem;">Estimated Cost <span style="color:#ef4444">*</span></label>
@@ -32087,6 +32248,7 @@ async function showITDepartmentReport() {
                     </div>
                 </div>
                 ${t.ticketType==='stock_purchase'?`<div style="padding:8px 12px;background:#faf5ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:6px;">IT department stock replenishment</span></div>`:''}
+                ${(t.attachments&&t.attachments.length>0)?`<div style="padding:8px 12px;background:#f8fafc;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#334155;">📎 User Attachments:</strong><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${t.attachments.map((a,i)=>`<a href="${a.url}" target="_blank" download style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;font-size:0.78rem;color:#3b82f6;text-decoration:none;">⬇️ ${a.fileName||'File '+(i+1)}</a>`).join('')}</div></div>`:''}
                 ${(t.quotations&&t.quotations.length>0)?`<div style="padding:10px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="font-size:1rem;">📎</span><strong style="color:#1e40af;">Quotations (${t.quotations.length}):</strong></div>${t.quotations.map((q,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:#fff;border-radius:4px;margin-bottom:3px;border:1px solid #dbeafe;"><span style="color:#3b82f6;font-weight:600;font-size:0.8rem;">${i+1}.</span><a href="${q.url}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-size:0.85rem;">${q.fileName||'Quotation '+(i+1)}</a></div>`).join('')}</div>`:t.quotationUrl?`<div style="padding:8px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;display:flex;align-items:center;gap:6px;"><span style="font-size:1rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
                 ${t.itNotes?`<div style="padding:8px 12px;background:#fffbeb;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
                 ${t.hrNotes?`<div style="padding:8px 12px;background:#f5f3ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#6d28d9;">HR Notes:</strong> ${t.hrNotes}</div>`:''}

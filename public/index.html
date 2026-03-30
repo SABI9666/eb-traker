@@ -31211,6 +31211,52 @@ function itFormatDateTime(ts) {
     return '-';
 }
 
+function itCurrencySymbol(c) {
+    return {'USD':'$','INR':'₹','AUD':'A$','GBP':'£','EUR':'€','CAD':'C$'}[c] || c || '$';
+}
+function itFormatCost(amount, currency) {
+    if (!amount && amount !== 0) return '-';
+    const sym = itCurrencySymbol(currency);
+    const val = parseFloat(amount);
+    if (currency === 'INR') return sym + val.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    return sym + val.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function itAttachmentsHtml(attachments, label) {
+    if (!attachments || attachments.length === 0) return '';
+    const title = label || 'Attachments';
+    return `<div style="padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;">
+        <div style="font-size:0.75rem;color:#64748b;font-weight:600;text-transform:uppercase;margin-bottom:8px;">📎 ${title} (${attachments.length})</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${attachments.map((a,i) => {
+                const ext = (a.fileName||'').split('.').pop().toLowerCase();
+                const icon = ['jpg','jpeg','png','gif'].includes(ext) ? '🖼️' : ['pdf'].includes(ext) ? '📄' : ['doc','docx'].includes(ext) ? '📝' : ['xls','xlsx'].includes(ext) ? '📊' : '📎';
+                return `<a href="${a.url}" target="_blank" download style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:0.82rem;color:#1e40af;text-decoration:none;font-weight:500;transition:all 0.2s;" onmouseover="this.style.background='#eff6ff';this.style.borderColor='#93c5fd'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">${icon} ${a.fileName||'File '+(i+1)}<span style="color:#93c5fd;margin-left:2px;">⬇</span></a>`;
+            }).join('')}
+        </div>
+    </div>`;
+}
+function itQuotationsHtml(quotations, quotationUrl, quotationFileName) {
+    if (quotations && quotations.length > 0) {
+        return `<div style="padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:10px;">
+            <div style="font-size:0.75rem;color:#1e40af;font-weight:600;text-transform:uppercase;margin-bottom:8px;">📎 Quotations (${quotations.length})</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${quotations.map((q,i) => {
+                    const ext = (q.fileName||'').split('.').pop().toLowerCase();
+                    const icon = ['pdf'].includes(ext) ? '📄' : ['doc','docx'].includes(ext) ? '📝' : ['xls','xlsx'].includes(ext) ? '📊' : ['jpg','jpeg','png'].includes(ext) ? '🖼️' : '📎';
+                    return `<a href="${q.url}" target="_blank" download style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff;border:1px solid #bfdbfe;border-radius:8px;font-size:0.82rem;color:#1e40af;text-decoration:none;font-weight:500;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#fff'">${icon} ${q.fileName||'Quotation '+(i+1)}<span style="color:#93c5fd;margin-left:2px;">⬇</span></a>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }
+    if (quotationUrl) {
+        return `<div style="padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:0.75rem;color:#1e40af;font-weight:600;">📎 QUOTATION:</span>
+            <a href="${quotationUrl}" target="_blank" download style="color:#3b82f6;text-decoration:underline;font-weight:600;font-size:0.85rem;">${quotationFileName||'View Quotation'} ⬇</a>
+        </div>`;
+    }
+    return '';
+}
+
 // Store tickets data for edit modal
 let _itMyTicketsCache = [];
 
@@ -31310,7 +31356,7 @@ async function showITRequestForm() {
                 <div style="font-weight:500;color:#1e293b;margin-top:2px;">${t.subject}</div>
             </div>
             ${attachList?`<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;">${attachList}</div>`:''}
-            ${t.estimatedCost?`<div style="padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;"><span style="color:#92400e;font-weight:500;">Estimated Cost</span><strong style="color:#d97706;font-size:1.1rem;">$${parseFloat(t.estimatedCost).toFixed(2)}</strong></div>`:''}
+            ${t.estimatedCost?`<div style="padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;"><span style="color:#92400e;font-weight:500;">Estimated Cost</span><strong style="color:#d97706;font-size:1.1rem;">${itFormatCost(t.estimatedCost,t.currency)}</strong></div>`:''}
             ${t.resolution?`<div style="padding:8px 12px;background:#f0fdf4;border-radius:8px;margin-bottom:10px;"><span style="color:#065f46;font-weight:600;">Resolution:</span> ${t.resolution}</div>`:''}
 
             <!-- Workflow Tracker -->
@@ -32139,9 +32185,10 @@ async function showHRITProcurement() {
             </div>
             ${t.itNotes?`<div style="background:#fffbeb;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
             ${(t.quotations&&t.quotations.length>0)?`<div style="background:#eff6ff;padding:12px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotations (${t.quotations.length}):</strong></div>${t.quotations.map((q,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-radius:6px;margin-bottom:4px;border:1px solid #dbeafe;"><span style="color:#3b82f6;font-weight:600;min-width:20px;">${i+1}.</span><a href="${q.url}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:500;">${q.fileName||'Quotation '+(i+1)}</a></div>`).join('')}</div>`:t.quotationUrl?`<div style="background:#eff6ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;display:flex;align-items:center;gap:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
-            ${t.itEstimatedCost?`<div style="background:#f0fdf4;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#065f46;">IT Estimated Cost:</strong> $${parseFloat(t.itEstimatedCost).toFixed(2)}${t.itVendor?' | Vendor: '+t.itVendor:''}</div>`:''}
+            ${t.itEstimatedCost?`<div style="background:#f0fdf4;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#065f46;">IT Estimated Cost:</strong> ${itFormatCost(t.itEstimatedCost,t.currency)}${t.itVendor?' | Vendor: '+t.itVendor:''}</div>`:''}
             ${t.ticketType==='stock_purchase'?`<div style="background:#faf5ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:8px;">IT department stock replenishment request</span></div>`:''}
-            ${(t.attachments&&t.attachments.length>0)?`<div style="background:#f8fafc;padding:10px;border-radius:8px;margin-bottom:10px;"><strong style="color:#334155;font-size:0.85rem;">📎 User Attachments:</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${t.attachments.map((a,i)=>`<a href="${a.url}" target="_blank" download style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;font-size:0.8rem;color:#3b82f6;text-decoration:none;font-weight:500;">⬇️ ${a.fileName||'File '+(i+1)}</a>`).join('')}</div></div>`:''}
+            ${itAttachmentsHtml(t.attachments, 'User Attachments')}
+            ${itQuotationsHtml(t.quotations, t.quotationUrl, t.quotationFileName)}
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
                 <div class="form-group" style="margin:0;">
                     <label style="font-weight:600;font-size:0.85rem;">Estimated Cost <span style="color:#ef4444">*</span></label>
@@ -32177,7 +32224,7 @@ async function showHRITProcurement() {
                 <td><strong>${t.ticketNumber}</strong></td>
                 <td>${t.item}${t.quantity>1?' (x'+t.quantity+')':''}</td>
                 <td>${t.requestedByName}</td>
-                <td>${t.estimatedCost?((t.currency||'USD')==='INR'?'₹':'$')+parseFloat(t.estimatedCost).toFixed(2):'-'}</td>
+                <td>${t.estimatedCost?itFormatCost(t.estimatedCost,t.currency):'-'}</td>
                 <td>${t.vendor||'-'}</td>
                 <td><span style="padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;color:${itStatusColor(t.status)};background:${itStatusColor(t.status)}15;">${itStatusLabel(t.status)}</span></td>
             </tr>
@@ -32300,7 +32347,7 @@ async function showITDepartmentReport() {
 
         // Pending approval cards
         const approvalCards = pendingForMe.map(t => {
-            const currencySymbol = (t.currency||'USD')==='INR'?'₹':(t.currency||'USD')==='GBP'?'£':(t.currency||'USD')==='AUD'?'A$':'$';
+            // currency handled by itFormatCost
             return `
             <div class="card" style="padding:20px;margin-bottom:16px;border-left:4px solid ${isCOO?'#e67e22':'#2980b9'};">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
@@ -32321,7 +32368,7 @@ async function showITDepartmentReport() {
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
                     <div style="padding:12px;background:#fef3c7;border-radius:8px;text-align:center;">
                         <div style="font-size:0.75rem;color:#92400e;font-weight:600;">ESTIMATED COST</div>
-                        <div style="font-size:1.3rem;font-weight:700;color:#d97706;">${t.estimatedCost?currencySymbol+parseFloat(t.estimatedCost).toFixed(2):'N/A'}</div>
+                        <div style="font-size:1.3rem;font-weight:700;color:#d97706;">${t.estimatedCost?itFormatCost(t.estimatedCost,t.currency):'N/A'}</div>
                     </div>
                     <div style="padding:12px;background:#f0f9ff;border-radius:8px;text-align:center;">
                         <div style="font-size:0.75rem;color:#1e40af;font-weight:600;">VENDOR</div>
@@ -32333,8 +32380,8 @@ async function showITDepartmentReport() {
                     </div>
                 </div>
                 ${t.ticketType==='stock_purchase'?`<div style="padding:8px 12px;background:#faf5ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:6px;">IT department stock replenishment</span></div>`:''}
-                ${(t.attachments&&t.attachments.length>0)?`<div style="padding:8px 12px;background:#f8fafc;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#334155;">📎 User Attachments:</strong><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${t.attachments.map((a,i)=>`<a href="${a.url}" target="_blank" download style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;font-size:0.78rem;color:#3b82f6;text-decoration:none;">⬇️ ${a.fileName||'File '+(i+1)}</a>`).join('')}</div></div>`:''}
-                ${(t.quotations&&t.quotations.length>0)?`<div style="padding:10px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="font-size:1rem;">📎</span><strong style="color:#1e40af;">Quotations (${t.quotations.length}):</strong></div>${t.quotations.map((q,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:#fff;border-radius:4px;margin-bottom:3px;border:1px solid #dbeafe;"><span style="color:#3b82f6;font-weight:600;font-size:0.8rem;">${i+1}.</span><a href="${q.url}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-size:0.85rem;">${q.fileName||'Quotation '+(i+1)}</a></div>`).join('')}</div>`:t.quotationUrl?`<div style="padding:8px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;display:flex;align-items:center;gap:6px;"><span style="font-size:1rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
+                ${itAttachmentsHtml(t.attachments, 'User Attachments')}
+                ${itQuotationsHtml(t.quotations, t.quotationUrl, t.quotationFileName)}
                 ${t.itNotes?`<div style="padding:8px 12px;background:#fffbeb;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
                 ${t.hrNotes?`<div style="padding:8px 12px;background:#f5f3ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#6d28d9;">HR Notes:</strong> ${t.hrNotes}</div>`:''}
                 ${t.cooNotes?`<div style="padding:8px 12px;background:#fff7ed;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#c2410c;">COO Notes:</strong> ${t.cooNotes}</div>`:''}
@@ -32352,12 +32399,11 @@ async function showITDepartmentReport() {
         // Recent procurement tickets for detail view
         const procurementTickets = allTickets.filter(t => t.availability === 'need_purchase').slice(0, 15);
         const procRows = procurementTickets.map(t => {
-            const cs = (t.currency||'USD')==='INR'?'₹':(t.currency||'USD')==='GBP'?'£':'$';
             return `<tr>
                 <td><strong style="color:#1e3a8a;">${t.ticketNumber}</strong></td>
                 <td>${t.item}${t.quantity>1?' (x'+t.quantity+')':''}</td>
                 <td>${t.requestedByName}</td>
-                <td style="font-weight:600;">${t.estimatedCost?cs+parseFloat(t.estimatedCost).toFixed(2):'-'}</td>
+                <td style="font-weight:600;">${t.estimatedCost?itFormatCost(t.estimatedCost,t.currency):'-'}</td>
                 <td>${t.vendor||'-'}</td>
                 <td>${t.hrReviewedByName||'-'}</td>
                 <td>${t.cooApprovedByName||'-'}</td>
@@ -32396,7 +32442,13 @@ async function showITDepartmentReport() {
                 </div>
                 <div style="background:linear-gradient(135deg,#e67e22,#d35400);padding:22px;border-radius:16px;color:#fff;">
                     <div style="font-size:0.8rem;opacity:0.8;">Procurement Cost</div>
-                    <div style="font-size:2.2rem;font-weight:700;">$${(sm.totalProcurementCost||0).toLocaleString()}</div>
+                    ${(()=>{
+                        const byCur = sm.procurementByCurrency || {};
+                        const keys = Object.keys(byCur);
+                        if (keys.length === 0) return '<div style="font-size:2.2rem;font-weight:700;">-</div>';
+                        if (keys.length === 1) return '<div style="font-size:2.2rem;font-weight:700;">' + itFormatCost(byCur[keys[0]].total, keys[0]) + '</div><div style="font-size:0.75rem;opacity:0.7;">' + byCur[keys[0]].count + ' items</div>';
+                        return keys.map(k => '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span style="font-size:1.1rem;font-weight:700;">' + itFormatCost(byCur[k].total, k) + '</span><span style="font-size:0.7rem;opacity:0.7;">' + byCur[k].count + ' items</span></div>').join('');
+                    })()}
                 </div>
             </div>
 

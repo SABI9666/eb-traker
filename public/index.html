@@ -6938,7 +6938,7 @@ body.is-ios .nav-menu {
             
             // IT Portal Nav Items
             setDisplay('itDashboardNavItem', isIT); // IT Dashboard - only IT team
-            setDisplay('itRequestNavItem', !isIT && !isDC); // IT Request - all users EXCEPT IT team and DC
+            setDisplay('itRequestNavItem', !isIT && !isDC && !isManagement); // IT Request - all users EXCEPT IT, DC, COO, Director
             setDisplay('itDepartmentNavItem', isManagement); // IT Department Report - COO & Director only
             setDisplay('hrITProcurementNavItem', isHR); // HR IT Procurement - HR only
 
@@ -31547,8 +31547,8 @@ function showITReviewModal(ticketId, itemName) {
             </div>
             <div class="form-group" style="margin:12px 0 0;">
                 <label style="font-weight:600;font-size:0.85rem;">📎 Upload Quotation (PDF / Word)</label>
-                <input type="file" id="itQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" style="padding:8px;">
-                <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB)</small>
+                <input type="file" id="itQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple style="padding:8px;">
+                <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB each) - Select multiple files</small>
             </div>
         </div>
 
@@ -31581,23 +31581,33 @@ async function itReviewTicket(ticketId, availability) {
         body.estimatedCost = document.getElementById('itEstCost')?.value || '';
         body.vendor = document.getElementById('itVendor')?.value.trim() || '';
 
-        // Upload quotation file if provided
+        // Upload quotation files (multiple)
         const fileInput = document.getElementById('itQuotationFile');
-        if (fileInput && fileInput.files && fileInput.files[0]) {
-            const file = fileInput.files[0];
-            if (file.size > 10 * 1024 * 1024) {
-                return showMessage('File size must be under 10MB', 'error');
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            const files = Array.from(fileInput.files);
+            for (const f of files) {
+                if (f.size > 10 * 1024 * 1024) {
+                    return showMessage(`File "${f.name}" exceeds 10MB limit`, 'error');
+                }
             }
             try {
-                showMessage('Uploading quotation...', 'info');
+                showMessage(`Uploading ${files.length} quotation(s)...`, 'info');
                 const storageRef = firebase.storage().ref();
-                const fileRef = storageRef.child(`it-quotations/${ticketId}_${Date.now()}_${file.name}`);
-                await fileRef.put(file);
-                body.quotationUrl = await fileRef.getDownloadURL();
-                body.quotationFileName = file.name;
+                const quotations = [];
+                for (const file of files) {
+                    const fileRef = storageRef.child(`it-quotations/${ticketId}_${Date.now()}_${file.name}`);
+                    await fileRef.put(file);
+                    const url = await fileRef.getDownloadURL();
+                    quotations.push({ url, fileName: file.name });
+                }
+                // First file as primary (backward compatible)
+                body.quotationUrl = quotations[0].url;
+                body.quotationFileName = quotations[0].fileName;
+                // All files
+                body.quotations = quotations;
             } catch(e) {
                 console.error('Quotation upload error:', e);
-                return showMessage('Failed to upload quotation file', 'error');
+                return showMessage('Failed to upload quotation file(s)', 'error');
             }
         }
     }
@@ -31747,8 +31757,8 @@ function showStockPurchaseModal() {
         </div>
         <div class="form-group" style="margin-top:10px;">
             <label style="font-weight:600;font-size:0.85rem;">📎 Upload Quotation (PDF / Word / Excel)</label>
-            <input type="file" id="stockQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" style="padding:8px;">
-            <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB)</small>
+            <input type="file" id="stockQuotationFile" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple style="padding:8px;">
+            <small style="color:#64748b;">Accepted: PDF, DOC, DOCX, XLS, XLSX (Max 10MB each) - Select multiple files</small>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
             <button class="btn btn-secondary" onclick="document.getElementById('itStockModal').remove()">Cancel</button>
@@ -31783,23 +31793,29 @@ async function submitStockPurchase() {
         return showMessage('Please fill in Item, Subject, and Description.', 'error');
     }
 
-    let quotationUrl = null, quotationFileName = null;
+    let quotationUrl = null, quotationFileName = null, quotations = [];
     const fileInput = document.getElementById('stockQuotationFile');
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        if (file.size > 10 * 1024 * 1024) {
-            return showMessage('File size must be under 10MB', 'error');
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        const files = Array.from(fileInput.files);
+        for (const f of files) {
+            if (f.size > 10 * 1024 * 1024) {
+                return showMessage(`File "${f.name}" exceeds 10MB limit`, 'error');
+            }
         }
         try {
-            showMessage('Uploading quotation...', 'info');
+            showMessage(`Uploading ${files.length} quotation(s)...`, 'info');
             const storageRef = firebase.storage().ref();
-            const fileRef = storageRef.child(`it-quotations/stock_${Date.now()}_${file.name}`);
-            await fileRef.put(file);
-            quotationUrl = await fileRef.getDownloadURL();
-            quotationFileName = file.name;
+            for (const file of files) {
+                const fileRef = storageRef.child(`it-quotations/stock_${Date.now()}_${file.name}`);
+                await fileRef.put(file);
+                const url = await fileRef.getDownloadURL();
+                quotations.push({ url, fileName: file.name });
+            }
+            quotationUrl = quotations[0].url;
+            quotationFileName = quotations[0].fileName;
         } catch(e) {
             console.error('Upload error:', e);
-            return showMessage('Failed to upload quotation', 'error');
+            return showMessage('Failed to upload quotation(s)', 'error');
         }
     }
 
@@ -31808,7 +31824,7 @@ async function submitStockPurchase() {
         const resp = await apiCall('it-tickets/stock-purchase', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ category, item, quantity, subject, description, vendor, estimatedCost, currency, quotationUrl, quotationFileName })
+            body: JSON.stringify({ category, item, quantity, subject, description, vendor, estimatedCost, currency, quotationUrl, quotationFileName, quotations })
         });
         if (resp.success) {
             showMessage(`Stock purchase ${resp.data?.ticketNumber||''} submitted to HR!`, 'success');
@@ -31877,7 +31893,7 @@ async function showHRITProcurement() {
                 <span style="color:#334155;">${t.description}</span>
             </div>
             ${t.itNotes?`<div style="background:#fffbeb;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
-            ${t.quotationUrl?`<div style="background:#eff6ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;display:flex;align-items:center;gap:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
+            ${(t.quotations&&t.quotations.length>0)?`<div style="background:#eff6ff;padding:12px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotations (${t.quotations.length}):</strong></div>${t.quotations.map((q,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-radius:6px;margin-bottom:4px;border:1px solid #dbeafe;"><span style="color:#3b82f6;font-weight:600;min-width:20px;">${i+1}.</span><a href="${q.url}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:500;">${q.fileName||'Quotation '+(i+1)}</a></div>`).join('')}</div>`:t.quotationUrl?`<div style="background:#eff6ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;display:flex;align-items:center;gap:8px;"><span style="font-size:1.2rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
             ${t.itEstimatedCost?`<div style="background:#f0fdf4;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><strong style="color:#065f46;">IT Estimated Cost:</strong> $${parseFloat(t.itEstimatedCost).toFixed(2)}${t.itVendor?' | Vendor: '+t.itVendor:''}</div>`:''}
             ${t.ticketType==='stock_purchase'?`<div style="background:#faf5ff;padding:10px;border-radius:8px;margin-bottom:10px;font-size:0.9rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:8px;">IT department stock replenishment request</span></div>`:''}
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -32071,7 +32087,7 @@ async function showITDepartmentReport() {
                     </div>
                 </div>
                 ${t.ticketType==='stock_purchase'?`<div style="padding:8px 12px;background:#faf5ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><span style="display:inline-block;padding:2px 8px;background:#8b5cf6;color:#fff;border-radius:4px;font-size:0.75rem;font-weight:600;">STOCK PURCHASE</span> <span style="color:#6d28d9;margin-left:6px;">IT department stock replenishment</span></div>`:''}
-                ${t.quotationUrl?`<div style="padding:8px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;display:flex;align-items:center;gap:6px;"><span style="font-size:1.1rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
+                ${(t.quotations&&t.quotations.length>0)?`<div style="padding:10px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="font-size:1rem;">📎</span><strong style="color:#1e40af;">Quotations (${t.quotations.length}):</strong></div>${t.quotations.map((q,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:#fff;border-radius:4px;margin-bottom:3px;border:1px solid #dbeafe;"><span style="color:#3b82f6;font-weight:600;font-size:0.8rem;">${i+1}.</span><a href="${q.url}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-size:0.85rem;">${q.fileName||'Quotation '+(i+1)}</a></div>`).join('')}</div>`:t.quotationUrl?`<div style="padding:8px 12px;background:#eff6ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;display:flex;align-items:center;gap:6px;"><span style="font-size:1rem;">📎</span><strong style="color:#1e40af;">Quotation:</strong> <a href="${t.quotationUrl}" target="_blank" style="color:#3b82f6;text-decoration:underline;font-weight:600;">${t.quotationFileName||'View Quotation'}</a></div>`:''}
                 ${t.itNotes?`<div style="padding:8px 12px;background:#fffbeb;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#92400e;">IT Notes:</strong> ${t.itNotes}</div>`:''}
                 ${t.hrNotes?`<div style="padding:8px 12px;background:#f5f3ff;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#6d28d9;">HR Notes:</strong> ${t.hrNotes}</div>`:''}
                 ${t.cooNotes?`<div style="padding:8px 12px;background:#fff7ed;border-radius:6px;margin-bottom:8px;font-size:0.85rem;"><strong style="color:#c2410c;">COO Notes:</strong> ${t.cooNotes}</div>`:''}

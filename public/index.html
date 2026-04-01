@@ -8117,71 +8117,71 @@ function renderProposals(proposals) {
                     const isPartiallyAllocated = !isFullyAllocated && ((p.projectCreated && maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours) || backendStatus === 'partial');
 
                     if (isFullyAllocated) {
-                        allocationInfo = \`
+                        allocationInfo = `
                             <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.9rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #6ee7b7; box-shadow: 0 1px 3px rgba(16,185,129,0.15);">
                                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #059669; border-radius: 50%; color: white; font-size: 0.65rem;">&#10003;</span>
-                                Allocated \${totalAllocated > 0 ? \`(\${totalAllocated}/\${maxHours}h)\` : ''}
-                            </div>\`;
+                                Allocated ${totalAllocated > 0 ? `(${totalAllocated}/${maxHours}h)` : ''}
+                            </div>`;
                         if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                            allocationButton = \`
-                                <button onclick="viewProject('\${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">View Project</button>
-                                <button onclick="showCooEditAllocationModal('\${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #6b7280; color: #6b7280;">Edit Allocations</button>
-                            \`;
+                            allocationButton = `
+                                <button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">View Project</button>
+                                <button onclick="showCooEditAllocationModal('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #6b7280; color: #6b7280;">Edit Allocations</button>
+                            `;
                         }
                     }
                     else if (isPartiallyAllocated) {
                         const pct = maxHours > 0 ? Math.round((totalAllocated / maxHours) * 100) : 0;
-                        allocationInfo = \`
+                        allocationInfo = `
                             <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;">
                                 <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #fbbf24; box-shadow: 0 1px 3px rgba(245,158,11,0.15);">
-                                    Partially Allocated (\${pct}%)
+                                    Partially Allocated (${pct}%)
                                 </span>
                                 <div style="width: 120px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
-                                    <div style="width: \${pct}%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); border-radius: 3px;"></div>
+                                    <div style="width: ${pct}%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); border-radius: 3px;"></div>
                                 </div>
-                                <span style="font-size: 0.7rem; color: #78716c;">\${totalAllocated}/\${maxHours}h &middot; \${remainingToAllocate.toFixed(1)}h remaining</span>
-                            </div>\`;
+                                <span style="font-size: 0.7rem; color: #78716c;">${totalAllocated}/${maxHours}h &middot; ${remainingToAllocate.toFixed(1)}h remaining</span>
+                            </div>`;
                         if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                            allocationButton = \`
-                                <button onclick="showProjectAllocationModal('\${p.id}')" class="btn btn-sm" style="background: #d97706; color: white; font-weight: 600; border: none;">
+                            allocationButton = `
+                                <button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-sm" style="background: #d97706; color: white; font-weight: 600; border: none;">
                                     Continue Allocation
                                 </button>
-                                <button onclick="showCooEditAllocationModal('\${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #6b7280; color: #6b7280;">Edit</button>
-                            \`;
+                                <button onclick="showCooEditAllocationModal('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #6b7280; color: #6b7280;">Edit</button>
+                            `;
                         }
                     }
                     else if (p.pricing && p.pricing.projectNumber) {
-                        allocationInfo = \`
+                        allocationInfo = `
                             <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #93c5fd; box-shadow: 0 1px 3px rgba(59,130,246,0.15);">
                                 Pending Allocation
-                            </span>\`;
+                            </span>`;
                         if (currentUserRole === 'coo') {
-                            allocationButton = \`<button onclick="showProjectAllocationModal('\${p.id}')" class="btn btn-primary btn-sm" style="font-weight: 600;">Allocate Project</button>\`;
+                            allocationButton = `<button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-primary btn-sm" style="font-weight: 600;">Allocate Project</button>`;
                         }
                     } else {
                         allocationInfo = '<span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #fca5a5; box-shadow: 0 1px 3px rgba(239,68,68,0.15);">Pending Pricing</span>';
                     }
 
-                    return \`
-                    <div class="action-item" style="background: white; \${isFullyAllocated ? 'border-left: 3px solid #10b981;' : isPartiallyAllocated ? 'border-left: 3px solid #f59e0b;' : ''}">
+                    return `
+                    <div class="action-item" style="background: white; ${isFullyAllocated ? 'border-left: 3px solid #10b981;' : isPartiallyAllocated ? 'border-left: 3px solid #f59e0b;' : ''}">
                         <div class="action-content">
-                            <strong>\${p.projectName}</strong>
+                            <strong>${p.projectName}</strong>
                             <div class="action-meta">
-                                Client: \${p.clientCompany} |
-                                Won: \${formatDate(p.wonDate)} |
-                                \${p.pricing && p.pricing.projectNumber ? \`Project #: \${p.pricing.projectNumber}\` : 'No Project Number'}
-                                \${maxHours > 0 ? \` | Budget: \${maxHours}h\` : ''}
+                                Client: ${p.clientCompany} |
+                                Won: ${formatDate(p.wonDate)} |
+                                ${p.pricing && p.pricing.projectNumber ? `Project #: ${p.pricing.projectNumber}` : 'No Project Number'}
+                                ${maxHours > 0 ? ` | Budget: ${maxHours}h` : ''}
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            \${allocationInfo}
+                            ${allocationInfo}
                         </div>
                         <div class="action-buttons" style="margin-left: 1rem;">
-                            \${allocationButton}
-                            <button onclick="viewProposal('\${p.id}')" class="btn btn-outline btn-sm">View</button>
+                            ${allocationButton}
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
                         </div>
                     </div>
-                \`}).join('')}
+                `}).join('')}
             </div>
         `;
     }

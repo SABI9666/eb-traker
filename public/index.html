@@ -13265,17 +13265,29 @@ async function showDesignerAllocations() {
                 };
                 
                 const getActionButton = (file) => {
-                    if (file.status === 'uploaded') {
-                        return `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit for Approval</button>`;
-                    } else if (file.status === 'approved') {
-                        // Designers cannot send to client - Document Controller handles this
-                        return `<span class="badge" style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px;">✅ Awaiting DC</span>`;
-                    } else if (file.status === 'rejected') {
-                        return `<button class="btn btn-warning btn-sm" onclick="openDesignUploadModal('${file.projectId}', '${file.projectName.replace(/'/g, "\\'")}')">🔄 Upload Revised</button>`;
-                    } else if (file.status === 'sent') {
-                        return `<span class="badge" style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 6px;">📧 Sent by DC</span>`;
+                    let btns = '';
+                    const safeName = (file.projectName || '').replace(/'/g, '');
+                    const safeFileName = (file.fileName || '').replace(/'/g, '');
+
+                    // Edit/Delete for files not yet approved or sent
+                    if (['uploaded', 'pending_approval'].includes(file.status)) {
+                        btns += `<button class="btn btn-secondary btn-sm" onclick="showDesignerUploadModal('${file.projectId}')" title="Replace with new file" style="font-size:11px;padding:4px 8px;">🔄 Replace</button> `;
+                        btns += `<button class="btn btn-sm" onclick="deleteDesignFile('${file.id}', '${file.projectId}', '${safeFileName}')" title="Delete this file" style="font-size:11px;padding:4px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">🗑️ Delete</button> `;
                     }
-                    return '';
+
+                    if (file.status === 'uploaded') {
+                        btns += `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit</button>`;
+                    } else if (file.status === 'pending_approval') {
+                        btns += `<span class="badge" style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:6px;font-size:12px;">⏳ Pending COO</span>`;
+                    } else if (file.status === 'approved') {
+                        btns += `<span class="badge" style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:6px;font-size:12px;">✅ Awaiting DC</span>`;
+                    } else if (file.status === 'rejected') {
+                        btns += `<button class="btn btn-warning btn-sm" onclick="showDesignerUploadModal('${file.projectId}')">🔄 Upload Revised</button> `;
+                        btns += `<button class="btn btn-sm" onclick="deleteDesignFile('${file.id}', '${file.projectId}', '${safeFileName}')" title="Delete" style="font-size:11px;padding:4px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">🗑️</button>`;
+                    } else if (file.status === 'sent') {
+                        btns += `<span class="badge" style="background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;font-size:12px;">📧 Sent</span>`;
+                    }
+                    return btns;
                 };
                 
                 const fileRows = designFiles.map(file => {
@@ -30807,6 +30819,41 @@ async function submitDesignForApproval(designFileId, projectId) {
 }
 window.submitDesignForApproval = submitDesignForApproval;
 
+async function deleteDesignFile(designFileId, projectId, fileName) {
+    if (!confirm(`Are you sure you want to delete "${fileName || 'this file'}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'delete_design_file',
+                data: { designFileId }
+            })
+        });
+
+        if (response.success) {
+            alert('File deleted successfully.');
+            // Refresh the designer's view
+            if (typeof showDesignerAllocations === 'function') {
+                showDesignerAllocations();
+            } else if (typeof showTasks === 'function') {
+                showTasks();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to delete file');
+        }
+    } catch (error) {
+        console.error('Error deleting design file:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+window.deleteDesignFile = deleteDesignFile;
+
 
 // ============================================
 // COO APPROVAL FUNCTIONS
@@ -30817,83 +30864,163 @@ async function showDesignFileApprovals() {
     const main = document.getElementById('mainContent');
     main.style.display = 'block';
     showLoading();
-    
+
     try {
-        // Fetch pending approvals
-        const response = await apiCall('projects?action=get_design_files&status=pending_approval');
-        
-        if (!response.success) {
-            throw new Error('Failed to load design files');
-        }
-        
-        pendingDesignApprovals = response.data || [];
-        
+        // Fetch both pending and all design files for stats
+        const [pendingResp, allResp] = await Promise.all([
+            apiCall('projects?action=get_design_files&status=pending_approval'),
+            apiCall('projects?action=get_design_files')
+        ]);
+
+        if (!pendingResp.success) throw new Error('Failed to load design files');
+
+        pendingDesignApprovals = pendingResp.data || [];
+        const allFiles = allResp.data || [];
+        const approvedCount = allFiles.filter(f => f.status === 'approved').length;
+        const rejectedCount = allFiles.filter(f => f.status === 'rejected').length;
+        const sentCount = allFiles.filter(f => f.status === 'sent').length;
+
         // Update badge
         const badge = document.getElementById('designApprovalBadge');
         if (badge) {
             badge.textContent = pendingDesignApprovals.length;
             badge.style.display = pendingDesignApprovals.length > 0 ? 'inline' : 'none';
         }
-        
-        let content = '';
-        
+
+        function fmtDate(ts) {
+            if (!ts) return '-';
+            const ms = ts.seconds ? ts.seconds * 1000 : (typeof ts === 'number' ? ts : new Date(ts).getTime());
+            return isNaN(ms) ? '-' : new Date(ms).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        let cardsHtml = '';
         if (pendingDesignApprovals.length === 0) {
-            content = `
-                <div class="empty-state">
-                    <h3>✅ No Pending Approvals</h3>
-                    <p>All design files have been reviewed.</p>
+            cardsHtml = `
+                <div style="text-align:center;padding:3rem;background:white;border-radius:12px;border:1px solid #e2e8f0;">
+                    <div style="font-size:3rem;margin-bottom:8px;">✅</div>
+                    <h3 style="margin:0 0 0.5rem;color:#1e293b;">No Pending Approvals</h3>
+                    <p style="color:#64748b;margin:0;">All design files have been reviewed. New uploads from designers will appear here automatically.</p>
                 </div>
             `;
         } else {
-            const items = pendingDesignApprovals.map(file => {
+            cardsHtml = pendingDesignApprovals.map(file => {
                 const isLink = file.isExternalLink || file.uploadType === 'link';
                 const fileIcon = isLink ? '🔗' : '📄';
-                const typeLabel = isLink ? 'External Link' : 'PDF File';
+                const typeLabel = isLink ? 'External Link' : 'File';
+                const fileExt = (file.fileName || '').split('.').pop().toUpperCase();
+                const typeBadge = isLink
+                    ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0369a1;">LINK</span>'
+                    : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#f0fdf4;color:#166534;">${fileExt || 'FILE'}</span>`;
+
                 return `
-                <div class="approval-item">
-                    <div class="approval-item-header">
-                        <div>
-                            <div class="approval-item-project">${file.projectName}</div>
-                            <div class="approval-item-file">${fileIcon} ${file.fileName}</div>
-                            <small style="color: #64748b; font-size: 0.8rem;">${typeLabel}</small>
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:0;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                    <div style="display:flex;align-items:stretch;">
+                        <!-- Left accent -->
+                        <div style="width:5px;background:linear-gradient(180deg,#f59e0b,#d97706);flex-shrink:0;"></div>
+                        <div style="flex:1;padding:16px 20px;">
+                            <!-- Top row: project + file -->
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                                <div>
+                                    <div style="font-weight:700;font-size:15px;color:#1e293b;margin-bottom:2px;">${file.projectName || 'Unknown Project'}</div>
+                                    <div style="font-size:13px;color:#64748b;">${file.projectCode || ''}</div>
+                                </div>
+                                ${typeBadge}
+                            </div>
+                            <!-- File info -->
+                            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-radius:8px;margin-bottom:12px;">
+                                <span style="font-size:20px;">${fileIcon}</span>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-weight:500;font-size:13px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${file.fileName || 'Untitled'}</div>
+                                    <div style="font-size:11px;color:#94a3b8;">${file.fileSize ? (file.fileSize / 1024 / 1024).toFixed(2) + ' MB' : typeLabel}</div>
+                                </div>
+                                <a href="${file.fileUrl || '#'}" target="_blank" style="padding:6px 12px;background:#667eea;color:white;border-radius:6px;font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap;">
+                                    ${isLink ? '🔗 Open' : '👁️ Preview'}
+                                </a>
+                            </div>
+                            <!-- Meta row -->
+                            <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#64748b;margin-bottom:14px;">
+                                <span>👤 <strong style="color:#334155;">${file.uploadedByName || 'Designer'}</strong></span>
+                                <span>📅 ${fmtDate(file.submittedAt || file.uploadedAt)}</span>
+                                ${file.designerNotes ? `<span>📝 ${file.designerNotes.substring(0, 50)}${file.designerNotes.length > 50 ? '...' : ''}</span>` : ''}
+                            </div>
+                            <!-- Action buttons -->
+                            <div style="display:flex;gap:8px;">
+                                <button onclick="openDesignApprovalModal('${file.id}', '${file.projectId}')" style="padding:8px 20px;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;box-shadow:0 2px 8px rgba(16,185,129,0.3);">
+                                    ✅ Approve
+                                </button>
+                                <button onclick="openDesignApprovalModal('${file.id}', '${file.projectId}')" style="padding:8px 20px;background:white;color:#ef4444;border:1px solid #fecaca;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                                    ❌ Reject
+                                </button>
+                            </div>
                         </div>
-                        <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ Preview</a>
                     </div>
-                    <div class="approval-item-meta">
-                        <span>👤 Submitted by: <strong>${file.uploadedByName}</strong></span>
-                        <span>📧 Client: <strong>${file.clientEmail}</strong></span>
-                        <span>🕐 ${file.submittedAt ? new Date(file.submittedAt.seconds ? file.submittedAt.seconds * 1000 : file.submittedAt).toLocaleDateString() : 'N/A'}</span>
-                    </div>
-                    <div class="approval-item-actions">
-                        <button class="btn btn-success" onclick="openDesignApprovalModal('${file.id}', '${file.projectId}')">
-                            ✅ Review & Approve
-                        </button>
-                    </div>
-                </div>
-            `}).join('');
-            
-            content = `
-                <div class="approval-queue-section" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #e2e8f0;">
-                    <div class="approval-queue-header">
-                        <h3 style="color: #1e293b;">📐 Design Files Pending Approval</h3>
-                        <span class="approval-count-badge">${pendingDesignApprovals.length}</span>
-                    </div>
-                    ${items}
                 </div>
             `;
+            }).join('');
         }
-        
+
         main.innerHTML = `
-            <div class="page-header">
-                <h2>📐 Design File Approvals</h2>
-                <p class="subtitle">Review and approve design files before they are sent to clients.</p>
+            <div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
+                <!-- Header -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                    <div>
+                        <h1 style="margin:0;font-size:1.6rem;font-weight:700;color:#1e293b;">Design File Approvals</h1>
+                        <p style="margin:4px 0 0;color:#64748b;font-size:14px;">Review and approve design files uploaded by designers</p>
+                    </div>
+                    <button onclick="showDesignFileApprovals()" style="padding:8px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;color:#475569;display:flex;align-items:center;gap:6px;">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <!-- Stats -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
+                    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:700;color:#f59e0b;">${pendingDesignApprovals.length}</div>
+                        <div style="font-size:12px;color:#92400e;font-weight:600;">Pending Approval</div>
+                    </div>
+                    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:700;color:#10b981;">${approvedCount}</div>
+                        <div style="font-size:12px;color:#065f46;font-weight:600;">Approved</div>
+                    </div>
+                    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:700;color:#ef4444;">${rejectedCount}</div>
+                        <div style="font-size:12px;color:#991b1b;font-weight:600;">Rejected</div>
+                    </div>
+                    <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:700;color:#8b5cf6;">${sentCount}</div>
+                        <div style="font-size:12px;color:#5b21b6;font-weight:600;">Sent to Client</div>
+                    </div>
+                </div>
+
+                <!-- Pending Section Header -->
+                ${pendingDesignApprovals.length > 0 ? `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
+                    <div style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;">
+                        ${pendingDesignApprovals.length} Pending
+                    </div>
+                    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                    <span style="font-size:12px;color:#94a3b8;">Files awaiting your review</span>
+                </div>
+                ` : ''}
+
+                <!-- Approval Cards -->
+                ${cardsHtml}
             </div>
-            ${content}
         `;
-        
+
     } catch (error) {
         console.error('Error loading approvals:', error);
-        main.innerHTML = `<div class="error-message">Error loading design approvals: ${error.message}</div>`;
+        main.innerHTML = `
+            <div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
+                <h1 style="margin:0 0 1rem;font-size:1.6rem;color:#1e293b;">Design File Approvals</h1>
+                <div style="text-align:center;padding:3rem;background:white;border-radius:12px;border:1px solid #fecaca;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">⚠️</div>
+                    <h3 style="color:#ef4444;">Error Loading Approvals</h3>
+                    <p style="color:#64748b;">${error.message}</p>
+                    <button onclick="showDesignFileApprovals()" style="padding:10px 20px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:1rem;">Try Again</button>
+                </div>
+            </div>
+        `;
     } finally {
         hideLoading();
     }

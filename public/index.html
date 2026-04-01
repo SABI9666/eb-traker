@@ -5642,7 +5642,7 @@ body.is-ios .nav-menu {
             estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
             coo: ["coo@edanbrook.com", "coo2@edanbrook.com"],
             director: ["director@edanbrook.com", "ajit@edanbrook.com"],
-            design_lead: ["aravindhan.tech@edanbrook.in"],
+            design_lead: ["aravindhan.tech@edanbrook.in", "muruganantham.tech@edanbrook.in", "kathar.tech@edanbrook.in", "sathish.tech@edanbrook.in", "rebar.lead@edanbrook.com"],
             designer: [],
             accounts: ["accounts@edanbrook.com", "accounts1@edanbrook.com", "finance@edanbrook.com"],
             bdm: [],
@@ -12877,8 +12877,11 @@ function createProjectCard(project) {
             // Filter projects based on role
             let allProjects = projects;
             if (currentUserRole === 'design_lead') {
-                allProjects = projects.filter(p => p.designLeadUid === currentUser.uid);
-           } else if (currentUserRole === 'designer') {
+                allProjects = projects.filter(p =>
+                    (p.designLeads && Array.isArray(p.designLeads) && p.designLeads.some(l => l.uid === currentUser.uid)) ||
+                    p.designLeadUid === currentUser.uid
+                );
+            } else if (currentUserRole === 'designer') {
               // FIX: Check both assignedDesigners AND assignedDesignerUids
               allProjects = projects.filter(p => 
                   (p.assignedDesigners && p.assignedDesigners.includes(currentUser.uid)) ||
@@ -20711,8 +20714,11 @@ async function showAllocateProjectModal(projectId) {
                 if (!response.success) throw new Error('Failed to fetch projects');
 
                 const allProjects = response.data;
-                // Filter projects where the current user is the design lead
-                const myProjects = allProjects.filter(p => p.designLeadUid === currentUser.uid);
+                // Filter projects where the current user is one of the design leads
+                const myProjects = allProjects.filter(p =>
+                    (p.designLeads && Array.isArray(p.designLeads) && p.designLeads.some(l => l.uid === currentUser.uid)) ||
+                    p.designLeadUid === currentUser.uid
+                );
 
                 // Fetch deliverables needing review (assuming an endpoint exists)
                 const reviewResponse = await apiCall('deliverables?status=pending'); // Example endpoint
@@ -21533,12 +21539,9 @@ async function showAllocationModal(proposalId) {
             return;
         }
         
-        if (!proposal.pricing?.projectNumber) {
-            alert('This proposal does not have a project number yet. Please assign a project number first.');
-            hideLoading();
-            return;
-        }
-        
+        // Project number may come from estimation or be entered by COO
+        const existingProjectNumber = proposal.pricing?.projectNumber || '';
+
         const usersResponse = await apiCall('users?role=design_lead');
         let designManagers = [];
         if (usersResponse.success && usersResponse.data) {
@@ -21567,11 +21570,13 @@ async function showAllocationModal(proposalId) {
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
                                 <div style="grid-column: 1 / -1; background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--success);">
                                     <label style="font-weight: 600; color: var(--text-light); font-size: 0.85rem; margin-bottom: 0.3rem; display: block;">
-                                        🔢 Project Number:
+                                        🔢 Project Number: ${existingProjectNumber ? '<span style="color:#059669;font-size:0.8rem;">(from estimation)</span>' : '<span style="color:#d97706;font-size:0.8rem;">(enter below)</span>'}
                                     </label>
-                                    <span class="project-number-badge" style="font-size: 1.3rem; padding: 0.7rem 1.2rem;">
-                                        ${proposal.pricing.projectNumber}
-                                    </span>
+                                    ${existingProjectNumber
+                                        ? `<span class="project-number-badge" style="font-size:1.3rem;padding:0.7rem 1.2rem;">${existingProjectNumber}</span>
+                                           <input type="hidden" id="allocationProjectCode" value="${existingProjectNumber}">`
+                                        : `<input type="text" id="allocationProjectCode" class="form-control" placeholder="Enter project number (e.g. EB-2024-001)" style="margin-top:0.3rem;" required>`
+                                    }
                                 </div>
                                 <div>
                                     <label style="font-weight: 600; color: var(--text-light); font-size: 0.85rem; display: block;">Quote Value:</label>
@@ -21605,16 +21610,28 @@ async function showAllocationModal(proposalId) {
                                 <input type="hidden" id="allocationProposalId" value="${proposalId}">
                                 <input type="hidden" id="allocationProjectName" value="${projectName}">
                                 <div class="form-group">
-                                    <label for="designManagerSelect">Select Design Manager <span class="required">*</span></label>
+                                    <label for="designManagerSelect">Design Lead 1 <span class="required">*</span></label>
                                     <select id="designManagerSelect" class="form-control" required>
-                                        <option value="">Choose a Design Manager...</option>
+                                        <option value="">Choose primary Design Lead...</option>
                                         ${designManagers.map(dm => `
                                             <option value="${dm.uid}" data-name="${dm.name}" data-email="${dm.email}">
                                                 ${dm.name} (${dm.email})
                                             </option>
                                         `).join('')}
                                     </select>
-                                    <small class="form-text">Select the Design Manager who will oversee this project</small>
+                                    <small class="form-text">Primary Design Lead responsible for this project</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="designManagerSelect2">Design Lead 2 <span style="color:var(--text-light);font-size:0.85rem;">(optional)</span></label>
+                                    <select id="designManagerSelect2" class="form-control">
+                                        <option value="">None (single lead)</option>
+                                        ${designManagers.map(dm => `
+                                            <option value="${dm.uid}" data-name="${dm.name}" data-email="${dm.email}">
+                                                ${dm.name} (${dm.email})
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                    <small class="form-text">Optionally assign a second Design Lead</small>
                                 </div>
                                 <div class="form-group">
                                     <label for="maxAllocatedHours">Max Allocated Hours <span class="required">*</span></label>
@@ -21681,40 +21698,67 @@ async function submitProposalAllocation() {
     const proposalId = document.getElementById('allocationProposalId').value;
     const designManagerSelect = document.getElementById('designManagerSelect');
     const designManagerUid = designManagerSelect.value;
+    const designManagerSelect2 = document.getElementById('designManagerSelect2');
+    const designManagerUid2 = designManagerSelect2 ? designManagerSelect2.value : '';
     const targetCompletionDate = document.getElementById('targetCompletionDate').value;
     const projectPriority = document.getElementById('projectPriority').value;
     const allocationComments = document.getElementById('allocationComments2').value.trim();
     const specialInstructions = document.getElementById('specialInstructions2').value.trim();
     const maxAllocatedHours = document.getElementById('maxAllocatedHours').value;
     const additionalHours = document.getElementById('additionalHours').value || 0;
-    
-    // FIXED: Proper validation
+    const projectCodeEl = document.getElementById('allocationProjectCode');
+    const projectCode = projectCodeEl ? projectCodeEl.value.trim() : '';
+
     if (!designManagerUid) {
-        alert('⚠️ Please select a Design Manager');
+        alert('⚠️ Please select a Design Lead');
         document.getElementById('designManagerSelect').focus();
         return;
     }
-    
-    // Validate max hours
+
+    if (designManagerUid2 && designManagerUid2 === designManagerUid) {
+        alert('⚠️ Design Lead 1 and Design Lead 2 cannot be the same person');
+        document.getElementById('designManagerSelect2').focus();
+        return;
+    }
+
+    if (!projectCode) {
+        alert('⚠️ Please enter or confirm the project number');
+        if (projectCodeEl) projectCodeEl.focus();
+        return;
+    }
+
     if (!maxAllocatedHours || parseFloat(maxAllocatedHours) < 1) {
         alert('⚠️ Please enter max allocated hours (minimum 1 hour)');
         document.getElementById('maxAllocatedHours').focus();
         return;
     }
-    
-    // FIXED: Better validation message with minimum character requirement
+
     if (!allocationComments || allocationComments.length < 10) {
         alert('⚠️ Please add allocation comments (at least 10 characters)');
         document.getElementById('allocationComments2').focus();
         return;
     }
-    
+
+    // Build designLeads array (1 or 2 leads)
+    const selectedOption1 = designManagerSelect.options[designManagerSelect.selectedIndex];
+    const leads = [{
+        uid: designManagerUid,
+        name: selectedOption1.getAttribute('data-name'),
+        email: selectedOption1.getAttribute('data-email')
+    }];
+
+    if (designManagerUid2) {
+        const selectedOption2 = designManagerSelect2.options[designManagerSelect2.selectedIndex];
+        leads.push({
+            uid: designManagerUid2,
+            name: selectedOption2.getAttribute('data-name'),
+            email: selectedOption2.getAttribute('data-email')
+        });
+    }
+
     try {
         showLoading();
-        const selectedOption = designManagerSelect.options[designManagerSelect.selectedIndex];
-        const designManagerName = selectedOption.getAttribute('data-name');
-        const designManagerEmail = selectedOption.getAttribute('data-email');
-        
+
         // Create project from proposal
         const createProjectResponse = await apiCall('projects', {
             method: 'POST',
@@ -21724,25 +21768,27 @@ async function submitProposalAllocation() {
                 proposalId: proposalId
             })
         });
-        
+
         if (!createProjectResponse.success) {
             const proposalResponse = await apiCall(`proposals?id=${proposalId}`);
             if (!proposalResponse.data.projectId) {
                 throw new Error('Failed to create project: ' + (createProjectResponse.error || 'Unknown error'));
             }
         }
-        
+
         // Get the project ID
         const proposalResponse = await apiCall(`proposals?id=${proposalId}`);
         const projectId = proposalResponse.data.projectId;
-        
+
         if (!projectId) {
             throw new Error('Project ID not found');
         }
-        
-        // Allocate to design lead
+
+        // Allocate to design lead(s)
         const allocationData = {
-            designLeadUid: designManagerUid,
+            designLeads: leads,
+            designLeadUid: leads[0].uid,  // backward compat
+            projectCode: projectCode,
             targetCompletionDate: targetCompletionDate || null,
             priority: projectPriority,
             allocationNotes: allocationComments,
@@ -21750,7 +21796,7 @@ async function submitProposalAllocation() {
             maxAllocatedHours: parseFloat(maxAllocatedHours),
             additionalHours: parseFloat(additionalHours)
         };
-        
+
         const response = await apiCall(`projects?id=${projectId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -21759,8 +21805,9 @@ async function submitProposalAllocation() {
                 data: allocationData
             })
         });
-        
+
         if (response.success) {
+            const leadNames = leads.map(l => l.name).join(' & ');
             // Update proposal allocation status
             await apiCall(`proposals?id=${proposalId}`, {
                 method: 'PUT',
@@ -21769,21 +21816,19 @@ async function submitProposalAllocation() {
                     action: 'update_allocation_status',
                     data: {
                         allocationStatus: 'allocated',
-                        designLeadName: designManagerName,
-                        designLeadUid: designManagerUid,
+                        designLeadName: leadNames,
+                        designLeadUid: leads[0].uid,
                         allocatedAt: new Date().toISOString()
                     }
                 })
             });
-            
+
             closeModal();
-            alert(`✅ Project Allocated Successfully!\n\nProject has been allocated to ${designManagerName} with ${maxAllocatedHours} hours (+${additionalHours} buffer). They will be notified immediately.`);
-            const projectName = document.getElementById('allocationProjectName')?.value || 'Unknown Project'; // <-- ADD THIS
-                triggerEmailNotification('project.allotment_', { projectName: projectName, designerEmail: designManagerEmail }); // <-- ADD THIS
-            
-            setTimeout(() => {
-                showProposals();
-            }, 1000);
+            alert(`✅ Project Allocated Successfully!\n\nProject #${projectCode} allocated to ${leadNames} with ${maxAllocatedHours} hours. They will be notified immediately.`);
+            const projectName = document.getElementById('allocationProjectName')?.value || 'Unknown Project';
+            triggerEmailNotification('project.allotment_', { projectName: projectName, designerEmail: leads[0].email });
+
+            setTimeout(() => { showProposals(); }, 1000);
         } else {
             throw new Error(response.error || 'Failed to allocate project');
         }
@@ -21795,8 +21840,13 @@ async function submitProposalAllocation() {
     }
 }
 
+// Alias: submitProjectAllocation calls submitProposalAllocation
+function submitProjectAllocation() {
+    return submitProposalAllocation();
+}
 
-    
+
+
         function switchDesignerTab(tabName) {
             // Update tab buttons
             document.querySelectorAll('.doc-tab').forEach(tab => {

@@ -5408,6 +5408,11 @@ body.is-ios .nav-menu {
                                 <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
                             </a>
                         </li>
+                        <li id="dcTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showDCFileTracker(); return false;" id="nav-dc-tracker">
+                                <span class="nav-icon">📨</span>DC File Tracker
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -7120,7 +7125,17 @@ body.is-ios .nav-menu {
             } else {
                 console.log('📐 ⚠️ User is NOT COO or Director, hiding Design Approval Nav');
             }
-            
+
+            // DC File Tracker Nav - For COO and Director
+            setDisplay('dcTrackerNavItem', canApproveDesign);
+            if (canApproveDesign) {
+                const dcTrackerNav = document.getElementById('dcTrackerNavItem');
+                if (dcTrackerNav) {
+                    dcTrackerNav.style.display = 'block';
+                    dcTrackerNav.style.visibility = 'visible';
+                }
+            }
+
             // Document Controller Nav - Only for DC users
             setDisplay('documentControllerNavItem', isDC);
             if (isDC) {
@@ -7310,6 +7325,13 @@ function handleDeepLink(link) {
             case 'design-approvals':
                 if (typeof showDesignFileApprovals === 'function') {
                     showDesignFileApprovals();
+                    return true;
+                }
+                return false;
+
+            case 'dc-tracker':
+                if (typeof showDCFileTracker === 'function') {
+                    showDCFileTracker();
                     return true;
                 }
                 return false;
@@ -26621,126 +26643,404 @@ function isThisMonth(dateValue) {
 // DESIGNER PROJECT UPLOAD FUNCTIONS
 // ============================================
 function showDesignerUploadModal(projectId) {
-    
+
     // Close existing modal if any
     closeModal();
 
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'designerUploadModal';
-    // FIXED: Add inline styles to ensure modal displays properly
-    modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;';
+    modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);';
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 600px; background: white; border-radius: 12px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-            <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="margin: 0;">📤 Upload Project Files</h2>
-                <span class="close-modal" onclick="closeDesignerUploadModal()" style="cursor: pointer; font-size: 2rem; color: #666;">&times;</span>
+        <div class="modal-content" style="max-width: 640px; width: 95%; background: white; border-radius: 16px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease;">
+            <style>
+                @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+                .upload-tab-btn { flex: 1; padding: 12px 16px; border: none; background: #f1f5f9; cursor: pointer; font-size: 14px; font-weight: 600; color: #64748b; transition: all 0.2s; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+                .upload-tab-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+                .upload-tab-btn:hover:not(.active) { background: #e2e8f0; color: #334155; }
+                .upload-tab-content { display: none; } .upload-tab-content.active { display: block; }
+                .designer-dropzone { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc; }
+                .designer-dropzone:hover, .designer-dropzone.dragover { border-color: #667eea; background: #f0f0ff; }
+                .designer-dropzone.has-files { border-color: #10b981; background: #f0fdf4; border-style: solid; }
+                .designer-file-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+                .designer-file-item .file-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+                .designer-file-item .file-name { font-size: 13px; font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .designer-file-item .file-size { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+                .designer-file-item .file-icon { font-size: 20px; flex-shrink: 0; }
+                .designer-file-item .remove-file { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s; }
+                .designer-file-item .remove-file:hover { background: #fee2e2; }
+                .designer-link-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+                .designer-link-row input { flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+                .designer-link-row input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+                .add-link-btn { background: #f0f0ff; color: #667eea; border: 1px dashed #667eea; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; width: 100%; }
+                .add-link-btn:hover { background: #e8e8ff; }
+                .remove-link-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 4px; flex-shrink: 0; }
+                .remove-link-btn:hover { background: #fee2e2; }
+                .upload-progress-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 12px; display: none; }
+                .upload-progress-bar .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width 0.3s; width: 0%; }
+                .upload-size-info { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #eff6ff; border-radius: 8px; margin-top: 10px; font-size: 12px; color: #3b82f6; }
+            </style>
+            <div style="padding: 1.5rem 1.5rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; font-size: 1.3rem; font-weight: 700;">Upload Project Files</h2>
+                    <span onclick="closeDesignerUploadModal()" style="cursor: pointer; font-size: 1.8rem; color: rgba(255,255,255,0.8); line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">&times;</span>
+                </div>
+                <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.85;">Upload files or share links for your project deliverables</p>
             </div>
-            <div class="modal-body" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
-                <form id="designerUploadForm" onsubmit="submitDesignerUpload(event, '${projectId}')">
-                    <div class="form-group">
-                        <label>Upload Files *</label>
-                        <div class="upload-area" onclick="document.getElementById('designerFiles').click()" 
-                             style="border: 2px dashed var(--border); padding: 2rem; text-align: center; cursor: pointer; border-radius: 8px;">
-                            <p>📁 Click to select files or drag and drop</p>
-                            <small style="color: var(--text-light);">Supported: PDF, DWG, ZIP, Images (Max 50MB each)</small>
+            <div class="modal-body" style="padding: 1.5rem; max-height: 58vh; overflow-y: auto;">
+                <!-- Upload Type Tabs -->
+                <div style="display: flex; gap: 8px; margin-bottom: 1.25rem; background: #f1f5f9; padding: 4px; border-radius: 10px;">
+                    <button type="button" class="upload-tab-btn active" onclick="switchDesignerUploadTab('files')">
+                        <span>📁</span> Upload Files
+                    </button>
+                    <button type="button" class="upload-tab-btn" onclick="switchDesignerUploadTab('links')">
+                        <span>🔗</span> Add Link
+                    </button>
+                </div>
+
+                <!-- FILES TAB -->
+                <div id="designerUploadTabFiles" class="upload-tab-content active">
+                    <div class="designer-dropzone" id="designerDropzone"
+                         onclick="document.getElementById('designerFiles').click()"
+                         ondragover="event.preventDefault(); this.classList.add('dragover');"
+                         ondragleave="this.classList.remove('dragover');"
+                         ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDesignerFileDrop(event);">
+                        <div style="font-size: 2.5rem; margin-bottom: 8px;">📤</div>
+                        <p style="margin: 0 0 4px; font-weight: 600; color: #334155;">Click to select files or drag & drop</p>
+                        <p style="margin: 0; font-size: 12px; color: #94a3b8;">PDF, DWG, ZIP, RAR, Images &bull; Max 100MB per file</p>
+                    </div>
+                    <input type="file" id="designerFiles" multiple
+                           accept=".pdf,.dwg,.zip,.rar,.7z,.jpg,.jpeg,.png,.tiff,.dxf"
+                           style="display: none;" onchange="handleDesignerFileSelect(this.files)">
+                    <div id="designerFileList" style="margin-top: 12px;"></div>
+                    <div id="designerSizeInfo" style="display: none;" class="upload-size-info">
+                        <span id="designerFileCount">0 files selected</span>
+                        <span id="designerTotalSize">Total: 0 MB</span>
+                    </div>
+                </div>
+
+                <!-- LINKS TAB -->
+                <div id="designerUploadTabLinks" class="upload-tab-content">
+                    <div id="designerLinkList">
+                        <div class="designer-link-row">
+                            <input type="text" placeholder="Paste link URL (Google Drive, Dropbox, etc.)" class="designer-link-url">
+                            <input type="text" placeholder="Title (optional)" class="designer-link-title" style="max-width: 160px;">
                         </div>
-                        <input type="file" id="designerFiles" multiple accept=".pdf,.dwg,.zip,.jpg,.jpeg,.png" 
-                               style="display: none;" onchange="updateDesignerFileList()">
-                        <div id="designerFileList" style="margin-top: 1rem;"></div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>File Description</label>
-                        <textarea id="designerFileDescription" class="form-control" rows="3" 
-                                  placeholder="Describe what you're uploading..."></textarea>
+                    <button type="button" class="add-link-btn" onclick="addDesignerLinkRow()">+ Add Another Link</button>
+                </div>
+
+                <!-- Common Fields -->
+                <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Description</label>
+                        <textarea id="designerFileDescription" class="form-control" rows="2"
+                                  placeholder="Describe what you're uploading..."
+                                  style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 14px; font-size: 14px; resize: vertical;"></textarea>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>Status Update</label>
-                        <select id="designerProjectStatus" class="form-control">
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 13px; color: #374141; margin-bottom: 6px; display: block;">Status Update</label>
+                        <select id="designerProjectStatus" class="form-control"
+                                style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 14px; font-size: 14px;">
                             <option value="in_progress">Work in Progress</option>
                             <option value="review">Ready for Review</option>
                             <option value="completed">Completed</option>
                         </select>
                     </div>
-                </form>
+                </div>
+
+                <div class="upload-progress-bar" id="designerProgressBar">
+                    <div class="progress-fill" id="designerProgressFill"></div>
+                </div>
             </div>
-            <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
-                <button type="button" class="btn btn-outline" onclick="closeDesignerUploadModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitDesignerUpload(event, '${projectId}')">Upload Files</button>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fafbfc;">
+                <span id="designerUploadStatus" style="font-size: 13px; color: #64748b;"></span>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="closeDesignerUploadModal()"
+                            style="padding: 10px 20px; border: 1px solid #e2e8f0; background: white; border-radius: 8px; cursor: pointer; font-weight: 500; color: #64748b; transition: all 0.2s;">
+                        Cancel
+                    </button>
+                    <button type="button" id="designerUploadBtn" onclick="submitDesignerUpload(event, '${projectId}')"
+                            style="padding: 10px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102,126,234,0.3);">
+                        Upload
+                    </button>
+                </div>
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
     document.body.classList.add('modal-open');
+
+    // Close modal when clicking overlay
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeDesignerUploadModal();
+    });
 }
 
 function closeDesignerUploadModal() {
     const modal = document.getElementById('designerUploadModal');
     if (modal) modal.remove();
     document.body.classList.remove('modal-open');
+    window._designerSelectedFiles = [];
 }
 
-function updateDesignerFileList() {
-    const input = document.getElementById('designerFiles');
+// Track selected files globally for the modal
+window._designerSelectedFiles = [];
+
+const MAX_DESIGNER_FILE_SIZE = 100 * 1024 * 1024; // 100MB per file
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = { pdf: '📄', zip: '📦', rar: '📦', '7z': '📦', dwg: '📐', dxf: '📐', jpg: '🖼️', jpeg: '🖼️', png: '🖼️', tiff: '🖼️' };
+    return icons[ext] || '📎';
+}
+
+function formatDesignerFileSize(bytes) {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function handleDesignerFileDrop(event) {
+    const files = event.dataTransfer.files;
+    handleDesignerFileSelect(files);
+}
+
+function handleDesignerFileSelect(files) {
+    const fileArray = Array.from(files);
+    const errors = [];
+
+    fileArray.forEach(file => {
+        if (file.size > MAX_DESIGNER_FILE_SIZE) {
+            errors.push(`"${file.name}" exceeds 100MB limit (${formatDesignerFileSize(file.size)})`);
+            return;
+        }
+        // Avoid duplicates
+        if (!window._designerSelectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+            window._designerSelectedFiles.push(file);
+        }
+    });
+
+    if (errors.length > 0) {
+        alert('Some files were skipped:\n\n' + errors.join('\n'));
+    }
+
+    renderDesignerFileList();
+}
+
+function removeDesignerFile(index) {
+    window._designerSelectedFiles.splice(index, 1);
+    renderDesignerFileList();
+}
+
+function renderDesignerFileList() {
     const fileList = document.getElementById('designerFileList');
-    
-    if (input.files.length > 0) {
-        fileList.innerHTML = '<strong>Selected files:</strong><ul style="margin-top: 0.5rem;">' +
-            Array.from(input.files).map(f => `<li>${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)</li>`).join('') +
-            '</ul>';
+    const sizeInfo = document.getElementById('designerSizeInfo');
+    const dropzone = document.getElementById('designerDropzone');
+    const files = window._designerSelectedFiles;
+
+    if (files.length > 0) {
+        fileList.innerHTML = files.map((f, i) => `
+            <div class="designer-file-item">
+                <div class="file-info">
+                    <span class="file-icon">${getFileIcon(f.name)}</span>
+                    <span class="file-name" title="${f.name}">${f.name}</span>
+                    <span class="file-size">${formatDesignerFileSize(f.size)}</span>
+                </div>
+                <button type="button" class="remove-file" onclick="removeDesignerFile(${i})" title="Remove">&times;</button>
+            </div>
+        `).join('');
+
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+        sizeInfo.style.display = 'flex';
+        document.getElementById('designerFileCount').textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
+        document.getElementById('designerTotalSize').textContent = `Total: ${formatDesignerFileSize(totalSize)}`;
+        dropzone.classList.add('has-files');
     } else {
         fileList.innerHTML = '';
+        sizeInfo.style.display = 'none';
+        dropzone.classList.remove('has-files');
     }
 }
 
-// ✅ Make designer upload functions globally accessible
+function switchDesignerUploadTab(tab) {
+    document.querySelectorAll('.upload-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.upload-tab-content').forEach(c => c.classList.remove('active'));
+
+    if (tab === 'files') {
+        document.getElementById('designerUploadTabFiles').classList.add('active');
+        document.querySelectorAll('.upload-tab-btn')[0].classList.add('active');
+    } else {
+        document.getElementById('designerUploadTabLinks').classList.add('active');
+        document.querySelectorAll('.upload-tab-btn')[1].classList.add('active');
+    }
+}
+
+function addDesignerLinkRow() {
+    const container = document.getElementById('designerLinkList');
+    const row = document.createElement('div');
+    row.className = 'designer-link-row';
+    row.innerHTML = `
+        <input type="text" placeholder="Paste link URL (Google Drive, Dropbox, etc.)" class="designer-link-url">
+        <input type="text" placeholder="Title (optional)" class="designer-link-title" style="max-width: 160px;">
+        <button type="button" class="remove-link-btn" onclick="this.parentElement.remove()" title="Remove">&times;</button>
+    `;
+    container.appendChild(row);
+}
+
+// Make designer upload functions globally accessible
 window.showDesignerUploadModal = showDesignerUploadModal;
 window.closeDesignerUploadModal = closeDesignerUploadModal;
-window.updateDesignerFileList = updateDesignerFileList;
+window.switchDesignerUploadTab = switchDesignerUploadTab;
+window.addDesignerLinkRow = addDesignerLinkRow;
+window.handleDesignerFileDrop = handleDesignerFileDrop;
+window.handleDesignerFileSelect = handleDesignerFileSelect;
+window.removeDesignerFile = removeDesignerFile;
+window.renderDesignerFileList = renderDesignerFileList;
 
 async function submitDesignerUpload(event, projectId) {
-    if(event) event.preventDefault();
-    
-    const files = document.getElementById('designerFiles').files;
-    if (files.length === 0) {
-        alert('Please select at least one file');
-        return;
-    }
-    
-    try {
-        showLoading();
-        
-        const formData = new FormData();
-        for (let file of files) {
-            formData.append('files', file);
+    if (event) event.preventDefault();
+
+    const activeTab = document.getElementById('designerUploadTabFiles').classList.contains('active') ? 'files' : 'links';
+    const description = document.getElementById('designerFileDescription').value;
+    const status = document.getElementById('designerProjectStatus').value;
+    const uploadBtn = document.getElementById('designerUploadBtn');
+    const statusEl = document.getElementById('designerUploadStatus');
+    const progressBar = document.getElementById('designerProgressBar');
+    const progressFill = document.getElementById('designerProgressFill');
+
+    if (activeTab === 'files') {
+        // FILE UPLOAD
+        const files = window._designerSelectedFiles;
+        if (!files || files.length === 0) {
+            alert('Please select at least one file to upload.');
+            return;
         }
-        formData.append('description', document.getElementById('designerFileDescription').value);
-        formData.append('status', document.getElementById('designerProjectStatus').value);
-        
-        const response = await apiCall(`projects/${projectId}/upload-designer-files`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (response.success) {
-            closeDesignerUploadModal();
-            alert('Files uploaded successfully!');
-            // Reload designer dashboard or project view
-            if (typeof showTasks === 'function' && document.getElementById('mainContent').querySelector('h2').innerText.includes('My Projects')) {
-                showTasks();
+
+        // Validate file sizes
+        const oversized = files.filter(f => f.size > MAX_DESIGNER_FILE_SIZE);
+        if (oversized.length > 0) {
+            alert('Some files exceed the 100MB limit. Please remove them and try again.');
+            return;
+        }
+
+        try {
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            progressBar.style.display = 'block';
+            progressFill.style.width = '10%';
+            statusEl.textContent = 'Preparing upload...';
+
+            const formData = new FormData();
+            files.forEach(file => formData.append('files', file));
+            formData.append('projectId', projectId);
+            formData.append('description', description);
+            formData.append('uploadNotes', description);
+            formData.append('status', status);
+
+            statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`;
+            progressFill.style.width = '40%';
+
+            const response = await apiCall('deliverables', {
+                method: 'POST',
+                body: formData
+            });
+
+            progressFill.style.width = '100%';
+
+            if (response.success) {
+                statusEl.textContent = 'Upload complete!';
+                setTimeout(() => {
+                    closeDesignerUploadModal();
+                    alert(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
+                    if (typeof showTasks === 'function') {
+                        try {
+                            const heading = document.getElementById('mainContent').querySelector('h2');
+                            if (heading && heading.innerText.includes('My Projects')) showTasks();
+                        } catch(e) {}
+                    }
+                }, 500);
+            } else {
+                throw new Error(response.error || 'Upload failed');
             }
-        } else {
-            throw new Error(response.error || 'Upload failed');
+
+        } catch (error) {
+            console.error('Error uploading files:', error);
+            statusEl.textContent = 'Upload failed';
+            progressFill.style.width = '0%';
+            progressBar.style.display = 'none';
+            alert('Error uploading files: ' + error.message);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload';
         }
-        
-    } catch (error) {
-        console.error('Error uploading files:', error);
-        alert('Error uploading files: ' + error.message);
-    } finally {
-        hideLoading();
+
+    } else {
+        // LINK UPLOAD
+        const linkRows = document.querySelectorAll('#designerLinkList .designer-link-row');
+        const links = [];
+        linkRows.forEach(row => {
+            const url = row.querySelector('.designer-link-url').value.trim();
+            const title = row.querySelector('.designer-link-title').value.trim();
+            if (url) {
+                links.push({ url, title: title || url, description: description });
+            }
+        });
+
+        if (links.length === 0) {
+            alert('Please enter at least one link URL.');
+            return;
+        }
+
+        // Validate URLs
+        const invalidLinks = links.filter(l => !l.url.startsWith('http://') && !l.url.startsWith('https://'));
+        if (invalidLinks.length > 0) {
+            alert('Please enter valid URLs starting with http:// or https://');
+            return;
+        }
+
+        try {
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Submitting...';
+            statusEl.textContent = 'Submitting links...';
+
+            const response = await apiCall('deliverables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId: projectId,
+                    links: links,
+                    uploadNotes: description,
+                    status: status
+                })
+            });
+
+            if (response.success) {
+                closeDesignerUploadModal();
+                alert(`${links.length} link${links.length > 1 ? 's' : ''} added successfully!`);
+                if (typeof showTasks === 'function') {
+                    try {
+                        const heading = document.getElementById('mainContent').querySelector('h2');
+                        if (heading && heading.innerText.includes('My Projects')) showTasks();
+                    } catch(e) {}
+                }
+            } else {
+                throw new Error(response.error || 'Failed to add links');
+            }
+
+        } catch (error) {
+            console.error('Error adding links:', error);
+            statusEl.textContent = 'Failed';
+            alert('Error adding links: ' + error.message);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload';
+            statusEl.textContent = '';
+        }
     }
 }
 // ============================================
@@ -30916,22 +31216,30 @@ async function showDocumentControllerDashboard() {
                 
                 return `
                     <tr>
-                        <td><strong>${file.projectName || 'Unknown Project'}</strong></td>
+                        <td><strong>${file.projectName || 'Unknown Project'}</strong><br><small style="color:#64748b;">${file.projectCode || ''}</small></td>
                         <td>
                             <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
                                 ${fileIcon} ${file.fileName}
                             </a>
                         </td>
-                        <td style="color: #2563eb;">${file.clientEmail || 'N/A'}</td>
+                        <td style="color: #2563eb;">${file.clientEmail || 'N/A'}<br><small style="color:#94a3b8;">${file.clientName || ''}</small></td>
                         <td>${sentDate}</td>
                         <td>${file.sentBy || 'DC'}</td>
                         <td>
-                            <span class="badge" style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px;">📧 Sent</span>
+                            <span class="badge" style="background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-size:12px;">📧 Sent</span>
+                        </td>
+                        <td style="white-space: nowrap;">
+                            <button class="btn btn-secondary btn-sm" onclick="openDCCommentModal('${file.id}', '${file.projectId}', '${(file.fileName || '').replace(/'/g, '\\&#39;')}', '${(file.projectName || '').replace(/'/g, '\\&#39;')}')" style="font-size:12px;padding:5px 10px;margin-right:4px;">
+                                💬 Comment
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="openDCActivityHistory('${file.projectId}', '${(file.projectName || '').replace(/'/g, '\\&#39;')}')" style="font-size:12px;padding:5px 10px;">
+                                📋 History
+                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
-            
+
             sentHtml = `
                 <div class="card" style="margin-bottom: 2rem; border: 2px solid #10b981;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -30948,6 +31256,7 @@ async function showDocumentControllerDashboard() {
                                     <th>Sent Date</th>
                                     <th>Sent By</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -31192,6 +31501,567 @@ async function confirmDCSendToClient(designFileId, projectId) {
     }
 }
 window.confirmDCSendToClient = confirmDCSendToClient;
+
+
+// ============================================
+// DC COMMENT MODAL & ACTIVITY HISTORY
+// ============================================
+
+function openDCCommentModal(designFileId, projectId, fileName, projectName) {
+    // Close existing
+    const existing = document.getElementById('dcCommentModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'dcCommentModal';
+    modal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    modal.innerHTML = `
+        <div style="max-width:560px;width:95%;background:white;border-radius:16px;max-height:85vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.3);animation:modalSlideIn 0.3s ease;">
+            <div style="padding:1.25rem 1.5rem;background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%);color:white;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;font-size:1.1rem;font-weight:700;">💬 Add Comment / Client Feedback</h3>
+                    <span onclick="document.getElementById('dcCommentModal').remove()" style="cursor:pointer;font-size:1.6rem;color:rgba(255,255,255,0.8);line-height:1;">&times;</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:12px;opacity:0.85;">${projectName} - ${fileName}</p>
+            </div>
+            <div style="padding:1.5rem;max-height:55vh;overflow-y:auto;">
+                <div style="margin-bottom:1rem;">
+                    <label style="font-weight:600;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Comment Type *</label>
+                    <select id="dcCommentType" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;">
+                        <option value="general">General Comment</option>
+                        <option value="client_feedback">Client Feedback Received</option>
+                        <option value="rectification">Rectification Required</option>
+                        <option value="revision_request">Revision Requested by Client</option>
+                        <option value="resolved">Issue Resolved</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-weight:600;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Client Response / Feedback</label>
+                    <textarea id="dcClientResponse" rows="2" placeholder="Paste or summarize client's response..." style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-weight:600;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Your Comment / Notes *</label>
+                    <textarea id="dcCommentText" rows="3" placeholder="Add your comment, rectification details, or notes..." style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+            </div>
+            <div style="padding:1rem 1.5rem;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;background:#fafbfc;">
+                <button onclick="document.getElementById('dcCommentModal').remove()" style="padding:10px 20px;border:1px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;font-weight:500;color:#64748b;">Cancel</button>
+                <button id="dcCommentSubmitBtn" onclick="submitDCComment('${designFileId}','${projectId}')" style="padding:10px 24px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;box-shadow:0 4px 12px rgba(59,130,246,0.3);">Submit Comment</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
+async function submitDCComment(designFileId, projectId) {
+    const commentType = document.getElementById('dcCommentType').value;
+    const clientResponse = document.getElementById('dcClientResponse').value.trim();
+    const comment = document.getElementById('dcCommentText').value.trim();
+    const btn = document.getElementById('dcCommentSubmitBtn');
+
+    if (!comment) {
+        alert('Please enter a comment.');
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'add_dc_comment',
+                data: {
+                    designFileId,
+                    comment,
+                    commentType,
+                    clientResponse
+                }
+            })
+        });
+
+        if (response.success) {
+            document.getElementById('dcCommentModal').remove();
+            alert('Comment added successfully!');
+            // Refresh the dashboard if DC, or tracker if COO/Director
+            if (typeof showDocumentControllerDashboard === 'function') {
+                const nav = document.getElementById('nav-document-controller');
+                if (nav && nav.classList.contains('active')) showDocumentControllerDashboard();
+            }
+            if (typeof showDCFileTracker === 'function') {
+                const nav = document.getElementById('nav-dc-tracker');
+                if (nav && nav.classList.contains('active')) showDCFileTracker();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to add comment');
+        }
+    } catch (error) {
+        console.error('Error adding DC comment:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Comment';
+    }
+}
+
+async function openDCActivityHistory(projectId, projectName) {
+    // Close existing
+    const existing = document.getElementById('dcHistoryModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'dcHistoryModal';
+    modal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    modal.innerHTML = `
+        <div style="max-width:750px;width:95%;background:white;border-radius:16px;max-height:90vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.3);animation:modalSlideIn 0.3s ease;">
+            <div style="padding:1.25rem 1.5rem;background:linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%);color:white;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;font-size:1.1rem;font-weight:700;">📋 Activity History & Comments</h3>
+                    <span onclick="document.getElementById('dcHistoryModal').remove()" style="cursor:pointer;font-size:1.6rem;color:rgba(255,255,255,0.8);line-height:1;">&times;</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:12px;opacity:0.85;">${projectName}</p>
+            </div>
+            <div id="dcHistoryContent" style="padding:1.5rem;max-height:70vh;overflow-y:auto;">
+                <div style="text-align:center;padding:2rem;"><div class="spinner"></div><p style="color:#64748b;margin-top:1rem;">Loading history...</p></div>
+            </div>
+            <div style="padding:0.75rem 1.5rem;border-top:1px solid #e2e8f0;text-align:right;background:#fafbfc;">
+                <button onclick="document.getElementById('dcHistoryModal').remove()" style="padding:8px 20px;border:1px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;font-weight:500;color:#64748b;">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+    try {
+        const response = await apiCall(`projects?action=get_dc_comments&projectId=${projectId}`);
+
+        if (!response.success) throw new Error(response.error || 'Failed to load history');
+
+        const comments = response.comments || [];
+        const activities = response.activities || [];
+
+        // Merge into a single timeline
+        const timeline = [];
+
+        comments.forEach(c => {
+            const ts = c.createdAt?.seconds ? c.createdAt.seconds * 1000 : 0;
+            const typeLabels = {
+                'general': { label: 'Comment', icon: '💬', color: '#3b82f6', bg: '#eff6ff' },
+                'client_feedback': { label: 'Client Feedback', icon: '📩', color: '#f59e0b', bg: '#fffbeb' },
+                'rectification': { label: 'Rectification', icon: '🔧', color: '#ef4444', bg: '#fef2f2' },
+                'revision_request': { label: 'Revision Request', icon: '📝', color: '#f97316', bg: '#fff7ed' },
+                'resolved': { label: 'Resolved', icon: '✅', color: '#10b981', bg: '#ecfdf5' }
+            };
+            const t = typeLabels[c.commentType] || typeLabels['general'];
+            timeline.push({
+                ts,
+                type: 'comment',
+                html: `
+                    <div style="border-left:3px solid ${t.color};background:${t.bg};border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-weight:600;font-size:13px;color:${t.color};">${t.icon} ${t.label}</span>
+                            <span style="font-size:11px;color:#94a3b8;">${ts ? new Date(ts).toLocaleString('en-AU', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                        </div>
+                        ${c.clientResponse ? `<div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;">CLIENT RESPONSE:</div><div style="font-size:13px;color:#1e293b;">${c.clientResponse}</div></div>` : ''}
+                        <div style="font-size:13px;color:#1e293b;line-height:1.5;">${c.comment}</div>
+                        <div style="margin-top:8px;font-size:11px;color:#94a3b8;">By ${c.createdByName || 'Unknown'} (${c.createdByRole || ''})</div>
+                        ${c.fileName ? `<div style="font-size:11px;color:#94a3b8;">File: ${c.fileName}</div>` : ''}
+                    </div>
+                `
+            });
+        });
+
+        activities.forEach(a => {
+            const ts = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : 0;
+            const actIcons = {
+                'design_file_uploaded': '📤',
+                'design_file_submitted': '📋',
+                'design_file_approved': '✅',
+                'design_file_rejected': '❌',
+                'design_file_sent_to_client': '📧',
+                'dc_comment_added': '💬',
+                'deliverable_uploaded': '📁'
+            };
+            const icon = actIcons[a.type] || '📌';
+            timeline.push({
+                ts,
+                type: 'activity',
+                html: `
+                    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;margin-bottom:4px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">${icon}</div>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;color:#1e293b;line-height:1.4;">${a.details || a.type}</div>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
+                                ${a.performedByName || ''} &bull; ${ts ? new Date(ts).toLocaleString('en-AU', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}
+                            </div>
+                        </div>
+                    </div>
+                `
+            });
+        });
+
+        // Sort timeline by most recent first
+        timeline.sort((a, b) => b.ts - a.ts);
+
+        const content = document.getElementById('dcHistoryContent');
+        if (timeline.length === 0) {
+            content.innerHTML = `
+                <div style="text-align:center;padding:3rem;color:#94a3b8;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">📋</div>
+                    <p>No activity history found for this project.</p>
+                </div>
+            `;
+        } else {
+            // Separate comments and activities
+            const commentItems = timeline.filter(t => t.type === 'comment');
+            const activityItems = timeline.filter(t => t.type === 'activity');
+
+            content.innerHTML = `
+                <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+                    <button onclick="dcHistoryTab('all')" class="dc-hist-tab active" style="padding:8px 16px;border:1px solid #e2e8f0;background:#8b5cf6;color:white;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        All (${timeline.length})
+                    </button>
+                    <button onclick="dcHistoryTab('comments')" class="dc-hist-tab" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        💬 Comments (${commentItems.length})
+                    </button>
+                    <button onclick="dcHistoryTab('activities')" class="dc-hist-tab" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        📌 Activities (${activityItems.length})
+                    </button>
+                </div>
+                <div id="dcHistoryTimeline">
+                    ${timeline.map(t => t.html).join('')}
+                </div>
+            `;
+
+            // Store for filtering
+            window._dcHistoryTimeline = timeline;
+        }
+
+    } catch (error) {
+        console.error('Error loading DC history:', error);
+        document.getElementById('dcHistoryContent').innerHTML = `
+            <div style="text-align:center;padding:2rem;color:#ef4444;">
+                <p>Error loading history: ${error.message}</p>
+                <button onclick="openDCActivityHistory('${projectId}','${projectName}')" style="padding:8px 16px;background:#8b5cf6;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:1rem;">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function dcHistoryTab(tab) {
+    const timeline = window._dcHistoryTimeline || [];
+    const container = document.getElementById('dcHistoryTimeline');
+    if (!container) return;
+
+    let filtered;
+    if (tab === 'comments') filtered = timeline.filter(t => t.type === 'comment');
+    else if (tab === 'activities') filtered = timeline.filter(t => t.type === 'activity');
+    else filtered = timeline;
+
+    container.innerHTML = filtered.length > 0
+        ? filtered.map(t => t.html).join('')
+        : '<div style="text-align:center;padding:2rem;color:#94a3b8;">No items found.</div>';
+
+    document.querySelectorAll('.dc-hist-tab').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#475569';
+    });
+    event.target.style.background = '#8b5cf6';
+    event.target.style.color = 'white';
+}
+
+window.openDCCommentModal = openDCCommentModal;
+window.submitDCComment = submitDCComment;
+window.openDCActivityHistory = openDCActivityHistory;
+window.dcHistoryTab = dcHistoryTab;
+
+
+// ============================================
+// DC FILE TRACKER - COO & DIRECTOR PORTAL
+// ============================================
+
+async function showDCFileTracker() {
+    setActiveNav('nav-dc-tracker');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align: center; padding: 3rem;"><div class="spinner"></div><p>Loading DC File Tracker...</p></div>';
+
+    try {
+        // Fetch all design files (all statuses)
+        const [allFilesResp, approvedResp] = await Promise.all([
+            apiCall('projects?action=get_design_files'),
+            apiCall('projects?action=get_approved_design_files')
+        ]);
+
+        const designFiles = allFilesResp.data || allFilesResp.designFiles || [];
+        const approvedSentFiles = approvedResp.data || [];
+
+        // Merge: use approvedSentFiles for approved/sent since they have richer data
+        const approvedSentMap = {};
+        approvedSentFiles.forEach(f => { approvedSentMap[f.id] = f; });
+
+        const allFiles = designFiles.map(f => approvedSentMap[f.id] || f);
+        // Also add any approved/sent files not in designFiles
+        approvedSentFiles.forEach(f => {
+            if (!designFiles.find(d => d.id === f.id)) allFiles.push(f);
+        });
+
+        // Sort by most recent first
+        allFiles.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || a.uploadedAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || b.uploadedAt?.seconds || 0;
+            return dateB - dateA;
+        });
+
+        // Categorize
+        const uploaded = allFiles.filter(f => f.status === 'uploaded');
+        const pendingApproval = allFiles.filter(f => f.status === 'pending_approval');
+        const approved = allFiles.filter(f => f.status === 'approved');
+        const sent = allFiles.filter(f => f.status === 'sent');
+        const rejected = allFiles.filter(f => f.status === 'rejected');
+
+        function formatDCDate(ts) {
+            if (!ts) return '-';
+            const ms = ts.seconds ? ts.seconds * 1000 : (typeof ts === 'number' ? ts : new Date(ts).getTime());
+            if (!ms || isNaN(ms)) return '-';
+            return new Date(ms).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'uploaded': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#dbeafe;color:#1d4ed8;">📤 Uploaded</span>',
+                'pending_approval': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;">⏳ Pending Approval</span>',
+                'approved': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#d1fae5;color:#065f46;">✅ Approved - Ready for DC</span>',
+                'sent': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#ede9fe;color:#5b21b6;">📧 Sent to Client</span>',
+                'rejected': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b;">❌ Rejected</span>'
+            };
+            return badges[status] || `<span style="padding:4px 10px;border-radius:20px;font-size:11px;background:#f1f5f9;color:#64748b;">${status}</span>`;
+        }
+
+        function renderFileRow(file) {
+            const isLink = file.isExternalLink || file.uploadType === 'link';
+            const icon = isLink ? '🔗' : '📄';
+            const fileName = file.fileName || file.originalName || 'Untitled';
+            const fileLink = file.fileUrl ? `<a href="${file.fileUrl}" target="_blank" style="color:#3b82f6;text-decoration:none;font-weight:500;" title="${fileName}">${icon} ${fileName.length > 35 ? fileName.substring(0,35) + '...' : fileName}</a>` : `${icon} ${fileName}`;
+
+            return `<tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:12px 14px;font-size:13px;">
+                    <div style="font-weight:600;color:#1e293b;">${file.projectName || 'N/A'}</div>
+                    <div style="font-size:11px;color:#94a3b8;">${file.projectCode || ''}</div>
+                </td>
+                <td style="padding:12px 14px;font-size:13px;">${fileLink}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.uploadedByName || '-'}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${formatDCDate(file.uploadedAt || file.createdAt)}</td>
+                <td style="padding:12px 14px;">${getStatusBadge(file.status)}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.approvedByName || '-'}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${formatDCDate(file.approvedAt)}</td>
+                <td style="padding:12px 14px;font-size:13px;">
+                    ${file.status === 'sent' ? `<div style="font-weight:500;color:#1e293b;">${file.clientEmail || '-'}</div><div style="font-size:11px;color:#94a3b8;">${file.clientName || ''}</div>` : '<span style="color:#cbd5e1;">-</span>'}
+                </td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.status === 'sent' ? formatDCDate(file.sentAt) : '<span style="color:#cbd5e1;">-</span>'}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.sentByName || (file.status === 'sent' ? (file.sentBy || 'DC') : '<span style="color:#cbd5e1;">-</span>')}</td>
+                <td style="padding:12px 14px;white-space:nowrap;">
+                    <button onclick="openDCActivityHistory('${file.projectId}', '${(file.projectName || '').replace(/'/g, '')}')" style="padding:5px 10px;background:#8b5cf6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;">📋 History</button>
+                </td>
+            </tr>`;
+        }
+
+        // Build the stats
+        const stats = [
+            { label: 'Uploaded', count: uploaded.length, color: '#3b82f6', bg: '#eff6ff', icon: '📤' },
+            { label: 'Pending Approval', count: pendingApproval.length, color: '#f59e0b', bg: '#fffbeb', icon: '⏳' },
+            { label: 'Approved (DC Ready)', count: approved.length, color: '#10b981', bg: '#ecfdf5', icon: '✅' },
+            { label: 'Sent to Client', count: sent.length, color: '#8b5cf6', bg: '#f5f3ff', icon: '📧' },
+            { label: 'Rejected', count: rejected.length, color: '#ef4444', bg: '#fef2f2', icon: '❌' }
+        ];
+
+        mainContent.innerHTML = `
+            <div style="max-width: 1400px; margin: 0 auto; padding: 1.5rem;">
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 700; color: #1e293b;">DC File Tracker</h1>
+                        <p style="margin: 4px 0 0; color: #64748b; font-size: 14px;">Track design files through the Document Controller pipeline</p>
+                    </div>
+                    <button onclick="showDCFileTracker()" style="padding: 8px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px;">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem;">
+                    ${stats.map(s => `
+                        <div style="background: ${s.bg}; border: 1px solid ${s.color}22; border-radius: 12px; padding: 16px; text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 4px;">${s.icon}</div>
+                            <div style="font-size: 1.6rem; font-weight: 700; color: ${s.color};">${s.count}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">${s.label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Pipeline Progress -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0; justify-content: center;">
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px;">Uploaded</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${uploaded.length}</div>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 1.2rem;">→</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px;">Pending Approval</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${pendingApproval.length}</div>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 1.2rem;">→</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px;">Approved</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${approved.length}</div>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 1.2rem;">→</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #8b5cf6; text-transform: uppercase; letter-spacing: 0.5px;">Sent to Client</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${sent.length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div style="display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <button class="dc-tracker-filter active" onclick="filterDCTracker('all')" style="padding:8px 16px;border:1px solid #e2e8f0;background:#667eea;color:white;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        All (${allFiles.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('uploaded')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        📤 Uploaded (${uploaded.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('pending_approval')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        ⏳ Pending (${pendingApproval.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('approved')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        ✅ Approved (${approved.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('sent')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        📧 Sent (${sent.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('rejected')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        ❌ Rejected (${rejected.length})
+                    </button>
+                </div>
+
+                <!-- File Table -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 1100px;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Project</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">File</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Uploaded By</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Upload Date</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Status</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Approved By</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Approved Date</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent To</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent Date</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent By</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dcTrackerTableBody">
+                                ${allFiles.length > 0 ? allFiles.map(f => renderFileRow(f)).join('') : '<tr><td colspan="11" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No design files found in the pipeline.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sent to Client Detail Section -->
+                ${sent.length > 0 ? `
+                <div style="margin-top: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="padding: 16px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white;">
+                        <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">📧 Client Delivery Log</h3>
+                        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">${sent.length} file${sent.length > 1 ? 's' : ''} sent to clients by Document Controller</p>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #faf5ff; border-bottom: 2px solid #ede9fe;">
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Project</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">File</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Client Email</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Client Name</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Sent Date</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Sent By</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Designer</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${sent.map(f => `
+                                    <tr style="border-bottom:1px solid #f5f3ff;">
+                                        <td style="padding:10px 14px;font-size:13px;">
+                                            <div style="font-weight:600;color:#1e293b;">${f.projectName || 'N/A'}</div>
+                                            <div style="font-size:11px;color:#94a3b8;">${f.projectCode || ''}</div>
+                                        </td>
+                                        <td style="padding:10px 14px;font-size:13px;">
+                                            ${f.fileUrl ? `<a href="${f.fileUrl}" target="_blank" style="color:#8b5cf6;text-decoration:none;font-weight:500;">${(f.isExternalLink || f.uploadType === 'link') ? '🔗' : '📄'} ${(f.fileName || 'File').length > 30 ? (f.fileName || 'File').substring(0,30) + '...' : (f.fileName || 'File')}</a>` : (f.fileName || '-')}
+                                        </td>
+                                        <td style="padding:10px 14px;font-size:13px;font-weight:500;color:#1e293b;">${f.clientEmail || '-'}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.clientName || '-'}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${formatDCDate(f.sentAt)}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.sentByName || f.sentBy || 'DC'}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.uploadedByName || '-'}</td>
+                                        <td style="padding:10px 14px;white-space:nowrap;">
+                                            <button onclick="openDCActivityHistory('${f.projectId}', '${(f.projectName || '').replace(/'/g, '')}')" style="padding:5px 10px;background:#8b5cf6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">📋 History</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Store files for filtering
+        window._dcTrackerFiles = allFiles;
+        window._dcTrackerRenderRow = renderFileRow;
+
+    } catch (error) {
+        console.error('Error loading DC File Tracker:', error);
+        mainContent.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <h2 style="color: #ef4444;">Error Loading DC File Tracker</h2>
+                <p style="color: #64748b;">${error.message}</p>
+                <button onclick="showDCFileTracker()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 1rem;">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+function filterDCTracker(status) {
+    const files = window._dcTrackerFiles || [];
+    const renderRow = window._dcTrackerRenderRow;
+    if (!renderRow) return;
+
+    const filtered = status === 'all' ? files : files.filter(f => f.status === status);
+    const tbody = document.getElementById('dcTrackerTableBody');
+    if (tbody) {
+        tbody.innerHTML = filtered.length > 0
+            ? filtered.map(f => renderRow(f)).join('')
+            : `<tr><td colspan="11" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No files matching this filter.</td></tr>`;
+    }
+
+    // Update active filter button
+    document.querySelectorAll('.dc-tracker-filter').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#475569';
+    });
+    event.target.style.background = '#667eea';
+    event.target.style.color = 'white';
+}
+
+window.showDCFileTracker = showDCFileTracker;
+window.filterDCTracker = filterDCTracker;
 
 
 // ============================================

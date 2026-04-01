@@ -7973,10 +7973,10 @@ function renderProposals(proposals) {
             return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
         }).length;
 
-        // Calculate fully allocated count
+        // Calculate fully allocated count — backend stores allocationStatus as 'allocated'
         const fullyAllocatedCount = proposals.filter(p => {
             if (p.status !== 'won') return false;
-            if (p.allocationStatus === 'completed') return true;
+            if (p.allocationStatus === 'allocated' || p.allocationStatus === 'completed') return true;
             const maxHours = parseFloat(p.maxAllocatedHours) || 0;
             const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
             return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
@@ -7985,7 +7985,8 @@ function renderProposals(proposals) {
         // Project status counts
         const projectWonCount = proposals.filter(p => p.status === 'won').length;
         const projectLostCount = proposals.filter(p => p.status === 'lost').length;
-        const projectAwaitingCount = proposals.filter(p => p.status === 'submitted_to_client').length;
+        // Awaiting = approved (awaiting client submission) + submitted_to_client (awaiting client decision)
+        const projectAwaitingCount = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client').length;
 
         directorFilterButtons = `
             <div class="filter-buttons-container">
@@ -8095,7 +8096,7 @@ function renderProposals(proposals) {
         } else if (currentProposalFilter === 'fully_allocated') {
             filteredProposals = proposals.filter(p => {
                 if (p.status !== 'won') return false;
-                if (p.allocationStatus === 'completed') return true;
+                if (p.allocationStatus === 'allocated' || p.allocationStatus === 'completed') return true;
                 const maxHours = parseFloat(p.maxAllocatedHours) || 0;
                 const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
                 return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
@@ -8105,7 +8106,7 @@ function renderProposals(proposals) {
         } else if (currentProposalFilter === 'project_lost') {
             filteredProposals = proposals.filter(p => p.status === 'lost');
         } else if (currentProposalFilter === 'project_awaiting') {
-            filteredProposals = proposals.filter(p => p.status === 'submitted_to_client');
+            filteredProposals = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client');
         }
 
         console.log('📊 Filtered proposals:', filteredProposals.length);

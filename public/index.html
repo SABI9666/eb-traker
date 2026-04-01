@@ -4582,6 +4582,21 @@ body.is-ios .nav-menu {
     color: white;
 }
 
+.filter-btn-won {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: white;
+}
+
+.filter-btn-lost {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+}
+
+.filter-btn-awaiting {
+    background: linear-gradient(135deg, #0891b2, #0e7490);
+    color: white;
+}
+
 .filter-count {
     background: rgba(255,255,255,0.3);
     padding: 0.25rem 0.5rem;
@@ -7967,6 +7982,11 @@ function renderProposals(proposals) {
             return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
         }).length;
 
+        // Project status counts
+        const projectWonCount = proposals.filter(p => p.status === 'won').length;
+        const projectLostCount = proposals.filter(p => p.status === 'lost').length;
+        const projectAwaitingCount = proposals.filter(p => p.status === 'submitted_to_client').length;
+
         directorFilterButtons = `
             <div class="filter-buttons-container">
                 <button class="filter-btn filter-btn-all ${currentProposalFilter === 'all' ? 'active' : ''}"
@@ -8008,6 +8028,21 @@ function renderProposals(proposals) {
                         style="${currentProposalFilter === 'fully_allocated' ? 'background: #065f46; color: white;' : 'background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46;'}">
                     Allocated
                     <span class="filter-count">${fullyAllocatedCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-won ${currentProposalFilter === 'project_won' ? 'active' : ''}"
+                        onclick="filterProposals('project_won')">
+                    🏆 Project Won
+                    <span class="filter-count">${projectWonCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-lost ${currentProposalFilter === 'project_lost' ? 'active' : ''}"
+                        onclick="filterProposals('project_lost')">
+                    ❌ Project Lost
+                    <span class="filter-count">${projectLostCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-awaiting ${currentProposalFilter === 'project_awaiting' ? 'active' : ''}"
+                        onclick="filterProposals('project_awaiting')">
+                    ⏳ Project Awaiting
+                    <span class="filter-count">${projectAwaitingCount}</span>
                 </button>
             </div>
         `;
@@ -8065,8 +8100,14 @@ function renderProposals(proposals) {
                 const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
                 return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
             });
+        } else if (currentProposalFilter === 'project_won') {
+            filteredProposals = proposals.filter(p => p.status === 'won');
+        } else if (currentProposalFilter === 'project_lost') {
+            filteredProposals = proposals.filter(p => p.status === 'lost');
+        } else if (currentProposalFilter === 'project_awaiting') {
+            filteredProposals = proposals.filter(p => p.status === 'submitted_to_client');
         }
-        
+
         console.log('📊 Filtered proposals:', filteredProposals.length);
     }
 

@@ -2125,6 +2125,23 @@ body.modal-open {
     color: var(--text-dark);
 }
 
+.notification-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.notification-close-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-dark);
+}
+
 .notification-list {
     flex: 1 1 auto;              /* Grow and shrink as needed */
     overflow-y: auto !important; /* FORCE vertical scrolling */
@@ -3198,6 +3215,11 @@ body.modal-open {
         left: 0;
         width: 100%;
         max-height: 100vh;
+    }
+
+    .notification-close-btn {
+        font-size: 1.8rem;
+        padding: 0.3rem 0.7rem;
         border-radius: 0;
     }
     
@@ -5195,6 +5217,24 @@ body.is-ios .nav-menu {
                             <input type="password" id="loginPassword" class="form-control" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Login</button>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showTab('forgotPassword'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; text-decoration: none;">Forgot Password?</a>
+                        </div>
+                    </form>
+                </div>
+                <div id="forgotPasswordContent" class="auth-content">
+                    <form id="forgotPasswordForm">
+                        <p style="color: var(--text-light); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                            Enter your email address and we'll send you a link to reset your password.
+                        </p>
+                        <div class="form-group">
+                            <label for="resetEmail">Email</label>
+                            <input type="email" id="resetEmail" class="form-control" required placeholder="Enter your registered email">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showTab('login'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; text-decoration: none;">Back to Login</a>
+                        </div>
                     </form>
                 </div>
                 <div id="registerContent" class="auth-content">
@@ -5263,6 +5303,7 @@ body.is-ios .nav-menu {
             <div class="notification-panel" id="notificationPanel">
                 <div class="notification-header">
                     <h3>Notifications</h3>
+                    <button class="notification-close-btn" onclick="toggleNotificationPanel()" aria-label="Close notifications">&times;</button>
                 </div>
                 <div class="notification-list" id="notificationList">
                     <div class="notification-item">Loading...</div>
@@ -6775,6 +6816,7 @@ body.is-ios .nav-menu {
             });
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
         }
 
         async function handleLogin(e) {
@@ -6843,6 +6885,44 @@ body.is-ios .nav-menu {
                 showTab('login');
             } catch (error) {
                 showMessage(error.code.includes('in-use') ? 'An account with this email already exists.' : 'Registration failed.', 'error');
+            }
+        }
+
+        async function handleForgotPassword(e) {
+            e.preventDefault();
+            const email = document.getElementById('resetEmail').value.trim().toLowerCase();
+
+            if (!email) {
+                showMessage('Please enter your email address.', 'error');
+                return;
+            }
+
+            try {
+                clearMessages();
+                showMessage('Sending reset link...', 'info');
+
+                const response = await fetch(`${API_BASE}/api/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 429) {
+                    showMessage(data.error || 'Too many attempts. Please try again later.', 'error');
+                    return;
+                }
+
+                if (data.success) {
+                    showMessage('If an account exists with this email, a password reset link has been sent. Please check your inbox.', 'success');
+                    document.getElementById('resetEmail').value = '';
+                } else {
+                    showMessage(data.error || 'Something went wrong. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Forgot password error:', error);
+                showMessage('Unable to connect to the server. Please try again later.', 'error');
             }
         }
 
@@ -7367,10 +7447,22 @@ function handleDeepLink(link) {
         }
 
         function showTab(tab) {
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
-            document.querySelectorAll('.auth-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`${tab}Content`).classList.add('active');
+            const loginRight = document.querySelector('.login-right');
+            if (loginRight) {
+                loginRight.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                const tabBtn = loginRight.querySelector(`[onclick="showTab('${tab}')"]`);
+                if (tabBtn) tabBtn.classList.add('active');
+                loginRight.querySelectorAll('.auth-content').forEach(c => c.classList.remove('active'));
+                const tabContent = document.getElementById(`${tab}Content`);
+                if (tabContent) tabContent.classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                const tabBtn = document.querySelector(`[onclick="showTab('${tab}')"]`);
+                if (tabBtn) tabBtn.classList.add('active');
+                document.querySelectorAll('.auth-content').forEach(c => c.classList.remove('active'));
+                const tabContent = document.getElementById(`${tab}Content`);
+                if (tabContent) tabContent.classList.add('active');
+            }
             clearMessages();
         }
 
@@ -20988,10 +21080,10 @@ async function showAllocateProjectModal(projectId) {
          */
         function toggleNotificationPanel() {
             const panel = document.getElementById('notificationPanel');
-            if (panel.style.display === 'block') {
+            if (panel.style.display === 'flex') {
                 panel.style.display = 'none';
             } else {
-                panel.style.display = 'block';
+                panel.style.display = 'flex';
                 loadNotifications(); // Refresh when opening
             }
         }

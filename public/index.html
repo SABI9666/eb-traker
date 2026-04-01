@@ -26621,126 +26621,404 @@ function isThisMonth(dateValue) {
 // DESIGNER PROJECT UPLOAD FUNCTIONS
 // ============================================
 function showDesignerUploadModal(projectId) {
-    
+
     // Close existing modal if any
     closeModal();
 
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'designerUploadModal';
-    // FIXED: Add inline styles to ensure modal displays properly
-    modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;';
+    modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);';
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 600px; background: white; border-radius: 12px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-            <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="margin: 0;">📤 Upload Project Files</h2>
-                <span class="close-modal" onclick="closeDesignerUploadModal()" style="cursor: pointer; font-size: 2rem; color: #666;">&times;</span>
+        <div class="modal-content" style="max-width: 640px; width: 95%; background: white; border-radius: 16px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease;">
+            <style>
+                @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+                .upload-tab-btn { flex: 1; padding: 12px 16px; border: none; background: #f1f5f9; cursor: pointer; font-size: 14px; font-weight: 600; color: #64748b; transition: all 0.2s; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+                .upload-tab-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+                .upload-tab-btn:hover:not(.active) { background: #e2e8f0; color: #334155; }
+                .upload-tab-content { display: none; } .upload-tab-content.active { display: block; }
+                .designer-dropzone { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc; }
+                .designer-dropzone:hover, .designer-dropzone.dragover { border-color: #667eea; background: #f0f0ff; }
+                .designer-dropzone.has-files { border-color: #10b981; background: #f0fdf4; border-style: solid; }
+                .designer-file-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+                .designer-file-item .file-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+                .designer-file-item .file-name { font-size: 13px; font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .designer-file-item .file-size { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+                .designer-file-item .file-icon { font-size: 20px; flex-shrink: 0; }
+                .designer-file-item .remove-file { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s; }
+                .designer-file-item .remove-file:hover { background: #fee2e2; }
+                .designer-link-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+                .designer-link-row input { flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+                .designer-link-row input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+                .add-link-btn { background: #f0f0ff; color: #667eea; border: 1px dashed #667eea; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; width: 100%; }
+                .add-link-btn:hover { background: #e8e8ff; }
+                .remove-link-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 4px; flex-shrink: 0; }
+                .remove-link-btn:hover { background: #fee2e2; }
+                .upload-progress-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 12px; display: none; }
+                .upload-progress-bar .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width 0.3s; width: 0%; }
+                .upload-size-info { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #eff6ff; border-radius: 8px; margin-top: 10px; font-size: 12px; color: #3b82f6; }
+            </style>
+            <div style="padding: 1.5rem 1.5rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; font-size: 1.3rem; font-weight: 700;">Upload Project Files</h2>
+                    <span onclick="closeDesignerUploadModal()" style="cursor: pointer; font-size: 1.8rem; color: rgba(255,255,255,0.8); line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">&times;</span>
+                </div>
+                <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.85;">Upload files or share links for your project deliverables</p>
             </div>
-            <div class="modal-body" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
-                <form id="designerUploadForm" onsubmit="submitDesignerUpload(event, '${projectId}')">
-                    <div class="form-group">
-                        <label>Upload Files *</label>
-                        <div class="upload-area" onclick="document.getElementById('designerFiles').click()" 
-                             style="border: 2px dashed var(--border); padding: 2rem; text-align: center; cursor: pointer; border-radius: 8px;">
-                            <p>📁 Click to select files or drag and drop</p>
-                            <small style="color: var(--text-light);">Supported: PDF, DWG, ZIP, Images (Max 50MB each)</small>
+            <div class="modal-body" style="padding: 1.5rem; max-height: 58vh; overflow-y: auto;">
+                <!-- Upload Type Tabs -->
+                <div style="display: flex; gap: 8px; margin-bottom: 1.25rem; background: #f1f5f9; padding: 4px; border-radius: 10px;">
+                    <button type="button" class="upload-tab-btn active" onclick="switchDesignerUploadTab('files')">
+                        <span>📁</span> Upload Files
+                    </button>
+                    <button type="button" class="upload-tab-btn" onclick="switchDesignerUploadTab('links')">
+                        <span>🔗</span> Add Link
+                    </button>
+                </div>
+
+                <!-- FILES TAB -->
+                <div id="designerUploadTabFiles" class="upload-tab-content active">
+                    <div class="designer-dropzone" id="designerDropzone"
+                         onclick="document.getElementById('designerFiles').click()"
+                         ondragover="event.preventDefault(); this.classList.add('dragover');"
+                         ondragleave="this.classList.remove('dragover');"
+                         ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDesignerFileDrop(event);">
+                        <div style="font-size: 2.5rem; margin-bottom: 8px;">📤</div>
+                        <p style="margin: 0 0 4px; font-weight: 600; color: #334155;">Click to select files or drag & drop</p>
+                        <p style="margin: 0; font-size: 12px; color: #94a3b8;">PDF, DWG, ZIP, RAR, Images &bull; Max 100MB per file</p>
+                    </div>
+                    <input type="file" id="designerFiles" multiple
+                           accept=".pdf,.dwg,.zip,.rar,.7z,.jpg,.jpeg,.png,.tiff,.dxf"
+                           style="display: none;" onchange="handleDesignerFileSelect(this.files)">
+                    <div id="designerFileList" style="margin-top: 12px;"></div>
+                    <div id="designerSizeInfo" style="display: none;" class="upload-size-info">
+                        <span id="designerFileCount">0 files selected</span>
+                        <span id="designerTotalSize">Total: 0 MB</span>
+                    </div>
+                </div>
+
+                <!-- LINKS TAB -->
+                <div id="designerUploadTabLinks" class="upload-tab-content">
+                    <div id="designerLinkList">
+                        <div class="designer-link-row">
+                            <input type="text" placeholder="Paste link URL (Google Drive, Dropbox, etc.)" class="designer-link-url">
+                            <input type="text" placeholder="Title (optional)" class="designer-link-title" style="max-width: 160px;">
                         </div>
-                        <input type="file" id="designerFiles" multiple accept=".pdf,.dwg,.zip,.jpg,.jpeg,.png" 
-                               style="display: none;" onchange="updateDesignerFileList()">
-                        <div id="designerFileList" style="margin-top: 1rem;"></div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>File Description</label>
-                        <textarea id="designerFileDescription" class="form-control" rows="3" 
-                                  placeholder="Describe what you're uploading..."></textarea>
+                    <button type="button" class="add-link-btn" onclick="addDesignerLinkRow()">+ Add Another Link</button>
+                </div>
+
+                <!-- Common Fields -->
+                <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Description</label>
+                        <textarea id="designerFileDescription" class="form-control" rows="2"
+                                  placeholder="Describe what you're uploading..."
+                                  style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 14px; font-size: 14px; resize: vertical;"></textarea>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>Status Update</label>
-                        <select id="designerProjectStatus" class="form-control">
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 13px; color: #374141; margin-bottom: 6px; display: block;">Status Update</label>
+                        <select id="designerProjectStatus" class="form-control"
+                                style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 14px; font-size: 14px;">
                             <option value="in_progress">Work in Progress</option>
                             <option value="review">Ready for Review</option>
                             <option value="completed">Completed</option>
                         </select>
                     </div>
-                </form>
+                </div>
+
+                <div class="upload-progress-bar" id="designerProgressBar">
+                    <div class="progress-fill" id="designerProgressFill"></div>
+                </div>
             </div>
-            <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
-                <button type="button" class="btn btn-outline" onclick="closeDesignerUploadModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitDesignerUpload(event, '${projectId}')">Upload Files</button>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fafbfc;">
+                <span id="designerUploadStatus" style="font-size: 13px; color: #64748b;"></span>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="closeDesignerUploadModal()"
+                            style="padding: 10px 20px; border: 1px solid #e2e8f0; background: white; border-radius: 8px; cursor: pointer; font-weight: 500; color: #64748b; transition: all 0.2s;">
+                        Cancel
+                    </button>
+                    <button type="button" id="designerUploadBtn" onclick="submitDesignerUpload(event, '${projectId}')"
+                            style="padding: 10px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102,126,234,0.3);">
+                        Upload
+                    </button>
+                </div>
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
     document.body.classList.add('modal-open');
+
+    // Close modal when clicking overlay
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeDesignerUploadModal();
+    });
 }
 
 function closeDesignerUploadModal() {
     const modal = document.getElementById('designerUploadModal');
     if (modal) modal.remove();
     document.body.classList.remove('modal-open');
+    window._designerSelectedFiles = [];
 }
 
-function updateDesignerFileList() {
-    const input = document.getElementById('designerFiles');
+// Track selected files globally for the modal
+window._designerSelectedFiles = [];
+
+const MAX_DESIGNER_FILE_SIZE = 100 * 1024 * 1024; // 100MB per file
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = { pdf: '📄', zip: '📦', rar: '📦', '7z': '📦', dwg: '📐', dxf: '📐', jpg: '🖼️', jpeg: '🖼️', png: '🖼️', tiff: '🖼️' };
+    return icons[ext] || '📎';
+}
+
+function formatDesignerFileSize(bytes) {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function handleDesignerFileDrop(event) {
+    const files = event.dataTransfer.files;
+    handleDesignerFileSelect(files);
+}
+
+function handleDesignerFileSelect(files) {
+    const fileArray = Array.from(files);
+    const errors = [];
+
+    fileArray.forEach(file => {
+        if (file.size > MAX_DESIGNER_FILE_SIZE) {
+            errors.push(`"${file.name}" exceeds 100MB limit (${formatDesignerFileSize(file.size)})`);
+            return;
+        }
+        // Avoid duplicates
+        if (!window._designerSelectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+            window._designerSelectedFiles.push(file);
+        }
+    });
+
+    if (errors.length > 0) {
+        alert('Some files were skipped:\n\n' + errors.join('\n'));
+    }
+
+    renderDesignerFileList();
+}
+
+function removeDesignerFile(index) {
+    window._designerSelectedFiles.splice(index, 1);
+    renderDesignerFileList();
+}
+
+function renderDesignerFileList() {
     const fileList = document.getElementById('designerFileList');
-    
-    if (input.files.length > 0) {
-        fileList.innerHTML = '<strong>Selected files:</strong><ul style="margin-top: 0.5rem;">' +
-            Array.from(input.files).map(f => `<li>${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)</li>`).join('') +
-            '</ul>';
+    const sizeInfo = document.getElementById('designerSizeInfo');
+    const dropzone = document.getElementById('designerDropzone');
+    const files = window._designerSelectedFiles;
+
+    if (files.length > 0) {
+        fileList.innerHTML = files.map((f, i) => `
+            <div class="designer-file-item">
+                <div class="file-info">
+                    <span class="file-icon">${getFileIcon(f.name)}</span>
+                    <span class="file-name" title="${f.name}">${f.name}</span>
+                    <span class="file-size">${formatDesignerFileSize(f.size)}</span>
+                </div>
+                <button type="button" class="remove-file" onclick="removeDesignerFile(${i})" title="Remove">&times;</button>
+            </div>
+        `).join('');
+
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+        sizeInfo.style.display = 'flex';
+        document.getElementById('designerFileCount').textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
+        document.getElementById('designerTotalSize').textContent = `Total: ${formatDesignerFileSize(totalSize)}`;
+        dropzone.classList.add('has-files');
     } else {
         fileList.innerHTML = '';
+        sizeInfo.style.display = 'none';
+        dropzone.classList.remove('has-files');
     }
 }
 
-// ✅ Make designer upload functions globally accessible
+function switchDesignerUploadTab(tab) {
+    document.querySelectorAll('.upload-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.upload-tab-content').forEach(c => c.classList.remove('active'));
+
+    if (tab === 'files') {
+        document.getElementById('designerUploadTabFiles').classList.add('active');
+        document.querySelectorAll('.upload-tab-btn')[0].classList.add('active');
+    } else {
+        document.getElementById('designerUploadTabLinks').classList.add('active');
+        document.querySelectorAll('.upload-tab-btn')[1].classList.add('active');
+    }
+}
+
+function addDesignerLinkRow() {
+    const container = document.getElementById('designerLinkList');
+    const row = document.createElement('div');
+    row.className = 'designer-link-row';
+    row.innerHTML = `
+        <input type="text" placeholder="Paste link URL (Google Drive, Dropbox, etc.)" class="designer-link-url">
+        <input type="text" placeholder="Title (optional)" class="designer-link-title" style="max-width: 160px;">
+        <button type="button" class="remove-link-btn" onclick="this.parentElement.remove()" title="Remove">&times;</button>
+    `;
+    container.appendChild(row);
+}
+
+// Make designer upload functions globally accessible
 window.showDesignerUploadModal = showDesignerUploadModal;
 window.closeDesignerUploadModal = closeDesignerUploadModal;
-window.updateDesignerFileList = updateDesignerFileList;
+window.switchDesignerUploadTab = switchDesignerUploadTab;
+window.addDesignerLinkRow = addDesignerLinkRow;
+window.handleDesignerFileDrop = handleDesignerFileDrop;
+window.handleDesignerFileSelect = handleDesignerFileSelect;
+window.removeDesignerFile = removeDesignerFile;
+window.renderDesignerFileList = renderDesignerFileList;
 
 async function submitDesignerUpload(event, projectId) {
-    if(event) event.preventDefault();
-    
-    const files = document.getElementById('designerFiles').files;
-    if (files.length === 0) {
-        alert('Please select at least one file');
-        return;
-    }
-    
-    try {
-        showLoading();
-        
-        const formData = new FormData();
-        for (let file of files) {
-            formData.append('files', file);
+    if (event) event.preventDefault();
+
+    const activeTab = document.getElementById('designerUploadTabFiles').classList.contains('active') ? 'files' : 'links';
+    const description = document.getElementById('designerFileDescription').value;
+    const status = document.getElementById('designerProjectStatus').value;
+    const uploadBtn = document.getElementById('designerUploadBtn');
+    const statusEl = document.getElementById('designerUploadStatus');
+    const progressBar = document.getElementById('designerProgressBar');
+    const progressFill = document.getElementById('designerProgressFill');
+
+    if (activeTab === 'files') {
+        // FILE UPLOAD
+        const files = window._designerSelectedFiles;
+        if (!files || files.length === 0) {
+            alert('Please select at least one file to upload.');
+            return;
         }
-        formData.append('description', document.getElementById('designerFileDescription').value);
-        formData.append('status', document.getElementById('designerProjectStatus').value);
-        
-        const response = await apiCall(`projects/${projectId}/upload-designer-files`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (response.success) {
-            closeDesignerUploadModal();
-            alert('Files uploaded successfully!');
-            // Reload designer dashboard or project view
-            if (typeof showTasks === 'function' && document.getElementById('mainContent').querySelector('h2').innerText.includes('My Projects')) {
-                showTasks();
+
+        // Validate file sizes
+        const oversized = files.filter(f => f.size > MAX_DESIGNER_FILE_SIZE);
+        if (oversized.length > 0) {
+            alert('Some files exceed the 100MB limit. Please remove them and try again.');
+            return;
+        }
+
+        try {
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            progressBar.style.display = 'block';
+            progressFill.style.width = '10%';
+            statusEl.textContent = 'Preparing upload...';
+
+            const formData = new FormData();
+            files.forEach(file => formData.append('files', file));
+            formData.append('projectId', projectId);
+            formData.append('description', description);
+            formData.append('uploadNotes', description);
+            formData.append('status', status);
+
+            statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`;
+            progressFill.style.width = '40%';
+
+            const response = await apiCall('deliverables', {
+                method: 'POST',
+                body: formData
+            });
+
+            progressFill.style.width = '100%';
+
+            if (response.success) {
+                statusEl.textContent = 'Upload complete!';
+                setTimeout(() => {
+                    closeDesignerUploadModal();
+                    alert(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
+                    if (typeof showTasks === 'function') {
+                        try {
+                            const heading = document.getElementById('mainContent').querySelector('h2');
+                            if (heading && heading.innerText.includes('My Projects')) showTasks();
+                        } catch(e) {}
+                    }
+                }, 500);
+            } else {
+                throw new Error(response.error || 'Upload failed');
             }
-        } else {
-            throw new Error(response.error || 'Upload failed');
+
+        } catch (error) {
+            console.error('Error uploading files:', error);
+            statusEl.textContent = 'Upload failed';
+            progressFill.style.width = '0%';
+            progressBar.style.display = 'none';
+            alert('Error uploading files: ' + error.message);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload';
         }
-        
-    } catch (error) {
-        console.error('Error uploading files:', error);
-        alert('Error uploading files: ' + error.message);
-    } finally {
-        hideLoading();
+
+    } else {
+        // LINK UPLOAD
+        const linkRows = document.querySelectorAll('#designerLinkList .designer-link-row');
+        const links = [];
+        linkRows.forEach(row => {
+            const url = row.querySelector('.designer-link-url').value.trim();
+            const title = row.querySelector('.designer-link-title').value.trim();
+            if (url) {
+                links.push({ url, title: title || url, description: description });
+            }
+        });
+
+        if (links.length === 0) {
+            alert('Please enter at least one link URL.');
+            return;
+        }
+
+        // Validate URLs
+        const invalidLinks = links.filter(l => !l.url.startsWith('http://') && !l.url.startsWith('https://'));
+        if (invalidLinks.length > 0) {
+            alert('Please enter valid URLs starting with http:// or https://');
+            return;
+        }
+
+        try {
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Submitting...';
+            statusEl.textContent = 'Submitting links...';
+
+            const response = await apiCall('deliverables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId: projectId,
+                    links: links,
+                    uploadNotes: description,
+                    status: status
+                })
+            });
+
+            if (response.success) {
+                closeDesignerUploadModal();
+                alert(`${links.length} link${links.length > 1 ? 's' : ''} added successfully!`);
+                if (typeof showTasks === 'function') {
+                    try {
+                        const heading = document.getElementById('mainContent').querySelector('h2');
+                        if (heading && heading.innerText.includes('My Projects')) showTasks();
+                    } catch(e) {}
+                }
+            } else {
+                throw new Error(response.error || 'Failed to add links');
+            }
+
+        } catch (error) {
+            console.error('Error adding links:', error);
+            statusEl.textContent = 'Failed';
+            alert('Error adding links: ' + error.message);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload';
+            statusEl.textContent = '';
+        }
     }
 }
 // ============================================

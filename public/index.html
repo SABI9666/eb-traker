@@ -27014,12 +27014,14 @@ async function submitDesignerUpload(event, projectId) {
                 setTimeout(() => {
                     closeDesignerUploadModal();
                     alert(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
-                    if (typeof showTasks === 'function') {
-                        try {
-                            const heading = document.getElementById('mainContent').querySelector('h2');
-                            if (heading && heading.innerText.includes('My Projects')) showTasks();
-                        } catch(e) {}
-                    }
+                    // Refresh current view
+                    try {
+                        if (typeof showDesignerAllocations === 'function' && document.getElementById('nav-designer-alloc') && document.getElementById('nav-designer-alloc').classList.contains('active')) {
+                            showDesignerAllocations();
+                        } else if (typeof showTasks === 'function') {
+                            showTasks();
+                        }
+                    } catch(e) { console.warn('Refresh error:', e); }
                 }, 500);
             } else {
                 throw new Error(response.error || 'Upload failed');
@@ -27081,12 +27083,13 @@ async function submitDesignerUpload(event, projectId) {
             if (response.success) {
                 closeDesignerUploadModal();
                 alert(`${links.length} link${links.length > 1 ? 's' : ''} added successfully!`);
-                if (typeof showTasks === 'function') {
-                    try {
-                        const heading = document.getElementById('mainContent').querySelector('h2');
-                        if (heading && heading.innerText.includes('My Projects')) showTasks();
-                    } catch(e) {}
-                }
+                try {
+                    if (typeof showDesignerAllocations === 'function' && document.getElementById('nav-designer-alloc') && document.getElementById('nav-designer-alloc').classList.contains('active')) {
+                        showDesignerAllocations();
+                    } else if (typeof showTasks === 'function') {
+                        showTasks();
+                    }
+                } catch(e) { console.warn('Refresh error:', e); }
             } else {
                 throw new Error(response.error || 'Failed to add links');
             }

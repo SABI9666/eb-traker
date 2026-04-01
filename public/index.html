@@ -31216,22 +31216,30 @@ async function showDocumentControllerDashboard() {
                 
                 return `
                     <tr>
-                        <td><strong>${file.projectName || 'Unknown Project'}</strong></td>
+                        <td><strong>${file.projectName || 'Unknown Project'}</strong><br><small style="color:#64748b;">${file.projectCode || ''}</small></td>
                         <td>
                             <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
                                 ${fileIcon} ${file.fileName}
                             </a>
                         </td>
-                        <td style="color: #2563eb;">${file.clientEmail || 'N/A'}</td>
+                        <td style="color: #2563eb;">${file.clientEmail || 'N/A'}<br><small style="color:#94a3b8;">${file.clientName || ''}</small></td>
                         <td>${sentDate}</td>
                         <td>${file.sentBy || 'DC'}</td>
                         <td>
-                            <span class="badge" style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px;">📧 Sent</span>
+                            <span class="badge" style="background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-size:12px;">📧 Sent</span>
+                        </td>
+                        <td style="white-space: nowrap;">
+                            <button class="btn btn-secondary btn-sm" onclick="openDCCommentModal('${file.id}', '${file.projectId}', '${(file.fileName || '').replace(/'/g, '\\&#39;')}', '${(file.projectName || '').replace(/'/g, '\\&#39;')}')" style="font-size:12px;padding:5px 10px;margin-right:4px;">
+                                💬 Comment
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="openDCActivityHistory('${file.projectId}', '${(file.projectName || '').replace(/'/g, '\\&#39;')}')" style="font-size:12px;padding:5px 10px;">
+                                📋 History
+                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
-            
+
             sentHtml = `
                 <div class="card" style="margin-bottom: 2rem; border: 2px solid #10b981;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -31248,6 +31256,7 @@ async function showDocumentControllerDashboard() {
                                     <th>Sent Date</th>
                                     <th>Sent By</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -31495,6 +31504,281 @@ window.confirmDCSendToClient = confirmDCSendToClient;
 
 
 // ============================================
+// DC COMMENT MODAL & ACTIVITY HISTORY
+// ============================================
+
+function openDCCommentModal(designFileId, projectId, fileName, projectName) {
+    // Close existing
+    const existing = document.getElementById('dcCommentModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'dcCommentModal';
+    modal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    modal.innerHTML = `
+        <div style="max-width:560px;width:95%;background:white;border-radius:16px;max-height:85vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.3);animation:modalSlideIn 0.3s ease;">
+            <div style="padding:1.25rem 1.5rem;background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%);color:white;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;font-size:1.1rem;font-weight:700;">💬 Add Comment / Client Feedback</h3>
+                    <span onclick="document.getElementById('dcCommentModal').remove()" style="cursor:pointer;font-size:1.6rem;color:rgba(255,255,255,0.8);line-height:1;">&times;</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:12px;opacity:0.85;">${projectName} - ${fileName}</p>
+            </div>
+            <div style="padding:1.5rem;max-height:55vh;overflow-y:auto;">
+                <div style="margin-bottom:1rem;">
+                    <label style="font-weight:600;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Comment Type *</label>
+                    <select id="dcCommentType" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;">
+                        <option value="general">General Comment</option>
+                        <option value="client_feedback">Client Feedback Received</option>
+                        <option value="rectification">Rectification Required</option>
+                        <option value="revision_request">Revision Requested by Client</option>
+                        <option value="resolved">Issue Resolved</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-weight:600;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Client Response / Feedback</label>
+                    <textarea id="dcClientResponse" rows="2" placeholder="Paste or summarize client's response..." style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-weight:600;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Your Comment / Notes *</label>
+                    <textarea id="dcCommentText" rows="3" placeholder="Add your comment, rectification details, or notes..." style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+            </div>
+            <div style="padding:1rem 1.5rem;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;background:#fafbfc;">
+                <button onclick="document.getElementById('dcCommentModal').remove()" style="padding:10px 20px;border:1px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;font-weight:500;color:#64748b;">Cancel</button>
+                <button id="dcCommentSubmitBtn" onclick="submitDCComment('${designFileId}','${projectId}')" style="padding:10px 24px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;box-shadow:0 4px 12px rgba(59,130,246,0.3);">Submit Comment</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
+async function submitDCComment(designFileId, projectId) {
+    const commentType = document.getElementById('dcCommentType').value;
+    const clientResponse = document.getElementById('dcClientResponse').value.trim();
+    const comment = document.getElementById('dcCommentText').value.trim();
+    const btn = document.getElementById('dcCommentSubmitBtn');
+
+    if (!comment) {
+        alert('Please enter a comment.');
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'add_dc_comment',
+                data: {
+                    designFileId,
+                    comment,
+                    commentType,
+                    clientResponse
+                }
+            })
+        });
+
+        if (response.success) {
+            document.getElementById('dcCommentModal').remove();
+            alert('Comment added successfully!');
+            // Refresh the dashboard if DC, or tracker if COO/Director
+            if (typeof showDocumentControllerDashboard === 'function') {
+                const nav = document.getElementById('nav-document-controller');
+                if (nav && nav.classList.contains('active')) showDocumentControllerDashboard();
+            }
+            if (typeof showDCFileTracker === 'function') {
+                const nav = document.getElementById('nav-dc-tracker');
+                if (nav && nav.classList.contains('active')) showDCFileTracker();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to add comment');
+        }
+    } catch (error) {
+        console.error('Error adding DC comment:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Comment';
+    }
+}
+
+async function openDCActivityHistory(projectId, projectName) {
+    // Close existing
+    const existing = document.getElementById('dcHistoryModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'dcHistoryModal';
+    modal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    modal.innerHTML = `
+        <div style="max-width:750px;width:95%;background:white;border-radius:16px;max-height:90vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.3);animation:modalSlideIn 0.3s ease;">
+            <div style="padding:1.25rem 1.5rem;background:linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%);color:white;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;font-size:1.1rem;font-weight:700;">📋 Activity History & Comments</h3>
+                    <span onclick="document.getElementById('dcHistoryModal').remove()" style="cursor:pointer;font-size:1.6rem;color:rgba(255,255,255,0.8);line-height:1;">&times;</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:12px;opacity:0.85;">${projectName}</p>
+            </div>
+            <div id="dcHistoryContent" style="padding:1.5rem;max-height:70vh;overflow-y:auto;">
+                <div style="text-align:center;padding:2rem;"><div class="spinner"></div><p style="color:#64748b;margin-top:1rem;">Loading history...</p></div>
+            </div>
+            <div style="padding:0.75rem 1.5rem;border-top:1px solid #e2e8f0;text-align:right;background:#fafbfc;">
+                <button onclick="document.getElementById('dcHistoryModal').remove()" style="padding:8px 20px;border:1px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;font-weight:500;color:#64748b;">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+    try {
+        const response = await apiCall(`projects?action=get_dc_comments&projectId=${projectId}`);
+
+        if (!response.success) throw new Error(response.error || 'Failed to load history');
+
+        const comments = response.comments || [];
+        const activities = response.activities || [];
+
+        // Merge into a single timeline
+        const timeline = [];
+
+        comments.forEach(c => {
+            const ts = c.createdAt?.seconds ? c.createdAt.seconds * 1000 : 0;
+            const typeLabels = {
+                'general': { label: 'Comment', icon: '💬', color: '#3b82f6', bg: '#eff6ff' },
+                'client_feedback': { label: 'Client Feedback', icon: '📩', color: '#f59e0b', bg: '#fffbeb' },
+                'rectification': { label: 'Rectification', icon: '🔧', color: '#ef4444', bg: '#fef2f2' },
+                'revision_request': { label: 'Revision Request', icon: '📝', color: '#f97316', bg: '#fff7ed' },
+                'resolved': { label: 'Resolved', icon: '✅', color: '#10b981', bg: '#ecfdf5' }
+            };
+            const t = typeLabels[c.commentType] || typeLabels['general'];
+            timeline.push({
+                ts,
+                type: 'comment',
+                html: `
+                    <div style="border-left:3px solid ${t.color};background:${t.bg};border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-weight:600;font-size:13px;color:${t.color};">${t.icon} ${t.label}</span>
+                            <span style="font-size:11px;color:#94a3b8;">${ts ? new Date(ts).toLocaleString('en-AU', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                        </div>
+                        ${c.clientResponse ? `<div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;">CLIENT RESPONSE:</div><div style="font-size:13px;color:#1e293b;">${c.clientResponse}</div></div>` : ''}
+                        <div style="font-size:13px;color:#1e293b;line-height:1.5;">${c.comment}</div>
+                        <div style="margin-top:8px;font-size:11px;color:#94a3b8;">By ${c.createdByName || 'Unknown'} (${c.createdByRole || ''})</div>
+                        ${c.fileName ? `<div style="font-size:11px;color:#94a3b8;">File: ${c.fileName}</div>` : ''}
+                    </div>
+                `
+            });
+        });
+
+        activities.forEach(a => {
+            const ts = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : 0;
+            const actIcons = {
+                'design_file_uploaded': '📤',
+                'design_file_submitted': '📋',
+                'design_file_approved': '✅',
+                'design_file_rejected': '❌',
+                'design_file_sent_to_client': '📧',
+                'dc_comment_added': '💬',
+                'deliverable_uploaded': '📁'
+            };
+            const icon = actIcons[a.type] || '📌';
+            timeline.push({
+                ts,
+                type: 'activity',
+                html: `
+                    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;margin-bottom:4px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">${icon}</div>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;color:#1e293b;line-height:1.4;">${a.details || a.type}</div>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
+                                ${a.performedByName || ''} &bull; ${ts ? new Date(ts).toLocaleString('en-AU', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}
+                            </div>
+                        </div>
+                    </div>
+                `
+            });
+        });
+
+        // Sort timeline by most recent first
+        timeline.sort((a, b) => b.ts - a.ts);
+
+        const content = document.getElementById('dcHistoryContent');
+        if (timeline.length === 0) {
+            content.innerHTML = `
+                <div style="text-align:center;padding:3rem;color:#94a3b8;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">📋</div>
+                    <p>No activity history found for this project.</p>
+                </div>
+            `;
+        } else {
+            // Separate comments and activities
+            const commentItems = timeline.filter(t => t.type === 'comment');
+            const activityItems = timeline.filter(t => t.type === 'activity');
+
+            content.innerHTML = `
+                <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+                    <button onclick="dcHistoryTab('all')" class="dc-hist-tab active" style="padding:8px 16px;border:1px solid #e2e8f0;background:#8b5cf6;color:white;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        All (${timeline.length})
+                    </button>
+                    <button onclick="dcHistoryTab('comments')" class="dc-hist-tab" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        💬 Comments (${commentItems.length})
+                    </button>
+                    <button onclick="dcHistoryTab('activities')" class="dc-hist-tab" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        📌 Activities (${activityItems.length})
+                    </button>
+                </div>
+                <div id="dcHistoryTimeline">
+                    ${timeline.map(t => t.html).join('')}
+                </div>
+            `;
+
+            // Store for filtering
+            window._dcHistoryTimeline = timeline;
+        }
+
+    } catch (error) {
+        console.error('Error loading DC history:', error);
+        document.getElementById('dcHistoryContent').innerHTML = `
+            <div style="text-align:center;padding:2rem;color:#ef4444;">
+                <p>Error loading history: ${error.message}</p>
+                <button onclick="openDCActivityHistory('${projectId}','${projectName}')" style="padding:8px 16px;background:#8b5cf6;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:1rem;">Retry</button>
+            </div>
+        `;
+    }
+}
+
+function dcHistoryTab(tab) {
+    const timeline = window._dcHistoryTimeline || [];
+    const container = document.getElementById('dcHistoryTimeline');
+    if (!container) return;
+
+    let filtered;
+    if (tab === 'comments') filtered = timeline.filter(t => t.type === 'comment');
+    else if (tab === 'activities') filtered = timeline.filter(t => t.type === 'activity');
+    else filtered = timeline;
+
+    container.innerHTML = filtered.length > 0
+        ? filtered.map(t => t.html).join('')
+        : '<div style="text-align:center;padding:2rem;color:#94a3b8;">No items found.</div>';
+
+    document.querySelectorAll('.dc-hist-tab').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#475569';
+    });
+    event.target.style.background = '#8b5cf6';
+    event.target.style.color = 'white';
+}
+
+window.openDCCommentModal = openDCCommentModal;
+window.submitDCComment = submitDCComment;
+window.openDCActivityHistory = openDCActivityHistory;
+window.dcHistoryTab = dcHistoryTab;
+
+
+// ============================================
 // DC FILE TRACKER - COO & DIRECTOR PORTAL
 // ============================================
 
@@ -31577,6 +31861,9 @@ async function showDCFileTracker() {
                 </td>
                 <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.status === 'sent' ? formatDCDate(file.sentAt) : '<span style="color:#cbd5e1;">-</span>'}</td>
                 <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.sentByName || (file.status === 'sent' ? (file.sentBy || 'DC') : '<span style="color:#cbd5e1;">-</span>')}</td>
+                <td style="padding:12px 14px;white-space:nowrap;">
+                    <button onclick="openDCActivityHistory('${file.projectId}', '${(file.projectName || '').replace(/'/g, '')}')" style="padding:5px 10px;background:#8b5cf6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;">📋 History</button>
+                </td>
             </tr>`;
         }
 
@@ -31676,10 +31963,11 @@ async function showDCFileTracker() {
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent To</th>
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent Date</th>
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent By</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="dcTrackerTableBody">
-                                ${allFiles.length > 0 ? allFiles.map(f => renderFileRow(f)).join('') : '<tr><td colspan="10" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No design files found in the pipeline.</td></tr>'}
+                                ${allFiles.length > 0 ? allFiles.map(f => renderFileRow(f)).join('') : '<tr><td colspan="11" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No design files found in the pipeline.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -31703,6 +31991,7 @@ async function showDCFileTracker() {
                                     <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Sent Date</th>
                                     <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Sent By</th>
                                     <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Designer</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -31720,6 +32009,9 @@ async function showDCFileTracker() {
                                         <td style="padding:10px 14px;font-size:13px;color:#475569;">${formatDCDate(f.sentAt)}</td>
                                         <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.sentByName || f.sentBy || 'DC'}</td>
                                         <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.uploadedByName || '-'}</td>
+                                        <td style="padding:10px 14px;white-space:nowrap;">
+                                            <button onclick="openDCActivityHistory('${f.projectId}', '${(f.projectName || '').replace(/'/g, '')}')" style="padding:5px 10px;background:#8b5cf6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">📋 History</button>
+                                        </td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -31756,7 +32048,7 @@ function filterDCTracker(status) {
     if (tbody) {
         tbody.innerHTML = filtered.length > 0
             ? filtered.map(f => renderRow(f)).join('')
-            : `<tr><td colspan="10" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No files matching this filter.</td></tr>`;
+            : `<tr><td colspan="11" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No files matching this filter.</td></tr>`;
     }
 
     // Update active filter button

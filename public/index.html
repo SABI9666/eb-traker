@@ -13173,17 +13173,29 @@ async function showDesignerAllocations() {
                 };
                 
                 const getActionButton = (file) => {
-                    if (file.status === 'uploaded') {
-                        return `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit for Approval</button>`;
-                    } else if (file.status === 'approved') {
-                        // Designers cannot send to client - Document Controller handles this
-                        return `<span class="badge" style="background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 6px;">✅ Awaiting DC</span>`;
-                    } else if (file.status === 'rejected') {
-                        return `<button class="btn btn-warning btn-sm" onclick="openDesignUploadModal('${file.projectId}', '${file.projectName.replace(/'/g, "\\'")}')">🔄 Upload Revised</button>`;
-                    } else if (file.status === 'sent') {
-                        return `<span class="badge" style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 6px;">📧 Sent by DC</span>`;
+                    let btns = '';
+                    const safeName = (file.projectName || '').replace(/'/g, '');
+                    const safeFileName = (file.fileName || '').replace(/'/g, '');
+
+                    // Edit/Delete for files not yet approved or sent
+                    if (['uploaded', 'pending_approval'].includes(file.status)) {
+                        btns += `<button class="btn btn-secondary btn-sm" onclick="showDesignerUploadModal('${file.projectId}')" title="Replace with new file" style="font-size:11px;padding:4px 8px;">🔄 Replace</button> `;
+                        btns += `<button class="btn btn-sm" onclick="deleteDesignFile('${file.id}', '${file.projectId}', '${safeFileName}')" title="Delete this file" style="font-size:11px;padding:4px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">🗑️ Delete</button> `;
                     }
-                    return '';
+
+                    if (file.status === 'uploaded') {
+                        btns += `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit</button>`;
+                    } else if (file.status === 'pending_approval') {
+                        btns += `<span class="badge" style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:6px;font-size:12px;">⏳ Pending COO</span>`;
+                    } else if (file.status === 'approved') {
+                        btns += `<span class="badge" style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:6px;font-size:12px;">✅ Awaiting DC</span>`;
+                    } else if (file.status === 'rejected') {
+                        btns += `<button class="btn btn-warning btn-sm" onclick="showDesignerUploadModal('${file.projectId}')">🔄 Upload Revised</button> `;
+                        btns += `<button class="btn btn-sm" onclick="deleteDesignFile('${file.id}', '${file.projectId}', '${safeFileName}')" title="Delete" style="font-size:11px;padding:4px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">🗑️</button>`;
+                    } else if (file.status === 'sent') {
+                        btns += `<span class="badge" style="background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;font-size:12px;">📧 Sent</span>`;
+                    }
+                    return btns;
                 };
                 
                 const fileRows = designFiles.map(file => {
@@ -30714,6 +30726,41 @@ async function submitDesignForApproval(designFileId, projectId) {
     }
 }
 window.submitDesignForApproval = submitDesignForApproval;
+
+async function deleteDesignFile(designFileId, projectId, fileName) {
+    if (!confirm(`Are you sure you want to delete "${fileName || 'this file'}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'delete_design_file',
+                data: { designFileId }
+            })
+        });
+
+        if (response.success) {
+            alert('File deleted successfully.');
+            // Refresh the designer's view
+            if (typeof showDesignerAllocations === 'function') {
+                showDesignerAllocations();
+            } else if (typeof showTasks === 'function') {
+                showTasks();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to delete file');
+        }
+    } catch (error) {
+        console.error('Error deleting design file:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+window.deleteDesignFile = deleteDesignFile;
 
 
 // ============================================

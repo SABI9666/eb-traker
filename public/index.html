@@ -7940,59 +7940,75 @@ function renderProposals(proposals) {
     // Filter Buttons for Director AND COO
     let directorFilterButtons = '';
     if (currentUserRole === 'director' || currentUserRole === 'coo') {
-        // Calculate pending allocation count for COO - ONLY unallocated projects
-        const pendingAllocationCount = proposals.filter(p => 
-            p.status === 'won' && 
-            p.pricing && 
-            p.pricing.projectNumber && 
-            !p.projectCreated  // Not allocated at all
+        // Calculate pending allocation count - ONLY unallocated projects
+        const pendingAllocationCount = proposals.filter(p =>
+            p.status === 'won' &&
+            p.pricing &&
+            p.pricing.projectNumber &&
+            !p.projectCreated &&
+            p.allocationStatus !== 'completed'
         ).length;
-        
+
         // Calculate partially allocated count - projects that exist but need more hours allocated
         const partiallyAllocatedCount = proposals.filter(p => {
             if (p.status !== 'won' || !p.projectCreated) return false;
+            if (p.allocationStatus === 'partial') return true;
             const maxHours = parseFloat(p.maxAllocatedHours) || 0;
             const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
             return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
         }).length;
-        
+
+        // Calculate fully allocated count
+        const fullyAllocatedCount = proposals.filter(p => {
+            if (p.status !== 'won') return false;
+            if (p.allocationStatus === 'completed') return true;
+            const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+            const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+            return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
+        }).length;
+
         directorFilterButtons = `
             <div class="filter-buttons-container">
-                <button class="filter-btn filter-btn-all ${currentProposalFilter === 'all' ? 'active' : ''}" 
+                <button class="filter-btn filter-btn-all ${currentProposalFilter === 'all' ? 'active' : ''}"
                         onclick="filterProposals('all')">
-                    📋 All Proposals
+                    All Proposals
                     <span class="filter-count">${proposals.length}</span>
                 </button>
-                <button class="filter-btn filter-btn-approval ${currentProposalFilter === 'pending_approval' ? 'active' : ''}" 
+                <button class="filter-btn filter-btn-approval ${currentProposalFilter === 'pending_approval' ? 'active' : ''}"
                         onclick="filterProposals('pending_approval')">
-                    ⏰ Pending Approval
+                    Pending Approval
                     <span class="filter-count">${pendingApprovalCount}</span>
                 </button>
-                <button class="filter-btn filter-btn-pricing ${currentProposalFilter === 'pending_pricing' ? 'active' : ''}" 
+                <button class="filter-btn filter-btn-pricing ${currentProposalFilter === 'pending_pricing' ? 'active' : ''}"
                         onclick="filterProposals('pending_pricing')">
-                    💰 Pending Pricing
+                    Pending Pricing
                     <span class="filter-count">${pendingPricingCount}</span>
                 </button>
-                <button class="filter-btn filter-btn-estimation ${currentProposalFilter === 'pending_estimation' ? 'active' : ''}" 
+                <button class="filter-btn filter-btn-estimation ${currentProposalFilter === 'pending_estimation' ? 'active' : ''}"
                         onclick="filterProposals('pending_estimation')">
-                    📊 Pending Estimation
+                    Pending Estimation
                     <span class="filter-count">${pendingEstimationCount}</span>
                 </button>
-                ${currentUserRole === 'coo' ? `
-                <button class="filter-btn filter-btn-pending ${currentProposalFilter === 'pending_allocation' ? 'active' : ''}" 
-                        onclick="filterProposals('pending_allocation')">
-                    🎯 Pending Allocation
+                <button class="filter-btn ${currentProposalFilter === 'pending_allocation' ? 'active' : ''}"
+                        onclick="filterProposals('pending_allocation')"
+                        style="${currentProposalFilter === 'pending_allocation' ? 'background: #1e40af; color: white;' : 'background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af;'}">
+                    Pending Allocation
                     <span class="filter-count">${pendingAllocationCount}</span>
                 </button>
                 ${partiallyAllocatedCount > 0 ? `
-                <button class="filter-btn filter-btn-warning ${currentProposalFilter === 'partially_allocated' ? 'active' : ''}" 
+                <button class="filter-btn ${currentProposalFilter === 'partially_allocated' ? 'active' : ''}"
                         onclick="filterProposals('partially_allocated')"
-                        style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                    ⏳ Partially Allocated
+                        style="${currentProposalFilter === 'partially_allocated' ? 'background: #92400e; color: white;' : 'background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e;'}">
+                    Partially Allocated
                     <span class="filter-count">${partiallyAllocatedCount}</span>
                 </button>
                 ` : ''}
-                ` : ''}
+                <button class="filter-btn ${currentProposalFilter === 'fully_allocated' ? 'active' : ''}"
+                        onclick="filterProposals('fully_allocated')"
+                        style="${currentProposalFilter === 'fully_allocated' ? 'background: #065f46; color: white;' : 'background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46;'}">
+                    Allocated
+                    <span class="filter-count">${fullyAllocatedCount}</span>
+                </button>
             </div>
         `;
     }
@@ -8025,20 +8041,29 @@ function renderProposals(proposals) {
                        statusLower !== 'lost';
             });
         } else if (currentProposalFilter === 'pending_allocation') {
-            // COO-specific filter for won proposals needing INITIAL allocation (not created yet)
-            filteredProposals = proposals.filter(p => 
-                p.status === 'won' && 
-                p.pricing && 
-                p.pricing.projectNumber && 
-                !p.projectCreated  // Project not created = needs initial allocation
+            // Filter for won proposals needing allocation
+            filteredProposals = proposals.filter(p =>
+                p.status === 'won' &&
+                p.pricing &&
+                p.pricing.projectNumber &&
+                !p.projectCreated &&
+                p.allocationStatus !== 'completed'
             );
         } else if (currentProposalFilter === 'partially_allocated') {
-            // COO-specific filter for projects that are partially allocated
             filteredProposals = proposals.filter(p => {
                 if (p.status !== 'won' || !p.projectCreated) return false;
+                if (p.allocationStatus === 'partial') return true;
                 const maxHours = parseFloat(p.maxAllocatedHours) || 0;
                 const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
                 return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+            });
+        } else if (currentProposalFilter === 'fully_allocated') {
+            filteredProposals = proposals.filter(p => {
+                if (p.status !== 'won') return false;
+                if (p.allocationStatus === 'completed') return true;
+                const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
             });
         }
         
@@ -8189,7 +8214,7 @@ function renderProposals(proposals) {
     const proposalsHtml = otherProposals?.length ? otherProposals.map(p => {
         let statusDisplay = p.status.toUpperCase().replace(/_/g, ' ');
         let statusClass = p.status.toLowerCase().replace(/_/g, '-');
-        
+
         if (p.pricing && p.pricing.projectNumber && p.status === 'pricing_complete') {
             statusDisplay = 'PRICING COMPLETE';
             statusClass = 'pricing-complete';
@@ -8197,33 +8222,51 @@ function renderProposals(proposals) {
             statusDisplay = 'PRICING COMPLETE';
             statusClass = 'pricing-complete';
         }
-        
+
+        // Allocation status for won proposals in the other list
+        const otherMaxHours = parseFloat(p.maxAllocatedHours) || 0;
+        const otherTotalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+        const otherBackendStatus = p.allocationStatus || '';
+        const otherFullyAllocated = (p.projectCreated && otherMaxHours > 0 && (otherMaxHours - otherTotalAllocated) <= 0.1) || otherBackendStatus === 'completed';
+        const otherPartiallyAllocated = !otherFullyAllocated && ((p.projectCreated && otherMaxHours > 0 && otherTotalAllocated > 0) || otherBackendStatus === 'partial');
+
+        let allocBadge = '';
+        if (p.status === 'won') {
+            if (otherFullyAllocated) {
+                allocBadge = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #6ee7b7; margin-left: 0.5rem;"><span style="display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; background: #059669; border-radius: 50%; color: white; font-size: 0.5rem;">&#10003;</span> Allocated</span>`;
+            } else if (otherPartiallyAllocated) {
+                allocBadge = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #fbbf24; margin-left: 0.5rem;">Partial</span>`;
+            } else if (p.pricing && p.pricing.projectNumber) {
+                allocBadge = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #fca5a5; margin-left: 0.5rem;">Not Allocated</span>`;
+            }
+        }
+
         let actionButtons = '';
         const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
-        
+
         if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation)) {
             actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}')">Add Estimation</button> `;
         }
-        
+
         if (currentUserRole === 'coo' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
             actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
         }
-        
+
         if (currentUserRole === 'director' && (statusLower === 'pending_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected'))) {
             actionButtons += `
-                <button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">✅ Approve</button>
-                <button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">❌ Reject</button>
+                <button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">Reject</button>
             `;
         }
-        
+
         if ((currentUserRole === 'coo' || currentUserRole === 'director') && p.pricing && p.pricing.projectNumber) {
             actionButtons += getProposalAllocationButton(p);
         }
-        
+
         return `
-        <div class="action-item">
+        <div class="action-item" style="${otherFullyAllocated ? 'border-left: 3px solid #10b981; background: #f0fdf4;' : otherPartiallyAllocated ? 'border-left: 3px solid #f59e0b; background: #fffbeb;' : ''}">
             <div class="action-content">
-                <strong>${p.projectName}</strong>
+                <strong>${p.projectName}</strong>${allocBadge}
                 <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}</div>
             </div>
             <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
@@ -8285,49 +8328,49 @@ function renderProposalsTable(proposals) {
         const maxHours = parseFloat(p.maxAllocatedHours) || 0;
         const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
         const remainingHours = maxHours - totalAllocated;
-        
-        // Logic: Project is fully allocated if it exists and Remaining is <= 0 (or very close to 0)
-        const isFullyAllocated = p.projectCreated && maxHours > 0 && remainingHours <= 0.1;
-        const isPartiallyAllocated = p.projectCreated && maxHours > 0 && remainingHours > 0.1;
-        const isPendingAllocation = p.status === 'won' && p.pricing && p.pricing.projectNumber && !p.projectCreated;
-        
+
+        // Use backend allocationStatus as reliable fallback
+        const backendAllocStatus = p.allocationStatus || '';
+        const isFullyAllocated = (p.projectCreated && maxHours > 0 && remainingHours <= 0.1) || backendAllocStatus === 'completed';
+        const isPartiallyAllocated = !isFullyAllocated && ((p.projectCreated && maxHours > 0 && totalAllocated > 0 && remainingHours > 0.1) || backendAllocStatus === 'partial');
+        const isPendingAllocation = p.status === 'won' && p.pricing && p.pricing.projectNumber && !p.projectCreated && !isFullyAllocated;
+
         // Action buttons based on proposal status
         let actionButtons = '';
-        
+
         // COO can set pricing for estimated proposals
         if (p.status === 'estimated' && (!p.pricing || !p.pricing.projectNumber)) {
             actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
         }
-        
+
         // COO can allocate won proposals with pricing
         if (p.status === 'won' && p.pricing && p.pricing.projectNumber) {
             if (isPendingAllocation) {
-                // Case 1: Not allocated at all - show Allocate button
-                actionButtons += `<button class="btn btn-primary btn-sm" onclick="showProjectAllocationModal('${p.id}')">🎯 Allocate Project</button> `;
+                actionButtons += `<button class="btn btn-primary btn-sm" onclick="showProjectAllocationModal('${p.id}')">Allocate Project</button> `;
             } else if (isPartiallyAllocated) {
-                // Case 2: Partially allocated - show Continue Allocation with remaining hours + Edit button
-                actionButtons += `<button class="btn btn-warning btn-sm" onclick="showProjectAllocationModal('${p.id}')">🎯 Allocate Remaining ${remainingHours.toFixed(1)}h</button> `;
-                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #3b82f6; color: #3b82f6;">✏️ Edit</button> `;
+                actionButtons += `<button class="btn btn-sm" style="background: #d97706; color: white; border: none; font-weight: 600;" onclick="showProjectAllocationModal('${p.id}')">Continue (${remainingHours.toFixed(1)}h left)</button> `;
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #6b7280; color: #6b7280;">Edit</button> `;
             } else if (isFullyAllocated) {
-                // Case 3: Fully Allocated - Show Edit button only
-                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #3b82f6; color: #3b82f6;">✏️ Edit Allocations</button> `;
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #6b7280; color: #6b7280;">Edit Allocations</button> `;
             }
         }
-        
+
         // Allocation status indicator
         let allocationStatus = '';
         if (p.status === 'won' && p.pricing && p.pricing.projectNumber) {
             if (isFullyAllocated) {
-                allocationStatus = '<span class="badge badge-success" style="font-size: 0.7rem;">✅ Fully Allocated</span>';
+                const pctFull = maxHours > 0 ? Math.round((totalAllocated / maxHours) * 100) : 100;
+                allocationStatus = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #6ee7b7;"><span style="display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; background: #059669; border-radius: 50%; color: white; font-size: 0.55rem;">&#10003;</span> Allocated${maxHours > 0 ? ` (${totalAllocated}/${maxHours}h)` : ''}</span>`;
             } else if (isPartiallyAllocated) {
-                allocationStatus = `<span class="badge badge-warning" style="font-size: 0.7rem; background: #f59e0b; color: white;">⏳ Partial: ${totalAllocated.toFixed(1)}/${maxHours}h (${remainingHours.toFixed(1)}h left)</span>`;
+                const pctPartial = maxHours > 0 ? Math.round((totalAllocated / maxHours) * 100) : 0;
+                allocationStatus = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #fbbf24;">Partial (${pctPartial}% &middot; ${remainingHours.toFixed(1)}h left)</span>`;
             } else if (isPendingAllocation) {
-                allocationStatus = '<span class="badge badge-info" style="font-size: 0.7rem;">🎯 Needs Allocation</span>';
+                allocationStatus = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #93c5fd;">Needs Allocation</span>`;
             }
         }
-        
+
         return `
-            <tr>
+            <tr style="${isFullyAllocated ? 'background: #f0fdf4;' : isPartiallyAllocated ? 'background: #fffbeb;' : ''}">
                 <td>
                     <strong>${p.projectName}</strong><br>
                     <small style="color: var(--text-light);">${p.clientCompany}</small>
@@ -8340,10 +8383,10 @@ function renderProposalsTable(proposals) {
                     ${p.estimation ? `<strong>${p.estimation.totalHours || 0}h</strong>` : '-'}
                 </td>
                 <td>
-                    ${p.pricing && p.pricing.projectNumber ? 
+                    ${p.pricing && p.pricing.projectNumber ?
                         `<strong>${p.pricing.quoteValue || 0} ${p.pricing.currency || ''}</strong><br>
                          <small>Project #: ${p.pricing.projectNumber}</small>
-                         ${maxHours > 0 ? `<br><small>Budget: ${maxHours}h</small>` : ''}` : 
+                         ${maxHours > 0 ? `<br><small>Budget: ${maxHours}h</small>` : ''}` :
                         '-'}
                 </td>
                 <td>${formatDate(p.createdAt)}</td>
@@ -8351,7 +8394,7 @@ function renderProposalsTable(proposals) {
                     <div class="action-buttons">
                         ${actionButtons}
                         <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View Details</button>
-                        ${p.projectCreated && p.projectId ? `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm">View Project</button>` : ''}
+                        ${p.projectCreated && p.projectId ? `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">View Project</button>` : ''}
                     </div>
                 </td>
             </tr>
@@ -12327,39 +12370,48 @@ async function submitEditedPricing() {
             if (currentUserRole !== 'coo' && currentUserRole !== 'director') {
                 return '';
             }
-                
+
             // For won proposals - show allocation button or allocated project link
             if (proposal.status === 'won') {
-                if (proposal.projectCreated && proposal.projectId) {
+                const bStatus = proposal.allocationStatus || '';
+                const mHrs = parseFloat(proposal.maxAllocatedHours) || 0;
+                const tAlloc = parseFloat(proposal.totalAllocatedHours) || 0;
+                const isFull = bStatus === 'completed' || (proposal.projectCreated && mHrs > 0 && (mHrs - tAlloc) <= 0.1);
+
+                if (isFull && proposal.projectId) {
                     return `
-                        <button onclick="viewProject('${proposal.projectId}')" class="btn btn-outline">
-                            View Allocated Project
+                        <button onclick="viewProject('${proposal.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">
+                            View Project
+                        </button>
+                    `;
+                } else if (proposal.projectCreated && proposal.projectId) {
+                    return `
+                        <button onclick="showProjectAllocationModal('${proposal.id}')" class="btn btn-sm" style="background: #d97706; color: white; border: none; font-weight: 600;">
+                            Continue Allocation
                         </button>
                     `;
                 } else if (proposal.pricing && proposal.pricing.projectNumber) {
-                    // Only show allocate button if pricing is complete (has project number)
                     return `
-                        <button onclick="showProjectAllocationModal('${proposal.id}')" class="btn btn-success">
-                            🎯 Allocate to Design Manager
+                        <button onclick="showProjectAllocationModal('${proposal.id}')" class="btn btn-primary btn-sm" style="font-weight: 600;">
+                            Allocate Project
                         </button>
                     `;
                 }
-                return ''; // No button if pricing not complete yet
+                return '';
             }
-                
+
             // Show pricing button for COO only (not Director)
-            // Only show if pricing hasn't been added yet and status requires pricing
             if (currentUserRole === 'coo') {
-                if ((proposal.status === 'estimated' || proposal.status === 'pricing_complete') && 
+                if ((proposal.status === 'estimated' || proposal.status === 'pricing_complete') &&
                     (!proposal.pricing || !proposal.pricing.projectNumber)) {
                     return `
-                        <button onclick="showCOOPricingForm('${proposal.id}')" class="btn btn-primary">
-                            💰 Add Pricing & Project Number
+                        <button onclick="showCOOPricingForm('${proposal.id}')" class="btn btn-primary btn-sm">
+                            Add Pricing & Project Number
                         </button>
                     `;
                 }
             }
-                
+
             return '';
         }
         

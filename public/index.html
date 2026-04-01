@@ -5454,6 +5454,11 @@ body.is-ios .nav-menu {
                                 <span class="nav-icon">📨</span>DC File Tracker
                             </a>
                         </li>
+                        <li id="fileAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showFileAnalyticsDashboard(); return false;" id="nav-file-analytics">
+                                <span class="nav-icon">📊</span>File Analytics
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -7208,11 +7213,17 @@ body.is-ios .nav-menu {
 
             // DC File Tracker Nav - For COO and Director
             setDisplay('dcTrackerNavItem', canApproveDesign);
+            setDisplay('fileAnalyticsNavItem', canApproveDesign);
             if (canApproveDesign) {
                 const dcTrackerNav = document.getElementById('dcTrackerNavItem');
                 if (dcTrackerNav) {
                     dcTrackerNav.style.display = 'block';
                     dcTrackerNav.style.visibility = 'visible';
+                }
+                const analyticsNav = document.getElementById('fileAnalyticsNavItem');
+                if (analyticsNav) {
+                    analyticsNav.style.display = 'block';
+                    analyticsNav.style.visibility = 'visible';
                 }
             }
 
@@ -13294,7 +13305,10 @@ async function showDesignerAllocations() {
                     const uploadDate = file.uploadedAt ? new Date(file.uploadedAt.seconds ? file.uploadedAt.seconds * 1000 : file.uploadedAt).toLocaleDateString() : 'N/A';
                     const isLink = file.isExternalLink || file.uploadType === 'link';
                     const fileIcon = isLink ? '🔗' : '📄';
-                    const typeLabel = isLink ? 'Link' : 'PDF';
+                    const stage = file.submissionStage || '-';
+                    const rev = file.revisionNumber || '-';
+                    const stageBadgeColors = { IFA: '#3b82f6', IFC: '#10b981', Preliminary: '#f59e0b', Draft: '#6b7280', Final: '#8b5cf6' };
+                    const stageColor = stageBadgeColors[stage] || '#6b7280';
                     return `
                         <tr>
                             <td><strong>${file.projectName || 'Unknown'}</strong></td>
@@ -13302,12 +13316,13 @@ async function showDesignerAllocations() {
                                 <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
                                     ${fileIcon} ${file.fileName}
                                 </a>
-                                <br><small style="color: #64748b;">${typeLabel}</small>
                             </td>
+                            <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${stageColor}15;color:${stageColor};border:1px solid ${stageColor}40;">${stage}</span></td>
+                            <td><span style="font-weight:600;font-size:12px;color:#475569;">${rev}</span></td>
                             <td>${uploadDate}</td>
                             <td>${getStatusBadge(file.status)}</td>
-                            <td>
-                                <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ View</a>
+                            <td style="white-space:nowrap;">
+                                <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;">👁️</a>
                                 ${getActionButton(file)}
                             </td>
                         </tr>
@@ -13326,6 +13341,8 @@ async function showDesignerAllocations() {
                                     <tr>
                                         <th>Project</th>
                                         <th>File</th>
+                                        <th>Stage</th>
+                                        <th>Rev</th>
                                         <th>Uploaded</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -26834,8 +26851,32 @@ function showDesignerUploadModal(projectId) {
                     <button type="button" class="add-link-btn" onclick="addDesignerLinkRow()">+ Add Another Link</button>
                 </div>
 
-                <!-- Common Fields -->
+                <!-- Stage & Revision -->
                 <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Submission Stage *</label>
+                            <select id="designerSubmissionStage" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;">
+                                <option value="IFA">IFA - Issued for Approval</option>
+                                <option value="IFC">IFC - Issued for Construction</option>
+                                <option value="Preliminary">Preliminary</option>
+                                <option value="Draft">Draft</option>
+                                <option value="Final">Final</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Revision</label>
+                            <select id="designerRevisionNumber" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;">
+                                <option value="Rev-0">Rev-0 (Initial)</option>
+                                <option value="Rev-1">Rev-1</option>
+                                <option value="Rev-2">Rev-2</option>
+                                <option value="Rev-3">Rev-3</option>
+                                <option value="Rev-4">Rev-4</option>
+                                <option value="Rev-5">Rev-5</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-bottom: 1rem;">
                         <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Description</label>
                         <textarea id="designerFileDescription" class="form-control" rows="2"
@@ -26844,7 +26885,7 @@ function showDesignerUploadModal(projectId) {
                     </div>
 
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label style="font-weight: 600; font-size: 13px; color: #374141; margin-bottom: 6px; display: block;">Status Update</label>
+                        <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Status Update</label>
                         <select id="designerProjectStatus" class="form-control"
                                 style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 14px; font-size: 14px;">
                             <option value="in_progress">Work in Progress</option>
@@ -27012,6 +27053,8 @@ async function submitDesignerUpload(event, projectId) {
     const activeTab = document.getElementById('designerUploadTabFiles').classList.contains('active') ? 'files' : 'links';
     const description = document.getElementById('designerFileDescription').value;
     const status = document.getElementById('designerProjectStatus').value;
+    const submissionStage = document.getElementById('designerSubmissionStage').value;
+    const revisionNumber = document.getElementById('designerRevisionNumber').value;
     const uploadBtn = document.getElementById('designerUploadBtn');
     const statusEl = document.getElementById('designerUploadStatus');
     const progressBar = document.getElementById('designerProgressBar');
@@ -27045,6 +27088,8 @@ async function submitDesignerUpload(event, projectId) {
             formData.append('description', description);
             formData.append('uploadNotes', description);
             formData.append('status', status);
+            formData.append('submissionStage', submissionStage);
+            formData.append('revisionNumber', revisionNumber);
 
             statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`;
             progressFill.style.width = '40%';
@@ -27061,12 +27106,14 @@ async function submitDesignerUpload(event, projectId) {
                 setTimeout(() => {
                     closeDesignerUploadModal();
                     alert(`${files.length} file${files.length > 1 ? 's' : ''} uploaded successfully!`);
-                    if (typeof showTasks === 'function') {
-                        try {
-                            const heading = document.getElementById('mainContent').querySelector('h2');
-                            if (heading && heading.innerText.includes('My Projects')) showTasks();
-                        } catch(e) {}
-                    }
+                    // Refresh current view
+                    try {
+                        if (typeof showDesignerAllocations === 'function' && document.getElementById('nav-designer-alloc') && document.getElementById('nav-designer-alloc').classList.contains('active')) {
+                            showDesignerAllocations();
+                        } else if (typeof showTasks === 'function') {
+                            showTasks();
+                        }
+                    } catch(e) { console.warn('Refresh error:', e); }
                 }, 500);
             } else {
                 throw new Error(response.error || 'Upload failed');
@@ -27119,19 +27166,22 @@ async function submitDesignerUpload(event, projectId) {
                     projectId: projectId,
                     links: links,
                     uploadNotes: description,
-                    status: status
+                    status: status,
+                    submissionStage: submissionStage,
+                    revisionNumber: revisionNumber
                 })
             });
 
             if (response.success) {
                 closeDesignerUploadModal();
                 alert(`${links.length} link${links.length > 1 ? 's' : ''} added successfully!`);
-                if (typeof showTasks === 'function') {
-                    try {
-                        const heading = document.getElementById('mainContent').querySelector('h2');
-                        if (heading && heading.innerText.includes('My Projects')) showTasks();
-                    } catch(e) {}
-                }
+                try {
+                    if (typeof showDesignerAllocations === 'function' && document.getElementById('nav-designer-alloc') && document.getElementById('nav-designer-alloc').classList.contains('active')) {
+                        showDesignerAllocations();
+                    } else if (typeof showTasks === 'function') {
+                        showTasks();
+                    }
+                } catch(e) { console.warn('Refresh error:', e); }
             } else {
                 throw new Error(response.error || 'Failed to add links');
             }
@@ -30940,6 +30990,8 @@ async function showDesignFileApprovals() {
                             <!-- Meta row -->
                             <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#64748b;margin-bottom:14px;">
                                 <span>👤 <strong style="color:#334155;">${file.uploadedByName || 'Designer'}</strong></span>
+                                <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-weight:700;background:${({'IFA':'#3b82f615','IFC':'#10b98115','Preliminary':'#f59e0b15','Draft':'#6b728015','Final':'#8b5cf615'})[file.submissionStage||''] || '#f1f5f9'};color:${({'IFA':'#3b82f6','IFC':'#10b981','Preliminary':'#f59e0b','Draft':'#6b7280','Final':'#8b5cf6'})[file.submissionStage||''] || '#64748b'};border:1px solid ${({'IFA':'#3b82f640','IFC':'#10b98140','Preliminary':'#f59e0b40','Draft':'#6b728040','Final':'#8b5cf640'})[file.submissionStage||''] || '#e2e8f0'}">${file.submissionStage || '-'}</span>
+                                <span style="font-weight:600;color:#475569;">${file.revisionNumber || '-'}</span>
                                 <span>📅 ${fmtDate(file.submittedAt || file.uploadedAt)}</span>
                                 ${file.designerNotes ? `<span>📝 ${file.designerNotes.substring(0, 50)}${file.designerNotes.length > 50 ? '...' : ''}</span>` : ''}
                             </div>
@@ -32070,6 +32122,7 @@ async function showDCFileTracker() {
                     <div style="font-size:11px;color:#94a3b8;">${file.projectCode || ''}</div>
                 </td>
                 <td style="padding:12px 14px;font-size:13px;">${fileLink}</td>
+                <td style="padding:12px 14px;font-size:12px;font-weight:700;color:${({'IFA':'#3b82f6','IFC':'#10b981','Preliminary':'#f59e0b','Draft':'#6b7280','Final':'#8b5cf6'})[file.submissionStage||''] || '#64748b'};">${file.submissionStage || '-'}<br><span style="font-weight:500;color:#94a3b8;font-size:11px;">${file.revisionNumber || ''}</span></td>
                 <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.uploadedByName || '-'}</td>
                 <td style="padding:12px 14px;font-size:13px;color:#475569;">${formatDCDate(file.uploadedAt || file.createdAt)}</td>
                 <td style="padding:12px 14px;">${getStatusBadge(file.status)}</td>
@@ -32174,6 +32227,7 @@ async function showDCFileTracker() {
                                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Project</th>
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">File</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Stage/Rev</th>
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Uploaded By</th>
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Upload Date</th>
                                     <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Status</th>
@@ -32186,7 +32240,7 @@ async function showDCFileTracker() {
                                 </tr>
                             </thead>
                             <tbody id="dcTrackerTableBody">
-                                ${allFiles.length > 0 ? allFiles.map(f => renderFileRow(f)).join('') : '<tr><td colspan="11" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No design files found in the pipeline.</td></tr>'}
+                                ${allFiles.length > 0 ? allFiles.map(f => renderFileRow(f)).join('') : '<tr><td colspan="12" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No design files found in the pipeline.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -32267,7 +32321,7 @@ function filterDCTracker(status) {
     if (tbody) {
         tbody.innerHTML = filtered.length > 0
             ? filtered.map(f => renderRow(f)).join('')
-            : `<tr><td colspan="11" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No files matching this filter.</td></tr>`;
+            : `<tr><td colspan="12" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No files matching this filter.</td></tr>`;
     }
 
     // Update active filter button
@@ -32281,6 +32335,196 @@ function filterDCTracker(status) {
 
 window.showDCFileTracker = showDCFileTracker;
 window.filterDCTracker = filterDCTracker;
+
+
+// ============================================
+// FILE ANALYTICS DASHBOARD - COO & DIRECTOR
+// ============================================
+
+async function showFileAnalyticsDashboard() {
+    setActiveNav('nav-file-analytics');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align:center;padding:3rem;"><div class="spinner"></div><p>Loading File Analytics...</p></div>';
+
+    try {
+        const response = await apiCall('projects?action=get_design_file_stats');
+        if (!response.success) throw new Error(response.error || 'Failed to load stats');
+
+        const { totalFiles, stageStats, statusStats, monthlyStats, recentFiles } = response;
+
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        function fmtMonth(key) {
+            const [y, m] = key.split('-');
+            return `${monthNames[parseInt(m)-1]} ${y}`;
+        }
+
+        // Find max for bar scaling
+        const maxMonthTotal = Math.max(...monthlyStats.map(m => m.total), 1);
+
+        mainContent.innerHTML = `
+            <div style="max-width:1400px;margin:0 auto;padding:1.5rem;">
+                <!-- Header -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                    <div>
+                        <h1 style="margin:0;font-size:1.6rem;font-weight:700;color:#1e293b;">File Analytics Dashboard</h1>
+                        <p style="margin:4px 0 0;color:#64748b;font-size:14px;">Design file statistics - IFC, IFA & monthly breakdown</p>
+                    </div>
+                    <button onclick="showFileAnalyticsDashboard()" style="padding:8px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;color:#475569;">🔄 Refresh</button>
+                </div>
+
+                <!-- Summary Stats -->
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:1.5rem;">
+                    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:2rem;font-weight:700;color:#1e293b;">${totalFiles}</div>
+                        <div style="font-size:12px;color:#64748b;font-weight:600;">Total Files</div>
+                    </div>
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:2rem;font-weight:700;color:#3b82f6;">${stageStats.IFA || 0}</div>
+                        <div style="font-size:12px;color:#1d4ed8;font-weight:600;">IFA Files</div>
+                    </div>
+                    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:2rem;font-weight:700;color:#10b981;">${stageStats.IFC || 0}</div>
+                        <div style="font-size:12px;color:#065f46;font-weight:600;">IFC Files</div>
+                    </div>
+                    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:2rem;font-weight:700;color:#f59e0b;">${stageStats.Preliminary || 0}</div>
+                        <div style="font-size:12px;color:#92400e;font-weight:600;">Preliminary</div>
+                    </div>
+                    <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:2rem;font-weight:700;color:#8b5cf6;">${stageStats.Final || 0}</div>
+                        <div style="font-size:12px;color:#5b21b6;font-weight:600;">Final</div>
+                    </div>
+                    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:2rem;font-weight:700;color:#ef4444;">${statusStats.sent || 0}</div>
+                        <div style="font-size:12px;color:#991b1b;font-weight:600;">Sent to Client</div>
+                    </div>
+                </div>
+
+                <!-- Status Pipeline -->
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:1.5rem;">
+                    <h3 style="margin:0 0 16px;font-size:14px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Status Pipeline</h3>
+                    <div style="display:flex;gap:0;align-items:center;">
+                        ${[
+                            {label:'Pending Approval',count:statusStats.pending_approval||0,color:'#f59e0b',bg:'#fffbeb'},
+                            {label:'Approved',count:statusStats.approved||0,color:'#10b981',bg:'#ecfdf5'},
+                            {label:'Sent',count:statusStats.sent||0,color:'#8b5cf6',bg:'#f5f3ff'},
+                            {label:'Rejected',count:statusStats.rejected||0,color:'#ef4444',bg:'#fef2f2'}
+                        ].map((s,i,arr) => `
+                            <div style="flex:1;text-align:center;padding:12px;background:${s.bg};${i===0?'border-radius:8px 0 0 8px;':''}${i===arr.length-1?'border-radius:0 8px 8px 0;':''}">
+                                <div style="font-size:1.4rem;font-weight:700;color:${s.color};">${s.count}</div>
+                                <div style="font-size:11px;color:${s.color};font-weight:600;">${s.label}</div>
+                            </div>
+                            ${i < arr.length-1 ? '<div style="color:#cbd5e1;font-size:1.2rem;padding:0 4px;">→</div>' : ''}
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Monthly Breakdown -->
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:1.5rem;">
+                    <h3 style="margin:0 0 16px;font-size:14px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Monthly Breakdown</h3>
+                    ${monthlyStats.length > 0 ? `
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;min-width:800px;">
+                            <thead>
+                                <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;">Month</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#64748b;">Total</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#3b82f6;">IFA</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#10b981;">IFC</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#f59e0b;">Preliminary</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#6b7280;">Draft</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#8b5cf6;">Final</th>
+                                    <th style="padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#ef4444;">Sent</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;">Chart</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${monthlyStats.map(m => `
+                                    <tr style="border-bottom:1px solid #f1f5f9;">
+                                        <td style="padding:10px 14px;font-weight:600;color:#1e293b;font-size:13px;">${fmtMonth(m.month)}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:700;font-size:14px;color:#1e293b;">${m.total}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:600;color:#3b82f6;">${m.IFA || 0}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:600;color:#10b981;">${m.IFC || 0}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:600;color:#f59e0b;">${m.Preliminary || 0}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:600;color:#6b7280;">${m.Draft || 0}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:600;color:#8b5cf6;">${m.Final || 0}</td>
+                                        <td style="padding:10px 14px;text-align:center;font-weight:600;color:#ef4444;">${m.sent || 0}</td>
+                                        <td style="padding:10px 14px;min-width:200px;">
+                                            <div style="display:flex;height:18px;border-radius:4px;overflow:hidden;background:#f1f5f9;">
+                                                ${m.IFA ? `<div style="width:${(m.IFA/m.total)*100}%;background:#3b82f6;" title="IFA: ${m.IFA}"></div>` : ''}
+                                                ${m.IFC ? `<div style="width:${(m.IFC/m.total)*100}%;background:#10b981;" title="IFC: ${m.IFC}"></div>` : ''}
+                                                ${m.Preliminary ? `<div style="width:${(m.Preliminary/m.total)*100}%;background:#f59e0b;" title="Preliminary: ${m.Preliminary}"></div>` : ''}
+                                                ${m.Draft ? `<div style="width:${(m.Draft/m.total)*100}%;background:#6b7280;" title="Draft: ${m.Draft}"></div>` : ''}
+                                                ${m.Final ? `<div style="width:${(m.Final/m.total)*100}%;background:#8b5cf6;" title="Final: ${m.Final}"></div>` : ''}
+                                                ${m.Other ? `<div style="width:${(m.Other/m.total)*100}%;background:#94a3b8;" title="Other: ${m.Other}"></div>` : ''}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Legend -->
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;">
+                        <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;"><span style="width:10px;height:10px;border-radius:2px;background:#3b82f6;display:inline-block;"></span> IFA</span>
+                        <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;"><span style="width:10px;height:10px;border-radius:2px;background:#10b981;display:inline-block;"></span> IFC</span>
+                        <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;"><span style="width:10px;height:10px;border-radius:2px;background:#f59e0b;display:inline-block;"></span> Preliminary</span>
+                        <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;"><span style="width:10px;height:10px;border-radius:2px;background:#6b7280;display:inline-block;"></span> Draft</span>
+                        <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;"><span style="width:10px;height:10px;border-radius:2px;background:#8b5cf6;display:inline-block;"></span> Final</span>
+                    </div>
+                    ` : '<div style="text-align:center;padding:2rem;color:#94a3b8;">No monthly data available yet.</div>'}
+                </div>
+
+                <!-- Recent Files -->
+                ${recentFiles && recentFiles.length > 0 ? `
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+                    <h3 style="margin:0 0 16px;font-size:14px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Recent Submissions</h3>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+                                    <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Project</th>
+                                    <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">File</th>
+                                    <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Stage</th>
+                                    <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Rev</th>
+                                    <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Designer</th>
+                                    <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recentFiles.slice(0, 15).map(f => {
+                                    const stgColor = ({'IFA':'#3b82f6','IFC':'#10b981','Preliminary':'#f59e0b','Draft':'#6b7280','Final':'#8b5cf6'})[f.submissionStage||''] || '#64748b';
+                                    const stBadge = ({'pending_approval':'⏳ Pending','approved':'✅ Approved','sent':'📧 Sent','rejected':'❌ Rejected','uploaded':'📤 Uploaded'})[f.status||''] || f.status;
+                                    return `<tr style="border-bottom:1px solid #f1f5f9;">
+                                        <td style="padding:8px 12px;font-size:13px;font-weight:500;color:#1e293b;">${f.projectName || 'N/A'}<br><span style="font-size:11px;color:#94a3b8;">${f.projectCode || ''}</span></td>
+                                        <td style="padding:8px 12px;font-size:12px;color:#475569;">${f.fileUrl ? '<a href="' + f.fileUrl + '" target="_blank" style="color:#3b82f6;text-decoration:none;">' + ((f.fileName||'File').length > 25 ? (f.fileName||'File').substring(0,25)+'...' : (f.fileName||'File')) + '</a>' : (f.fileName||'-')}</td>
+                                        <td style="padding:8px 12px;font-size:12px;font-weight:700;color:${stgColor};">${f.submissionStage || '-'}</td>
+                                        <td style="padding:8px 12px;font-size:12px;color:#475569;">${f.revisionNumber || '-'}</td>
+                                        <td style="padding:8px 12px;font-size:12px;color:#475569;">${f.uploadedByName || '-'}</td>
+                                        <td style="padding:8px 12px;font-size:12px;">${stBadge}</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Error loading file analytics:', error);
+        mainContent.innerHTML = `
+            <div style="text-align:center;padding:3rem;">
+                <h2 style="color:#ef4444;">Error Loading Analytics</h2>
+                <p style="color:#64748b;">${error.message}</p>
+                <button onclick="showFileAnalyticsDashboard()" style="padding:10px 20px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:1rem;">Try Again</button>
+            </div>
+        `;
+    }
+}
+window.showFileAnalyticsDashboard = showFileAnalyticsDashboard;
 
 
 // ============================================

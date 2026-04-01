@@ -5408,6 +5408,11 @@ body.is-ios .nav-menu {
                                 <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
                             </a>
                         </li>
+                        <li id="dcTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showDCFileTracker(); return false;" id="nav-dc-tracker">
+                                <span class="nav-icon">📨</span>DC File Tracker
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -7120,7 +7125,17 @@ body.is-ios .nav-menu {
             } else {
                 console.log('📐 ⚠️ User is NOT COO or Director, hiding Design Approval Nav');
             }
-            
+
+            // DC File Tracker Nav - For COO and Director
+            setDisplay('dcTrackerNavItem', canApproveDesign);
+            if (canApproveDesign) {
+                const dcTrackerNav = document.getElementById('dcTrackerNavItem');
+                if (dcTrackerNav) {
+                    dcTrackerNav.style.display = 'block';
+                    dcTrackerNav.style.visibility = 'visible';
+                }
+            }
+
             // Document Controller Nav - Only for DC users
             setDisplay('documentControllerNavItem', isDC);
             if (isDC) {
@@ -7310,6 +7325,13 @@ function handleDeepLink(link) {
             case 'design-approvals':
                 if (typeof showDesignFileApprovals === 'function') {
                     showDesignFileApprovals();
+                    return true;
+                }
+                return false;
+
+            case 'dc-tracker':
+                if (typeof showDCFileTracker === 'function') {
+                    showDCFileTracker();
                     return true;
                 }
                 return false;
@@ -31470,6 +31492,284 @@ async function confirmDCSendToClient(designFileId, projectId) {
     }
 }
 window.confirmDCSendToClient = confirmDCSendToClient;
+
+
+// ============================================
+// DC FILE TRACKER - COO & DIRECTOR PORTAL
+// ============================================
+
+async function showDCFileTracker() {
+    setActiveNav('nav-dc-tracker');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align: center; padding: 3rem;"><div class="spinner"></div><p>Loading DC File Tracker...</p></div>';
+
+    try {
+        // Fetch all design files (all statuses)
+        const [allFilesResp, approvedResp] = await Promise.all([
+            apiCall('projects?action=get_design_files'),
+            apiCall('projects?action=get_approved_design_files')
+        ]);
+
+        const designFiles = allFilesResp.data || allFilesResp.designFiles || [];
+        const approvedSentFiles = approvedResp.data || [];
+
+        // Merge: use approvedSentFiles for approved/sent since they have richer data
+        const approvedSentMap = {};
+        approvedSentFiles.forEach(f => { approvedSentMap[f.id] = f; });
+
+        const allFiles = designFiles.map(f => approvedSentMap[f.id] || f);
+        // Also add any approved/sent files not in designFiles
+        approvedSentFiles.forEach(f => {
+            if (!designFiles.find(d => d.id === f.id)) allFiles.push(f);
+        });
+
+        // Sort by most recent first
+        allFiles.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || a.uploadedAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || b.uploadedAt?.seconds || 0;
+            return dateB - dateA;
+        });
+
+        // Categorize
+        const uploaded = allFiles.filter(f => f.status === 'uploaded');
+        const pendingApproval = allFiles.filter(f => f.status === 'pending_approval');
+        const approved = allFiles.filter(f => f.status === 'approved');
+        const sent = allFiles.filter(f => f.status === 'sent');
+        const rejected = allFiles.filter(f => f.status === 'rejected');
+
+        function formatDCDate(ts) {
+            if (!ts) return '-';
+            const ms = ts.seconds ? ts.seconds * 1000 : (typeof ts === 'number' ? ts : new Date(ts).getTime());
+            if (!ms || isNaN(ms)) return '-';
+            return new Date(ms).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'uploaded': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#dbeafe;color:#1d4ed8;">📤 Uploaded</span>',
+                'pending_approval': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;">⏳ Pending Approval</span>',
+                'approved': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#d1fae5;color:#065f46;">✅ Approved - Ready for DC</span>',
+                'sent': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#ede9fe;color:#5b21b6;">📧 Sent to Client</span>',
+                'rejected': '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b;">❌ Rejected</span>'
+            };
+            return badges[status] || `<span style="padding:4px 10px;border-radius:20px;font-size:11px;background:#f1f5f9;color:#64748b;">${status}</span>`;
+        }
+
+        function renderFileRow(file) {
+            const isLink = file.isExternalLink || file.uploadType === 'link';
+            const icon = isLink ? '🔗' : '📄';
+            const fileName = file.fileName || file.originalName || 'Untitled';
+            const fileLink = file.fileUrl ? `<a href="${file.fileUrl}" target="_blank" style="color:#3b82f6;text-decoration:none;font-weight:500;" title="${fileName}">${icon} ${fileName.length > 35 ? fileName.substring(0,35) + '...' : fileName}</a>` : `${icon} ${fileName}`;
+
+            return `<tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:12px 14px;font-size:13px;">
+                    <div style="font-weight:600;color:#1e293b;">${file.projectName || 'N/A'}</div>
+                    <div style="font-size:11px;color:#94a3b8;">${file.projectCode || ''}</div>
+                </td>
+                <td style="padding:12px 14px;font-size:13px;">${fileLink}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.uploadedByName || '-'}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${formatDCDate(file.uploadedAt || file.createdAt)}</td>
+                <td style="padding:12px 14px;">${getStatusBadge(file.status)}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.approvedByName || '-'}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${formatDCDate(file.approvedAt)}</td>
+                <td style="padding:12px 14px;font-size:13px;">
+                    ${file.status === 'sent' ? `<div style="font-weight:500;color:#1e293b;">${file.clientEmail || '-'}</div><div style="font-size:11px;color:#94a3b8;">${file.clientName || ''}</div>` : '<span style="color:#cbd5e1;">-</span>'}
+                </td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.status === 'sent' ? formatDCDate(file.sentAt) : '<span style="color:#cbd5e1;">-</span>'}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#475569;">${file.sentByName || (file.status === 'sent' ? (file.sentBy || 'DC') : '<span style="color:#cbd5e1;">-</span>')}</td>
+            </tr>`;
+        }
+
+        // Build the stats
+        const stats = [
+            { label: 'Uploaded', count: uploaded.length, color: '#3b82f6', bg: '#eff6ff', icon: '📤' },
+            { label: 'Pending Approval', count: pendingApproval.length, color: '#f59e0b', bg: '#fffbeb', icon: '⏳' },
+            { label: 'Approved (DC Ready)', count: approved.length, color: '#10b981', bg: '#ecfdf5', icon: '✅' },
+            { label: 'Sent to Client', count: sent.length, color: '#8b5cf6', bg: '#f5f3ff', icon: '📧' },
+            { label: 'Rejected', count: rejected.length, color: '#ef4444', bg: '#fef2f2', icon: '❌' }
+        ];
+
+        mainContent.innerHTML = `
+            <div style="max-width: 1400px; margin: 0 auto; padding: 1.5rem;">
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 700; color: #1e293b;">DC File Tracker</h1>
+                        <p style="margin: 4px 0 0; color: #64748b; font-size: 14px;">Track design files through the Document Controller pipeline</p>
+                    </div>
+                    <button onclick="showDCFileTracker()" style="padding: 8px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px;">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem;">
+                    ${stats.map(s => `
+                        <div style="background: ${s.bg}; border: 1px solid ${s.color}22; border-radius: 12px; padding: 16px; text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 4px;">${s.icon}</div>
+                            <div style="font-size: 1.6rem; font-weight: 700; color: ${s.color};">${s.count}</div>
+                            <div style="font-size: 12px; color: #64748b; font-weight: 500;">${s.label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Pipeline Progress -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0; justify-content: center;">
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px;">Uploaded</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${uploaded.length}</div>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 1.2rem;">→</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px;">Pending Approval</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${pendingApproval.length}</div>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 1.2rem;">→</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px;">Approved</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${approved.length}</div>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 1.2rem;">→</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 600; color: #8b5cf6; text-transform: uppercase; letter-spacing: 0.5px;">Sent to Client</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${sent.length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div style="display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <button class="dc-tracker-filter active" onclick="filterDCTracker('all')" style="padding:8px 16px;border:1px solid #e2e8f0;background:#667eea;color:white;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        All (${allFiles.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('uploaded')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        📤 Uploaded (${uploaded.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('pending_approval')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        ⏳ Pending (${pendingApproval.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('approved')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        ✅ Approved (${approved.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('sent')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        📧 Sent (${sent.length})
+                    </button>
+                    <button class="dc-tracker-filter" onclick="filterDCTracker('rejected')" style="padding:8px 16px;border:1px solid #e2e8f0;background:white;color:#475569;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                        ❌ Rejected (${rejected.length})
+                    </button>
+                </div>
+
+                <!-- File Table -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 1100px;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Project</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">File</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Uploaded By</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Upload Date</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Status</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Approved By</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Approved Date</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent To</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent Date</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Sent By</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dcTrackerTableBody">
+                                ${allFiles.length > 0 ? allFiles.map(f => renderFileRow(f)).join('') : '<tr><td colspan="10" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No design files found in the pipeline.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sent to Client Detail Section -->
+                ${sent.length > 0 ? `
+                <div style="margin-top: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="padding: 16px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white;">
+                        <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">📧 Client Delivery Log</h3>
+                        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">${sent.length} file${sent.length > 1 ? 's' : ''} sent to clients by Document Controller</p>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #faf5ff; border-bottom: 2px solid #ede9fe;">
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Project</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">File</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Client Email</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Client Name</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Sent Date</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Sent By</th>
+                                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:#6d28d9;text-transform:uppercase;">Designer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${sent.map(f => `
+                                    <tr style="border-bottom:1px solid #f5f3ff;">
+                                        <td style="padding:10px 14px;font-size:13px;">
+                                            <div style="font-weight:600;color:#1e293b;">${f.projectName || 'N/A'}</div>
+                                            <div style="font-size:11px;color:#94a3b8;">${f.projectCode || ''}</div>
+                                        </td>
+                                        <td style="padding:10px 14px;font-size:13px;">
+                                            ${f.fileUrl ? `<a href="${f.fileUrl}" target="_blank" style="color:#8b5cf6;text-decoration:none;font-weight:500;">${(f.isExternalLink || f.uploadType === 'link') ? '🔗' : '📄'} ${(f.fileName || 'File').length > 30 ? (f.fileName || 'File').substring(0,30) + '...' : (f.fileName || 'File')}</a>` : (f.fileName || '-')}
+                                        </td>
+                                        <td style="padding:10px 14px;font-size:13px;font-weight:500;color:#1e293b;">${f.clientEmail || '-'}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.clientName || '-'}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${formatDCDate(f.sentAt)}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.sentByName || f.sentBy || 'DC'}</td>
+                                        <td style="padding:10px 14px;font-size:13px;color:#475569;">${f.uploadedByName || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Store files for filtering
+        window._dcTrackerFiles = allFiles;
+        window._dcTrackerRenderRow = renderFileRow;
+
+    } catch (error) {
+        console.error('Error loading DC File Tracker:', error);
+        mainContent.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <h2 style="color: #ef4444;">Error Loading DC File Tracker</h2>
+                <p style="color: #64748b;">${error.message}</p>
+                <button onclick="showDCFileTracker()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 1rem;">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+function filterDCTracker(status) {
+    const files = window._dcTrackerFiles || [];
+    const renderRow = window._dcTrackerRenderRow;
+    if (!renderRow) return;
+
+    const filtered = status === 'all' ? files : files.filter(f => f.status === status);
+    const tbody = document.getElementById('dcTrackerTableBody');
+    if (tbody) {
+        tbody.innerHTML = filtered.length > 0
+            ? filtered.map(f => renderRow(f)).join('')
+            : `<tr><td colspan="10" style="padding:3rem;text-align:center;color:#94a3b8;font-size:14px;">No files matching this filter.</td></tr>`;
+    }
+
+    // Update active filter button
+    document.querySelectorAll('.dc-tracker-filter').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#475569';
+    });
+    event.target.style.background = '#667eea';
+    event.target.style.color = 'white';
+}
+
+window.showDCFileTracker = showDCFileTracker;
+window.filterDCTracker = filterDCTracker;
 
 
 // ============================================

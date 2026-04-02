@@ -33322,7 +33322,7 @@ async function showITDashboard() {
             } else {
                 actionBtn = `<button class="btn btn-sm btn-secondary" onclick="showITTicketActions('${t.id}','${t.status}')">Manage</button>`;
             }
-            return `<tr>
+            return `<tr data-status="${t.status}">
                 <td><strong style="color:#1e3a8a;">${t.ticketNumber||'-'}</strong></td>
                 <td>${t.requestedByName||'-'}<br><span style="font-size:0.75rem;color:#94a3b8;">${t.requestedByRole||''}</span></td>
                 <td>${t.categoryLabel||t.category}</td>
@@ -33350,35 +33350,35 @@ async function showITDashboard() {
 
             <!-- Summary Stats -->
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;">
-                <div style="border-top:4px solid #f59e0b;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #f59e0b;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('open')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#f59e0b;">${s.openTickets||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">Open</div>
                 </div>
-                <div style="border-top:4px solid #3b82f6;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #3b82f6;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('in_progress')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#3b82f6;">${s.inProgressTickets||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">In Progress</div>
                 </div>
-                <div style="border-top:4px solid #10b981;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #10b981;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('available_in_store')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#10b981;">${s.availableInStore||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">In Store</div>
                 </div>
-                <div style="border-top:4px solid #8b5cf6;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #8b5cf6;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('pending_hr')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#8b5cf6;">${s.pendingHR||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">Pending HR</div>
                 </div>
-                <div style="border-top:4px solid #e67e22;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #e67e22;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('pending_coo')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#e67e22;">${s.pendingCOO||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">Pending COO</div>
                 </div>
-                <div style="border-top:4px solid #2980b9;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #2980b9;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('pending_director')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#2980b9;">${s.pendingDirector||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">Pending Director</div>
                 </div>
-                <div style="border-top:4px solid #059669;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #059669;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus('closed')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#059669;">${s.closedTickets||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">Closed</div>
                 </div>
-                <div style="border-top:4px solid #64748b;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);">
+                <div style="border-top:4px solid #64748b;padding:18px;background:#fff;border-radius:12px;box-shadow:var(--card-shadow);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" onclick="filterITTicketsByStatus(null)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';">
                     <div style="font-size:1.8rem;font-weight:700;color:#64748b;">${s.totalTickets||0}</div>
                     <div style="color:#64748b;font-size:0.85rem;font-weight:500;">Total</div>
                 </div>
@@ -33412,11 +33412,14 @@ async function showITDashboard() {
             </div>
 
             <!-- All Tickets -->
-            <div class="card" style="padding:20px;">
-                <h3 style="margin:0 0 14px;color:#1e3a8a;font-size:0.95rem;">All Tickets (${allTickets.length})</h3>
+            <div class="card" style="padding:20px;" id="itTicketTableSection">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <h3 style="margin:0;color:#1e3a8a;font-size:0.95rem;" id="itTicketTableHeading">All Tickets (${allTickets.length})</h3>
+                    <button id="itClearFilterBtn" onclick="filterITTicketsByStatus(null)" style="display:none;font-size:0.8rem;padding:4px 12px;border-radius:20px;border:1px solid #3b82f6;background:#eff6ff;color:#3b82f6;cursor:pointer;">✕ Clear Filter</button>
+                </div>
                 ${allTickets.length===0?'<p style="color:#94a3b8;text-align:center;padding:20px;">No tickets found.</p>':`
                 <div style="overflow-x:auto;">
-                    <table class="data-table">
+                    <table class="data-table" id="itTicketsTable">
                         <thead><tr><th>Ticket #</th><th>Requester</th><th>Category</th><th>Item</th><th>Subject</th><th>Priority</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
                         <tbody>${ticketRows}</tbody>
                     </table>
@@ -33427,6 +33430,39 @@ async function showITDashboard() {
         console.error('Error loading IT dashboard:', e);
         mainContent.innerHTML = '<div class="card" style="padding:40px;text-align:center;"><p style="color:#ef4444;">Error loading IT Dashboard.</p></div>';
     }
+}
+
+// Filter IT Tickets table by status from dashboard stat cards
+function filterITTicketsByStatus(status) {
+    const table = document.getElementById('itTicketsTable');
+    const heading = document.getElementById('itTicketTableHeading');
+    const clearBtn = document.getElementById('itClearFilterBtn');
+    const section = document.getElementById('itTicketTableSection');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+    rows.forEach(row => {
+        if (!status || row.dataset.status === status) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    if (heading) {
+        const statusLabels = {
+            'open': 'Open', 'in_progress': 'In Progress', 'available_in_store': 'In Store',
+            'pending_hr': 'Pending HR', 'pending_coo': 'Pending COO',
+            'pending_director': 'Pending Director', 'closed': 'Closed'
+        };
+        heading.textContent = status
+            ? `${statusLabels[status] || status} Tickets (${visibleCount})`
+            : `All Tickets (${rows.length})`;
+    }
+    if (clearBtn) clearBtn.style.display = status ? '' : 'none';
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // IT Store Check Modal

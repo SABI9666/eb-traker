@@ -7032,18 +7032,28 @@ body.is-ios .nav-menu {
             const DIRECTOR_EMAILS = ['director@edanbrook.com', 'ajit@edanbrook.com'];
             const DC_EMAILS = ['iva@edanbrook.com', 'dc@edanbrook.com']; // Document Controller emails
             const IT_EMAILS = ['ithelpdesk@edanbrook.com']; // IT Helpdesk emails
-            
+            const DESIGN_LEAD_EMAILS = [
+                'muruganantham.tech@edanbrook.in',
+                'kathar.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'rebar.lead@edanbrook.com',
+                'rebar.lead1@edanbrook.com'
+            ]; // Design Lead emails
+
             // Check if user is COO or Director by email (highest priority)
             const isCOOByEmail = COO_EMAILS.includes(userEmail);
             const isDirectorByEmail = DIRECTOR_EMAILS.includes(userEmail);
             const isDCByEmail = DC_EMAILS.includes(userEmail);
             const isITByEmail = IT_EMAILS.includes(userEmail);
+            const isDesignLeadByEmail = DESIGN_LEAD_EMAILS.includes(userEmail);
 
             console.log('👤 User email:', userEmail);
             console.log('👤 Is COO by email:', isCOOByEmail);
             console.log('👤 Is Director by email:', isDirectorByEmail);
             console.log('👤 Is DC by email:', isDCByEmail);
             console.log('👤 Is IT by email:', isITByEmail);
+            console.log('👤 Is Design Lead by email:', isDesignLeadByEmail);
             
             // If role is empty or 'employee', try to detect from email
             if (!roleForCheck || roleForCheck === 'employee' || roleForCheck === '') {
@@ -7071,6 +7081,9 @@ body.is-ios .nav-menu {
                 } else if (emailLower.startsWith('accounts@') || emailLower.startsWith('accounts1@') || emailLower.includes('.accounts@')) {
                     roleForCheck = 'accounts';
                     currentUserRole = 'accounts';
+                } else if (isDesignLeadByEmail) {
+                    roleForCheck = 'design_lead';
+                    currentUserRole = 'design_lead';
                 } else if (emailLower.includes('.tech@')) {
                     roleForCheck = 'designer';
                     currentUserRole = 'designer';
@@ -7103,6 +7116,12 @@ body.is-ios .nav-menu {
                 console.log('⚠️ Forcing IT role based on email');
                 roleForCheck = 'it';
                 currentUserRole = 'it';
+            }
+            // Force Design Lead role if email matches
+            if (isDesignLeadByEmail && roleForCheck !== 'design_lead') {
+                console.log('⚠️ Forcing Design Lead role based on email');
+                roleForCheck = 'design_lead';
+                currentUserRole = 'design_lead';
             }
             
             userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;

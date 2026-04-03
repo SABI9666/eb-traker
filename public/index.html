@@ -8882,36 +8882,99 @@ async function showProjectDashboard() {
         // Unassigned count
         const unassigned = sb['Unassigned'] || { count: 0 };
 
-        // Build project table rows with designer details
-        const projectRowsHtml = projects.map(p => {
+        // Build professional project cards with expandable designer breakdown
+        const projectCardsHtml = projects.map((p, idx) => {
             const secColor = sectionColors[p.projectSection] || '#6b7280';
             const statusClass = p.isExceeded ? 'danger' : (p.percentageUsed > 80 ? 'warning' : 'success');
+            const statusColor = p.isExceeded ? '#ef4444' : (p.percentageUsed > 80 ? '#f59e0b' : '#10b981');
             const pctUsed = (p.percentageUsed || 0).toFixed(0);
+            const totalLogged = (p.hoursLogged || 0);
+            const totalAlloc = p.allocatedHours || 0;
+            const designerDetail = (p.designerHoursDetail || []).sort((a, b) => (b.hoursLogged || b.hours || 0) - (a.hoursLogged || a.hours || 0));
 
-            // Designer hours detail
-            const designerDetail = (p.designerHoursDetail || []);
-            const designerHtml = designerDetail.length > 0
-                ? designerDetail.map(d => `<span style="display: inline-block; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin: 1px;">${d.name}: <strong>${d.hours.toFixed(1)}h</strong></span>`).join(' ')
-                : '<span style="font-size: 0.75rem; color: var(--text-light);">No hours logged</span>';
+            // Build designer rows
+            let designerRowsHtml = '';
+            if (designerDetail.length > 0) {
+                designerRowsHtml = designerDetail.map(d => {
+                    const dLogged = d.hoursLogged !== undefined ? d.hoursLogged : (d.hours || 0);
+                    const dAlloc = d.allocatedHours || 0;
+                    const dPct = dAlloc > 0 ? ((dLogged / dAlloc) * 100).toFixed(0) : (dLogged > 0 ? 100 : 0);
+                    const dColor = dPct > 100 ? '#ef4444' : (dPct > 80 ? '#f59e0b' : '#3b82f6');
+                    const dShare = totalLogged > 0 ? ((dLogged / totalLogged) * 100).toFixed(0) : 0;
+                    return '<tr style="border-bottom: 1px solid #f3f4f6;">'
+                        + '<td style="padding: 0.6rem 1rem;"><div style="display: flex; align-items: center; gap: 0.5rem;">'
+                        + '<div style="width: 28px; height: 28px; border-radius: 50%; background: ' + dColor + '15; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: ' + dColor + ';">' + (d.name || 'U').charAt(0).toUpperCase() + '</div>'
+                        + '<span style="font-weight: 500; color: #111827;">' + (d.name || 'Unknown') + '</span></div></td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 600; color: ' + dColor + ';">' + dLogged.toFixed(1) + 'h</td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center; color: #6b7280;">' + (dAlloc > 0 ? dAlloc.toFixed(1) + 'h' : '-') + '</td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center;">'
+                        + '<div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">'
+                        + '<div style="background: #f3f4f6; border-radius: 4px; height: 6px; width: 60px; overflow: hidden;">'
+                        + '<div style="background: ' + dColor + '; height: 100%; width: ' + Math.min(dPct, 100) + '%; border-radius: 4px;"></div></div>'
+                        + '<span style="font-size: 0.75rem; font-weight: 600; color: ' + dColor + ';">' + dPct + '%</span></div></td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center;"><span style="background: #f3f4f6; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; color: #374151;">' + dShare + '%</span></td>'
+                        + '</tr>';
+                }).join('');
+            } else {
+                designerRowsHtml = '<tr><td colspan="5" style="padding: 1.5rem; text-align: center; color: #9ca3af; font-style: italic;">No designer hours logged yet</td></tr>';
+            }
 
-            return `
-                <tr>
-                    <td>
-                        <strong>${p.projectName}</strong><br>
-                        <small style="color: var(--text-light);">${p.projectCode || ''} ${p.clientCompany ? '| ' + p.clientCompany : ''}</small>
-                    </td>
-                    <td><span style="background: ${secColor}; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600;">${p.projectSection || 'N/A'}</span></td>
-                    <td>
-                        <strong>${(p.hoursLogged || 0).toFixed(1)}h</strong> / ${p.allocatedHours || 0}h
-                        <div style="background: #f3f4f6; border-radius: 4px; height: 6px; margin-top: 4px; overflow: hidden;">
-                            <div style="background: var(--${statusClass}); height: 100%; width: ${Math.min(pctUsed, 100)}%; border-radius: 4px;"></div>
-                        </div>
-                    </td>
-                    <td>${p.designLeadName || '<span style="color:#9ca3af;">Not Assigned</span>'}</td>
-                    <td>${designerHtml}</td>
-                    <td><span class="badge badge-info" style="font-size: 0.7rem;">${(p.status || '').replace(/_/g, ' ')}</span></td>
-                </tr>
-            `;
+            return '<div class="pd-project-card" data-section="' + (p.projectSection || 'Unassigned') + '" style="background: white; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">'
+                // Project Header (clickable)
+                + '<div onclick="toggleProjectDetail(' + idx + ')" style="padding: 1.25rem 1.5rem; cursor: pointer; display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 1.5rem; align-items: center; border-left: 4px solid ' + secColor + ';">'
+                // Col 1: Project Info
+                + '<div>'
+                + '<div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;">'
+                + '<strong style="font-size: 1rem; color: #111827;">' + p.projectName + '</strong>'
+                + '<span style="background: ' + secColor + '; color: white; padding: 1px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;">' + (p.projectSection || 'N/A') + '</span>'
+                + '<span class="badge badge-info" style="font-size: 0.65rem; text-transform: capitalize;">' + (p.status || '').replace(/_/g, ' ') + '</span>'
+                + '</div>'
+                + '<div style="font-size: 0.8rem; color: var(--text-light);">' + (p.projectCode || '') + (p.clientCompany ? ' | ' + p.clientCompany : '') + '</div>'
+                + '</div>'
+                // Col 2: Design Lead
+                + '<div style="text-align: center;">'
+                + '<div style="font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 2px;">Design Lead</div>'
+                + '<div style="font-weight: 600; font-size: 0.85rem; color: #111827;">' + (p.designLeadName || '<span style="color:#9ca3af;">Not Assigned</span>') + '</div>'
+                + '</div>'
+                // Col 3: Hours Progress
+                + '<div style="text-align: center; min-width: 140px;">'
+                + '<div style="font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 2px;">Hours Used</div>'
+                + '<div style="font-weight: 700; font-size: 1.1rem; color: ' + statusColor + ';">' + totalLogged.toFixed(1) + 'h <span style="font-weight: 400; font-size: 0.8rem; color: #9ca3af;">/ ' + totalAlloc + 'h</span></div>'
+                + '<div style="background: #f3f4f6; border-radius: 4px; height: 6px; margin-top: 4px; overflow: hidden;">'
+                + '<div style="background: ' + statusColor + '; height: 100%; width: ' + Math.min(pctUsed, 100) + '%; border-radius: 4px; transition: width 0.3s;"></div></div>'
+                + '</div>'
+                // Col 4: Designers Count
+                + '<div style="text-align: center;">'
+                + '<div style="font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 2px;">Designers</div>'
+                + '<div style="font-weight: 700; font-size: 1.1rem; color: #3b82f6;">' + designerDetail.length + '</div>'
+                + '</div>'
+                // Col 5: Expand Arrow
+                + '<div style="color: #9ca3af; font-size: 1.2rem; transition: transform 0.2s;" id="pdArrow' + idx + '">&#9662;</div>'
+                + '</div>'
+                // Expandable Designer Detail Section
+                + '<div id="pdDetail' + idx + '" style="display: none; border-top: 1px solid #e5e7eb; background: #fafbfc;">'
+                + '<div style="padding: 1rem 1.5rem;">'
+                + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">'
+                + '<h4 style="margin: 0; font-size: 0.9rem; color: #374151;">Designer Hours Breakdown</h4>'
+                + '<span style="font-size: 0.75rem; color: var(--text-light);">' + pctUsed + '% of budget used</span>'
+                + '</div>'
+                + '<table style="width: 100%; border-collapse: collapse;">'
+                + '<thead><tr style="background: #f1f5f9;">'
+                + '<th style="text-align: left; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Designer</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Logged</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Allocated</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Usage</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Share</th>'
+                + '</tr></thead>'
+                + '<tbody>' + designerRowsHtml + '</tbody>'
+                + '<tfoot><tr style="background: #f8fafc; border-top: 2px solid #e5e7eb;">'
+                + '<td style="padding: 0.6rem 1rem; font-weight: 700; color: #111827;">Total</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: ' + statusColor + ';">' + totalLogged.toFixed(1) + 'h</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: #374151;">' + (totalAlloc > 0 ? totalAlloc + 'h' : '-') + '</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: ' + statusColor + ';">' + pctUsed + '%</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: #374151;">100%</td>'
+                + '</tr></tfoot>'
+                + '</table></div></div></div>';
         }).join('');
 
         // Section filter buttons for project table
@@ -9058,26 +9121,18 @@ async function showProjectDashboard() {
                 ${sectionCardsHtml}
             </div>
 
-            <!-- Projects Table -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <h3 style="margin-bottom: 1rem;">All Projects - Hours & Designer Details</h3>
+            <!-- Project Design Hours -->
+            <div style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Project Design Hours</h3>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button onclick="expandAllProjects(true)" style="background: none; border: 1px solid #d1d5db; padding: 0.3rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #374151;">Expand All</button>
+                        <button onclick="expandAllProjects(false)" style="background: none; border: 1px solid #d1d5db; padding: 0.3rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #374151;">Collapse All</button>
+                    </div>
+                </div>
                 ${sectionFilterHtml}
-                <div style="overflow-x: auto;">
-                    <table class="data-table" id="projectDashboardTable">
-                        <thead>
-                            <tr>
-                                <th>Project</th>
-                                <th>Section</th>
-                                <th>Hours Progress</th>
-                                <th>Design Lead</th>
-                                <th>Designer Hours</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${projectRowsHtml}
-                        </tbody>
-                    </table>
+                <div id="projectDashboardCards">
+                    ${projectCardsHtml}
                 </div>
             </div>
 
@@ -9116,7 +9171,7 @@ async function showProjectDashboard() {
 function showExecutiveDashboard() { showProjectDashboard(); }
 
 /**
- * Filter project dashboard table by section
+ * Filter project dashboard cards by section
  */
 function filterProjectDashboardTable(section) {
     // Update button styles
@@ -9131,18 +9186,43 @@ function filterProjectDashboardTable(section) {
     event.target.style.border = 'none';
     event.target.classList.add('pd-filter-active');
 
-    const table = document.getElementById('projectDashboardTable');
-    if (!table) return;
-    const rows = table.querySelectorAll('tbody tr');
-    const projects = window._pdProjects || [];
-
-    rows.forEach((row, i) => {
+    const cards = document.querySelectorAll('.pd-project-card');
+    cards.forEach(card => {
         if (section === 'all') {
-            row.style.display = '';
+            card.style.display = '';
         } else {
-            const p = projects[i];
-            const pSection = p ? (p.projectSection || 'Unassigned') : '';
-            row.style.display = pSection === section ? '' : 'none';
+            card.style.display = card.dataset.section === section ? '' : 'none';
+        }
+    });
+}
+
+/**
+ * Toggle individual project detail panel
+ */
+function toggleProjectDetail(idx) {
+    const detail = document.getElementById('pdDetail' + idx);
+    const arrow = document.getElementById('pdArrow' + idx);
+    if (!detail) return;
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    } else {
+        detail.style.display = 'none';
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    }
+}
+
+/**
+ * Expand or collapse all project detail panels
+ */
+function expandAllProjects(expand) {
+    const projects = window._pdProjects || [];
+    projects.forEach((_, idx) => {
+        const detail = document.getElementById('pdDetail' + idx);
+        const arrow = document.getElementById('pdArrow' + idx);
+        if (detail) {
+            detail.style.display = expand ? 'block' : 'none';
+            if (arrow) arrow.style.transform = expand ? 'rotate(180deg)' : 'rotate(0deg)';
         }
     });
 }
@@ -9227,6 +9307,8 @@ window.showProjectDashboard = showProjectDashboard;
 window.showExecutiveDashboard = showExecutiveDashboard;
 window.filterProjectDashboardTable = filterProjectDashboardTable;
 window.switchRevenuePeriod = switchRevenuePeriod;
+window.toggleProjectDetail = toggleProjectDetail;
+window.expandAllProjects = expandAllProjects;
 
 // ============================================
 // ADDITIONAL TIME REQUEST FUNCTIONALITY

@@ -4983,6 +4983,7 @@ body.is-ios .nav-menu {
 .status-approved { background: #dcfce7; color: #166534; }
 .status-rejected { background: #fee2e2; color: #991b1b; }
 .status-sent { background: #d1fae5; color: #065f46; }
+.status-subcontracted { background: #ede9fe; color: #5b21b6; }
 
 .design-file-actions {
     display: flex;
@@ -7994,11 +7995,13 @@ function renderProposals(proposals) {
 
     const pendingEstimationCount = proposals.filter(p => {
         const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
-        return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && 
-               statusLower !== 'approved' && 
-               statusLower !== 'rejected' && 
-               statusLower !== 'won' && 
-               statusLower !== 'lost';
+        return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) &&
+               statusLower !== 'approved' &&
+               statusLower !== 'rejected' &&
+               statusLower !== 'won' &&
+               statusLower !== 'lost' &&
+               statusLower !== 'subcontracted' &&
+               !p.subcontractor;
     }).length;
 
     // Filter Buttons for Director AND COO
@@ -8036,6 +8039,7 @@ function renderProposals(proposals) {
         const projectLostCount = proposals.filter(p => p.status === 'lost').length;
         // Awaiting = approved (awaiting client submission) + submitted_to_client (awaiting client decision)
         const projectAwaitingCount = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client').length;
+        const subcontractedCount = proposals.filter(p => p.status === 'subcontracted' || p.subcontractor).length;
 
         directorFilterButtons = `
             <div class="filter-buttons-container">
@@ -8094,6 +8098,12 @@ function renderProposals(proposals) {
                     ⏳ Project Awaiting
                     <span class="filter-count">${projectAwaitingCount}</span>
                 </button>
+                <button class="filter-btn ${currentProposalFilter === 'subcontracted' ? 'active' : ''}"
+                        onclick="filterProposals('subcontracted')"
+                        style="${currentProposalFilter === 'subcontracted' ? 'background: #5b21b6; color: white;' : 'background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #5b21b6;'}">
+                    Subcontracted
+                    <span class="filter-count">${subcontractedCount}</span>
+                </button>
             </div>
         `;
     }
@@ -8119,11 +8129,13 @@ function renderProposals(proposals) {
         } else if (currentProposalFilter === 'pending_estimation') {
             filteredProposals = proposals.filter(p => {
                 const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
-                return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && 
-                       statusLower !== 'approved' && 
-                       statusLower !== 'rejected' && 
-                       statusLower !== 'won' && 
-                       statusLower !== 'lost';
+                return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) &&
+                       statusLower !== 'approved' &&
+                       statusLower !== 'rejected' &&
+                       statusLower !== 'won' &&
+                       statusLower !== 'lost' &&
+                       statusLower !== 'subcontracted' &&
+                       !p.subcontractor;
             });
         } else if (currentProposalFilter === 'pending_allocation') {
             // Filter for won proposals needing allocation
@@ -8156,6 +8168,8 @@ function renderProposals(proposals) {
             filteredProposals = proposals.filter(p => p.status === 'lost');
         } else if (currentProposalFilter === 'project_awaiting') {
             filteredProposals = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client');
+        } else if (currentProposalFilter === 'subcontracted') {
+            filteredProposals = proposals.filter(p => p.status === 'subcontracted' || p.subcontractor);
         }
 
         console.log('📊 Filtered proposals:', filteredProposals.length);
@@ -8312,6 +8326,9 @@ function renderProposals(proposals) {
         } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
             statusDisplay = 'PRICING COMPLETE';
             statusClass = 'pricing-complete';
+        } else if (p.subcontractor || statusLower === 'subcontracted') {
+            statusDisplay = 'SUBCONTRACTED';
+            statusClass = 'subcontracted';
         }
 
         // Allocation status for won proposals in the other list
@@ -8335,8 +8352,9 @@ function renderProposals(proposals) {
         let actionButtons = '';
         const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
 
-        if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation)) {
+        if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && statusLower !== 'subcontracted' && !p.subcontractor) {
             actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}')">Add Estimation</button> `;
+            actionButtons += `<button class="btn btn-sm" style="background: #7c3aed; color: white; border: none;" onclick="showSubcontractorModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}')">Subcontractor</button> `;
         }
 
         if (currentUserRole === 'coo' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
@@ -11093,6 +11111,75 @@ function showCreateProposalModal() {
         }
     } catch (error) {
         alert('Error saving estimation: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+      function showSubcontractorModal(proposalId, projectName) {
+    closeModal();
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>Mark as Subcontractor Project</h2>
+                    <span class="close-modal" onclick="closeModal()">&times;</span>
+                </div>
+                <form id="subcontractorForm" class="modal-form">
+                    <div class="form-section">
+                        <p style="margin-bottom: 1rem; color: #4b5563;">
+                            Project: <strong>${projectName}</strong>
+                        </p>
+                        <p style="margin-bottom: 1rem; color: #6b7280; font-size: 0.9rem;">
+                            This will mark the project as subcontracted and remove it from pending estimation.
+                        </p>
+                        <div class="form-group">
+                            <label for="subcontractorName">Subcontractor Name <span style="color: red;">*</span></label>
+                            <input type="text" id="subcontractorName" class="form-control" placeholder="Enter subcontractor name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="subcontractorNotes">Notes (Optional)</label>
+                            <textarea id="subcontractorNotes" class="form-control" rows="3" placeholder="Any additional notes..."></textarea>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                        <button type="button" onclick="saveSubcontractor('${proposalId}')" class="btn" style="background: #7c3aed; color: white; border: none;">Confirm Subcontractor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function saveSubcontractor(proposalId) {
+    const subcontractorName = (document.getElementById('subcontractorName').value || '').trim();
+    const notes = (document.getElementById('subcontractorNotes').value || '').trim();
+
+    if (!subcontractorName) {
+        return alert('Please enter the subcontractor name.');
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`proposals?id=${proposalId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'mark_subcontractor',
+                data: { subcontractorName, notes }
+            })
+        });
+
+        if (response.success) {
+            alert('Project marked as subcontractor successfully!');
+            closeModal();
+            showProposals();
+        } else {
+            throw new Error(response.error || 'Failed to mark as subcontractor');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
     } finally {
         hideLoading();
     }

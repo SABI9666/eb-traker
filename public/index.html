@@ -5436,6 +5436,10 @@ body.is-ios .nav-menu {
                             <a href="#" onclick="showGSTFiling()" id="nav-gst-filing">
                             <span class="nav-icon">📋</span>GST Filing</a>
                         </li>
+                        <li id="pettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-petty-cash">
+                            <span class="nav-icon">💵</span>Petty Cash</a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -7157,6 +7161,7 @@ body.is-ios .nav-menu {
             setDisplay('subventorsNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('dailyExpensesNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('gstFilingNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('pettyCashNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
@@ -15823,6 +15828,181 @@ async function deleteExpense(id) {
         if(!resp.success) throw new Error(resp.error);
         showNotification('Expense deleted!','success'); showDailyExpenses();
     } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+// ============================================
+// PETTY CASH MODULE
+// ============================================
+
+async function showPettyCash() {
+    setActiveNav('nav-petty-cash');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const now = new Date();
+        const res = await apiCall('petty-cash?month='+(now.getMonth()+1)+'&year='+now.getFullYear());
+        const entries = res.success ? res.data : [];
+        const fund = res.fund || { totalFund:0, currentBalance:0, totalSpent:0 };
+        const isAcct = currentUserRole === 'accounts';
+
+        const expenses = entries.filter(e=>e.entryType==='expense');
+        const replenishments = entries.filter(e=>e.entryType==='replenish');
+        const monthTotal = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+        const monthReplenish = replenishments.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+
+        const balPct = fund.totalFund > 0 ? Math.max(0,Math.min(100, (fund.currentBalance/fund.totalFund)*100)) : 0;
+        const balColor = balPct > 50 ? '#10b981' : balPct > 20 ? '#f59e0b' : '#ef4444';
+
+        const rows = entries.length > 0 ? entries.map(e => {
+            const isExp = e.entryType === 'expense';
+            return `<tr>
+                <td>${e.entryDate||'N/A'}</td>
+                <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;background:${isExp?'#fef2f2':'#f0fdf4'};color:${isExp?'#dc2626':'#16a34a'};">${isExp?'Expense':'Replenish'}</span></td>
+                <td>${e.voucherNo||'-'}</td>
+                <td>${e.category||'-'}</td>
+                <td>${e.description||'-'}</td>
+                <td>${e.paidTo||'-'}</td>
+                <td style="font-weight:700;color:${isExp?'#dc2626':'#16a34a'};">${isExp?'-':'+'} INR ${(parseFloat(e.amount)||0).toLocaleString()}</td>
+                <td>${e.createdBy||'N/A'}</td>
+                <td>${e.receiptUrl ? '<a href="'+e.receiptUrl+'" target="_blank" class="btn btn-outline btn-sm">Receipt</a>' : '-'}
+                    ${isAcct ? ' <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;font-size:0.7rem;" onclick="deletePettyCash(\''+e.id+'\')">Del</button>':''}
+                </td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="9" class="text-center">No entries this month.</td></tr>';
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Petty Cash Management</h2>
+                <div class="subtitle">Track petty cash fund, expenses, and replenishments for ${now.toLocaleString('default',{month:'long'})} ${now.getFullYear()}</div>
+                ${isAcct ? `<div style="display:flex;gap:0.75rem;margin-top:1rem;">
+                    <button class="btn btn-success" onclick="showAddPettyCashModal('expense')">+ Record Expense</button>
+                    <button class="btn btn-primary" onclick="showAddPettyCashModal('replenish')">+ Replenish Fund</button>
+                </div>` : ''}
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #2563eb;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#2563eb;">INR ${(fund.totalFund||0).toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Total Fund Allocated</div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid ${balColor};">
+                    <div style="font-size:1.4rem;font-weight:700;color:${balColor};">INR ${(fund.currentBalance||0).toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Current Balance</div>
+                    <div style="margin-top:0.5rem;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${balPct}%;background:${balColor};border-radius:3px;"></div>
+                    </div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #ef4444;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#ef4444;">INR ${monthTotal.toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Spent This Month</div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #10b981;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#10b981;">INR ${monthReplenish.toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Replenished This Month</div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #8b5cf6;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#8b5cf6;">${entries.length}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Entries This Month</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="padding:1rem 1.5rem;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;">Petty Cash Ledger</h3>
+                    <span style="font-size:0.8rem;color:#64748b;">${now.toLocaleString('default',{month:'long'})} ${now.getFullYear()}</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table"><thead><tr>
+                        <th>Date</th><th>Type</th><th>Voucher #</th><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Recorded By</th><th>Actions</th>
+                    </tr></thead><tbody>${rows}</tbody></table>
+                </div>
+            </div>`;
+    } catch(e) { main.innerHTML='<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    finally { hideLoading(); }
+}
+
+function showAddPettyCashModal(type) {
+    const isExpense = type === 'expense';
+    const headerBg = isExpense ? 'linear-gradient(135deg,#dc2626,#ef4444)' : 'linear-gradient(135deg,#059669,#10b981)';
+    const title = isExpense ? 'Record Petty Cash Expense' : 'Replenish Petty Cash Fund';
+    const subtitle = isExpense ? 'Enter expense details with voucher info' : 'Add funds to the petty cash box';
+
+    const categorySection = isExpense ? `
+        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category *</label>
+            <select id="pc_cat" class="form-control" required>
+                <option value="">-- Select --</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Travel & Conveyance">Travel & Conveyance</option>
+                <option value="Tea & Refreshments">Tea & Refreshments</option>
+                <option value="Stationery">Stationery</option>
+                <option value="Courier & Postage">Courier & Postage</option>
+                <option value="Printing & Xerox">Printing & Xerox</option>
+                <option value="Maintenance & Repairs">Maintenance & Repairs</option>
+                <option value="Cleaning & Housekeeping">Cleaning & Housekeeping</option>
+                <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+        </div>` : '<input type="hidden" id="pc_cat" value="Fund Replenishment">';
+
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:600px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:${headerBg};padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">${title}</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${subtitle}</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitPettyCash(event,'${type}')" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="pc_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount (INR) *</label><input id="pc_amt" class="form-control" type="number" step="0.01" required></div>
+                        ${categorySection}
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Voucher No.</label><input id="pc_voucher" class="form-control"></div>
+                    </div>
+                    ${isExpense ? `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="pc_paidTo" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Approved By</label><input id="pc_approvedBy" class="form-control"></div>
+                    </div>` : '<input type="hidden" id="pc_paidTo" value=""><input type="hidden" id="pc_approvedBy" value="">'}
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="pc_desc" class="form-control" placeholder="${isExpense ? 'What was purchased/paid for?' : 'Source of funds'}"></div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="pc_remarks" class="form-control"></div>
+                    <button type="submit" class="btn ${isExpense ? 'btn-danger' : 'btn-success'}" style="width:100%;padding:0.75rem;font-size:1rem;${isExpense?'background:#dc2626;border-color:#dc2626;':''}">${isExpense ? 'Record Expense' : 'Replenish Fund'}</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitPettyCash(e, type) {
+    e.preventDefault(); showLoading();
+    try {
+        const resp = await apiCall('petty-cash', { method: 'POST', body: JSON.stringify({
+            entryType: type,
+            entryDate: document.getElementById('pc_date').value,
+            amount: document.getElementById('pc_amt').value,
+            category: document.getElementById('pc_cat').value,
+            voucherNo: document.getElementById('pc_voucher').value,
+            paidTo: document.getElementById('pc_paidTo').value,
+            approvedBy: document.getElementById('pc_approvedBy').value,
+            description: document.getElementById('pc_desc').value,
+            remarks: document.getElementById('pc_remarks').value
+        })});
+        if (!resp.success) throw new Error(resp.error);
+        closeModal();
+        showNotification(type === 'expense' ? 'Expense recorded!' : 'Fund replenished!', 'success');
+        showPettyCash();
+    } catch(err) { alert('Error: ' + err.message); }
+    finally { hideLoading(); }
+}
+
+async function deletePettyCash(id) {
+    if (!confirm('Delete this petty cash entry? The balance will be reversed.')) return;
+    showLoading();
+    try {
+        const resp = await apiCall('petty-cash/' + id, { method: 'DELETE' });
+        if (!resp.success) throw new Error(resp.error);
+        showNotification('Entry deleted!', 'success');
+        showPettyCash();
+    } catch(err) { alert('Error: ' + err.message); }
+    finally { hideLoading(); }
 }
 
 // ============================================

@@ -8740,7 +8740,7 @@ async function showProjectDashboard() {
         const response = await apiCall('timesheets?action=executive_dashboard');
         if (!response.success) throw new Error(response.error || 'Failed to load project dashboard');
 
-        const { metrics, projects, sectionBreakdown, totalRevenueByCurrency, analytics } = response.data;
+        const { metrics, projects, sectionBreakdown, totalRevenueByCurrency, revenuePeriods, analytics } = response.data;
         const sb = sectionBreakdown || {};
         const trc = totalRevenueByCurrency || {};
 
@@ -8765,6 +8765,69 @@ async function showProjectDashboard() {
                 .map(([cur, val]) => `<div style="display: flex; justify-content: space-between;"><span style="font-weight: 600;">${currencySymbols[cur] || cur + ' '}</span><span>${fmt(val)}</span></div>`)
                 .join('') || '<div style="color: var(--text-light);">No revenue</div>';
         };
+
+        // Build period revenue table
+        function buildPeriodRevenueTable(periods, fmtFn, curSymbols) {
+            if (!periods || periods.length === 0) return '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No data available.</p>';
+            // Get all currencies that have any value
+            const allCurs = new Set();
+            periods.forEach(p => Object.entries(p.revenue || {}).forEach(([c, v]) => { if (v > 0) allCurs.add(c); }));
+            const currencies = ['USD', 'GBP', 'CAD', 'AUD'].filter(c => allCurs.has(c));
+            // Add other currencies
+            allCurs.forEach(c => { if (!currencies.includes(c)) currencies.push(c); });
+            if (currencies.length === 0) currencies.push('USD');
+
+            const curColors = { USD: '#10b981', GBP: '#6366f1', CAD: '#f59e0b', AUD: '#3b82f6' };
+
+            const headerCells = currencies.map(c => `<th style="text-align: right; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; border-bottom: 2px solid #e5e7eb;">${c}</th>`).join('');
+
+            const rows = periods.map(p => {
+                const rev = p.revenue || {};
+                const cells = currencies.map(c => {
+                    const val = rev[c] || 0;
+                    const col = curColors[c] || '#374151';
+                    const sym = curSymbols[c] || c + ' ';
+                    return `<td style="text-align: right; padding: 0.75rem 1rem; font-weight: ${val > 0 ? '700' : '400'}; color: ${val > 0 ? col : '#d1d5db'}; font-size: 0.95rem;">${val > 0 ? sym + fmtFn(val) : '-'}</td>`;
+                }).join('');
+                return `
+                    <tr style="border-bottom: 1px solid #f3f4f6;">
+                        <td style="padding: 0.75rem 1rem;">
+                            <div style="font-weight: 600; color: #111827;">${p.label}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-light);">${p.count} project${p.count !== 1 ? 's' : ''}</div>
+                        </td>
+                        ${cells}
+                    </tr>
+                `;
+            }).join('');
+
+            // Totals row
+            const totalCells = currencies.map(c => {
+                const total = periods.reduce((s, p) => s + ((p.revenue || {})[c] || 0), 0);
+                const col = curColors[c] || '#374151';
+                const sym = curSymbols[c] || c + ' ';
+                return `<td style="text-align: right; padding: 0.75rem 1rem; font-weight: 800; color: ${total > 0 ? col : '#d1d5db'}; font-size: 1rem; border-top: 2px solid #e5e7eb;">${total > 0 ? sym + fmtFn(total) : '-'}</td>`;
+            }).join('');
+
+            return `
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; border-bottom: 2px solid #e5e7eb;">Period</th>
+                                ${headerCells}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                            <tr style="background: #f8fafc;">
+                                <td style="padding: 0.75rem 1rem; font-weight: 800; color: #111827; border-top: 2px solid #e5e7eb;">Total</td>
+                                ${totalCells}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
 
         // Build section cards
         const sectionCardsHtml = ['Engineering', 'Rebar', 'Structural'].map(sec => {
@@ -8869,29 +8932,56 @@ async function showProjectDashboard() {
                 </div>
             </div>
 
-            <!-- Revenue by Currency -->
+            <!-- Revenue Analytics -->
             <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <h3 style="margin: 0 0 1rem 0;">Total Revenue by Currency</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem;">
-                    ${[['USD', '$', '#10b981'], ['GBP', '\u00A3', '#6366f1'], ['CAD', 'C$', '#f59e0b'], ['AUD', 'A$', '#3b82f6']].map(([cur, sym, col]) => {
-                        const val = trc[cur] || 0;
-                        return `
-                            <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid ${col};">
-                                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
-                                <div style="font-size: 1.6rem; font-weight: 700; color: ${col};">${sym}${fmt(val)}</div>
-                            </div>
-                        `;
-                    }).join('')}
-                    ${(() => {
-                        // Show any other currencies that aren't USD/GBP/CAD/AUD
-                        const otherCurs = Object.entries(trc).filter(([k]) => !['USD','GBP','CAD','AUD'].includes(k)).filter(([_,v]) => v > 0);
-                        return otherCurs.map(([cur, val]) => `
-                            <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid #6b7280;">
-                                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
-                                <div style="font-size: 1.6rem; font-weight: 700; color: #6b7280;">${cur} ${fmt(val)}</div>
-                            </div>
-                        `).join('');
-                    })()}
+                <!-- Period Tabs -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0;">Revenue Analytics</h3>
+                    <div style="display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid #d1d5db;">
+                        <button onclick="switchRevenuePeriod('total')" class="rev-tab rev-tab-active" style="padding: 0.5rem 1rem; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; background: var(--primary-blue); color: white;">Overall</button>
+                        <button onclick="switchRevenuePeriod('monthly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Monthly</button>
+                        <button onclick="switchRevenuePeriod('quarterly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Quarterly</button>
+                        <button onclick="switchRevenuePeriod('yearly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Yearly</button>
+                    </div>
+                </div>
+
+                <!-- Overall Revenue -->
+                <div id="revPanel-total" class="rev-panel">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem;">
+                        ${[['USD', '$', '#10b981'], ['GBP', '\u00A3', '#6366f1'], ['CAD', 'C$', '#f59e0b'], ['AUD', 'A$', '#3b82f6']].map(([cur, sym, col]) => {
+                            const val = trc[cur] || 0;
+                            return `
+                                <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid ${col};">
+                                    <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
+                                    <div style="font-size: 1.6rem; font-weight: 700; color: ${col};">${sym}${fmt(val)}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${(() => {
+                            const otherCurs = Object.entries(trc).filter(([k]) => !['USD','GBP','CAD','AUD'].includes(k)).filter(([_,v]) => v > 0);
+                            return otherCurs.map(([cur, val]) => `
+                                <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid #6b7280;">
+                                    <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
+                                    <div style="font-size: 1.6rem; font-weight: 700; color: #6b7280;">${cur} ${fmt(val)}</div>
+                                </div>
+                            `).join('');
+                        })()}
+                    </div>
+                </div>
+
+                <!-- Monthly Revenue -->
+                <div id="revPanel-monthly" class="rev-panel" style="display: none;">
+                    ${buildPeriodRevenueTable((revenuePeriods || {}).monthly || [], fmt, currencySymbols)}
+                </div>
+
+                <!-- Quarterly Revenue -->
+                <div id="revPanel-quarterly" class="rev-panel" style="display: none;">
+                    ${buildPeriodRevenueTable((revenuePeriods || {}).quarterly || [], fmt, currencySymbols)}
+                </div>
+
+                <!-- Yearly Revenue -->
+                <div id="revPanel-yearly" class="rev-panel" style="display: none;">
+                    ${buildPeriodRevenueTable((revenuePeriods || {}).yearly || [], fmt, currencySymbols)}
                 </div>
             </div>
 
@@ -9044,9 +9134,32 @@ function renderProjectDashboardCharts(sb) {
     }
 }
 
+/**
+ * Switch revenue period tab
+ */
+function switchRevenuePeriod(period) {
+    // Update tab styles
+    document.querySelectorAll('.rev-tab').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#374151';
+        btn.style.fontWeight = '500';
+        btn.classList.remove('rev-tab-active');
+    });
+    event.target.style.background = 'var(--primary-blue)';
+    event.target.style.color = 'white';
+    event.target.style.fontWeight = '600';
+    event.target.classList.add('rev-tab-active');
+
+    // Hide all panels, show selected
+    document.querySelectorAll('.rev-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById(`revPanel-${period}`);
+    if (panel) panel.style.display = 'block';
+}
+
 window.showProjectDashboard = showProjectDashboard;
 window.showExecutiveDashboard = showExecutiveDashboard;
 window.filterProjectDashboardTable = filterProjectDashboardTable;
+window.switchRevenuePeriod = switchRevenuePeriod;
 
 // ============================================
 // ADDITIONAL TIME REQUEST FUNCTIONALITY

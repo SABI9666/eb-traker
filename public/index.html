@@ -5261,6 +5261,7 @@ body.is-ios .nav-menu {
                                 <div class="role-btn" data-role="estimator">Estimator</div>
                                 <div class="role-btn" data-role="coo">COO</div>
                                 <div class="role-btn" data-role="director">Director</div>
+                                <div class="role-btn" data-role="design_lead">Design Lead</div>
                                 <div class="role-btn" data-role="designer">Designer</div>
                                 <div class="role-btn" data-role="document_controller">Doc Controller</div>
                                 <div class="role-btn" data-role="accounts">Accounts</div>
@@ -5451,6 +5452,10 @@ body.is-ios .nav-menu {
                         <span class="dept-chevron">▼</span>
                     </div>
                     <ul class="nav-dept-items">
+                        <li id="designLeadPortalNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignLeadPortal()" id="nav-design-lead-portal">
+                            <span class="nav-icon">🎯</span>Design Lead Portal</a>
+                        </li>
                         <li id="designerAllocationsNavItem" style="display: none;">
                             <a href="#" onclick="showDesignerAllocations()" id="nav-designer-alloc">
                             <span class="nav-icon">⏳</span>Project Allocations</a>
@@ -7115,6 +7120,7 @@ body.is-ios .nav-menu {
 
             // --- Role Checks ---
             const isDesigner = roleForCheck === 'designer';
+            const isDesignLead = roleForCheck === 'design_lead';
             const isManagement = ['coo', 'director'].includes(roleForCheck);
             const isBDM = roleForCheck === 'bdm';
             const isHR = roleForCheck === 'hr';
@@ -7126,6 +7132,7 @@ body.is-ios .nav-menu {
             console.log('==========================================');
             console.log('👤 roleForCheck:', roleForCheck);
             console.log('👤 isDesigner:', isDesigner);
+            console.log('👤 isDesignLead:', isDesignLead);
             console.log('👤 isManagement:', isManagement);
             console.log('👤 isBDM:', isBDM);
             console.log('👤 isHR:', isHR);
@@ -7155,6 +7162,7 @@ body.is-ios .nav-menu {
             console.log('📊 designerAnalyticsNavItem visibility set to:', isManagement || isHR);
             console.log('📊 isManagement:', isManagement, '| isHR:', isHR);
             console.log('📊 Menu element:', document.getElementById('designerAnalyticsNavItem'));
+            setDisplay('designLeadPortalNavItem', isDesignLead); // Design Lead Portal
             setDisplay('designerAllocationsNavItem', isDesigner); // SHOW New Menu
 
             setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR && !isDC);
@@ -7352,7 +7360,9 @@ showApp.retried = false;
  * Routes to the default view based on the user's role.
  */
 function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement) {
-    if (isDesigner) {
+    if (roleForCheck === 'design_lead') {
+        showDesignLeadPortal();
+    } else if (isDesigner) {
         showDesignerAllocations();
     } else if (isHR) {
         showHRDashboard();
@@ -12810,7 +12820,18 @@ function createProjectCard(project) {
                 <button onclick="viewProject('${project.id}')">View Details</button>
                 
                 ${(() => {
-                    // Only show allocation button if not fully allocated
+                    // Only Design Lead can assign designers (not COO/Director)
+                    if (currentUserRole !== 'design_lead') {
+                        if (isFullyAllocated) {
+                            return `<span style="color: #10b981; font-weight: 600; font-size: 0.85rem;">✅ Fully Allocated</span>`;
+                        } else if (isPartiallyAllocated) {
+                            return `<span style="color: #f59e0b; font-weight: 600; font-size: 0.85rem;">⏳ Partial (${totalAllocated}/${maxHours}h)</span>`;
+                        } else if (needsDesigners) {
+                            return `<span style="color: #6b7280; font-weight: 600; font-size: 0.85rem;">Awaiting Designer Assignment</span>`;
+                        }
+                        return '';
+                    }
+                    // Design Lead sees action buttons
                     if (isFullyAllocated) {
                         return `<button disabled style="background-color: #9ca3af; color: white; cursor: not-allowed;" title="Project fully allocated">
                             ✅ Fully Allocated
@@ -21436,6 +21457,263 @@ function closeContinueAllocationModal() {
     continueAllocationCounter = 0;
 }
 
+// ============================================
+// DESIGN LEAD PORTAL
+// ============================================
+
+async function showDesignLeadPortal() {
+    setActiveNav('nav-design-lead-portal');
+    const main = document.getElementById('mainContent');
+    main.innerHTML = '';
+    showLoading();
+
+    try {
+        const response = await apiCall('projects');
+        if (!response.success) throw new Error('Failed to fetch projects');
+
+        const allProjects = response.data;
+        // Filter projects where the current user is the design lead
+        const myProjects = allProjects.filter(p => p.designLeadUid === currentUser.uid);
+
+        // Stats
+        const totalProjects = myProjects.length;
+        const activeProjects = myProjects.filter(p => ['assigned', 'in_progress', 'active'].includes(p.status)).length;
+        const needsDesignerAssignment = myProjects.filter(p => !p.assignedDesigners || p.assignedDesigners.length === 0).length;
+        const completedProjects = myProjects.filter(p => p.status === 'completed').length;
+        const totalBudgetHours = myProjects.reduce((sum, p) => sum + (parseFloat(p.maxAllocatedHours) || 0), 0);
+        const totalAllocatedHrs = myProjects.reduce((sum, p) => sum + (parseFloat(p.totalAllocatedHours) || 0), 0);
+        const totalLoggedHrs = myProjects.reduce((sum, p) => sum + (parseFloat(p.hoursLogged) || 0), 0);
+
+        // Build project cards
+        let projectCardsHtml = '';
+        if (myProjects.length === 0) {
+            projectCardsHtml = `
+                <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                    <h3>No Projects Assigned Yet</h3>
+                    <p>Projects allocated to you by COO/Director will appear here.</p>
+                </div>
+            `;
+        } else {
+            projectCardsHtml = myProjects.map(project => {
+                const maxHours = parseFloat(project.maxAllocatedHours) || 0;
+                const additionalHours = parseFloat(project.additionalHours) || 0;
+                const totalAvailable = maxHours + additionalHours;
+                const totalAllocated = parseFloat(project.totalAllocatedHours) || 0;
+                const hoursLogged = parseFloat(project.hoursLogged) || 0;
+                const remainingBudget = totalAvailable - hoursLogged;
+                const remainingToAllocate = totalAvailable - totalAllocated;
+
+                const isFullyAllocated = totalAvailable > 0 && totalAllocated >= totalAvailable;
+                const isPartiallyAllocated = totalAvailable > 0 && totalAllocated > 0 && totalAllocated < totalAvailable;
+                const needsDesigners = !project.assignedDesigners || project.assignedDesigners.length === 0;
+
+                // Status color
+                let statusColor = '#6b7280';
+                if (project.status === 'in_progress' || project.status === 'active') statusColor = '#3b82f6';
+                else if (project.status === 'assigned') statusColor = '#f59e0b';
+                else if (project.status === 'completed') statusColor = '#10b981';
+
+                // Allocation badge
+                let allocationBadge = '';
+                if (isFullyAllocated) {
+                    allocationBadge = `<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Fully Allocated</span>`;
+                } else if (isPartiallyAllocated) {
+                    allocationBadge = `<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Partial: ${totalAllocated}/${totalAvailable}h</span>`;
+                } else if (needsDesigners) {
+                    allocationBadge = `<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Needs Designers</span>`;
+                }
+
+                // Designer names
+                const designerNames = project.assignedDesignerNames?.join(', ') || 'None assigned';
+
+                // Assign button
+                let assignBtn = '';
+                if (isFullyAllocated) {
+                    assignBtn = `<button disabled style="background: #9ca3af; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: not-allowed; font-size: 0.85rem;">✅ Fully Allocated</button>`;
+                } else if (isPartiallyAllocated) {
+                    assignBtn = `<button onclick="assignDesigners('${project.id}')" style="background: #f59e0b; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">⏳ Allocate Remaining ${remainingToAllocate.toFixed(1)}h</button>`;
+                } else {
+                    assignBtn = `<button onclick="assignDesigners('${project.id}')" style="background: var(--primary-blue); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">➕ Assign Designers</button>`;
+                }
+
+                return `
+                    <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">${project.projectName}</h3>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">
+                                    <strong>Project #:</strong> ${project.projectCode || 'N/A'} &nbsp;|&nbsp;
+                                    <strong>Client:</strong> ${project.clientCompany || 'N/A'}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                ${allocationBadge}
+                                <span style="background: ${statusColor}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize;">${(project.status || '').replace(/_/g, ' ')}</span>
+                            </div>
+                        </div>
+
+                        <!-- Project Details Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Budget Hours</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-blue);">${maxHours}h</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Additional</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #f59e0b;">${additionalHours}h</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Total Available</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${totalAvailable}h</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Allocated</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: ${totalAllocated > 0 ? '#f59e0b' : '#6b7280'};">${totalAllocated}h</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Hours Logged</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: ${hoursLogged > 0 ? '#8b5cf6' : '#6b7280'};">${hoursLogged.toFixed(1)}h</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Remaining</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: ${remainingBudget > 0 ? 'var(--success)' : 'var(--danger)'};">${remainingBudget.toFixed(1)}h</div>
+                            </div>
+                        </div>
+
+                        <!-- Designer Info -->
+                        <div style="margin-bottom: 1rem; padding: 0.75rem; background: ${needsDesigners ? '#fef2f2' : '#f0fdf4'}; border-radius: 8px; border-left: 4px solid ${needsDesigners ? '#ef4444' : '#10b981'};">
+                            <strong style="font-size: 0.85rem;">Designers:</strong>
+                            <span style="font-size: 0.85rem;">${designerNames}</span>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            ${assignBtn}
+                            <button onclick="viewProject('${project.id}')" style="background: #6b7280; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View Details</button>
+                            <button onclick="viewBDMFiles('${project.id}', '${project.proposalId}')" style="background: #8b5cf6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View BDM Files</button>
+                            ${project.status !== 'completed' ? `
+                                <button onclick="showAddVariationModal('${project.id}', '${project.projectCode}', '${project.projectName}')" style="background: var(--warning); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">➕ Add Variation</button>
+                                <button onclick="markProjectComplete('${project.id}')" style="background: var(--success); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">✅ Mark Complete</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Design Lead Portal</h2>
+                <div class="subtitle">Manage your assigned projects and design team allocations</div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">${totalProjects}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Total Projects</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;">${activeProjects}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Active</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #ef4444;">${needsDesignerAssignment}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Needs Designers</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #10b981;">${completedProjects}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Completed</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">${totalBudgetHours}h</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Total Budget</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">${totalLoggedHrs.toFixed(1)}h</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Hours Logged</div>
+                </div>
+            </div>
+
+            <!-- Filter Buttons -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <button onclick="filterDesignLeadProjects('all')" class="btn btn-sm" id="dlFilterAll" style="background: var(--primary-blue); color: white; border: none; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600;">All (${totalProjects})</button>
+                <button onclick="filterDesignLeadProjects('needs_designers')" class="btn btn-sm" id="dlFilterNeeds" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer;">Needs Designers (${needsDesignerAssignment})</button>
+                <button onclick="filterDesignLeadProjects('active')" class="btn btn-sm" id="dlFilterActive" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer;">Active (${activeProjects})</button>
+                <button onclick="filterDesignLeadProjects('completed')" class="btn btn-sm" id="dlFilterCompleted" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer;">Completed (${completedProjects})</button>
+            </div>
+
+            <!-- Project Cards -->
+            <div id="designLeadProjectsList">
+                ${projectCardsHtml}
+            </div>
+        `;
+
+        // Store projects data for filtering
+        window._designLeadProjects = myProjects;
+
+    } catch (error) {
+        console.error('Error loading Design Lead Portal:', error);
+        main.innerHTML = `<div class="error-message"><h3>Error Loading Portal</h3><p>${error.message}</p></div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+// Filter function for Design Lead Portal
+function filterDesignLeadProjects(filter) {
+    const projects = window._designLeadProjects || [];
+    const container = document.getElementById('designLeadProjectsList');
+    if (!container) return;
+
+    // Update filter button styles
+    ['dlFilterAll', 'dlFilterNeeds', 'dlFilterActive', 'dlFilterCompleted'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.style.background = '#f3f4f6';
+            btn.style.color = '#374151';
+            btn.style.border = '1px solid #d1d5db';
+        }
+    });
+
+    let activeBtn;
+    if (filter === 'all') activeBtn = document.getElementById('dlFilterAll');
+    else if (filter === 'needs_designers') activeBtn = document.getElementById('dlFilterNeeds');
+    else if (filter === 'active') activeBtn = document.getElementById('dlFilterActive');
+    else if (filter === 'completed') activeBtn = document.getElementById('dlFilterCompleted');
+
+    if (activeBtn) {
+        activeBtn.style.background = 'var(--primary-blue)';
+        activeBtn.style.color = 'white';
+        activeBtn.style.border = 'none';
+    }
+
+    // Filter projects
+    let filtered = projects;
+    if (filter === 'needs_designers') {
+        filtered = projects.filter(p => !p.assignedDesigners || p.assignedDesigners.length === 0);
+    } else if (filter === 'active') {
+        filtered = projects.filter(p => ['assigned', 'in_progress', 'active'].includes(p.status));
+    } else if (filter === 'completed') {
+        filtered = projects.filter(p => p.status === 'completed');
+    }
+
+    // Hide/show project cards
+    const cards = container.children;
+    let visibleIndex = 0;
+    for (let i = 0; i < projects.length; i++) {
+        if (cards[i]) {
+            const isVisible = filtered.includes(projects[i]);
+            cards[i].style.display = isVisible ? 'block' : 'none';
+        }
+    }
+}
+
+// Register globally
+window.showDesignLeadPortal = showDesignLeadPortal;
+window.filterDesignLeadProjects = filterDesignLeadProjects;
+
 // ============================================================================
 // REPLACE THE EXISTING showAllocateProjectModal FUNCTION WITH THIS:
 // Find the function around line 9137 and replace it with this version
@@ -21840,14 +22118,14 @@ async function showAllocateProjectModal(projectId) {
                     closeDesignerAssignmentModal();
                     
                     // Reload appropriate view based on user role
-                    if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                        if (typeof showProjects === 'function') {
+                    if (currentUserRole === 'design_lead') {
+                        if (typeof showDesignLeadPortal === 'function') {
+                            showDesignLeadPortal();
+                        } else if (typeof showProjects === 'function') {
                             showProjects();
                         }
-                    } else if (currentUserRole === 'design_lead') {
-                        if (typeof showDesignLeadDashboard === 'function') {
-                            showDesignLeadDashboard();
-                        } else if (typeof showProjects === 'function') {
+                    } else if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                        if (typeof showProjects === 'function') {
                             showProjects();
                         }
                     } else {
@@ -22595,11 +22873,13 @@ async function submitProposalAllocation() {
         if (typeof markProposalLost !== 'undefined') window.markProposalLost = markProposalLost;
         if (typeof filterProposals !== 'undefined') window.filterProposals = filterProposals;
         
-        // Project functions  
+        // Project functions
         if (typeof showProjectAllocationModal !== 'undefined') window.showProjectAllocationModal = showProjectAllocationModal;
         if (typeof showProposals !== 'undefined') window.showProposals = showProposals;
         if (typeof showProjects !== 'undefined') window.showProjects = showProjects;
         if (typeof filterProjects !== 'undefined') window.filterProjects = filterProjects;
+        if (typeof showDesignLeadPortal !== 'undefined') window.showDesignLeadPortal = showDesignLeadPortal;
+        if (typeof filterDesignLeadProjects !== 'undefined') window.filterDesignLeadProjects = filterDesignLeadProjects;
         
         // File functions
         if (typeof downloadFile !== 'undefined') window.downloadFile = downloadFile;

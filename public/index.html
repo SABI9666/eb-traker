@@ -5392,8 +5392,8 @@ body.is-ios .nav-menu {
                             <span class="nav-icon">🏗️</span>Projects</a>
                         </li>
                         <li id="executiveMonitoringNavItem" style="display: none;">
-                            <a href="#" onclick="showExecutiveDashboard()">
-                            <span class="nav-icon">📊</span>Executive Dashboard</a>
+                            <a href="#" onclick="showProjectDashboard()" id="nav-project-dashboard">
+                            <span class="nav-icon">📊</span>Project Dashboard</a>
                         </li>
                         <li id="timeRequestsNavItem" style="display: none;">
                             <a href="#" onclick="showCOOTimeRequests()" id="nav-time-requests">
@@ -8727,321 +8727,273 @@ function filterCOOProposals(filterType) {
 /**
  * Show Executive Timesheet Dashboard (COO/Director only)
  */
-async function showExecutiveDashboard() {
+// ============================================
+// PROJECT DASHBOARD (COO/Director)
+// Replaces old Executive Dashboard
+// ============================================
+
+async function showProjectDashboard() {
+    setActiveNav('nav-project-dashboard');
     try {
         showLoading();
-        
-        // Fetch executive dashboard data
+
         const response = await apiCall('timesheets?action=executive_dashboard');
-        
-        if (!response.success) {
-            throw new Error(response.error || 'Failed to load executive dashboard');
-        }
-        
-        const { metrics, projects, designers, analytics } = response.data;
-        
-        // Build the dashboard HTML
-        const dashboardHtml = `
-            <div class="page-header">
-                <h2>📊 Executive Timesheet Monitoring</h2>
-                <p class="subtitle">Comprehensive overview of project timelines and resource utilization</p>
-            </div>
-            
-            <!-- Main Metrics -->
-            <div class="dashboard-stats">
-                <div class="stat-card">
-                    <div class="stat-number">${metrics.totalProjects}</div>
-                    <div class="stat-label">Total Projects</div>
+        if (!response.success) throw new Error(response.error || 'Failed to load project dashboard');
+
+        const { metrics, projects, sectionBreakdown, analytics } = response.data;
+        const sb = sectionBreakdown || {};
+
+        // Section colors
+        const sectionColors = { Engineering: '#3b82f6', Rebar: '#f59e0b', Structural: '#10b981', Unassigned: '#6b7280' };
+
+        // Format currency
+        const fmt = (val) => {
+            if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
+            if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+            return val.toFixed(0);
+        };
+
+        // Build section cards
+        const sectionCardsHtml = ['Engineering', 'Rebar', 'Structural'].map(sec => {
+            const d = sb[sec] || { count: 0, revenue: 0, hoursAllocated: 0, hoursLogged: 0 };
+            const color = sectionColors[sec];
+            const utilPct = d.hoursAllocated > 0 ? ((d.hoursLogged / d.hoursAllocated) * 100).toFixed(0) : 0;
+            return `
+                <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); border-top: 4px solid ${color}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; color: ${color};">${sec}</h3>
+                        <span style="background: ${color}; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">${d.count} Projects</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase;">Revenue</div>
+                            <div style="font-size: 1.4rem; font-weight: 700; color: ${color};">AED ${fmt(d.revenue)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase;">Hours Used</div>
+                            <div style="font-size: 1.4rem; font-weight: 700; color: ${color};">${d.hoursLogged.toFixed(0)}h / ${d.hoursAllocated.toFixed(0)}h</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; background: #f3f4f6; border-radius: 8px; height: 8px; overflow: hidden;">
+                        <div style="background: ${color}; height: 100%; width: ${Math.min(utilPct, 100)}%; border-radius: 8px; transition: width 0.5s;"></div>
+                    </div>
+                    <div style="text-align: right; font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">${utilPct}% utilized</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">${metrics.projectsWithTimeline}</div>
-                    <div class="stat-label">Projects with Timeline</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${typeof metrics.averageHoursPerProject === 'number' ? metrics.averageHoursPerProject.toFixed(2) : metrics.averageHoursPerProject}h</div>
-                    <div class="stat-label">Average Hours per Project</div>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--danger);">
-                    <div class="stat-number" style="color: var(--danger);">${metrics.projectsAboveTimeline}</div>
-                    <div class="stat-label">Projects Above Timeline</div>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--warning);">
-                    <div class="stat-number" style="color: var(--warning);">${metrics.totalExceededHours}h</div>
-                    <div class="stat-label">Time Spent (Exceeded Projects)</div>
-                </div>
-            </div>
-            
-            <!-- Section Tabs -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="auth-tabs">
-                    <button class="auth-tab active" onclick="showExecutiveSection('projects')">Active Projects</button>
-                    <button class="auth-tab" onclick="showExecutiveSection('designers')">Total Designers</button>
-                    <button class="auth-tab" onclick="showExecutiveSection('analytics')">Analytics</button>
-                </div>
-            </div>
-            
-            <!-- Section: Active Projects -->
-            <div id="executive-section-projects" class="executive-section">
-                ${renderExecutiveProjectsTable(projects)}
-            </div>
-            
-            <!-- Section: Designers -->
-            <div id="executive-section-designers" class="executive-section" style="display: none;">
-                ${renderExecutiveDesignersTable(designers)}
-            </div>
-            
-            <!-- Section: Analytics -->
-            <div id="executive-section-analytics" class="executive-section" style="display: none;">
-                ${renderExecutiveAnalytics(analytics)}
+            `;
+        }).join('');
+
+        // Unassigned count
+        const unassigned = sb['Unassigned'] || { count: 0 };
+
+        // Build project table rows with designer details
+        const projectRowsHtml = projects.map(p => {
+            const secColor = sectionColors[p.projectSection] || '#6b7280';
+            const statusClass = p.isExceeded ? 'danger' : (p.percentageUsed > 80 ? 'warning' : 'success');
+            const pctUsed = (p.percentageUsed || 0).toFixed(0);
+
+            // Designer hours detail
+            const designerDetail = (p.designerHoursDetail || []);
+            const designerHtml = designerDetail.length > 0
+                ? designerDetail.map(d => `<span style="display: inline-block; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin: 1px;">${d.name}: <strong>${d.hours.toFixed(1)}h</strong></span>`).join(' ')
+                : '<span style="font-size: 0.75rem; color: var(--text-light);">No hours logged</span>';
+
+            return `
+                <tr>
+                    <td>
+                        <strong>${p.projectName}</strong><br>
+                        <small style="color: var(--text-light);">${p.projectCode || ''} ${p.clientCompany ? '| ' + p.clientCompany : ''}</small>
+                    </td>
+                    <td><span style="background: ${secColor}; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600;">${p.projectSection || 'N/A'}</span></td>
+                    <td>
+                        <strong>${(p.hoursLogged || 0).toFixed(1)}h</strong> / ${p.allocatedHours || 0}h
+                        <div style="background: #f3f4f6; border-radius: 4px; height: 6px; margin-top: 4px; overflow: hidden;">
+                            <div style="background: var(--${statusClass}); height: 100%; width: ${Math.min(pctUsed, 100)}%; border-radius: 4px;"></div>
+                        </div>
+                    </td>
+                    <td>${p.designLeadName || '<span style="color:#9ca3af;">Not Assigned</span>'}</td>
+                    <td>${designerHtml}</td>
+                    <td><span class="badge badge-info" style="font-size: 0.7rem;">${(p.status || '').replace(/_/g, ' ')}</span></td>
+                </tr>
+            `;
+        }).join('');
+
+        // Section filter buttons for project table
+        const sectionFilterHtml = `
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <button onclick="filterProjectDashboardTable('all')" class="pd-filter-btn pd-filter-active" style="background: var(--primary-blue); color: white; border: none; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">All (${metrics.totalProjects})</button>
+                <button onclick="filterProjectDashboardTable('Engineering')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Engineering (${(sb.Engineering||{count:0}).count})</button>
+                <button onclick="filterProjectDashboardTable('Rebar')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Rebar (${(sb.Rebar||{count:0}).count})</button>
+                <button onclick="filterProjectDashboardTable('Structural')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Structural (${(sb.Structural||{count:0}).count})</button>
+                ${unassigned.count > 0 ? `<button onclick="filterProjectDashboardTable('Unassigned')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Unassigned (${unassigned.count})</button>` : ''}
             </div>
         `;
-        
+
+        const dashboardHtml = `
+            <div class="page-header">
+                <h2>Project Dashboard</h2>
+                <p class="subtitle">Overview of all projects by section with revenue and designer hours</p>
+            </div>
+
+            <!-- Top Metrics -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">${metrics.totalProjects}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Total Projects</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #10b981;">AED ${fmt(metrics.totalRevenue || 0)}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Total Revenue</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">${(metrics.totalLoggedHours || 0).toFixed(0)}h</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Hours Logged</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #f59e0b;">${(metrics.totalAllocatedHours || 0).toFixed(0)}h</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Hours Allocated</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">${metrics.projectsAboveTimeline}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Exceeded Timeline</div>
+                </div>
+            </div>
+
+            <!-- Section Breakdown Cards -->
+            <h3 style="margin-bottom: 1rem;">Section Breakdown</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                ${sectionCardsHtml}
+            </div>
+
+            <!-- Projects Table -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem;">All Projects - Hours & Designer Details</h3>
+                ${sectionFilterHtml}
+                <div style="overflow-x: auto;">
+                    <table class="data-table" id="projectDashboardTable">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Section</th>
+                                <th>Hours Progress</th>
+                                <th>Design Lead</th>
+                                <th>Designer Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${projectRowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Section Revenue Chart -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem;">Revenue by Section</h3>
+                    <canvas id="sectionRevenueChart" width="400" height="300"></canvas>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem;">Projects by Section</h3>
+                    <canvas id="sectionProjectsChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        `;
+
         document.getElementById('mainContent').innerHTML = dashboardHtml;
-        
-        // Initialize charts if analytics section is visible
+
+        // Store projects for filtering
+        window._pdProjects = projects;
+
+        // Render charts
         setTimeout(() => {
-            if (document.getElementById('executive-section-analytics').style.display !== 'none') {
-                renderExecutiveCharts(analytics);
-            }
-        }, 100);
-        
+            renderProjectDashboardCharts(sb);
+        }, 200);
+
     } catch (error) {
-        console.error('Error loading executive dashboard:', error);
-        alert(`Error: ${error.message}`);
+        console.error('Error loading project dashboard:', error);
+        document.getElementById('mainContent').innerHTML = `<div class="error-message"><h3>Error</h3><p>${error.message}</p></div>`;
     } finally {
         hideLoading();
     }
 }
 
-/**
- * Render Active Projects Table
- */
-function renderExecutiveProjectsTable(projects) {
-    if (projects.length === 0) {
-        return '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-light);">No active projects found.</div>';
-    }
-    
-    const projectsHtml = projects.map(p => {
-        const statusClass = p.isExceeded ? 'danger' : (p.percentageUsed > 80 ? 'warning' : 'success');
-        const statusBadge = p.isExceeded 
-            ? `<span class="badge badge-danger">Exceeded by ${p.exceededBy.toFixed(1)}h</span>`
-            : (p.allocatedHours > 0 
-                ? `<span class="badge badge-${statusClass}">${p.percentageUsed}% Used</span>`
-                : '<span class="badge badge-secondary">No Timeline</span>');
-        
-        return `
-            <tr>
-                <td>
-                    <strong>${p.projectName}</strong><br>
-                    <small>${p.projectCode} • ${p.clientCompany}</small>
-                </td>
-                <td><strong>${p.hoursLogged.toFixed(1)}h</strong> / ${p.allocatedHours}h</td>
-                <td>
-                    <div class="progress-bar">
-                        <div class="progress-fill progress-${statusClass}" 
-                             style="width: ${Math.min(p.percentageUsed, 100)}%"></div>
-                    </div>
-                </td>
-                <td>${statusBadge}</td>
-                <td>${p.designLeadName || 'Not Assigned'}</td>
-                <td><span class="badge badge-info">${p.status.replace('_', ' ')}</span></td>
-            </tr>
-        `;
-    }).join('');
-    
-    return `
-        <div class="card">
-            <h3 style="margin-bottom: 1.5rem;">Active Projects Overview</h3>
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Project</th>
-                            <th>Hours</th>
-                            <th>Progress</th>
-                            <th>Status</th>
-                            <th>Design Lead</th>
-                            <th>Project Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${projectsHtml}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
+// Alias for backward compatibility
+function showExecutiveDashboard() { showProjectDashboard(); }
 
 /**
- * Render Designers Table
+ * Filter project dashboard table by section
  */
-function renderExecutiveDesignersTable(designers) {
-    if (designers.length === 0) {
-        return '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-light);">No designers found.</div>';
-    }
-    
-    const designersHtml = designers.map(d => `
-        <tr>
-            <td><strong>${d.name}</strong><br><small>${d.email}</small></td>
-            <td><strong>${d.totalHours.toFixed(1)}h</strong></td>
-            <td>${d.projectsWorkedOn}</td>
-            <td>${(d.totalHours / d.projectsWorkedOn).toFixed(1)}h</td>
-        </tr>
-    `).join('');
-    
-    return `
-        <div class="card">
-            <h3 style="margin-bottom: 1.5rem;">Designer Performance</h3>
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Designer</th>
-                            <th>Total Hours</th>
-                            <th>Projects Worked On</th>
-                            <th>Avg Hours/Project</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${designersHtml}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
+function filterProjectDashboardTable(section) {
+    // Update button styles
+    document.querySelectorAll('.pd-filter-btn').forEach(btn => {
+        btn.style.background = '#f3f4f6';
+        btn.style.color = '#374151';
+        btn.style.border = '1px solid #d1d5db';
+        btn.classList.remove('pd-filter-active');
+    });
+    event.target.style.background = 'var(--primary-blue)';
+    event.target.style.color = 'white';
+    event.target.style.border = 'none';
+    event.target.classList.add('pd-filter-active');
 
-/**
- * Render Analytics Section with Charts
- */
-function renderExecutiveAnalytics(analytics) {
-    return `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-            <!-- Exceeded Projects -->
-            <div class="card">
-                <h3 style="margin-bottom: 1rem; color: var(--danger);">⚠️ Exceeded Projects (${analytics.exceededProjects.length})</h3>
-                ${renderExceededProjectsList(analytics.exceededProjects)}
-            </div>
-            
-            <!-- Within Timeline -->
-            <div class="card">
-                <h3 style="margin-bottom: 1rem; color: var(--success);">✓ Projects Within Timeline (${analytics.withinTimelineProjects.length})</h3>
-                ${renderWithinTimelineList(analytics.withinTimelineProjects)}
-            </div>
-        </div>
-        
-        <!-- Charts -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-            <div class="card">
-                <h3 style="margin-bottom: 1.5rem;">Project Status Distribution</h3>
-                <canvas id="projectStatusPieChart" width="400" height="400"></canvas>
-            </div>
-            
-            <div class="card">
-                <h3 style="margin-bottom: 1.5rem;">Designer Workload</h3>
-                <canvas id="designerWorkloadBarChart" width="400" height="400"></canvas>
-            </div>
-        </div>
-    `;
-}
+    const table = document.getElementById('projectDashboardTable');
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    const projects = window._pdProjects || [];
 
-function renderExceededProjectsList(projects) {
-    if (projects.length === 0) {
-        return '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No projects have exceeded their timeline. Great work!</p>';
-    }
-    
-    return `
-        <div style="max-height: 400px; overflow-y: auto;">
-            ${projects.map(p => `
-                <div style="padding: 1rem; border-bottom: 1px solid var(--border);">
-                    <strong>${p.projectName}</strong>
-                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-                        <span style="color: var(--text-light);">${p.hoursLogged.toFixed(1)}h / ${p.allocatedHours}h</span>
-                        <span style="color: var(--danger); font-weight: 600;">+${p.exceededBy.toFixed(1)}h over</span>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-function renderWithinTimelineList(projects) {
-    if (projects.length === 0) {
-        return '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No projects within timeline currently.</p>';
-    }
-    
-    return `
-        <div style="max-height: 400px; overflow-y: auto;">
-            ${projects.map(p => `
-                <div style="padding: 1rem; border-bottom: 1px solid var(--border);">
-                    <strong>${p.projectName}</strong>
-                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-                        <span style="color: var(--text-light);">${p.hoursLogged.toFixed(1)}h / ${p.allocatedHours}h</span>
-                        <span style="color: var(--success); font-weight: 600;">${p.percentageUsed}% used</span>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-/**
- * Switch between executive dashboard sections
- */
-function showExecutiveSection(section) {
-    // Update tab active states
-    document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    // Hide all sections
-    document.querySelectorAll('.executive-section').forEach(sec => sec.style.display = 'none');
-    
-    // Show selected section
-    const selectedSection = document.getElementById(`executive-section-${section}`);
-    if (selectedSection) {
-        selectedSection.style.display = 'block';
-        
-        // Render charts when analytics section is shown
-        if (section === 'analytics') {
-            // Re-fetch data to render charts
-            apiCall('timesheets?action=executive_dashboard').then(response => {
-                if (response.success) {
-                    renderExecutiveCharts(response.data.analytics);
-                }
-            });
+    rows.forEach((row, i) => {
+        if (section === 'all') {
+            row.style.display = '';
+        } else {
+            const p = projects[i];
+            const pSection = p ? (p.projectSection || 'Unassigned') : '';
+            row.style.display = pSection === section ? '' : 'none';
         }
-    }
+    });
 }
 
 /**
- * Render Charts using Chart.js (make sure Chart.js is included in your HTML)
+ * Render section charts
  */
-function renderExecutiveCharts(analytics) {
-    // Pie Chart - Project Status Distribution
-    const pieCtx = document.getElementById('projectStatusPieChart');
-    if (pieCtx) {
-        const statusData = analytics.projectStatusDistribution || {};
-        const labels = Object.keys(statusData);
-        const data = Object.values(statusData);
-        
-        // Define colors for statuses
-        const statusColors = {
-            'assigned': '#ddd6fe',
-            'in_progress': '#bfdbfe',
-            'completed': '#bbf7d0',
-            'pending_setup': '#fef3c7',
-            'unknown': '#f3f4f6'
-        };
+function renderProjectDashboardCharts(sb) {
+    const sections = ['Engineering', 'Rebar', 'Structural'];
+    const colors = ['#3b82f6', '#f59e0b', '#10b981'];
 
-        // --- FIX 1: The 'new Chart' constructor was added here ---
-        new Chart(pieCtx, {
+    // Revenue chart
+    const revCtx = document.getElementById('sectionRevenueChart');
+    if (revCtx && typeof Chart !== 'undefined') {
+        new Chart(revCtx, {
+            type: 'bar',
+            data: {
+                labels: sections,
+                datasets: [{
+                    label: 'Revenue (AED)',
+                    data: sections.map(s => (sb[s] || { revenue: 0 }).revenue),
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: { y: { beginAtZero: true, ticks: { callback: v => 'AED ' + (v >= 1000000 ? (v/1000000).toFixed(1) + 'M' : v >= 1000 ? (v/1000).toFixed(0) + 'K' : v) } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // Projects count chart
+    const projCtx = document.getElementById('sectionProjectsChart');
+    if (projCtx && typeof Chart !== 'undefined') {
+        new Chart(projCtx, {
             type: 'doughnut',
             data: {
-                labels: labels.map(l => l.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())),
+                labels: sections,
                 datasets: [{
-                    data: data,
-                    backgroundColor: labels.map(l => statusColors[l] || '#' + Math.floor(Math.random()*16777215).toString(16)), // Random fallback
+                    data: sections.map(s => (sb[s] || { count: 0 }).count),
+                    backgroundColor: colors,
                     borderWidth: 2,
                     borderColor: '#fff'
                 }]
@@ -9049,54 +9001,15 @@ function renderExecutiveCharts(analytics) {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
-    
-    // Bar Chart - Designer Workload
-    const barCtx = document.getElementById('designerWorkloadBarChart');
-    if (barCtx) {
-        const designerData = analytics.designerDuration.slice(0, 10); // Top 10 designers
-        
-        // --- FIX 2: This section is now a 'bar' chart using 'barCtx' and 'designerData' ---
-        new Chart(barCtx, {
-            type: 'bar', // Changed from 'doughnut'
-            data: {
-                labels: designerData.map(d => d.name), // Uses designerData
-                datasets: [{
-                    label: 'Total Hours', // Added a label
-                    data: designerData.map(d => d.totalHours), // Uses designerData
-                    backgroundColor: '#00BFFF', // Bar color
-                    borderColor: '#0099CC',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Hours'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false // No legend needed for a single-dataset bar chart
-                    }
-                }
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
 }
+
+window.showProjectDashboard = showProjectDashboard;
+window.showExecutiveDashboard = showExecutiveDashboard;
+window.filterProjectDashboardTable = filterProjectDashboardTable;
 
 // ============================================
 // ADDITIONAL TIME REQUEST FUNCTIONALITY
@@ -22949,6 +22862,8 @@ async function submitProposalAllocation() {
         
         // Dashboard functions
         if (typeof showExecutiveDashboard !== 'undefined') window.showExecutiveDashboard = showExecutiveDashboard;
+        if (typeof showProjectDashboard !== 'undefined') window.showProjectDashboard = showProjectDashboard;
+        if (typeof filterProjectDashboardTable !== 'undefined') window.filterProjectDashboardTable = filterProjectDashboardTable;
         if (typeof showExecutiveSection !== 'undefined') window.showExecutiveSection = showExecutiveSection;
         if (typeof switchExecutiveTab !== 'undefined') window.switchExecutiveTab = switchExecutiveTab;
         

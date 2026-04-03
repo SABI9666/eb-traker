@@ -15864,8 +15864,9 @@ async function showPettyCash() {
                 <td>${e.paidTo||'-'}</td>
                 <td style="font-weight:700;color:${isExp?'#dc2626':'#16a34a'};">${isExp?'-':'+'} INR ${(parseFloat(e.amount)||0).toLocaleString()}</td>
                 <td>${e.createdBy||'N/A'}</td>
-                <td>${e.receiptUrl ? '<a href="'+e.receiptUrl+'" target="_blank" class="btn btn-outline btn-sm">Receipt</a>' : '-'}
-                    ${isAcct ? ' <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;font-size:0.7rem;" onclick="deletePettyCash(\''+e.id+'\')">Del</button>':''}
+                <td style="white-space:nowrap;">
+                    ${e.receiptUrl ? '<a href="'+e.receiptUrl+'" target="_blank" class="btn btn-outline btn-sm">Receipt</a> ' : ''}
+                    ${isAcct ? '<button class="btn btn-primary btn-sm" onclick="showEditPettyCashModal(\''+e.id+'\')">Edit</button> <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;font-size:0.7rem;" onclick="deletePettyCash(\''+e.id+'\')">Del</button>':''}
                 </td>
             </tr>`;
         }).join('') : '<tr><td colspan="9" class="text-center">No entries this month.</td></tr>';
@@ -15963,6 +15964,7 @@ function showAddPettyCashModal(type) {
                         <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Approved By</label><input id="pc_approvedBy" class="form-control"></div>
                     </div>` : '<input type="hidden" id="pc_paidTo" value=""><input type="hidden" id="pc_approvedBy" value="">'}
                     <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="pc_desc" class="form-control" placeholder="${isExpense ? 'What was purchased/paid for?' : 'Source of funds'}"></div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload Receipt (Image/PDF)</label><input id="pc_receipt" type="file" accept="image/*,.pdf" class="form-control"></div>
                     <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="pc_remarks" class="form-control"></div>
                     <button type="submit" class="btn ${isExpense ? 'btn-danger' : 'btn-success'}" style="width:100%;padding:0.75rem;font-size:1rem;${isExpense?'background:#dc2626;border-color:#dc2626;':''}">${isExpense ? 'Record Expense' : 'Replenish Fund'}</button>
                 </form>
@@ -15974,7 +15976,7 @@ function showAddPettyCashModal(type) {
 async function submitPettyCash(e, type) {
     e.preventDefault(); showLoading();
     try {
-        const resp = await apiCall('petty-cash', { method: 'POST', body: JSON.stringify({
+        const body = {
             entryType: type,
             entryDate: document.getElementById('pc_date').value,
             amount: document.getElementById('pc_amt').value,
@@ -15984,12 +15986,90 @@ async function submitPettyCash(e, type) {
             approvedBy: document.getElementById('pc_approvedBy').value,
             description: document.getElementById('pc_desc').value,
             remarks: document.getElementById('pc_remarks').value
-        })});
+        };
+        const fileInput = document.getElementById('pc_receipt');
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            body.receiptFileName = file.name;
+            body.receiptBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        }
+        const resp = await apiCall('petty-cash', { method: 'POST', body: JSON.stringify(body) });
         if (!resp.success) throw new Error(resp.error);
         closeModal();
         showNotification(type === 'expense' ? 'Expense recorded!' : 'Fund replenished!', 'success');
         showPettyCash();
     } catch(err) { alert('Error: ' + err.message); }
+    finally { hideLoading(); }
+}
+
+async function showEditPettyCashModal(id) {
+    showLoading();
+    try {
+        const res = await apiCall('petty-cash');
+        if (!res.success) throw new Error(res.error);
+        const entry = (res.data||[]).find(e=>e.id===id);
+        if (!entry) throw new Error('Entry not found');
+        hideLoading();
+
+        const isExp = entry.entryType === 'expense';
+        const catOptions = ['Office Supplies','Travel & Conveyance','Tea & Refreshments','Stationery','Courier & Postage','Printing & Xerox','Maintenance & Repairs','Cleaning & Housekeeping','Miscellaneous']
+            .map(c=>`<option value="${c}" ${entry.category===c?'selected':''}>${c}</option>`).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+                <div class="modal-content" style="max-width:600px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                        <div><h2 style="margin:0;font-size:1.2rem;">Edit Petty Cash Entry</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${isExp?'Expense':'Replenishment'} - ${entry.entryDate||''}</p></div>
+                        <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                    </div>
+                    <form onsubmit="submitEditPettyCash(event,'${id}')" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="pce_date" class="form-control" type="date" value="${entry.entryDate||''}" required></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount (INR) *</label><input id="pce_amt" class="form-control" type="number" step="0.01" value="${entry.amount||''}" required></div>
+                            ${isExp ? `<div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category</label><select id="pce_cat" class="form-control"><option value="">-- Select --</option>${catOptions}</select></div>` : `<input type="hidden" id="pce_cat" value="${entry.category||'Fund Replenishment'}">`}
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Voucher No.</label><input id="pce_voucher" class="form-control" value="${entry.voucherNo||''}"></div>
+                        </div>
+                        ${isExp ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="pce_paidTo" class="form-control" value="${entry.paidTo||''}"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Approved By</label><input id="pce_approvedBy" class="form-control" value="${entry.approvedBy||''}"></div>
+                        </div>` : '<input type="hidden" id="pce_paidTo" value=""><input type="hidden" id="pce_approvedBy" value="">'}
+                        <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="pce_desc" class="form-control" value="${entry.description||''}"></div>
+                        ${entry.receiptUrl ? `<div style="margin-bottom:0.75rem;padding:0.5rem;background:#f0f9ff;border-radius:8px;font-size:0.85rem;">Current receipt: <a href="${entry.receiptUrl}" target="_blank">${entry.receiptFileName||'View'}</a></div>` : ''}
+                        <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload New Receipt (Image/PDF)</label><input id="pce_receipt" type="file" accept="image/*,.pdf" class="form-control"></div>
+                        <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="pce_remarks" class="form-control" value="${entry.remarks||''}"></div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;padding:0.75rem;font-size:1rem;">Save Changes</button>
+                    </form>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch(err) { hideLoading(); alert('Error: '+err.message); }
+}
+
+async function submitEditPettyCash(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const body = {
+            entryDate: document.getElementById('pce_date').value,
+            amount: document.getElementById('pce_amt').value,
+            category: document.getElementById('pce_cat').value,
+            voucherNo: document.getElementById('pce_voucher').value,
+            paidTo: document.getElementById('pce_paidTo').value,
+            approvedBy: document.getElementById('pce_approvedBy').value,
+            description: document.getElementById('pce_desc').value,
+            remarks: document.getElementById('pce_remarks').value
+        };
+        const fileInput = document.getElementById('pce_receipt');
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            body.receiptFileName = file.name;
+            body.receiptBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        }
+        const resp = await apiCall('petty-cash/'+id, { method: 'PUT', body: JSON.stringify(body) });
+        if (!resp.success) throw new Error(resp.error);
+        closeModal();
+        showNotification('Entry updated!', 'success');
+        showPettyCash();
+    } catch(err) { alert('Error: '+err.message); }
     finally { hideLoading(); }
 }
 

@@ -15491,37 +15491,41 @@ async function showAddSubventorModal() {
         if(pr.success) projectOptions += pr.data.map(p=>'<option value="'+p.id+'" data-name="'+p.projectName+'" data-code="'+(p.projectCode||'')+'">'+p.projectName+' ('+( p.projectCode||'N/A')+')</option>').join('');
     } catch(e){}
 
-    openModal(`
-        <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-            <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">Add New Subventor</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter vendor details and purchase order info</p></div>
-            <span class="close" onclick="closeModal()">&times;</span>
-        </div>
-        <form onsubmit="submitAddSubventor(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
-            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Vendor Information</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Vendor Name *</label><input id="sv_name" class="form-control" required></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Company *</label><input id="sv_company" class="form-control" required></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Email</label><input id="sv_email" class="form-control" type="email"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Phone</label><input id="sv_phone" class="form-control"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Number</label><input id="sv_gst" class="form-control"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">PAN</label><input id="sv_pan" class="form-control"></div>
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:700px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">Add New Subventor</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter vendor details and purchase order info</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitAddSubventor(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Vendor Information</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Vendor Name *</label><input id="sv_name" class="form-control" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Company *</label><input id="sv_company" class="form-control" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Email</label><input id="sv_email" class="form-control" type="email"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Phone</label><input id="sv_phone" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Number</label><input id="sv_gst" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">PAN</label><input id="sv_pan" class="form-control"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Address</label><textarea id="sv_address" class="form-control" rows="2"></textarea></div>
+                    <div style="height:1px;background:#e2e8f0;margin-bottom:1rem;"></div>
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Purchase Order Details</div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Link to Project</label><select id="sv_project" class="form-control">${projectOptions}</select></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="sv_poNum" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Date</label><input id="sv_poDate" class="form-control" type="date"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Amount</label><input id="sv_poAmt" class="form-control" type="number" step="0.01"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Currency</label><select id="sv_poCur" class="form-control"><option value="INR">INR</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="GBP">GBP</option></select></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Scope of Work</label><textarea id="sv_scope" class="form-control" rows="2"></textarea></div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload P.O. Document (PDF)</label><input id="sv_poFile" type="file" accept=".pdf" class="form-control"></div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="sv_remarks" class="form-control"></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Subventor</button>
+                </form>
             </div>
-            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Address</label><textarea id="sv_address" class="form-control" rows="2"></textarea></div>
-            <div style="height:1px;background:#e2e8f0;margin-bottom:1rem;"></div>
-            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Purchase Order Details</div>
-            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Link to Project</label><select id="sv_project" class="form-control">${projectOptions}</select></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="sv_poNum" class="form-control"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Date</label><input id="sv_poDate" class="form-control" type="date"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Amount</label><input id="sv_poAmt" class="form-control" type="number" step="0.01"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Currency</label><select id="sv_poCur" class="form-control"><option value="INR">INR</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="GBP">GBP</option></select></div>
-            </div>
-            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Scope of Work</label><textarea id="sv_scope" class="form-control" rows="2"></textarea></div>
-            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload P.O. Document (PDF)</label><input id="sv_poFile" type="file" accept=".pdf" class="form-control"></div>
-            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="sv_remarks" class="form-control"></div>
-            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Subventor</button>
-        </form>
-    `, { maxWidth: '700px' });
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 async function submitAddSubventor(e) {
@@ -15575,52 +15579,60 @@ async function viewSubventor(id) {
             <tr><td>${p.paymentDate||'N/A'}</td><td>${s.poCurrency||'INR'} ${parseFloat(p.amount).toLocaleString()}</td><td>${p.paymentMethod||'N/A'}</td><td>${p.referenceNo||'-'}</td><td>${p.recordedBy||'N/A'}</td></tr>
         `).join('')||'<tr><td colspan="5" class="text-center">No payments recorded yet.</td></tr>';
 
-        openModal(`
-            <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-                <div><h2 style="margin:0;font-size:1.2rem;">Subventor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
-                <span class="close" onclick="closeModal()">&times;</span>
-            </div>
-            <div style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
-                    <div><strong>Vendor:</strong> ${s.vendorName}</div>
-                    <div><strong>Company:</strong> ${s.vendorCompany}</div>
-                    <div><strong>Email:</strong> ${s.vendorEmail||'N/A'}</div>
-                    <div><strong>Phone:</strong> ${s.vendorPhone||'N/A'}</div>
-                    <div><strong>GST:</strong> ${s.vendorGST||'N/A'}</div>
-                    <div><strong>PAN:</strong> ${s.vendorPAN||'N/A'}</div>
-                    <div><strong>Project:</strong> ${s.projectName||'N/A'}</div>
-                    <div><strong>P.O. #:</strong> ${s.poNumber||'N/A'}</div>
-                    <div><strong>P.O. Amount:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</div>
-                    <div><strong>Total Paid:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</div>
-                    <div><strong>Balance:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</div>
-                    <div><strong>Status:</strong> <span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></div>
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+                <div class="modal-content" style="max-width:750px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                        <div><h2 style="margin:0;font-size:1.2rem;">Subventor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
+                        <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                    </div>
+                    <div style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+                            <div><strong>Vendor:</strong> ${s.vendorName}</div>
+                            <div><strong>Company:</strong> ${s.vendorCompany}</div>
+                            <div><strong>Email:</strong> ${s.vendorEmail||'N/A'}</div>
+                            <div><strong>Phone:</strong> ${s.vendorPhone||'N/A'}</div>
+                            <div><strong>GST:</strong> ${s.vendorGST||'N/A'}</div>
+                            <div><strong>PAN:</strong> ${s.vendorPAN||'N/A'}</div>
+                            <div><strong>Project:</strong> ${s.projectName||'N/A'}</div>
+                            <div><strong>P.O. #:</strong> ${s.poNumber||'N/A'}</div>
+                            <div><strong>P.O. Amount:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</div>
+                            <div><strong>Total Paid:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</div>
+                            <div><strong>Balance:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</div>
+                            <div><strong>Status:</strong> <span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></div>
+                        </div>
+                        ${s.poFileUrl?'<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm" style="margin-bottom:1rem;">Download P.O. Document</a>':''}
+                        <h4 style="margin:1rem 0 0.5rem;">Payment History</h4>
+                        <table class="data-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Ref #</th><th>Recorded By</th></tr></thead><tbody>${history}</tbody></table>
+                    </div>
                 </div>
-                ${s.poFileUrl?'<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm" style="margin-bottom:1rem;">Download P.O. Document</a>':''}
-                <h4 style="margin:1rem 0 0.5rem;">Payment History</h4>
-                <table class="data-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Ref #</th><th>Recorded By</th></tr></thead><tbody>${history}</tbody></table>
-            </div>
-        `, { maxWidth: '750px' });
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
     } catch(err){ alert('Error: '+err.message); }
     finally{ hideLoading(); }
 }
 
 function showRecordSubventorPaymentModal(id) {
-    openModal(`
-        <div class="modal-header" style="background:linear-gradient(135deg,#059669,#10b981);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-            <div><h2 style="margin:0;font-size:1.2rem;">Record Payment</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter payment details for this subventor</p></div>
-            <span class="close" onclick="closeModal()">&times;</span>
-        </div>
-        <form onsubmit="submitSubventorPayment(event,'${id}')" style="padding:1.5rem 2rem;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="sp_amount" class="form-control" type="number" step="0.01" required></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Date *</label><input id="sp_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label><select id="sp_method" class="form-control"><option value="bank_transfer">Bank Transfer</option><option value="cheque">Cheque</option><option value="upi">UPI</option><option value="cash">Cash</option></select></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="sp_ref" class="form-control"></div>
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:550px;width:95%;border-radius:16px;overflow:hidden;background:#fff;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#059669,#10b981);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">Record Payment</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter payment details for this subventor</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitSubventorPayment(event,'${id}')" style="padding:1.5rem 2rem;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="sp_amount" class="form-control" type="number" step="0.01" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Date *</label><input id="sp_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label><select id="sp_method" class="form-control"><option value="bank_transfer">Bank Transfer</option><option value="cheque">Cheque</option><option value="upi">UPI</option><option value="cash">Cash</option></select></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="sp_ref" class="form-control"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Notes</label><input id="sp_notes" class="form-control"></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Record Payment</button>
+                </form>
             </div>
-            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Notes</label><input id="sp_notes" class="form-control"></div>
-            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Record Payment</button>
-        </form>
-    `, { maxWidth: '550px' });
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 async function submitSubventorPayment(e, id) {
@@ -15641,17 +15653,21 @@ async function submitSubventorPayment(e, id) {
 }
 
 function showUploadPOModal(id) {
-    openModal(`
-        <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-            <div><h2 style="margin:0;font-size:1.2rem;">Upload Purchase Order</h2></div>
-            <span class="close" onclick="closeModal()">&times;</span>
-        </div>
-        <form onsubmit="submitUploadPO(event,'${id}')" style="padding:1.5rem 2rem;">
-            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="po_num" class="form-control"></div>
-            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. File (PDF) *</label><input id="po_file" type="file" accept=".pdf" class="form-control" required></div>
-            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Upload P.O.</button>
-        </form>
-    `, { maxWidth: '500px' });
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:500px;width:95%;border-radius:16px;overflow:hidden;background:#fff;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">Upload Purchase Order</h2></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitUploadPO(event,'${id}')" style="padding:1.5rem 2rem;">
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="po_num" class="form-control"></div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. File (PDF) *</label><input id="po_file" type="file" accept=".pdf" class="form-control" required></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Upload P.O.</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 async function submitUploadPO(e, id) {
@@ -15724,45 +15740,49 @@ async function showDailyExpenses() {
 }
 
 function showAddExpenseModal() {
-    openModal(`
-        <div class="modal-header" style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-            <div><h2 style="margin:0;font-size:1.2rem;">Add Daily Expense</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Record a new business expense</p></div>
-            <span class="close" onclick="closeModal()">&times;</span>
-        </div>
-        <form onsubmit="submitAddExpense(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="ex_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category *</label>
-                    <select id="ex_cat" class="form-control" required>
-                        <option value="">-- Select --</option>
-                        <option value="Office Supplies">Office Supplies</option>
-                        <option value="Travel">Travel</option>
-                        <option value="Food & Beverages">Food & Beverages</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Maintenance">Maintenance</option>
-                        <option value="Software & Subscriptions">Software & Subscriptions</option>
-                        <option value="Internet & Phone">Internet & Phone</option>
-                        <option value="Printing">Printing</option>
-                        <option value="Courier & Postage">Courier & Postage</option>
-                        <option value="Miscellaneous">Miscellaneous</option>
-                    </select>
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:600px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">Add Daily Expense</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Record a new business expense</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
                 </div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="ex_amt" class="form-control" type="number" step="0.01" required></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="ex_paidTo" class="form-control"></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label>
-                    <select id="ex_method" class="form-control"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="upi">UPI</option><option value="card">Card</option><option value="cheque">Cheque</option></select>
-                </div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="ex_ref" class="form-control"></div>
+                <form onsubmit="submitAddExpense(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="ex_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category *</label>
+                            <select id="ex_cat" class="form-control" required>
+                                <option value="">-- Select --</option>
+                                <option value="Office Supplies">Office Supplies</option>
+                                <option value="Travel">Travel</option>
+                                <option value="Food & Beverages">Food & Beverages</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Software & Subscriptions">Software & Subscriptions</option>
+                                <option value="Internet & Phone">Internet & Phone</option>
+                                <option value="Printing">Printing</option>
+                                <option value="Courier & Postage">Courier & Postage</option>
+                                <option value="Miscellaneous">Miscellaneous</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="ex_amt" class="form-control" type="number" step="0.01" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="ex_paidTo" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label>
+                            <select id="ex_method" class="form-control"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="upi">UPI</option><option value="card">Card</option><option value="cheque">Cheque</option></select>
+                        </div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="ex_ref" class="form-control"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="ex_desc" class="form-control"></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Applicable?</label><select id="ex_gst" class="form-control"><option value="false">No</option><option value="true">Yes</option></select></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Amount</label><input id="ex_gstAmt" class="form-control" type="number" step="0.01" value="0"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="ex_remarks" class="form-control"></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Expense</button>
+                </form>
             </div>
-            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="ex_desc" class="form-control"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Applicable?</label><select id="ex_gst" class="form-control"><option value="false">No</option><option value="true">Yes</option></select></div>
-                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Amount</label><input id="ex_gstAmt" class="form-control" type="number" step="0.01" value="0"></div>
-            </div>
-            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="ex_remarks" class="form-control"></div>
-            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Expense</button>
-        </form>
-    `, { maxWidth: '600px' });
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 async function submitAddExpense(e) {

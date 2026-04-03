@@ -8740,22 +8740,35 @@ async function showProjectDashboard() {
         const response = await apiCall('timesheets?action=executive_dashboard');
         if (!response.success) throw new Error(response.error || 'Failed to load project dashboard');
 
-        const { metrics, projects, sectionBreakdown, analytics } = response.data;
+        const { metrics, projects, sectionBreakdown, totalRevenueByCurrency, analytics } = response.data;
         const sb = sectionBreakdown || {};
+        const trc = totalRevenueByCurrency || {};
 
         // Section colors
         const sectionColors = { Engineering: '#3b82f6', Rebar: '#f59e0b', Structural: '#10b981', Unassigned: '#6b7280' };
 
-        // Format currency
+        // Currency symbols
+        const currencySymbols = { USD: '$', GBP: '\u00A3', CAD: 'C$', AUD: 'A$', AED: 'AED ' };
+
+        // Format currency value
         const fmt = (val) => {
             if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
             if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
             return val.toFixed(0);
         };
 
+        // Render revenue by currency for a given revenueByCurrency object
+        const renderRevByCurrency = (rbc) => {
+            if (!rbc) return '';
+            return Object.entries(rbc)
+                .filter(([_, v]) => v > 0)
+                .map(([cur, val]) => `<div style="display: flex; justify-content: space-between;"><span style="font-weight: 600;">${currencySymbols[cur] || cur + ' '}</span><span>${fmt(val)}</span></div>`)
+                .join('') || '<div style="color: var(--text-light);">No revenue</div>';
+        };
+
         // Build section cards
         const sectionCardsHtml = ['Engineering', 'Rebar', 'Structural'].map(sec => {
-            const d = sb[sec] || { count: 0, revenue: 0, hoursAllocated: 0, hoursLogged: 0 };
+            const d = sb[sec] || { count: 0, revenue: 0, revenueByCurrency: {}, hoursAllocated: 0, hoursLogged: 0 };
             const color = sectionColors[sec];
             const utilPct = d.hoursAllocated > 0 ? ((d.hoursLogged / d.hoursAllocated) * 100).toFixed(0) : 0;
             return `
@@ -8766,8 +8779,10 @@ async function showProjectDashboard() {
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div>
-                            <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase;">Revenue</div>
-                            <div style="font-size: 1.4rem; font-weight: 700; color: ${color};">AED ${fmt(d.revenue)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.5rem;">Revenue by Currency</div>
+                            <div style="font-size: 0.9rem; color: ${color};">
+                                ${renderRevByCurrency(d.revenueByCurrency)}
+                            </div>
                         </div>
                         <div>
                             <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase;">Hours Used</div>
@@ -8841,10 +8856,6 @@ async function showProjectDashboard() {
                     <div style="font-size: 0.85rem; color: var(--text-light);">Total Projects</div>
                 </div>
                 <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
-                    <div style="font-size: 2rem; font-weight: 700; color: #10b981;">AED ${fmt(metrics.totalRevenue || 0)}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-light);">Total Revenue</div>
-                </div>
-                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
                     <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">${(metrics.totalLoggedHours || 0).toFixed(0)}h</div>
                     <div style="font-size: 0.85rem; color: var(--text-light);">Hours Logged</div>
                 </div>
@@ -8855,6 +8866,32 @@ async function showProjectDashboard() {
                 <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
                     <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">${metrics.projectsAboveTimeline}</div>
                     <div style="font-size: 0.85rem; color: var(--text-light);">Exceeded Timeline</div>
+                </div>
+            </div>
+
+            <!-- Revenue by Currency -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <h3 style="margin: 0 0 1rem 0;">Total Revenue by Currency</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem;">
+                    ${[['USD', '$', '#10b981'], ['GBP', '\u00A3', '#6366f1'], ['CAD', 'C$', '#f59e0b'], ['AUD', 'A$', '#3b82f6']].map(([cur, sym, col]) => {
+                        const val = trc[cur] || 0;
+                        return `
+                            <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid ${col};">
+                                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: ${col};">${sym}${fmt(val)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                    ${(() => {
+                        // Show any other currencies that aren't USD/GBP/CAD/AUD
+                        const otherCurs = Object.entries(trc).filter(([k]) => !['USD','GBP','CAD','AUD'].includes(k)).filter(([_,v]) => v > 0);
+                        return otherCurs.map(([cur, val]) => `
+                            <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid #6b7280;">
+                                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: #6b7280;">${cur} ${fmt(val)}</div>
+                            </div>
+                        `).join('');
+                    })()}
                 </div>
             </div>
 

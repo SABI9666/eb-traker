@@ -8326,7 +8326,7 @@ function renderProposals(proposals) {
         } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
             statusDisplay = 'PRICING COMPLETE';
             statusClass = 'pricing-complete';
-        } else if (p.subcontractor || statusLower === 'subcontracted') {
+        } else if (p.subcontractor || p.status === 'subcontracted') {
             statusDisplay = 'SUBCONTRACTED';
             statusClass = 'subcontracted';
         }

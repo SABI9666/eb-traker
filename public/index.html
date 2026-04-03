@@ -8039,6 +8039,7 @@ function renderProposals(proposals) {
         const projectLostCount = proposals.filter(p => p.status === 'lost').length;
         // Awaiting = approved (awaiting client submission) + submitted_to_client (awaiting client decision)
         const projectAwaitingCount = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client').length;
+        const subcontractedCount = proposals.filter(p => p.status === 'subcontracted' || p.subcontractor).length;
 
         directorFilterButtons = `
             <div class="filter-buttons-container">
@@ -8096,6 +8097,12 @@ function renderProposals(proposals) {
                         onclick="filterProposals('project_awaiting')">
                     ⏳ Project Awaiting
                     <span class="filter-count">${projectAwaitingCount}</span>
+                </button>
+                <button class="filter-btn ${currentProposalFilter === 'subcontracted' ? 'active' : ''}"
+                        onclick="filterProposals('subcontracted')"
+                        style="${currentProposalFilter === 'subcontracted' ? 'background: #5b21b6; color: white;' : 'background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #5b21b6;'}">
+                    Subcontracted
+                    <span class="filter-count">${subcontractedCount}</span>
                 </button>
             </div>
         `;
@@ -8161,6 +8168,8 @@ function renderProposals(proposals) {
             filteredProposals = proposals.filter(p => p.status === 'lost');
         } else if (currentProposalFilter === 'project_awaiting') {
             filteredProposals = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client');
+        } else if (currentProposalFilter === 'subcontracted') {
+            filteredProposals = proposals.filter(p => p.status === 'subcontracted' || p.subcontractor);
         }
 
         console.log('📊 Filtered proposals:', filteredProposals.length);

@@ -12826,6 +12826,7 @@ function createProjectCard(project) {
             <div class="project-details">
                 <p><strong>Client:</strong> ${project.clientCompany || 'N/A'}</p>
                 <p><strong>Code:</strong> ${project.projectCode || 'N/A'}</p>
+                ${project.projectSection ? `<p><strong>Section:</strong> <span style="background: #6366f1; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">${project.projectSection}</span></p>` : ''}
                 <p><strong>Allocated:</strong> ${allocDate}</p>
                 <p><strong>Target:</strong> ${targetDate}</p>
                 <p><strong>Status:</strong> ${project.designStatus || 'N/A'}</p>
@@ -20064,25 +20065,19 @@ let availableDesigners = [];
  */
 async function loadAvailableDesigners() {
     try {
-        const [designersResponse, designLeadsResponse] = await Promise.all([
-            apiCall('users?role=designer'),
-            apiCall('users?role=design_lead')
-        ]);
-        
+        // COO allocation modal only shows Design Leads (not designers)
+        const designLeadsResponse = await apiCall('users?role=design_lead');
+
         availableDesigners = [];
-        
-        if (designersResponse.success && designersResponse.data) {
-            availableDesigners.push(...designersResponse.data.map(d => ({...d, roleType: 'designer'})));
-        }
-        
+
         if (designLeadsResponse.success && designLeadsResponse.data) {
             availableDesigners.push(...designLeadsResponse.data.map(d => ({...d, roleType: 'design_lead'})));
         }
-        
-        console.log('Available designers loaded:', availableDesigners.length);
-        
+
+        console.log('Available design leads loaded:', availableDesigners.length);
+
     } catch (error) {
-        console.error('Error loading designers:', error);
+        console.error('Error loading design leads:', error);
         availableDesigners = [];
     }
 }
@@ -20107,20 +20102,26 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         window.currentEditProject = project;
         window.currentEditProjectId = projectId;
         
-        // 2. Load available designers
+        // 2. Load available design leads
         await loadAvailableDesigners();
-        
+
         if (availableDesigners.length === 0) {
-            alert('No designers found in the system. Please create designer accounts first.');
+            alert('No design leads found in the system. Please create design lead accounts first.');
             hideLoading();
             return;
         }
-        
+
         // 3. Populate project info
         document.getElementById('cooAllocProjectId').value = projectId;
         document.getElementById('cooAllocProjectNumber').textContent = project.projectNumber || 'N/A';
         document.getElementById('cooAllocProjectName').textContent = project.projectName || 'N/A';
         document.getElementById('cooAllocClientName').textContent = project.clientCompany || 'N/A';
+
+        // 3b. Populate project section if previously set
+        const sectionSelect = document.getElementById('cooProjectSection');
+        if (sectionSelect) {
+            sectionSelect.value = project.projectSection || '';
+        }
         
         // ============================================
         // ✅ CRITICAL FIX: TWO SCENARIOS LOGIC
@@ -20817,56 +20818,70 @@ async function submitBudgetChangeFromModal() {
  * Add a new designer allocation row
  */
 function addDesignerAllocation() {
+    // Enforce max 2 design leads
+    const existingRows = document.querySelectorAll('.designer-allocation-row');
+    if (existingRows.length >= 2) {
+        alert('Maximum 2 design leads can be assigned per project.');
+        return;
+    }
+
     designerAllocationCounter++;
     const container = document.getElementById('designerAllocationsContainer');
-    
+
     const rowHtml = `
         <div class="designer-allocation-row" id="designerRow${designerAllocationCounter}">
             <div class="designer-row-header">
                 <div class="designer-row-number">${designerAllocationCounter}</div>
-                ${designerAllocationCounter > 1 ? `
+                ${existingRows.length >= 1 ? `
                     <button type="button" class="remove-designer-btn" onclick="removeDesignerAllocation(${designerAllocationCounter})">
                         ✕ Remove
                     </button>
                 ` : ''}
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group" style="flex: 2;">
-                    <label>Select Designer <span class="required">*</span></label>
-                    <select class="form-control designer-select" id="designer${designerAllocationCounter}" 
+                    <label>Select Design Lead <span class="required">*</span></label>
+                    <select class="form-control designer-select" id="designer${designerAllocationCounter}"
                             onchange="validateDesignerSelection()" required>
-                        <option value="">-- Select Designer --</option>
+                        <option value="">-- Select Design Lead --</option>
                         ${availableDesigners.map(d => `
-                            <option value="${d.uid}" 
-                                    data-name="${d.name}" 
+                            <option value="${d.uid}"
+                                    data-name="${d.name}"
                                     data-email="${d.email}"
                                     data-role="${d.roleType}">
-                                ${d.roleType === 'design_lead' ? '👔' : '👨‍💼'} ${d.name}
+                                👔 ${d.name} (${d.email})
                             </option>
                         `).join('')}
                     </select>
                 </div>
-                
+
                 <div class="form-group" style="flex: 1;">
                     <label>Allocated Hours <span class="required">*</span></label>
-                    <input type="number" class="form-control hours-input" 
+                    <input type="number" class="form-control hours-input"
                            id="hours${designerAllocationCounter}"
                            placeholder="0" min="0.5" step="0.5"
                            oninput="updateRemainingHours()" required>
                 </div>
             </div>
-            
+
             <div class="form-group">
                 <label>Specific Instructions (Optional)</label>
-                <textarea class="form-control" id="notes${designerAllocationCounter}" 
-                          rows="2" placeholder="Any specific tasks or focus areas for this designer..."></textarea>
+                <textarea class="form-control" id="notes${designerAllocationCounter}"
+                          rows="2" placeholder="Any specific tasks or focus areas for this design lead..."></textarea>
             </div>
         </div>
     `;
-    
+
     container.insertAdjacentHTML('beforeend', rowHtml);
     updateRemainingHours();
+
+    // Hide "Add Design Lead" button if already at 2
+    const updatedRows = document.querySelectorAll('.designer-allocation-row');
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn && updatedRows.length >= 2) {
+        addBtn.style.display = 'none';
+    }
 }
 
 /**
@@ -20878,6 +20893,12 @@ function removeDesignerAllocation(rowNumber) {
         row.remove();
         updateRemainingHours();
         validateDesignerSelection();
+        // Re-show Add button if under limit
+        const remainingRows = document.querySelectorAll('.designer-allocation-row');
+        const addBtn = document.getElementById('addDesignLeadBtn');
+        if (addBtn && remainingRows.length < 2) {
+            addBtn.style.display = 'inline-block';
+        }
     }
 }
 
@@ -20999,22 +21020,29 @@ async function submitCooMultiDesignerAllocation() {
     const totalBudget = parseFloat(totalHoursInput.value);
     const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
     const hoursSource = totalHoursInput.dataset.hoursSource || 'unknown';
-    
+
     // Validation: Budget must be set
     if (!totalBudget || totalBudget <= 0) {
         alert('⚠️ Please enter the Total Allocated Hours before proceeding.');
         return;
     }
-    
+
+    // Validation: Project section must be selected
+    const projectSection = document.getElementById('cooProjectSection').value;
+    if (!projectSection) {
+        alert('⚠️ Please select a Project Section (Engineering, Rebar, or Structural).');
+        return;
+    }
+
     // Project Details inputs
     const targetDate = document.getElementById('cooTargetCompletionDate').value;
     const priority = document.getElementById('cooProjectPriority').value;
     const generalNotes = document.getElementById('cooAllocationNotes').value;
 
-    // Collect designer allocations
+    // Collect design lead allocations
     const selects = document.querySelectorAll('.designer-select');
     if (selects.length === 0) {
-        alert('⚠️ Please add at least one designer allocation.');
+        alert('⚠️ Please add at least one design lead allocation.');
         return;
     }
 
@@ -21104,22 +21132,25 @@ Proceed with allocation?`.trim();
             action: 'allocate_to_multiple_designers',
             data: {
                 projectId: projectId,
-                
-                // ✅ CRITICAL: Set the budget and source
-                maxAllocatedHours: totalBudget, // Lock the budget
-                maxHoursSource: hoursSource, // Track source
-                
+
+                // Set the budget and source
+                maxAllocatedHours: totalBudget,
+                maxHoursSource: hoursSource,
+
                 // Total allocated after this operation
                 totalAllocatedHours: newTotalAllocated,
-                
-                // Designer allocations
+
+                // Design Lead allocations
                 designerAllocations: designerAllocations,
-                
+
+                // Project section (Engineering/Rebar/Structural)
+                projectSection: projectSection,
+
                 // Project details
                 targetCompletionDate: targetDate || null,
                 priority: priority,
                 allocationNotes: generalNotes,
-                
+
                 // Legacy fields for backend compatibility
                 assignedDesignerUids: designerAllocations.map(d => d.designerUid),
                 assignedDesignerNames: designerAllocations.map(d => d.designerName),
@@ -21128,7 +21159,7 @@ Proceed with allocation?`.trim();
                     acc[d.designerUid] = d.allocatedHours;
                     return acc;
                 }, {}),
-                
+
                 // Incremental flag
                 isIncremental: true
             }
@@ -21171,6 +21202,11 @@ function closeCooMultiDesignerModal() {
     document.getElementById('cooMultiDesignerAllocationModal').style.display = 'none';
     document.getElementById('designerAllocationsContainer').innerHTML = '';
     designerAllocationCounter = 0;
+    // Reset section and re-show add button
+    const sectionSelect = document.getElementById('cooProjectSection');
+    if (sectionSelect) sectionSelect.value = '';
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn) addBtn.style.display = 'inline-block';
 }
 
 /**
@@ -21564,6 +21600,7 @@ async function showDesignLeadPortal() {
                                 <div style="font-size: 0.85rem; color: var(--text-light);">
                                     <strong>Project #:</strong> ${project.projectCode || 'N/A'} &nbsp;|&nbsp;
                                     <strong>Client:</strong> ${project.clientCompany || 'N/A'}
+                                    ${project.projectSection ? `&nbsp;|&nbsp; <strong>Section:</strong> <span style="background: #6366f1; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">${project.projectSection}</span>` : ''}
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -28751,15 +28788,15 @@ function toggleDesignHours() {
     <div class="modal-content new-modal allocation-modal-large" style="max-width: 900px;">
         <div class="modal-header">
             <div>
-                <h2>👥 Allocate Project to Multiple Designers</h2>
-                <div class="subtitle">Divide project hours among team members</div>
+                <h2>🎯 Allocate Project to Design Lead</h2>
+                <div class="subtitle">Assign project to design lead(s) with hours budget</div>
             </div>
             <span class="close-modal" onclick="closeCooMultiDesignerModal()">&times;</span>
         </div>
-        
+
         <div class="modal-body">
             <input type="hidden" id="cooAllocProjectId" />
-            
+
             <!-- Project Summary -->
             <div class="allocation-details-section" style="margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px;">
                 <h3 style="color: white; margin-bottom: 1rem;">📋 Project Information</h3>
@@ -28768,20 +28805,20 @@ function toggleDesignHours() {
                         <label style="font-size: 0.85rem; opacity: 0.9;">Project Number:</label>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <div id="cooAllocProjectNumber" style="font-size: 1.2rem; font-weight: 700;"></div>
-                            <button type="button" onclick="toggleProjectNumberEdit()" 
+                            <button type="button" onclick="toggleProjectNumberEdit()"
                                     style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
                                 ✏️ Edit
                             </button>
                         </div>
                         <div id="projectNumberEditContainer" style="display: none; margin-top: 0.5rem;">
-                            <input type="text" id="projectNumberEditInput" 
-                                   style="padding: 0.5rem; border-radius: 4px; border: none; width: 150px; font-weight: 600;" 
+                            <input type="text" id="projectNumberEditInput"
+                                   style="padding: 0.5rem; border-radius: 4px; border: none; width: 150px; font-weight: 600;"
                                    placeholder="Enter project number">
-                            <button type="button" onclick="saveProjectNumber()" 
+                            <button type="button" onclick="saveProjectNumber()"
                                     style="background: #10b981; border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
                                 💾 Save
                             </button>
-                            <button type="button" onclick="cancelProjectNumberEdit()" 
+                            <button type="button" onclick="cancelProjectNumberEdit()"
                                     style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
                                 ✕
                             </button>
@@ -28797,7 +28834,22 @@ function toggleDesignHours() {
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Project Section Selection -->
+            <div class="form-section" style="background: #fef3c7; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; border: 2px solid #f59e0b;">
+                <h3 style="color: #92400e; margin: 0 0 1rem 0;">🏗️ Project Section</h3>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cooProjectSection">Assign to Section <span class="required">*</span></label>
+                    <select id="cooProjectSection" class="form-control" required style="font-weight: 600; font-size: 1rem;">
+                        <option value="">-- Select Section --</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Rebar">Rebar</option>
+                        <option value="Structural">Structural</option>
+                    </select>
+                    <small class="form-text">Categorize this project under the appropriate design section</small>
+                </div>
+            </div>
+
             <!-- Total Hours Input -->
             <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -28809,8 +28861,8 @@ function toggleDesignHours() {
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                         <label for="cooTotalProjectHours">Total Allocated Hours <span class="required">*</span></label>
-                        <input type="number" id="cooTotalProjectHours" class="form-control" 
-                               placeholder="e.g., 120" min="1" step="0.5" 
+                        <input type="number" id="cooTotalProjectHours" class="form-control"
+                               placeholder="e.g., 120" min="1" step="0.5"
                                oninput="updateRemainingHours()" required>
                         <small class="form-text">Total hours budget for this project</small>
                     </div>
@@ -28822,36 +28874,39 @@ function toggleDesignHours() {
                     </div>
                 </div>
             </div>
-            
-            <!-- EXISTING ALLOCATIONS SECTION (NEW) -->
+
+            <!-- EXISTING ALLOCATIONS SECTION -->
             <div id="existingAllocationsSection" class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: #1e40af; margin: 0;">📊 Existing Designer Allocations</h3>
+                    <h3 style="color: #1e40af; margin: 0;">📊 Existing Design Lead Allocations</h3>
                     <span id="existingAllocTotal" style="background: #3b82f6; color: white; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 600;"></span>
                 </div>
                 <div id="existingAllocationsList">
                     <!-- Existing allocations will be rendered here -->
                 </div>
             </div>
-            
-            <!-- Designer Allocations (NEW) -->
+
+            <!-- Design Lead Allocations -->
             <div class="form-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: var(--text-dark); margin: 0;">👨‍💼 Add New Designer Allocations</h3>
-                    <button type="button" class="btn btn-outline" onclick="addDesignerAllocation()">
-                        <span style="font-size: 1.2rem;">+</span> Add Designer
+                    <h3 style="color: var(--text-dark); margin: 0;">👔 Select Design Lead(s)</h3>
+                    <button type="button" class="btn btn-outline" onclick="addDesignerAllocation()" id="addDesignLeadBtn">
+                        <span style="font-size: 1.2rem;">+</span> Add Design Lead
                     </button>
                 </div>
-                
+                <div style="background: #e0f2fe; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #0284c7;">
+                    <small style="color: #0369a1;">You can assign up to <strong>2 design leads</strong> per project. Each lead will manage designers within their allocated hours.</small>
+                </div>
+
                 <div id="designerAllocationsContainer">
-                    <!-- Designer allocation rows will be added here dynamically -->
+                    <!-- Design Lead allocation rows will be added here dynamically -->
                 </div>
             </div>
-            
+
             <!-- Project Details -->
             <div class="form-section" style="margin-top: 2rem;">
                 <h3 style="color: var(--text-dark); margin-bottom: 1rem;">📝 Project Details</h3>
-                
+
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                         <label for="cooTargetCompletionDate">Target Completion Date</label>
@@ -28866,15 +28921,15 @@ function toggleDesignHours() {
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="cooAllocationNotes">Allocation Notes</label>
                     <textarea id="cooAllocationNotes" class="form-control" rows="3"
-                              placeholder="Add any special instructions or notes for the design team..."></textarea>
+                              placeholder="Add any special instructions or notes for the design lead..."></textarea>
                 </div>
             </div>
         </div>
-        
+
         <div class="modal-footer">
             <button type="button" class="btn btn-cancel" onclick="closeCooMultiDesignerModal()">Cancel</button>
             <button type="button" class="btn btn-success btn-large" onclick="submitCooMultiDesignerAllocation()">

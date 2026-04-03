@@ -5424,6 +5424,18 @@ body.is-ios .nav-menu {
                             <a href="#" onclick="showPayments()" id="nav-payments">
                             <span class="nav-icon">💰</span>Payments</a>
                         </li>
+                        <li id="subventorsNavItem" style="display: none;">
+                            <a href="#" onclick="showSubventors()" id="nav-subventors">
+                            <span class="nav-icon">🏗️</span>Subventors</a>
+                        </li>
+                        <li id="dailyExpensesNavItem" style="display: none;">
+                            <a href="#" onclick="showDailyExpenses()" id="nav-daily-expenses">
+                            <span class="nav-icon">📒</span>Daily Expenses</a>
+                        </li>
+                        <li id="gstFilingNavItem" style="display: none;">
+                            <a href="#" onclick="showGSTFiling()" id="nav-gst-filing">
+                            <span class="nav-icon">📋</span>GST Filing</a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -7142,6 +7154,9 @@ body.is-ios .nav-menu {
             setDisplay('designerAllocationsNavItem', isDesigner); // SHOW New Menu
 
             setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR && !isDC);
+            setDisplay('subventorsNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('dailyExpensesNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('gstFilingNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
@@ -15404,6 +15419,468 @@ async function confirmDeleteInvoice(paymentId, invoiceNo) {
     } finally {
         hideLoading();
     }
+}
+
+// ============================================
+// SUBVENTORS MODULE
+// ============================================
+
+async function showSubventors() {
+    setActiveNav('nav-subventors');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const res = await apiCall('subventors');
+        const subs = res.success ? res.data : [];
+        const isAcct = currentUserRole === 'accounts';
+
+        const pending = subs.filter(s => s.paymentStatus === 'pending').length;
+        const partial = subs.filter(s => s.paymentStatus === 'partial').length;
+        const paid = subs.filter(s => s.paymentStatus === 'paid').length;
+        const totalPO = subs.reduce((s,v) => s + (parseFloat(v.poAmount)||0), 0);
+        const totalPaid = subs.reduce((s,v) => s + (parseFloat(v.totalPaid)||0), 0);
+
+        const rows = subs.length > 0 ? subs.map(s => `
+            <tr>
+                <td><strong>${s.vendorCompany||'N/A'}</strong><br><span style="font-size:0.75rem;color:#64748b">${s.vendorName||''}</span></td>
+                <td>${s.projectName||'N/A'}</td>
+                <td>${s.poNumber||'N/A'}</td>
+                <td>${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</td>
+                <td>${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</td>
+                <td>${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</td>
+                <td><span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></td>
+                <td>${s.poFileUrl ? '<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm">View P.O.</a>' : '<span style="color:#94a3b8;font-size:0.8rem">No P.O.</span>'}</td>
+                <td>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button class="btn btn-outline btn-sm" onclick="viewSubventor('${s.id}')">View</button>
+                        ${isAcct ? `<button class="btn btn-primary btn-sm" onclick="showRecordSubventorPaymentModal('${s.id}')">Pay</button>
+                        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;" onclick="showUploadPOModal('${s.id}')">P.O.</button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="9" class="text-center">No subventors added yet.</td></tr>';
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Subventor Management</h2>
+                <div class="subtitle">Manage sub-contractors, purchase orders, and payment tracking.</div>
+                ${isAcct ? '<button class="btn btn-success" onclick="showAddSubventorModal()" style="margin-top:1rem;">+ Add Subventor</button>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#2563eb;">${subs.length}</div><div style="color:#64748b;font-size:0.8rem;">Total</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#f59e0b;">${pending}</div><div style="color:#64748b;font-size:0.8rem;">Pending</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#8b5cf6;">${partial}</div><div style="color:#64748b;font-size:0.8rem;">Partial</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#10b981;">${paid}</div><div style="color:#64748b;font-size:0.8rem;">Paid</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.1rem;font-weight:700;color:#2563eb;">INR ${totalPO.toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total P.O. Value</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.1rem;font-weight:700;color:#10b981;">INR ${totalPaid.toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total Paid</div></div>
+            </div>
+            <div class="card"><div style="overflow-x:auto;">
+                <table class="data-table"><thead><tr>
+                    <th>Vendor</th><th>Project</th><th>P.O. #</th><th>P.O. Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th>P.O. File</th><th>Actions</th>
+                </tr></thead><tbody>${rows}</tbody></table>
+            </div></div>`;
+    } catch(e) {
+        main.innerHTML = '<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>';
+    } finally { hideLoading(); }
+}
+
+async function showAddSubventorModal() {
+    let projectOptions = '<option value="">-- None --</option>';
+    try {
+        const pr = await apiCall('projects');
+        if(pr.success) projectOptions += pr.data.map(p=>'<option value="'+p.id+'" data-name="'+p.projectName+'" data-code="'+(p.projectCode||'')+'">'+p.projectName+' ('+( p.projectCode||'N/A')+')</option>').join('');
+    } catch(e){}
+
+    openModal(`
+        <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+            <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">Add New Subventor</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter vendor details and purchase order info</p></div>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <form onsubmit="submitAddSubventor(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Vendor Information</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Vendor Name *</label><input id="sv_name" class="form-control" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Company *</label><input id="sv_company" class="form-control" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Email</label><input id="sv_email" class="form-control" type="email"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Phone</label><input id="sv_phone" class="form-control"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Number</label><input id="sv_gst" class="form-control"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">PAN</label><input id="sv_pan" class="form-control"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Address</label><textarea id="sv_address" class="form-control" rows="2"></textarea></div>
+            <div style="height:1px;background:#e2e8f0;margin-bottom:1rem;"></div>
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Purchase Order Details</div>
+            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Link to Project</label><select id="sv_project" class="form-control">${projectOptions}</select></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="sv_poNum" class="form-control"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Date</label><input id="sv_poDate" class="form-control" type="date"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Amount</label><input id="sv_poAmt" class="form-control" type="number" step="0.01"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Currency</label><select id="sv_poCur" class="form-control"><option value="INR">INR</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="GBP">GBP</option></select></div>
+            </div>
+            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Scope of Work</label><textarea id="sv_scope" class="form-control" rows="2"></textarea></div>
+            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload P.O. Document (PDF)</label><input id="sv_poFile" type="file" accept=".pdf" class="form-control"></div>
+            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="sv_remarks" class="form-control"></div>
+            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Subventor</button>
+        </form>
+    `, { maxWidth: '700px' });
+}
+
+async function submitAddSubventor(e) {
+    e.preventDefault();
+    showLoading();
+    try {
+        const projSel = document.getElementById('sv_project');
+        const selOpt = projSel.selectedOptions[0];
+        let poFileBase64='', poFileName='';
+        const fileInput = document.getElementById('sv_poFile');
+        if(fileInput.files.length>0){
+            const file = fileInput.files[0];
+            poFileName = file.name;
+            poFileBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        }
+        const body = {
+            vendorName: document.getElementById('sv_name').value,
+            vendorCompany: document.getElementById('sv_company').value,
+            vendorEmail: document.getElementById('sv_email').value,
+            vendorPhone: document.getElementById('sv_phone').value,
+            vendorGST: document.getElementById('sv_gst').value,
+            vendorPAN: document.getElementById('sv_pan').value,
+            vendorAddress: document.getElementById('sv_address').value,
+            projectId: projSel.value,
+            projectName: selOpt?.dataset?.name||'',
+            projectCode: selOpt?.dataset?.code||'',
+            poNumber: document.getElementById('sv_poNum').value,
+            poDate: document.getElementById('sv_poDate').value,
+            poAmount: document.getElementById('sv_poAmt').value,
+            poCurrency: document.getElementById('sv_poCur').value,
+            scopeOfWork: document.getElementById('sv_scope').value,
+            remarks: document.getElementById('sv_remarks').value,
+            poFileBase64, poFileName
+        };
+        const resp = await apiCall('subventors',{method:'POST',body:JSON.stringify(body)});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal();
+        showNotification('Subventor added successfully!','success');
+        showSubventors();
+    } catch(err){ alert('Error: '+err.message); }
+    finally{ hideLoading(); }
+}
+
+async function viewSubventor(id) {
+    showLoading();
+    try {
+        const res = await apiCall('subventors/'+id);
+        if(!res.success) throw new Error(res.error);
+        const s = res.data;
+        const history = (s.paymentHistory||[]).map(p=>`
+            <tr><td>${p.paymentDate||'N/A'}</td><td>${s.poCurrency||'INR'} ${parseFloat(p.amount).toLocaleString()}</td><td>${p.paymentMethod||'N/A'}</td><td>${p.referenceNo||'-'}</td><td>${p.recordedBy||'N/A'}</td></tr>
+        `).join('')||'<tr><td colspan="5" class="text-center">No payments recorded yet.</td></tr>';
+
+        openModal(`
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                <div><h2 style="margin:0;font-size:1.2rem;">Subventor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+                    <div><strong>Vendor:</strong> ${s.vendorName}</div>
+                    <div><strong>Company:</strong> ${s.vendorCompany}</div>
+                    <div><strong>Email:</strong> ${s.vendorEmail||'N/A'}</div>
+                    <div><strong>Phone:</strong> ${s.vendorPhone||'N/A'}</div>
+                    <div><strong>GST:</strong> ${s.vendorGST||'N/A'}</div>
+                    <div><strong>PAN:</strong> ${s.vendorPAN||'N/A'}</div>
+                    <div><strong>Project:</strong> ${s.projectName||'N/A'}</div>
+                    <div><strong>P.O. #:</strong> ${s.poNumber||'N/A'}</div>
+                    <div><strong>P.O. Amount:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</div>
+                    <div><strong>Total Paid:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</div>
+                    <div><strong>Balance:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</div>
+                    <div><strong>Status:</strong> <span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></div>
+                </div>
+                ${s.poFileUrl?'<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm" style="margin-bottom:1rem;">Download P.O. Document</a>':''}
+                <h4 style="margin:1rem 0 0.5rem;">Payment History</h4>
+                <table class="data-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Ref #</th><th>Recorded By</th></tr></thead><tbody>${history}</tbody></table>
+            </div>
+        `, { maxWidth: '750px' });
+    } catch(err){ alert('Error: '+err.message); }
+    finally{ hideLoading(); }
+}
+
+function showRecordSubventorPaymentModal(id) {
+    openModal(`
+        <div class="modal-header" style="background:linear-gradient(135deg,#059669,#10b981);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+            <div><h2 style="margin:0;font-size:1.2rem;">Record Payment</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter payment details for this subventor</p></div>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <form onsubmit="submitSubventorPayment(event,'${id}')" style="padding:1.5rem 2rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="sp_amount" class="form-control" type="number" step="0.01" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Date *</label><input id="sp_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label><select id="sp_method" class="form-control"><option value="bank_transfer">Bank Transfer</option><option value="cheque">Cheque</option><option value="upi">UPI</option><option value="cash">Cash</option></select></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="sp_ref" class="form-control"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Notes</label><input id="sp_notes" class="form-control"></div>
+            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Record Payment</button>
+        </form>
+    `, { maxWidth: '550px' });
+}
+
+async function submitSubventorPayment(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const resp = await apiCall('subventors/'+id,{method:'PUT',body:JSON.stringify({
+            action:'record_payment', data:{
+                amount: document.getElementById('sp_amount').value,
+                paymentDate: document.getElementById('sp_date').value,
+                paymentMethod: document.getElementById('sp_method').value,
+                referenceNo: document.getElementById('sp_ref').value,
+                notes: document.getElementById('sp_notes').value
+            }
+        })});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Payment recorded!','success'); showSubventors();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+function showUploadPOModal(id) {
+    openModal(`
+        <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+            <div><h2 style="margin:0;font-size:1.2rem;">Upload Purchase Order</h2></div>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <form onsubmit="submitUploadPO(event,'${id}')" style="padding:1.5rem 2rem;">
+            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="po_num" class="form-control"></div>
+            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. File (PDF) *</label><input id="po_file" type="file" accept=".pdf" class="form-control" required></div>
+            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Upload P.O.</button>
+        </form>
+    `, { maxWidth: '500px' });
+}
+
+async function submitUploadPO(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const file = document.getElementById('po_file').files[0];
+        const poFileBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        const resp = await apiCall('subventors/'+id,{method:'PUT',body:JSON.stringify({
+            action:'upload_po', data:{ poFileBase64, poFileName:file.name, poNumber:document.getElementById('po_num').value }
+        })});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('P.O. uploaded!','success'); showSubventors();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+// ============================================
+// DAILY EXPENSES MODULE
+// ============================================
+
+async function showDailyExpenses() {
+    setActiveNav('nav-daily-expenses');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const now = new Date();
+        const res = await apiCall('daily-expenses?month='+(now.getMonth()+1)+'&year='+now.getFullYear());
+        const expenses = res.success ? res.data : [];
+        const summary = res.summary || {};
+        const isAcct = currentUserRole === 'accounts';
+
+        const catBreakdown = summary.categoryBreakdown || {};
+        const catHtml = Object.keys(catBreakdown).map(c=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #f1f5f9;"><span>${c}</span><strong>INR ${catBreakdown[c].toLocaleString()}</strong></div>`).join('')||'<div style="color:#94a3b8;">No expenses this month</div>';
+
+        const rows = expenses.length > 0 ? expenses.map(ex=>`
+            <tr>
+                <td>${ex.expenseDate||'N/A'}</td>
+                <td><span class="proposal-status status-${ex.category?.toLowerCase().replace(/\s/g,'-')||'other'}" style="font-size:0.75rem;">${ex.category||'N/A'}</span></td>
+                <td>${ex.description||'N/A'}</td>
+                <td>${ex.paidTo||'N/A'}</td>
+                <td><strong>${ex.currency||'INR'} ${(parseFloat(ex.amount)||0).toLocaleString()}</strong></td>
+                <td>${ex.paymentMethod||'N/A'}</td>
+                <td><span class="proposal-status status-${ex.status||'recorded'}">${ex.status||'recorded'}</span></td>
+                <td>
+                    ${['coo','director'].includes(currentUserRole) && ex.status==='recorded' ? `<button class="btn btn-sm btn-success" onclick="approveExpense('${ex.id}')">Approve</button>` : ''}
+                    ${isAcct && ex.status!=='approved' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;" onclick="deleteExpense('${ex.id}')">Del</button>` : ''}
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="8" class="text-center">No expenses recorded this month.</td></tr>';
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Daily Expenses</h2>
+                <div class="subtitle">Track and manage daily business expenses for ${now.toLocaleString('default',{month:'long'})} ${now.getFullYear()}</div>
+                ${isAcct ? '<button class="btn btn-success" onclick="showAddExpenseModal()" style="margin-top:1rem;">+ Add Expense</button>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#2563eb;">${expenses.length}</div><div style="color:#64748b;font-size:0.8rem;">Entries</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#ef4444;">INR ${(summary.totalAmount||0).toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total This Month</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#10b981;">${expenses.filter(e=>e.status==='approved').length}</div><div style="color:#64748b;font-size:0.8rem;">Approved</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;">
+                <div class="card" style="padding:1.2rem;"><h4 style="margin:0 0 0.75rem;">Category Breakdown</h4>${catHtml}</div>
+                <div class="card"><div style="overflow-x:auto;">
+                    <table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Method</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${rows}</tbody></table>
+                </div></div>
+            </div>`;
+    } catch(e) { main.innerHTML='<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    finally { hideLoading(); }
+}
+
+function showAddExpenseModal() {
+    openModal(`
+        <div class="modal-header" style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+            <div><h2 style="margin:0;font-size:1.2rem;">Add Daily Expense</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Record a new business expense</p></div>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <form onsubmit="submitAddExpense(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="ex_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category *</label>
+                    <select id="ex_cat" class="form-control" required>
+                        <option value="">-- Select --</option>
+                        <option value="Office Supplies">Office Supplies</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Food & Beverages">Food & Beverages</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Software & Subscriptions">Software & Subscriptions</option>
+                        <option value="Internet & Phone">Internet & Phone</option>
+                        <option value="Printing">Printing</option>
+                        <option value="Courier & Postage">Courier & Postage</option>
+                        <option value="Miscellaneous">Miscellaneous</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="ex_amt" class="form-control" type="number" step="0.01" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="ex_paidTo" class="form-control"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label>
+                    <select id="ex_method" class="form-control"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="upi">UPI</option><option value="card">Card</option><option value="cheque">Cheque</option></select>
+                </div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="ex_ref" class="form-control"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="ex_desc" class="form-control"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Applicable?</label><select id="ex_gst" class="form-control"><option value="false">No</option><option value="true">Yes</option></select></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Amount</label><input id="ex_gstAmt" class="form-control" type="number" step="0.01" value="0"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="ex_remarks" class="form-control"></div>
+            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Expense</button>
+        </form>
+    `, { maxWidth: '600px' });
+}
+
+async function submitAddExpense(e) {
+    e.preventDefault(); showLoading();
+    try {
+        const resp = await apiCall('daily-expenses',{method:'POST',body:JSON.stringify({
+            expenseDate: document.getElementById('ex_date').value,
+            category: document.getElementById('ex_cat').value,
+            amount: document.getElementById('ex_amt').value,
+            paidTo: document.getElementById('ex_paidTo').value,
+            paymentMethod: document.getElementById('ex_method').value,
+            referenceNo: document.getElementById('ex_ref').value,
+            description: document.getElementById('ex_desc').value,
+            gstApplicable: document.getElementById('ex_gst').value==='true',
+            gstAmount: document.getElementById('ex_gstAmt').value,
+            remarks: document.getElementById('ex_remarks').value
+        })});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Expense added!','success'); showDailyExpenses();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+async function approveExpense(id) {
+    if(!confirm('Approve this expense?')) return;
+    showLoading();
+    try {
+        const resp = await apiCall('daily-expenses/'+id,{method:'PUT',body:JSON.stringify({action:'approve'})});
+        if(!resp.success) throw new Error(resp.error);
+        showNotification('Expense approved!','success'); showDailyExpenses();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+async function deleteExpense(id) {
+    if(!confirm('Delete this expense?')) return;
+    showLoading();
+    try {
+        const resp = await apiCall('daily-expenses/'+id,{method:'DELETE'});
+        if(!resp.success) throw new Error(resp.error);
+        showNotification('Expense deleted!','success'); showDailyExpenses();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+// ============================================
+// GST FILING STATUS MODULE (Simple Monthly Checkboxes)
+// ============================================
+
+async function showGSTFiling() {
+    setActiveNav('nav-gst-filing');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const yr = new Date().getFullYear();
+        const res = await apiCall('gst-filing?year='+yr);
+        const records = res.success ? res.data : [];
+        const isAcct = currentUserRole === 'accounts';
+
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const filedMap = {};
+        records.forEach(r => { filedMap[r.month] = r; });
+
+        const filed = records.filter(r=>r.filingStatus==='filed').length;
+
+        const monthCards = months.map((m,i) => {
+            const mn = i+1;
+            const rec = filedMap[mn];
+            const isFiled = rec && rec.filingStatus === 'filed';
+            const isPast = new Date(yr, i+1, 0) < new Date();
+            const borderColor = isFiled ? '#10b981' : (isPast ? '#ef4444' : '#e2e8f0');
+            const bgColor = isFiled ? '#f0fdf4' : (isPast ? '#fef2f2' : '#fff');
+            const icon = isFiled ? 'white-check-mark' : (isPast ? 'warning' : 'hourglass-not-done');
+            const statusText = isFiled ? 'Filed' : (isPast ? 'Not Filed' : 'Upcoming');
+            const statusColor = isFiled ? '#10b981' : (isPast ? '#ef4444' : '#94a3b8');
+
+            return `
+                <div class="card" style="padding:1rem;border:2px solid ${borderColor};background:${bgColor};text-align:center;position:relative;cursor:${isAcct?'pointer':'default'};" ${isAcct ? `onclick="toggleGSTFiling(${mn},'${m}',${yr},${isFiled})"` : ''}>
+                    <div style="font-size:0.9rem;font-weight:700;color:#1e293b;margin-bottom:0.3rem;">${m}</div>
+                    <div style="font-size:2rem;">${isFiled ? '&#9989;' : (isPast ? '&#9888;&#65039;' : '&#9203;')}</div>
+                    <div style="font-size:0.75rem;font-weight:600;color:${statusColor};margin-top:0.3rem;">${statusText}</div>
+                    ${isFiled && rec.filingDate ? `<div style="font-size:0.7rem;color:#64748b;margin-top:0.2rem;">Filed: ${rec.filingDate}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>GST Filing Status - ${yr}</h2>
+                <div class="subtitle">Monthly GST filing tracker. ${isAcct ? 'Click a month to mark as filed/unfiled.' : 'View-only for your role.'}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:2rem;font-weight:700;color:#10b981;">${filed}</div><div style="color:#64748b;font-size:0.8rem;">Months Filed</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:2rem;font-weight:700;color:#ef4444;">${12-filed}</div><div style="color:#64748b;font-size:0.8rem;">Remaining</div></div>
+                <div class="card" style="padding:1rem;text-align:center;">
+                    <div style="width:60px;height:60px;border-radius:50%;background:conic-gradient(#10b981 ${(filed/12)*360}deg, #e2e8f0 0deg);margin:0 auto;display:flex;align-items:center;justify-content:center;">
+                        <div style="width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;">${Math.round((filed/12)*100)}%</div>
+                    </div>
+                    <div style="color:#64748b;font-size:0.8rem;margin-top:0.3rem;">Compliance</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;">
+                ${monthCards}
+            </div>`;
+    } catch(e) { main.innerHTML='<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    finally { hideLoading(); }
+}
+
+async function toggleGSTFiling(month, monthName, year, currentlyFiled) {
+    const newStatus = currentlyFiled ? 'not_filed' : 'filed';
+    const msg = currentlyFiled ? `Mark GST for ${monthName} ${year} as NOT filed?` : `Mark GST for ${monthName} ${year} as FILED?`;
+    if(!confirm(msg)) return;
+    showLoading();
+    try {
+        const body = { month, year, filingStatus: newStatus };
+        if(newStatus === 'filed') body.filingDate = new Date().toISOString().split('T')[0];
+        const resp = await apiCall('gst-filing',{method:'POST',body:JSON.stringify(body)});
+        if(!resp.success) throw new Error(resp.error);
+        showNotification(`GST for ${monthName} marked as ${newStatus==='filed'?'Filed':'Not Filed'}!`, 'success');
+        showGSTFiling();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
 }
 
 /**

@@ -8758,9 +8758,10 @@ async function showProjectDashboard() {
         const response = await apiCall('timesheets?action=executive_dashboard');
         if (!response.success) throw new Error(response.error || 'Failed to load project dashboard');
 
-        const { metrics, projects, sectionBreakdown, totalRevenueByCurrency, revenuePeriods, analytics } = response.data;
+        const { metrics, projects, sectionBreakdown, totalRevenueByCurrency, revenuePeriods, analytics, subcontractorData } = response.data;
         const sb = sectionBreakdown || {};
         const trc = totalRevenueByCurrency || {};
+        const subData = subcontractorData || { projects: [], revenueByCurrency: {}, totalRevenue: 0, count: 0 };
 
         // Section colors
         const sectionColors = { Engineering: '#3b82f6', Rebar: '#f59e0b', Structural: '#10b981', Unassigned: '#6b7280' };
@@ -8916,7 +8917,7 @@ async function showProjectDashboard() {
         // Section filter buttons for project table
         const sectionFilterHtml = `
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-                <button onclick="filterProjectDashboardTable('all')" class="pd-filter-btn pd-filter-active" style="background: var(--primary-blue); color: white; border: none; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">All (${metrics.totalProjects})</button>
+                <button onclick="filterProjectDashboardTable('all')" class="pd-filter-btn pd-filter-active" style="background: var(--primary-blue); color: white; border: none; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">All (${metrics.allocatedProjects || metrics.totalProjects})</button>
                 <button onclick="filterProjectDashboardTable('Engineering')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Engineering (${(sb.Engineering||{count:0}).count})</button>
                 <button onclick="filterProjectDashboardTable('Rebar')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Rebar (${(sb.Rebar||{count:0}).count})</button>
                 <button onclick="filterProjectDashboardTable('Structural')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Structural (${(sb.Structural||{count:0}).count})</button>
@@ -8933,8 +8934,8 @@ async function showProjectDashboard() {
             <!-- Top Metrics -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                 <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">${metrics.totalProjects}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-light);">Total Projects</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">${metrics.allocatedProjects || 0}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Allocated Projects</div>
                 </div>
                 <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
                     <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">${(metrics.totalLoggedHours || 0).toFixed(0)}h</div>
@@ -8945,16 +8946,20 @@ async function showProjectDashboard() {
                     <div style="font-size: 0.85rem; color: var(--text-light);">Hours Allocated</div>
                 </div>
                 <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #5b21b6;">${subData.count}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Subcontracted</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
                     <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">${metrics.projectsAboveTimeline}</div>
                     <div style="font-size: 0.85rem; color: var(--text-light);">Exceeded Timeline</div>
                 </div>
             </div>
 
-            <!-- Revenue Analytics -->
+            <!-- Revenue Analytics (Allocated Projects Only) -->
             <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <!-- Period Tabs -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0;">Revenue Analytics</h3>
+                    <h3 style="margin: 0;">Project Revenue <span style="font-size: 0.75rem; color: var(--text-light); font-weight: 400;">(Allocated Projects)</span></h3>
                     <div style="display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid #d1d5db;">
                         <button onclick="switchRevenuePeriod('total')" class="rev-tab rev-tab-active" style="padding: 0.5rem 1rem; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; background: var(--primary-blue); color: white;">Overall</button>
                         <button onclick="switchRevenuePeriod('monthly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Monthly</button>
@@ -9003,8 +9008,52 @@ async function showProjectDashboard() {
                 </div>
             </div>
 
+            <!-- Subcontractor Revenue Section -->
+            ${(() => {
+                if (subData.count <= 0) return '';
+                const subCurrencyCards = [['USD', '$', '#10b981'], ['GBP', '\u00A3', '#6366f1'], ['CAD', 'C$', '#f59e0b'], ['AUD', 'A$', '#3b82f6']]
+                    .map(([cur, sym]) => {
+                        const val = (subData.revenueByCurrency || {})[cur] || 0;
+                        if (val <= 0) return '';
+                        return '<div style="text-align: center; padding: 1rem; background: #faf5ff; border-radius: 10px; border-left: 4px solid #5b21b6;">'
+                            + '<div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">' + cur + '</div>'
+                            + '<div style="font-size: 1.6rem; font-weight: 700; color: #5b21b6;">' + sym + fmt(val) + '</div>'
+                            + '</div>';
+                    }).join('');
+                const otherSubCurs = Object.entries(subData.revenueByCurrency || {}).filter(([k]) => !['USD','GBP','CAD','AUD'].includes(k)).filter(([_,v]) => v > 0)
+                    .map(([cur, val]) => '<div style="text-align: center; padding: 1rem; background: #faf5ff; border-radius: 10px; border-left: 4px solid #5b21b6;">'
+                        + '<div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">' + cur + '</div>'
+                        + '<div style="font-size: 1.6rem; font-weight: 700; color: #5b21b6;">' + cur + ' ' + fmt(val) + '</div>'
+                        + '</div>').join('');
+                const subRows = (subData.projects || []).map(sp =>
+                    '<tr style="border-bottom: 1px solid #f3f4f6;">'
+                    + '<td style="padding: 0.75rem 1rem; font-weight: 600; color: #111827;">' + (sp.projectName || '') + '</td>'
+                    + '<td style="padding: 0.75rem 1rem; color: #374151;">' + (sp.clientCompany || '') + '</td>'
+                    + '<td style="padding: 0.75rem 1rem;"><span style="background: #ede9fe; color: #5b21b6; padding: 2px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;">' + (sp.subcontractorName || '') + '</span></td>'
+                    + '<td style="text-align: right; padding: 0.75rem 1rem; font-weight: 700; color: #5b21b6;">' + (currencySymbols[sp.currency] || sp.currency + ' ') + fmt(sp.quoteValue || 0) + '</td>'
+                    + '</tr>'
+                ).join('');
+                return '<div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); border-left: 4px solid #5b21b6; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">'
+                    + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">'
+                    + '<h3 style="margin: 0; color: #5b21b6;">Subcontractor Value <span style="background: #5b21b6; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-left: 0.5rem;">' + subData.count + ' Projects</span></h3>'
+                    + '</div>'
+                    + '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">'
+                    + subCurrencyCards + otherSubCurs
+                    + '</div>'
+                    + '<div style="overflow-x: auto;">'
+                    + '<table style="width: 100%; border-collapse: collapse;">'
+                    + '<thead><tr style="background: #faf5ff;">'
+                    + '<th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Project</th>'
+                    + '<th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Client</th>'
+                    + '<th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Subcontractor</th>'
+                    + '<th style="text-align: right; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Value</th>'
+                    + '</tr></thead>'
+                    + '<tbody>' + subRows + '</tbody>'
+                    + '</table></div></div>';
+            })()}
+
             <!-- Section Breakdown Cards -->
-            <h3 style="margin-bottom: 1rem;">Section Breakdown</h3>
+            <h3 style="margin-bottom: 1rem;">Section Breakdown <span style="font-size: 0.75rem; color: var(--text-light); font-weight: 400;">(Allocated Projects)</span></h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                 ${sectionCardsHtml}
             </div>

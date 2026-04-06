@@ -22302,31 +22302,42 @@ async function showAllocateProjectModal(projectId) {
 
             try {
                 showLoading();
-                
-                // Fetch designers
-                const response = await apiCall('users?role=designer');
+
+                // Fetch designers and project in parallel
+                const [response, projectResponse, timesheetResponse] = await Promise.all([
+                    apiCall('users?role=designer'),
+                    apiCall(`projects?id=${projectId}`),
+                    apiCall(`timesheets?projectId=${projectId}`)
+                ]);
                 if (!response.success) throw new Error('Failed to fetch designers');
                 const designers = response.data;
 
-                // Fetch project details to get max hours and currently assigned designers
-                const projectResponse = await apiCall(`projects?id=${projectId}`);
                 const currentProject = projectResponse.success ? projectResponse.data : {};
-                const assignedUids = currentProject.assignedDesignerUids || [];
-                const assignedHours = currentProject.assignedDesignerHours || currentProject.designerHours || {};
-                
+
+                // Build per-designer hours logged from timesheets
+                const timesheets = (timesheetResponse.success ? timesheetResponse.data : []);
+                const hoursLoggedPerDesigner = {};
+                timesheets.forEach(t => {
+                    if (t.designerUid) {
+                        hoursLoggedPerDesigner[t.designerUid] = (hoursLoggedPerDesigner[t.designerUid] || 0) + (parseFloat(t.hours) || 0);
+                    }
+                });
+
                 // Get max hours from project (set by COO/Director)
                 const maxHours = parseFloat(currentProject.maxAllocatedHours || 0);
                 const additionalHours = parseFloat(currentProject.additionalHours || 0);
                 const totalAvailable = maxHours + additionalHours;
 
-                // Calculate designer-level allocation (assigned by design lead, not COO allocation)
-                const existingDesigners = currentProject.assignedDesigners || [];
+                // Designer-level allocation (assigned by design lead)
+                const existingDesignersList = currentProject.assignedDesigners || [];
                 const existingDesignerHoursMap = currentProject.assignedDesignerHours || {};
-                const alreadyAllocated = existingDesigners.reduce((sum, uid) => sum + (parseFloat(existingDesignerHoursMap[uid]) || 0), 0);
+                const existingDesignerNamesList = currentProject.assignedDesignerNames || [];
+                const existingDesignerEmailsList = currentProject.assignedDesignerEmails || [];
+                const alreadyAllocated = existingDesignersList.reduce((sum, uid) => sum + (parseFloat(existingDesignerHoursMap[uid]) || 0), 0);
                 const remainingToAllocate = totalAvailable - alreadyAllocated;
                 const hoursLogged = parseFloat(currentProject.hoursLogged || 0);
-                
-                // Show hours summary if max hours are set
+
+                // Show hours summary
                 const summaryDiv = document.getElementById('projectHoursSummary');
                 if (maxHours > 0) {
                     summaryDiv.style.display = 'block';
@@ -22345,80 +22356,98 @@ async function showAllocateProjectModal(projectId) {
                                 <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">${totalAvailable.toFixed(1)}h</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Already Allocated</div>
+                                <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Designer Allocated</div>
                                 <div style="font-size: 1.5rem; font-weight: 700; color: ${alreadyAllocated > 0 ? '#f59e0b' : 'var(--text-light)'};">${alreadyAllocated.toFixed(1)}h</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Remaining to Allocate</div>
+                                <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Remaining</div>
                                 <div style="font-size: 1.5rem; font-weight: 700; color: ${remainingToAllocate > 0 ? 'var(--success)' : 'var(--danger)'};" id="displayRemainingHours">${remainingToAllocate.toFixed(1)}h</div>
                             </div>
                         </div>
                         ${alreadyAllocated > 0 ? `
                         <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
-                            <strong>⏳ Partial Allocation:</strong> This project already has ${alreadyAllocated.toFixed(1)}h allocated. You can allocate the remaining ${remainingToAllocate.toFixed(1)}h to additional designers.
+                            <strong>⏳ Partial Allocation:</strong> ${alreadyAllocated.toFixed(1)}h already allocated to ${existingDesignersList.length} designer(s). You can edit hours or add more designers with the remaining ${remainingToAllocate.toFixed(1)}h.
                         </div>
                         ` : ''}
                     `;
                 } else {
                     summaryDiv.style.display = 'none';
                 }
-                
-                // Populate designers list with hour input
+
+                // Populate designers list
                 const designersList = document.getElementById('designersList');
                 designersList.innerHTML = '';
-                
-                designers.forEach(designer => {
-                    const isAssigned = assignedUids.includes(designer.uid);
-                    const currentHours = assignedHours[designer.uid] || 0;
-                    
+
+                // Sort: already assigned first, then by name
+                const sortedDesigners = [...designers].sort((a, b) => {
+                    const aAssigned = existingDesignersList.includes(a.uid) ? 0 : 1;
+                    const bAssigned = existingDesignersList.includes(b.uid) ? 0 : 1;
+                    if (aAssigned !== bAssigned) return aAssigned - bAssigned;
+                    return (a.name || '').localeCompare(b.name || '');
+                });
+
+                sortedDesigners.forEach(designer => {
+                    const isAssigned = existingDesignersList.includes(designer.uid);
+                    const currentHours = parseFloat(existingDesignerHoursMap[designer.uid]) || 0;
+                    const logged = parseFloat(hoursLoggedPerDesigner[designer.uid]) || 0;
+                    const hasLoggedHours = logged > 0;
+
                     const designerRow = document.createElement('div');
                     designerRow.className = 'designer-row';
                     designerRow.style.cssText = 'display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 0.8rem; background: white;';
-                    
-                    // If already assigned, show different styling
+
                     if (isAssigned && currentHours > 0) {
                         designerRow.style.borderColor = '#10b981';
                         designerRow.style.background = '#f0fdf4';
                     }
-                    
+
                     designerRow.innerHTML = `
                         <div style="display: flex; align-items: center;">
-                            <input type="checkbox" 
-                                    id="designer-${designer.uid}" 
+                            <input type="checkbox"
+                                    id="designer-${designer.uid}"
                                     value="${designer.uid}"
-                                    data-name="${designer.name}" 
+                                    data-name="${designer.name}"
                                     data-email="${designer.email}"
                                     data-current-hours="${currentHours}"
+                                    data-hours-logged="${logged}"
                                     ${isAssigned ? 'checked' : ''}
+                                    ${hasLoggedHours ? 'disabled title="Cannot unassign - designer has logged hours"' : ''}
                                     onchange="toggleDesignerHoursInput(this)"
-                                    style="width: 20px; height: 20px; cursor: pointer;">
+                                    style="width: 20px; height: 20px; cursor: ${hasLoggedHours ? 'not-allowed' : 'pointer'};">
                         </div>
                         <div>
                             <label for="designer-${designer.uid}" style="font-weight: 600; margin: 0; cursor: pointer;">
                                 ${designer.name}
-                                ${isAssigned && currentHours > 0 ? `<span style="color: #10b981; font-size: 0.85rem;">(Already: ${currentHours}h)</span>` : ''}
+                                ${isAssigned && currentHours > 0 ? `<span style="color: #10b981; font-size: 0.85rem;">(Allocated: ${currentHours}h)</span>` : ''}
                             </label>
                             <div style="font-size: 0.85rem; color: var(--text-light);">
-                                ${designer.email} • ${designer.assignedProjects || 0} active projects
+                                ${designer.email} ${designer.assignedProjects ? `• ${designer.assignedProjects} active projects` : ''}
                             </div>
+                            ${hasLoggedHours ? `
+                                <div style="font-size: 0.8rem; color: #8b5cf6; margin-top: 2px;">
+                                    ⏱️ ${logged.toFixed(1)}h logged (min allocation: ${logged.toFixed(1)}h)
+                                </div>
+                            ` : ''}
                         </div>
                         <div style="min-width: 150px;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="number" 
+                                <input type="number"
                                         id="hours-${designer.uid}"
-                                        class="form-control hours-input" 
-                                        step="0.5" 
-                                        min="0"
+                                        class="form-control hours-input"
+                                        step="0.5"
+                                        min="${hasLoggedHours ? logged : 0}"
                                         value="${currentHours}"
                                         placeholder="Hours"
                                         ${!isAssigned ? 'disabled' : ''}
+                                        data-min-hours="${hasLoggedHours ? logged : 0}"
+                                        oninput="updateTotalAllocated()"
                                         onchange="updateTotalAllocated()"
                                         style="width: 80px; padding: 0.5rem; text-align: center;">
                                 <span style="font-size: 0.9rem; color: var(--text-light);">hrs</span>
                             </div>
                         </div>
                     `;
-                    
+
                     designersList.appendChild(designerRow);
                 });
 
@@ -22426,10 +22455,10 @@ async function showAllocateProjectModal(projectId) {
                 document.getElementById('assignProjectId').value = projectId;
                 modal.dataset.maxHours = totalAvailable;
                 modal.dataset.alreadyAllocated = alreadyAllocated;
-                
+
                 // Calculate and display initial totals
                 updateTotalAllocated();
-                
+
                 // Show modal
                 modal.style.display = 'flex';
 
@@ -22530,22 +22559,30 @@ async function showAllocateProjectModal(projectId) {
             const designerHours = {};
             let totalAllocated = 0;
 
-            // Collect selected designers and their hours
-            let hasError = false; // Flag to stop execution
+            // Collect ALL checked designers (existing + new)
+            let hasError = false;
             checkboxes.forEach(checkbox => {
-                if (hasError) return; // Don't process more if error found
-                
+                if (hasError) return;
+
                 const uid = checkbox.value;
                 const hoursInput = document.getElementById(`hours-${uid}`);
                 const hours = parseFloat(hoursInput.value) || 0;
-                
-                // Validate hours
+                const minHours = parseFloat(hoursInput.dataset.minHours || 0);
+
+                // Validate hours - at least 0.5h for new, at least logged hours for existing
                 if (hours < 0.5) {
                     alert(`Please allocate at least 0.5 hours for ${checkbox.dataset.name}`);
-                    hasError = true; // Set flag
-                    return; // Exit forEach loop
+                    hasError = true;
+                    return;
                 }
-                
+
+                // Cannot reduce below hours already logged
+                if (minHours > 0 && hours < minHours) {
+                    alert(`Cannot allocate less than ${minHours.toFixed(1)}h for ${checkbox.dataset.name} — they have already logged ${minHours.toFixed(1)}h.`);
+                    hasError = true;
+                    return;
+                }
+
                 designerUids.push(uid);
                 designerNames.push(checkbox.dataset.name);
                 designerEmails.push(checkbox.dataset.email);
@@ -22553,22 +22590,33 @@ async function showAllocateProjectModal(projectId) {
                 totalAllocated += hours;
             });
 
-            if (hasError) return; // Stop submission if invalid hours
-            
+            if (hasError) return;
+
+            if (designerUids.length === 0) {
+                alert('Please select at least one designer.');
+                return;
+            }
+
             // Validate total hours against max hours
-            if (maxHours > 0 && totalAllocated > maxHours) {
+            if (maxHours > 0 && totalAllocated > maxHours + 0.1) {
                 alert(`⚠️ Total allocated hours (${totalAllocated.toFixed(1)}) exceeds available hours (${maxHours.toFixed(1)}). Please adjust the allocation.`);
                 return;
             }
-            
+
+            // Confirmation
+            const confirmText = `Allocation Summary:\n\n` +
+                designerUids.map((uid, i) => `${designerNames[i]}: ${designerHours[uid]}h`).join('\n') +
+                `\n\nTotal: ${totalAllocated.toFixed(1)}h / ${maxHours.toFixed(1)}h\n\nProceed?`;
+            if (!confirm(confirmText)) return;
+
             // Prepare assignment data
             const assignmentData = {
                 action: 'assign_designers',
                 data: {
-                    designerUids: designerUids,
-                    designerNames: designerNames,
-                    designerEmails: designerEmails,
-                    designerHours: designerHours,
+                    designerUids,
+                    designerNames,
+                    designerEmails,
+                    designerHours,
                     totalAllocatedHours: totalAllocated
                 }
             };
@@ -22581,27 +22629,15 @@ async function showAllocateProjectModal(projectId) {
                 });
 
                 if (result.success) {
-                    const summary = designerUids.length > 0 
-                        ? `${designerUids.length} designer(s) assigned with total ${totalAllocated.toFixed(1)} hours allocated.`
-                        : 'All designers unassigned from project.';
-                    showSuccessModal(`Designers assigned successfully!`, summary);
+                    const summary = `${designerUids.length} designer(s) assigned with total ${totalAllocated.toFixed(1)} hours allocated.`;
+                    showSuccessModal('Designers Updated Successfully!', summary);
                     closeDesignerAssignmentModal();
-                    
+
                     // Reload appropriate view based on user role
-                    if (currentUserRole === 'design_lead') {
-                        if (typeof showDesignLeadPortal === 'function') {
-                            showDesignLeadPortal();
-                        } else if (typeof showProjects === 'function') {
-                            showProjects();
-                        }
-                    } else if (currentUserRole === 'coo' || currentUserRole === 'director') {
-                        if (typeof showProjects === 'function') {
-                            showProjects();
-                        }
-                    } else {
-                        if (typeof showProjects === 'function') {
-                            showProjects();
-                        }
+                    if (currentUserRole === 'design_lead' && typeof showDesignLeadPortal === 'function') {
+                        showDesignLeadPortal();
+                    } else if (typeof showProjects === 'function') {
+                        showProjects();
                     }
                 } else {
                     throw new Error(result.error || 'Assignment failed');

@@ -20299,7 +20299,20 @@ async function showCooMultiDesignerAllocationModal(projectId) {
             poPreview.innerHTML = `📎 Existing: <strong>${project.poFileName}</strong> <a href="${project.poFileUrl || '#'}" target="_blank" style="color: #065f46;">(View)</a>`;
             poPreview.style.display = 'block';
         }
-        
+
+        // 3d. Populate Project Contacts if previously set
+        const contacts = project.projectContacts || {};
+        const tech = contacts.technical || {};
+        const comm = contacts.commercial || {};
+        if (tech.bdmName) document.getElementById('cooTechBdmName').value = tech.bdmName;
+        if (tech.bdmEmail) document.getElementById('cooTechBdmEmail').value = tech.bdmEmail;
+        if (tech.clientPmName) document.getElementById('cooTechClientPmName').value = tech.clientPmName;
+        if (tech.clientPmEmail) document.getElementById('cooTechClientPmEmail').value = tech.clientPmEmail;
+        if (comm.accountName) document.getElementById('cooCommAccountName').value = comm.accountName;
+        if (comm.accountEmail) document.getElementById('cooCommAccountEmail').value = comm.accountEmail;
+        if (comm.bdmName) document.getElementById('cooCommBdmName').value = comm.bdmName;
+        if (comm.bdmEmail) document.getElementById('cooCommBdmEmail').value = comm.bdmEmail;
+
         // ============================================
         // ✅ CRITICAL FIX: TWO SCENARIOS LOGIC
         // ============================================
@@ -21319,11 +21332,35 @@ async function submitCooMultiDesignerAllocation() {
         return;
     }
 
+    // ============================================
+    // Project Contacts Data Collection
+    // ============================================
+    const projectContacts = {
+        technical: {
+            bdmName: (document.getElementById('cooTechBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('cooTechBdmEmail').value || '').trim(),
+            clientPmName: (document.getElementById('cooTechClientPmName').value || '').trim(),
+            clientPmEmail: (document.getElementById('cooTechClientPmEmail').value || '').trim()
+        },
+        commercial: {
+            accountName: (document.getElementById('cooCommAccountName').value || '').trim(),
+            accountEmail: (document.getElementById('cooCommAccountEmail').value || '').trim(),
+            bdmName: (document.getElementById('cooCommBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('cooCommBdmEmail').value || '').trim()
+        }
+    };
+
     // Confirmation
     const poSummary = [];
     if (poNumber) poSummary.push(`P.O. Number: ${poNumber}`);
     if (poValue) poSummary.push(`P.O. Value: ${poCurrency} ${poValue.toLocaleString()}`);
     if (poFile) poSummary.push(`P.O. File: ${poFile.name}`);
+
+    const contactSummary = [];
+    if (projectContacts.technical.bdmName) contactSummary.push(`Tech BDM: ${projectContacts.technical.bdmName}`);
+    if (projectContacts.technical.clientPmName) contactSummary.push(`Client PM: ${projectContacts.technical.clientPmName}`);
+    if (projectContacts.commercial.accountName) contactSummary.push(`Comm Account: ${projectContacts.commercial.accountName}`);
+    if (projectContacts.commercial.bdmName) contactSummary.push(`Comm BDM: ${projectContacts.commercial.bdmName}`);
 
     const confirmText = `
 📊 Allocation Summary
@@ -21336,7 +21373,7 @@ Remaining: ${(totalBudget - newTotalAllocated).toFixed(1)} hrs
 Designers: ${designerAllocations.length}
 ${designerAllocations.map((d, i) => `\n${i+1}. ${d.designerName}: ${d.allocatedHours} hrs`).join('')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${poSummary.length > 0 ? '\n📄 Purchase Order:\n' + poSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}
+${poSummary.length > 0 ? '\n📄 Purchase Order:\n' + poSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}${contactSummary.length > 0 ? '\n📇 Contacts:\n' + contactSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}
 
 Proceed with allocation?`.trim();
     
@@ -21393,6 +21430,9 @@ Proceed with allocation?`.trim();
                 poCurrency: poCurrency,
                 poFileBase64: poFileBase64,
                 poFileName: poFileName,
+
+                // Project Contacts (Technical & Commercial)
+                projectContacts: projectContacts,
 
                 // Legacy fields for backend compatibility
                 assignedDesignerUids: designerAllocations.map(d => d.designerUid),
@@ -21461,6 +21501,12 @@ function closeCooMultiDesignerModal() {
     if (poValueInput) poValueInput.value = '';
     const poCurrency = document.getElementById('cooPoCurrency');
     if (poCurrency) poCurrency.value = 'USD';
+    // Reset contact fields
+    ['cooTechBdmName', 'cooTechBdmEmail', 'cooTechClientPmName', 'cooTechClientPmEmail',
+     'cooCommAccountName', 'cooCommAccountEmail', 'cooCommBdmName', 'cooCommBdmEmail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
 }
 
 /**
@@ -29621,6 +29667,62 @@ function toggleDesignHours() {
                             <option value="CAD">CAD - Canadian Dollar</option>
                         </select>
                         <small class="form-text">Select the P.O. currency</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technical & Commercial Contacts Section -->
+            <div class="form-section" style="margin-top: 2rem; background: #eef2ff; padding: 1.5rem; border-radius: 10px; border: 2px solid #818cf8;">
+                <h3 style="color: #3730a3; margin-bottom: 0.5rem;">📇 Project Contacts</h3>
+                <p style="color: #4338ca; font-size: 0.85rem; margin-bottom: 1.5rem;">Enter technical and commercial contact details. Tracking will be sent to Document Control & Accounts.</p>
+
+                <!-- Technical Contact -->
+                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; border-left: 4px solid #22c55e;">
+                    <h4 style="color: #166534; margin: 0 0 1rem 0; font-size: 1rem;">Technical Contact</h4>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechBdmName">BDM Name</label>
+                            <input type="text" id="cooTechBdmName" class="form-control" placeholder="Enter BDM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechBdmEmail">BDM Email</label>
+                            <input type="email" id="cooTechBdmEmail" class="form-control" placeholder="bdm@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechClientPmName">Client PM Name</label>
+                            <input type="text" id="cooTechClientPmName" class="form-control" placeholder="Enter Client PM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechClientPmEmail">Client PM Email</label>
+                            <input type="email" id="cooTechClientPmEmail" class="form-control" placeholder="clientpm@example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Commercial Contact -->
+                <div style="background: #fefce8; padding: 1.25rem; border-radius: 8px; border-left: 4px solid #eab308;">
+                    <h4 style="color: #854d0e; margin: 0 0 1rem 0; font-size: 1rem;">Commercial Contact</h4>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommAccountName">Their Account Contact Name</label>
+                            <input type="text" id="cooCommAccountName" class="form-control" placeholder="Enter account contact name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommAccountEmail">Their Account Contact Email</label>
+                            <input type="email" id="cooCommAccountEmail" class="form-control" placeholder="account@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommBdmName">BDM Name</label>
+                            <input type="text" id="cooCommBdmName" class="form-control" placeholder="Enter BDM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommBdmEmail">BDM Email</label>
+                            <input type="email" id="cooCommBdmEmail" class="form-control" placeholder="bdm@example.com">
+                        </div>
                     </div>
                 </div>
             </div>

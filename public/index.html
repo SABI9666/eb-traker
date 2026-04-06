@@ -20285,6 +20285,20 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         if (sectionSelect) {
             sectionSelect.value = project.projectSection || '';
         }
+
+        // 3c. Populate P.O. fields if previously set
+        const poNumberInput = document.getElementById('cooPoNumber');
+        if (poNumberInput && project.poNumber) poNumberInput.value = project.poNumber;
+        const poValueInput = document.getElementById('cooPoValue');
+        if (poValueInput && project.poValue) poValueInput.value = project.poValue;
+        const poCurrencySelect = document.getElementById('cooPoCurrency');
+        if (poCurrencySelect && project.poCurrency) poCurrencySelect.value = project.poCurrency;
+        // Show existing P.O. file info
+        const poPreview = document.getElementById('cooPoFilePreview');
+        if (poPreview && project.poFileName) {
+            poPreview.innerHTML = `📎 Existing: <strong>${project.poFileName}</strong> <a href="${project.poFileUrl || '#'}" target="_blank" style="color: #065f46;">(View)</a>`;
+            poPreview.style.display = 'block';
+        }
         
         // ============================================
         // ✅ CRITICAL FIX: TWO SCENARIOS LOGIC
@@ -21174,6 +21188,32 @@ function validateDesignerSelection() {
 }
 
 /**
+ * Handle P.O. file selection in COO allocation modal
+ */
+function handleCooPoFileSelect(input) {
+    const preview = document.getElementById('cooPoFilePreview');
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type !== 'application/pdf') {
+            alert('Please upload a PDF file only.');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB.');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        preview.innerHTML = `📎 <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+/**
  * ✅ FIXED: Submit COO Multi-Designer Allocation
  * Handles both scenarios: estimation hours OR manual COO entry
  */
@@ -21265,7 +21305,26 @@ async function submitCooMultiDesignerAllocation() {
         return;
     }
     
+    // ============================================
+    // P.O. Data Collection
+    // ============================================
+    const poFile = document.getElementById('cooPoFile').files[0] || null;
+    const poNumber = (document.getElementById('cooPoNumber').value || '').trim();
+    const poValue = parseFloat(document.getElementById('cooPoValue').value) || 0;
+    const poCurrency = document.getElementById('cooPoCurrency').value || 'USD';
+
+    // Validate: at least P.O. file or P.O. value must be provided
+    if (!poFile && !poValue) {
+        alert('⚠️ Please upload a P.O. PDF or enter a P.O. value (or both).');
+        return;
+    }
+
     // Confirmation
+    const poSummary = [];
+    if (poNumber) poSummary.push(`P.O. Number: ${poNumber}`);
+    if (poValue) poSummary.push(`P.O. Value: ${poCurrency} ${poValue.toLocaleString()}`);
+    if (poFile) poSummary.push(`P.O. File: ${poFile.name}`);
+
     const confirmText = `
 📊 Allocation Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -21277,6 +21336,7 @@ Remaining: ${(totalBudget - newTotalAllocated).toFixed(1)} hrs
 Designers: ${designerAllocations.length}
 ${designerAllocations.map((d, i) => `\n${i+1}. ${d.designerName}: ${d.allocatedHours} hrs`).join('')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${poSummary.length > 0 ? '\n📄 Purchase Order:\n' + poSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}
 
 Proceed with allocation?`.trim();
     
@@ -21290,7 +21350,20 @@ Proceed with allocation?`.trim();
         // ============================================
         // ✅ CRITICAL: Prepare Payload for Backend
         // ============================================
-        
+
+        // Read P.O. file as base64 if provided
+        let poFileBase64 = null;
+        let poFileName = null;
+        if (poFile) {
+            poFileBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(poFile);
+            });
+            poFileName = poFile.name;
+        }
+
         const allocationData = {
             action: 'allocate_to_multiple_designers',
             data: {
@@ -21313,6 +21386,13 @@ Proceed with allocation?`.trim();
                 targetCompletionDate: targetDate || null,
                 priority: priority,
                 allocationNotes: generalNotes,
+
+                // Purchase Order (P.O.) data
+                poNumber: poNumber || null,
+                poValue: poValue || null,
+                poCurrency: poCurrency,
+                poFileBase64: poFileBase64,
+                poFileName: poFileName,
 
                 // Legacy fields for backend compatibility
                 assignedDesignerUids: designerAllocations.map(d => d.designerUid),
@@ -21370,6 +21450,17 @@ function closeCooMultiDesignerModal() {
     if (sectionSelect) sectionSelect.value = '';
     const addBtn = document.getElementById('addDesignLeadBtn');
     if (addBtn) addBtn.style.display = 'inline-block';
+    // Reset P.O. fields
+    const poFileInput = document.getElementById('cooPoFile');
+    if (poFileInput) poFileInput.value = '';
+    const poPreview = document.getElementById('cooPoFilePreview');
+    if (poPreview) poPreview.style.display = 'none';
+    const poNumber = document.getElementById('cooPoNumber');
+    if (poNumber) poNumber.value = '';
+    const poValueInput = document.getElementById('cooPoValue');
+    if (poValueInput) poValueInput.value = '';
+    const poCurrency = document.getElementById('cooPoCurrency');
+    if (poCurrency) poCurrency.value = 'USD';
 }
 
 /**
@@ -29492,6 +29583,45 @@ function toggleDesignHours() {
 
                 <div id="designerAllocationsContainer">
                     <!-- Design Lead allocation rows will be added here dynamically -->
+                </div>
+            </div>
+
+            <!-- Purchase Order (P.O.) Section -->
+            <div class="form-section" style="margin-top: 2rem; background: #fef9e7; padding: 1.5rem; border-radius: 10px; border: 2px solid #f0c040;">
+                <h3 style="color: #7c6a0a; margin-bottom: 0.5rem;">📄 Purchase Order (P.O.)</h3>
+                <p style="color: #92400e; font-size: 0.85rem; margin-bottom: 1rem;">Upload a P.O. PDF and/or enter the P.O. value. At least one is required. Tracking will be sent to Accounts & HR.</p>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoFile">P.O. Document (PDF)</label>
+                        <input type="file" id="cooPoFile" class="form-control" accept=".pdf"
+                               style="padding: 0.5rem;" onchange="handleCooPoFileSelect(this)">
+                        <small class="form-text">Upload purchase order PDF</small>
+                        <div id="cooPoFilePreview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 6px; font-size: 0.85rem; color: #065f46;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoNumber">P.O. Number</label>
+                        <input type="text" id="cooPoNumber" class="form-control" placeholder="e.g., PO-2026-001">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoValue">P.O. Value / Amount</label>
+                        <input type="number" id="cooPoValue" class="form-control" placeholder="e.g., 50000" min="0" step="0.01">
+                        <small class="form-text">Enter the purchase order amount</small>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoCurrency">Currency <span class="required">*</span></label>
+                        <select id="cooPoCurrency" class="form-control" style="font-weight: 600;">
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                        </select>
+                        <small class="form-text">Select the P.O. currency</small>
+                    </div>
                 </div>
             </div>
 

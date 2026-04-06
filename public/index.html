@@ -21840,11 +21840,18 @@ async function showDesignLeadPortal() {
                 const totalAllocated = parseFloat(project.totalAllocatedHours) || 0;
                 const hoursLogged = parseFloat(project.hoursLogged) || 0;
                 const remainingBudget = totalAvailable - hoursLogged;
-                const remainingToAllocate = totalAvailable - totalAllocated;
 
-                const isFullyAllocated = totalAvailable > 0 && totalAllocated >= totalAvailable;
-                const isPartiallyAllocated = totalAvailable > 0 && totalAllocated > 0 && totalAllocated < totalAvailable;
-                const needsDesigners = !project.assignedDesigners || project.assignedDesigners.length === 0;
+                // For Design Lead portal: check actual designer assignments, not COO-level allocation
+                // assignedDesigners = designers assigned BY design lead
+                // assignedDesignerHours = hours per designer assigned by design lead
+                const designers = project.assignedDesigners || [];
+                const designerHoursMap = project.assignedDesignerHours || {};
+                const designerAllocatedTotal = designers.reduce((sum, uid) => sum + (parseFloat(designerHoursMap[uid]) || 0), 0);
+                const remainingToAllocate = totalAvailable - designerAllocatedTotal;
+
+                const hasDesigners = designers.length > 0;
+                const isDesignerFullyAllocated = totalAvailable > 0 && designerAllocatedTotal >= totalAvailable;
+                const isDesignerPartiallyAllocated = totalAvailable > 0 && designerAllocatedTotal > 0 && designerAllocatedTotal < totalAvailable;
 
                 // Status color
                 let statusColor = '#6b7280';
@@ -21852,24 +21859,25 @@ async function showDesignLeadPortal() {
                 else if (project.status === 'assigned') statusColor = '#f59e0b';
                 else if (project.status === 'completed') statusColor = '#10b981';
 
-                // Allocation badge
+                // Allocation badge - based on designer-level assignments
                 let allocationBadge = '';
-                if (isFullyAllocated) {
-                    allocationBadge = `<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Fully Allocated</span>`;
-                } else if (isPartiallyAllocated) {
-                    allocationBadge = `<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Partial: ${totalAllocated}/${totalAvailable}h</span>`;
-                } else if (needsDesigners) {
+                if (isDesignerFullyAllocated) {
+                    allocationBadge = `<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Designers Fully Allocated</span>`;
+                } else if (isDesignerPartiallyAllocated) {
+                    allocationBadge = `<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Designers: ${designerAllocatedTotal}/${totalAvailable}h</span>`;
+                } else if (!hasDesigners) {
                     allocationBadge = `<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Needs Designers</span>`;
                 }
 
-                // Designer names
-                const designerNames = project.assignedDesignerNames?.join(', ') || 'None assigned';
+                // Designer names - show actual designers assigned by design lead
+                const designerNamesList = project.assignedDesignerNames || [];
+                const designerNames = designerNamesList.length > 0 ? designerNamesList.join(', ') : 'None assigned';
 
-                // Assign button
+                // Assign button - based on designer-level assignments, not COO allocation
                 let assignBtn = '';
-                if (isFullyAllocated) {
-                    assignBtn = `<button disabled style="background: #9ca3af; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: not-allowed; font-size: 0.85rem;">✅ Fully Allocated</button>`;
-                } else if (isPartiallyAllocated) {
+                if (isDesignerFullyAllocated) {
+                    assignBtn = `<button onclick="assignDesigners('${project.id}')" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">✅ Manage Designers</button>`;
+                } else if (isDesignerPartiallyAllocated) {
                     assignBtn = `<button onclick="assignDesigners('${project.id}')" style="background: #f59e0b; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">⏳ Allocate Remaining ${remainingToAllocate.toFixed(1)}h</button>`;
                 } else {
                     assignBtn = `<button onclick="assignDesigners('${project.id}')" style="background: var(--primary-blue); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">➕ Assign Designers</button>`;
@@ -21907,8 +21915,8 @@ async function showDesignLeadPortal() {
                                 <div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${totalAvailable}h</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Allocated</div>
-                                <div style="font-size: 1.3rem; font-weight: 700; color: ${totalAllocated > 0 ? '#f59e0b' : '#6b7280'};">${totalAllocated}h</div>
+                                <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Designer Allocated</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: ${designerAllocatedTotal > 0 ? '#f59e0b' : '#6b7280'};">${designerAllocatedTotal}h</div>
                             </div>
                             <div>
                                 <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Hours Logged</div>
@@ -22310,20 +22318,13 @@ async function showAllocateProjectModal(projectId) {
                 const maxHours = parseFloat(currentProject.maxAllocatedHours || 0);
                 const additionalHours = parseFloat(currentProject.additionalHours || 0);
                 const totalAvailable = maxHours + additionalHours;
-                
-                // Calculate already allocated hours
-                const alreadyAllocated = parseFloat(currentProject.totalAllocatedHours || 0);
+
+                // Calculate designer-level allocation (assigned by design lead, not COO allocation)
+                const existingDesigners = currentProject.assignedDesigners || [];
+                const existingDesignerHoursMap = currentProject.assignedDesignerHours || {};
+                const alreadyAllocated = existingDesigners.reduce((sum, uid) => sum + (parseFloat(existingDesignerHoursMap[uid]) || 0), 0);
                 const remainingToAllocate = totalAvailable - alreadyAllocated;
                 const hoursLogged = parseFloat(currentProject.hoursLogged || 0);
-                
-                // Check if fully allocated
-                const isFullyAllocated = totalAvailable > 0 && alreadyAllocated >= totalAvailable;
-                
-                if (isFullyAllocated) {
-                    hideLoading();
-                    alert(`This project is already fully allocated.\n\nBudget: ${totalAvailable}h\nAllocated: ${alreadyAllocated}h\nHours Logged: ${hoursLogged}h\n\nTo modify allocations, use the Edit Allocations option.`);
-                    return;
-                }
                 
                 // Show hours summary if max hours are set
                 const summaryDiv = document.getElementById('projectHoursSummary');

@@ -13219,7 +13219,8 @@ function createProjectCard(project) {
             // Filter projects based on role
             let allProjects = projects;
             if (currentUserRole === 'design_lead') {
-                allProjects = projects.filter(p => p.designLeadUid === currentUser.uid);
+                allProjects = projects.filter(p => p.designLeadUid === currentUser.uid ||
+                    (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid)));
            } else if (currentUserRole === 'designer') {
               // FIX: Check both assignedDesigners AND assignedDesignerUids
               allProjects = projects.filter(p => 
@@ -21808,8 +21809,9 @@ async function showDesignLeadPortal() {
         if (!response.success) throw new Error('Failed to fetch projects');
 
         const allProjects = response.data;
-        // Filter projects where the current user is the design lead
-        const myProjects = allProjects.filter(p => p.designLeadUid === currentUser.uid);
+        // Filter projects where the current user is the design lead (by designLeadUid or assignedDesignerUids)
+        const myProjects = allProjects.filter(p => p.designLeadUid === currentUser.uid ||
+            (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid)));
 
         // Stats
         const totalProjects = myProjects.length;
@@ -22083,8 +22085,9 @@ async function showAllocateProjectModal(projectId) {
                 if (!response.success) throw new Error('Failed to fetch projects');
 
                 const allProjects = response.data;
-                // Filter projects where the current user is the design lead
-                const myProjects = allProjects.filter(p => p.designLeadUid === currentUser.uid);
+                // Filter projects where the current user is the design lead (by designLeadUid or assignedDesignerUids)
+                const myProjects = allProjects.filter(p => p.designLeadUid === currentUser.uid ||
+                    (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid)));
 
                 // Fetch deliverables needing review (assuming an endpoint exists)
                 const reviewResponse = await apiCall('deliverables?status=pending'); // Example endpoint

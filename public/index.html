@@ -25578,7 +25578,249 @@ Examples:
 <!-- Add before closing </body> tag -->
 <!-- ============================================ -->
 <script>
-    
+
+// ===================================
+// DESIGN LEAD - ASSIGN DESIGNERS (Independent script block)
+// ===================================
+
+window.assignDesigners = async function(projectId) {
+    const modal = document.getElementById('designerAssignmentModal');
+    if (!modal) { alert('Modal not found. Please refresh.'); return; }
+
+    try {
+        showLoading();
+
+        const [response, projectResponse, timesheetResponse] = await Promise.all([
+            apiCall('users?role=designer'),
+            apiCall(`projects?id=${projectId}`),
+            apiCall(`timesheets?projectId=${projectId}`)
+        ]);
+        if (!response.success) throw new Error(response.error || 'Failed to fetch designers');
+        const designers = response.data || [];
+        const currentProject = projectResponse.success ? projectResponse.data : {};
+
+        // Build per-designer hours logged
+        const timesheets = (timesheetResponse.success ? timesheetResponse.data : []);
+        const hoursLoggedPerDesigner = {};
+        timesheets.forEach(t => {
+            if (t.designerUid) {
+                hoursLoggedPerDesigner[t.designerUid] = (hoursLoggedPerDesigner[t.designerUid] || 0) + (parseFloat(t.hours) || 0);
+            }
+        });
+
+        const maxHours = parseFloat(currentProject.maxAllocatedHours || 0);
+        const additionalHours = parseFloat(currentProject.additionalHours || 0);
+        const totalAvailable = maxHours + additionalHours;
+
+        const existingDesignersList = currentProject.assignedDesigners || [];
+        const existingDesignerHoursMap = currentProject.assignedDesignerHours || {};
+        const alreadyAllocated = existingDesignersList.reduce((sum, uid) => sum + (parseFloat(existingDesignerHoursMap[uid]) || 0), 0);
+        const remainingToAllocate = totalAvailable - alreadyAllocated;
+
+        // Hours summary
+        const summaryDiv = document.getElementById('projectHoursSummary');
+        if (maxHours > 0 && summaryDiv) {
+            summaryDiv.style.display = 'block';
+            summaryDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Project Budget</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-blue);">${maxHours.toFixed(1)}h</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Additional Buffer</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);">${additionalHours.toFixed(1)}h</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Total Available</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">${totalAvailable.toFixed(1)}h</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Designer Allocated</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: ${alreadyAllocated > 0 ? '#f59e0b' : 'var(--text-light)'};">${alreadyAllocated.toFixed(1)}h</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Remaining</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: ${remainingToAllocate > 0 ? 'var(--success)' : 'var(--danger)'};" id="displayRemainingHours">${remainingToAllocate.toFixed(1)}h</div>
+                    </div>
+                </div>
+                ${alreadyAllocated > 0 ? `
+                <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                    <strong>Partial Allocation:</strong> ${alreadyAllocated.toFixed(1)}h allocated to ${existingDesignersList.length} designer(s). Remaining: ${remainingToAllocate.toFixed(1)}h.
+                </div>` : ''}
+            `;
+        } else if (summaryDiv) {
+            summaryDiv.style.display = 'none';
+        }
+
+        // Populate designers list
+        const designersList = document.getElementById('designersList');
+        if (!designersList) throw new Error('Designer list container not found');
+        designersList.innerHTML = '';
+
+        // Sort: assigned first
+        const sortedDesigners = [...designers].sort((a, b) => {
+            const aA = existingDesignersList.includes(a.uid) ? 0 : 1;
+            const bA = existingDesignersList.includes(b.uid) ? 0 : 1;
+            return aA !== bA ? aA - bA : (a.name || '').localeCompare(b.name || '');
+        });
+
+        sortedDesigners.forEach(designer => {
+            const isAssigned = existingDesignersList.includes(designer.uid);
+            const currentHours = parseFloat(existingDesignerHoursMap[designer.uid]) || 0;
+            const logged = parseFloat(hoursLoggedPerDesigner[designer.uid]) || 0;
+            const hasLoggedHours = logged > 0;
+
+            const row = document.createElement('div');
+            row.className = 'designer-row';
+            row.style.cssText = 'display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 0.8rem; background: white;';
+            if (isAssigned && currentHours > 0) {
+                row.style.borderColor = '#10b981';
+                row.style.background = '#f0fdf4';
+            }
+
+            row.innerHTML = `
+                <div><input type="checkbox" id="designer-${designer.uid}" value="${designer.uid}"
+                    data-name="${designer.name}" data-email="${designer.email}"
+                    data-current-hours="${currentHours}" data-hours-logged="${logged}"
+                    ${isAssigned ? 'checked' : ''} ${hasLoggedHours ? 'disabled title="Cannot unassign - has logged hours"' : ''}
+                    onchange="window._toggleDesignerHours(this)"
+                    style="width: 20px; height: 20px; cursor: ${hasLoggedHours ? 'not-allowed' : 'pointer'};"></div>
+                <div>
+                    <label for="designer-${designer.uid}" style="font-weight: 600; margin: 0; cursor: pointer;">
+                        ${designer.name}
+                        ${isAssigned && currentHours > 0 ? `<span style="color: #10b981; font-size: 0.85rem;">(Allocated: ${currentHours}h)</span>` : ''}
+                    </label>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">
+                        ${designer.email} ${designer.assignedProjects ? '• ' + designer.assignedProjects + ' active projects' : ''}
+                    </div>
+                    ${hasLoggedHours ? `<div style="font-size: 0.8rem; color: #8b5cf6; margin-top: 2px;">⏱ ${logged.toFixed(1)}h logged (min: ${logged.toFixed(1)}h)</div>` : ''}
+                </div>
+                <div style="min-width: 150px;"><div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="hours-${designer.uid}" class="form-control hours-input"
+                        step="0.5" min="${hasLoggedHours ? logged : 0}" value="${currentHours}" placeholder="Hours"
+                        ${!isAssigned ? 'disabled' : ''} data-min-hours="${hasLoggedHours ? logged : 0}"
+                        oninput="window._updateAllocTotal()" onchange="window._updateAllocTotal()"
+                        style="width: 80px; padding: 0.5rem; text-align: center;">
+                    <span style="font-size: 0.9rem; color: var(--text-light);">hrs</span>
+                </div></div>`;
+            designersList.appendChild(row);
+        });
+
+        document.getElementById('assignProjectId').value = projectId;
+        modal.dataset.maxHours = totalAvailable;
+        modal.dataset.alreadyAllocated = alreadyAllocated;
+        window._updateAllocTotal();
+        modal.style.display = 'flex';
+
+    } catch (error) {
+        console.error('Error loading designers:', error);
+        alert('Failed to load designers: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+};
+
+window._toggleDesignerHours = function(checkbox) {
+    const uid = checkbox.value;
+    const hoursInput = document.getElementById('hours-' + uid);
+    const currentHours = parseFloat(checkbox.dataset.currentHours || 0);
+    if (checkbox.checked) {
+        hoursInput.disabled = false;
+        if (!hoursInput.value || hoursInput.value === '0') hoursInput.value = currentHours > 0 ? currentHours : '1';
+    } else {
+        hoursInput.disabled = true;
+        hoursInput.value = '0';
+    }
+    window._updateAllocTotal();
+};
+
+window._updateAllocTotal = function() {
+    let total = 0;
+    document.querySelectorAll('.hours-input:not([disabled])').forEach(input => { total += parseFloat(input.value) || 0; });
+    const totalDisplay = document.getElementById('totalAllocatedHours');
+    if (totalDisplay) totalDisplay.textContent = total.toFixed(1);
+
+    const modal = document.getElementById('designerAssignmentModal');
+    const maxHours = parseFloat(modal?.dataset?.maxHours || 0);
+    if (maxHours > 0) {
+        const remaining = maxHours - total;
+        const rd = document.getElementById('displayRemainingHours');
+        if (rd) {
+            if (remaining < 0) { rd.style.color = 'var(--danger)'; rd.textContent = remaining.toFixed(1) + 'h (OVER!)'; }
+            else if (remaining === 0) { rd.style.color = 'var(--success)'; rd.textContent = '0h (Fully Allocated)'; }
+            else if (remaining < maxHours * 0.2) { rd.style.color = '#f59e0b'; rd.textContent = remaining.toFixed(1) + 'h'; }
+            else { rd.style.color = 'var(--success)'; rd.textContent = remaining.toFixed(1) + 'h'; }
+        }
+        if (totalDisplay) {
+            totalDisplay.style.color = total > maxHours ? 'var(--danger)' : total === maxHours ? 'var(--success)' : 'var(--primary-blue)';
+        }
+    }
+};
+
+window.submitDesignerAssignment = async function() {
+    const projectId = document.getElementById('assignProjectId').value;
+    const checkboxes = document.querySelectorAll('#designersList input[type="checkbox"]:checked');
+    const modal = document.getElementById('designerAssignmentModal');
+    const maxHours = parseFloat(modal?.dataset?.maxHours || 0);
+
+    const designerUids = [], designerNames = [], designerEmails = [], designerHours = {};
+    let totalAllocated = 0, hasError = false;
+
+    checkboxes.forEach(cb => {
+        if (hasError) return;
+        const uid = cb.value;
+        const hi = document.getElementById('hours-' + uid);
+        const hours = parseFloat(hi.value) || 0;
+        const minH = parseFloat(hi.dataset.minHours || 0);
+        if (hours < 0.5) { alert('Please allocate at least 0.5 hours for ' + cb.dataset.name); hasError = true; return; }
+        if (minH > 0 && hours < minH) { alert('Cannot allocate less than ' + minH.toFixed(1) + 'h for ' + cb.dataset.name + ' — already logged ' + minH.toFixed(1) + 'h.'); hasError = true; return; }
+        designerUids.push(uid); designerNames.push(cb.dataset.name); designerEmails.push(cb.dataset.email);
+        designerHours[uid] = hours; totalAllocated += hours;
+    });
+    if (hasError) return;
+    if (designerUids.length === 0) { alert('Please select at least one designer.'); return; }
+    if (maxHours > 0 && totalAllocated > maxHours + 0.1) { alert('Total (' + totalAllocated.toFixed(1) + 'h) exceeds budget (' + maxHours.toFixed(1) + 'h). Please adjust.'); return; }
+
+    const confirmText = 'Allocation Summary:\n\n' + designerUids.map((uid, i) => designerNames[i] + ': ' + designerHours[uid] + 'h').join('\n') + '\n\nTotal: ' + totalAllocated.toFixed(1) + 'h / ' + maxHours.toFixed(1) + 'h\n\nProceed?';
+    if (!confirm(confirmText)) return;
+
+    try {
+        showLoading();
+        const result = await apiCall('projects?id=' + projectId, {
+            method: 'PUT',
+            body: JSON.stringify({ action: 'assign_designers', data: { designerUids, designerNames, designerEmails, designerHours, totalAllocatedHours: totalAllocated } })
+        });
+        if (result.success) {
+            if (typeof showSuccessModal === 'function') showSuccessModal('Designers Updated!', designerUids.length + ' designer(s) with ' + totalAllocated.toFixed(1) + 'h total.');
+            else alert('Designers assigned successfully!');
+            window.closeDesignerAssignmentModal();
+            if (typeof currentUserRole !== 'undefined' && currentUserRole === 'design_lead' && typeof showDesignLeadPortal === 'function') showDesignLeadPortal();
+            else if (typeof showProjects === 'function') showProjects();
+        } else {
+            throw new Error(result.error || 'Assignment failed');
+        }
+    } catch (error) {
+        console.error('Error assigning designers:', error);
+        alert('Failed to assign designers: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+};
+
+window.closeDesignerAssignmentModal = function() {
+    const modal = document.getElementById('designerAssignmentModal');
+    if (modal) modal.style.display = 'none';
+    const dl = document.getElementById('designersList');
+    if (dl) dl.innerHTML = '';
+};
+
+console.log('✅ Designer assignment functions registered (independent block)');
+
+</script>
+
+<script>
+
 // ===================================
 // EXECUTIVE MONITORING JAVASCRIPT
 // ===================================

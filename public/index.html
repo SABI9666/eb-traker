@@ -5686,9 +5686,11 @@ body.is-ios .nav-menu {
         
         // Direct global functions - these MUST work
         window.assignDesigners = function(projectId) {
-            console.log('👥 assignDesigners wrapper called - delegating to implementation');
-            // The proper async implementation is registered later
-            // This wrapper should be overridden. If it runs, something went wrong.
+            console.log('👥 assignDesigners wrapper called with ID:', projectId);
+            // Delegate to the proper implementation if it has been registered
+            if (window._assignDesignersImpl) {
+                return window._assignDesignersImpl(projectId);
+            }
             alert('Designer assignment not fully loaded. Please refresh the page and try again.');
         };
         
@@ -5728,8 +5730,9 @@ body.is-ios .nav-menu {
         // Function to submit designer assignment
         window.submitDesignerAssignment = function() {
             console.log('📝 submitDesignerAssignment wrapper - delegating to implementation');
-            // The proper implementation is registered later at window.submitDesignerAssignment
-            // This wrapper should be overridden. If it runs, something went wrong.
+            if (window._submitDesignerAssignmentImpl) {
+                return window._submitDesignerAssignmentImpl();
+            }
             alert('Designer assignment not fully loaded. Please refresh the page and try again.');
         };
         
@@ -22548,9 +22551,11 @@ async function showAllocateProjectModal(projectId) {
 
         // Explicitly ensure functions are in global scope
         window.assignDesigners = assignDesigners;
+        window._assignDesignersImpl = assignDesigners;
         window.toggleDesignerHoursInput = toggleDesignerHoursInput;
         window.updateTotalAllocated = updateTotalAllocated;
         window.submitDesignerAssignment = submitDesignerAssignment;
+        window._submitDesignerAssignmentImpl = submitDesignerAssignment;
         window.viewBDMFiles = viewBDMFiles;
         
         // Create alias for viewProject (it's actually called viewProjectDetails in some places)

@@ -5686,84 +5686,10 @@ body.is-ios .nav-menu {
         
         // Direct global functions - these MUST work
         window.assignDesigners = function(projectId) {
-            console.log('👥 assignDesigners called with ID:', projectId);
-            
-            // Try to call the implementation
-            if (_assignDesignersFunc) {
-                return _assignDesignersFunc(projectId);
-            }
-            
-            // Implementation not set yet, define it inline
-            const modal = document.getElementById('designerAssignmentModal');
-            if (!modal) {
-                alert('Designer assignment modal not found. Please refresh the page.');
-                return;
-            }
-            
-            // Open the modal
-            modal.style.display = 'flex';
-            
-            // Load designers
-            apiCall('users?role=designer').then(response => {
-                if (!response.success) {
-                    alert('Failed to load designers');
-                    return;
-                }
-                
-                const designers = response.data || [];
-                const designersList = document.getElementById('designersList');
-                if (!designersList) return;
-                
-                designersList.innerHTML = '';
-                designers.forEach(designer => {
-                    const row = document.createElement('div');
-                    row.className = 'designer-row';
-                    row.style.cssText = 'display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 0.8rem; background: white;';
-                    row.innerHTML = `
-                        <div style="display: flex; align-items: center;">
-                            <input type="checkbox" 
-                                   id="designer-${designer.uid}" 
-                                   value="${designer.uid}" 
-                                   data-name="${designer.name}" 
-                                   data-email="${designer.email}"
-                                   onchange="window.toggleDesignerHoursInput(this)"
-                                   style="width: 20px; height: 20px; cursor: pointer;">
-                        </div>
-                        <div>
-                            <label for="designer-${designer.uid}" style="font-weight: 600; margin: 0; cursor: pointer;">
-                                ${designer.name}
-                            </label>
-                            <div style="font-size: 0.85rem; color: #666;">
-                                ${designer.email}
-                            </div>
-                        </div>
-                        <div style="min-width: 150px;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="number" 
-                                       id="hours-${designer.uid}"
-                                       class="form-control hours-input" 
-                                       step="0.5" 
-                                       min="0.5"
-                                       value="0"
-                                       placeholder="Hours"
-                                       disabled
-                                       onchange="window.updateTotalAllocated()"
-                                       style="width: 80px; padding: 0.5rem; text-align: center;">
-                                <span style="font-size: 0.9rem; color: #666;">hrs</span>
-                            </div>
-                        </div>
-                    `;
-                    designersList.appendChild(row);
-                });
-                
-                document.getElementById('assignProjectId').value = projectId;
-                
-                // Initialize total
-                window.updateTotalAllocated();
-            }).catch(error => {
-                console.error('Error loading designers:', error);
-                alert('Failed to load designers: ' + error.message);
-            });
+            console.log('👥 assignDesigners wrapper called - delegating to implementation');
+            // The proper async implementation is registered later
+            // This wrapper should be overridden. If it runs, something went wrong.
+            alert('Designer assignment not fully loaded. Please refresh the page and try again.');
         };
         
         // Helper function to toggle hours input
@@ -5801,69 +5727,10 @@ body.is-ios .nav-menu {
         
         // Function to submit designer assignment
         window.submitDesignerAssignment = function() {
-            console.log('📝 Submitting designer assignment');
-            
-            const projectId = document.getElementById('assignProjectId').value;
-            const checkboxes = document.querySelectorAll('#designersList input[type="checkbox"]:checked');
-            
-            if (checkboxes.length === 0) {
-                alert('Please select at least one designer');
-                return;
-            }
-            
-            const designerUids = [];
-            const designerNames = [];
-            const designerEmails = [];
-            const designerHours = {};
-            
-            checkboxes.forEach(checkbox => {
-                const uid = checkbox.value;
-                const hoursInput = document.getElementById(`hours-${uid}`);
-                const hours = parseFloat(hoursInput.value) || 0;
-                
-                if (hours < 0.5) {
-                    alert(`Please allocate at least 0.5 hours for ${checkbox.dataset.name}`);
-                    return;
-                }
-                
-                designerUids.push(uid);
-                designerNames.push(checkbox.dataset.name);
-                designerEmails.push(checkbox.dataset.email);
-                designerHours[uid] = hours;
-            });
-            
-            // Submit to backend
-            const payload = {
-                projectId: projectId,
-                designerUids: designerUids,
-                designerNames: designerNames,
-                designerEmails: designerEmails,
-                designerHours: designerHours,
-                action: 'assign_designers'
-            };
-            
-            console.log('📤 Sending designer assignment:', payload);
-            
-            apiCall('projects', {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            }).then(response => {
-                if (response.success) {
-                    alert('Designers assigned successfully!');
-                    window.closeDesignerAssignmentModal();
-                    // Reload the page to show updated data
-                    if (typeof showProjects === 'function') {
-                        showProjects();
-                    } else {
-                        location.reload();
-                    }
-                } else {
-                    alert('Failed to assign designers: ' + (response.message || 'Unknown error'));
-                }
-            }).catch(error => {
-                console.error('Error assigning designers:', error);
-                alert('Failed to assign designers: ' + error.message);
-            });
+            console.log('📝 submitDesignerAssignment wrapper - delegating to implementation');
+            // The proper implementation is registered later at window.submitDesignerAssignment
+            // This wrapper should be overridden. If it runs, something went wrong.
+            alert('Designer assignment not fully loaded. Please refresh the page and try again.');
         };
         
         // Function to close designer assignment modal

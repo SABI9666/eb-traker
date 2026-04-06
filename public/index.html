@@ -8795,6 +8795,7 @@ async function showProjectDashboard() {
                 // Col 1: Project Info
                 + '<div>'
                 + '<div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;">'
+                + (p.projectNumber ? '<span style="font-size: 0.85rem; font-weight: 700; color: var(--primary-blue); background: #eff6ff; padding: 2px 8px; border-radius: 6px;">' + p.projectNumber + '</span>' : '')
                 + '<strong style="font-size: 1rem; color: #111827;">' + p.projectName + '</strong>'
                 + '<span style="background: ' + secColor + '; color: white; padding: 1px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;">' + (p.projectSection || 'N/A') + '</span>'
                 + '<span class="badge badge-info" style="font-size: 0.65rem; text-transform: capitalize;">' + (p.status || '').replace(/_/g, ' ') + '</span>'
@@ -8960,7 +8961,7 @@ async function showProjectDashboard() {
                         + '</div>').join('');
                 const subRows = (subData.projects || []).map(sp =>
                     '<tr style="border-bottom: 1px solid #f3f4f6;">'
-                    + '<td style="padding: 0.75rem 1rem; font-weight: 600; color: #111827;">' + (sp.projectName || '') + '</td>'
+                    + '<td style="padding: 0.75rem 1rem; font-weight: 600; color: #111827;">' + (sp.projectNumber ? '<span style="color: var(--primary-blue);">' + sp.projectNumber + '</span> - ' : '') + (sp.projectName || '') + '</td>'
                     + '<td style="padding: 0.75rem 1rem; color: #374151;">' + (sp.clientCompany || '') + '</td>'
                     + '<td style="padding: 0.75rem 1rem;"><span style="background: #ede9fe; color: #5b21b6; padding: 2px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;">' + (sp.subcontractorName || '') + '</span></td>'
                     + '<td style="text-align: right; padding: 0.75rem 1rem; font-weight: 700; color: #5b21b6;">' + (currencySymbols[sp.currency] || sp.currency + ' ') + fmt(sp.quoteValue || 0) + '</td>'
@@ -30639,6 +30640,7 @@ function renderProjectReport(projectReport) {
             + '<div onclick="toggleProjReport(' + idx + ')" style="padding: 1.25rem 1.5rem; cursor: pointer; display: grid; grid-template-columns: 1fr auto auto auto; gap: 1.5rem; align-items: center; border-left: 4px solid ' + secColor + ';">'
             + '<div>'
             + '<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">'
+            + (p.projectNumber ? '<span style="font-size: 0.85rem; font-weight: 700; color: var(--primary-blue); background: #eff6ff; padding: 2px 8px; border-radius: 6px;">' + p.projectNumber + '</span>' : '')
             + '<strong style="font-size: 1rem; color: #111827;">' + p.projectName + '</strong>'
             + '<span style="background: ' + secColor + '; color: white; padding: 1px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;">' + p.projectSection + '</span>'
             + '</div>'
@@ -30755,7 +30757,7 @@ function renderProjectMonthlyReport(projectReport, allMonthKeys) {
         return '<div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid ' + secColor + ';">'
             + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">'
             + '<div>'
-            + '<h4 style="margin: 0; color: #111827;">' + p.projectName
+            + '<h4 style="margin: 0; color: #111827;">' + (p.projectNumber ? '<span style="color: var(--primary-blue);">' + p.projectNumber + '</span> - ' : '') + p.projectName
             + ' <span style="background: ' + secColor + '; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; margin-left: 0.5rem;">' + p.projectSection + '</span></h4>'
             + '<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">' + (p.projectCode || '') + (p.clientCompany ? ' | ' + p.clientCompany : '') + (p.designLeadName ? ' | Lead: ' + p.designLeadName : '') + '</div>'
             + '</div>'

@@ -18931,9 +18931,10 @@ async function markProjectComplete(projectId) {
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem;">
                                 ${leaveTypeHtml}
-                                <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
+                                <div style="padding: 0.5rem; background: ${request.isHalfDay ? '#fef3c7' : '#f3f4f6'}; border-radius: 8px;">
                                     <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Duration</div>
-                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.totalDays || 1} Day${(request.totalDays || 1) > 1 ? 's' : ''}</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.isHalfDay ? 'Half Day' : (request.totalDays || 1) + ' Day' + ((request.totalDays || 1) > 1 ? 's' : '')}</div>
+                                    ${request.isHalfDay ? '<div style="font-size: 0.7rem; color: #b45309; font-weight: 500;">' + (request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') + '</div>' : ''}
                                 </div>
                                 <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
                                     <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">From</div>
@@ -19005,7 +19006,7 @@ async function markProjectComplete(projectId) {
                             </div>
                             <div>
                                 <div style="font-weight: 600; color: #1f2937;">${request.employeeName || 'Employee'}</div>
-                                <div style="font-size: 0.8rem; color: #6b7280;">${request.leaveType} • ${request.totalDays} day${request.totalDays > 1 ? 's' : ''}</div>
+                                <div style="font-size: 0.8rem; color: #6b7280;">${request.leaveType} • ${request.isHalfDay ? 'Half Day (' + (request.halfDayPeriod === 'first_half' ? '1st Half' : '2nd Half') + ')' : request.totalDays + ' day' + (request.totalDays > 1 ? 's' : '')}</div>
                             </div>
                         </div>
                         <span style="padding: 0.35rem 0.75rem; background: ${style.bg}; color: ${style.text}; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
@@ -19345,7 +19346,7 @@ async function markProjectComplete(projectId) {
                         <div style="flex: 1;">
                             <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">${request.leaveType || 'Leave'}</h4>
                             <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
-                                📅 ${formatDate(request.fromDate)} - ${formatDate(request.toDate)} (${request.totalDays} day${request.totalDays > 1 ? 's' : ''})
+                                📅 ${formatDate(request.fromDate)}${request.isHalfDay ? '' : ' - ' + formatDate(request.toDate)} (${request.isHalfDay ? 'Half Day - ' + (request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') : request.totalDays + ' day' + (request.totalDays > 1 ? 's' : '')})
                             </p>
                             ${request.selectedTeamLead ? `
                                 <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.85rem;">
@@ -19416,19 +19417,47 @@ async function markProjectComplete(projectId) {
                                 <div style="padding: 0.75rem; background: #e0e7ff; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: #4338ca;">
                                     ℹ️ <strong>Note:</strong> Leave type will be assigned by HR during approval process.
                                 </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 8px; transition: all 0.2s;">
+                                        <input type="checkbox" id="empLeaveHalfDay" onchange="toggleHalfDayLeave()" style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span style="font-weight: 600; color: #166534;">Half Day Leave</span>
+                                        <span style="font-size: 0.8rem; color: #6b7280; margin-left: auto;">Select for half-day leave</span>
+                                    </label>
+                                </div>
+                                <div id="halfDayPeriodContainer" style="display: none; margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Half Day Period <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <div style="display: flex; gap: 1rem;">
+                                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;" id="firstHalfLabel">
+                                            <input type="radio" name="halfDayPeriod" value="first_half" checked style="width: 16px; height: 16px; cursor: pointer;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #374151;">First Half</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">Morning session</div>
+                                            </div>
+                                        </label>
+                                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;" id="secondHalfLabel">
+                                            <input type="radio" name="halfDayPeriod" value="second_half" style="width: 16px; height: 16px; cursor: pointer;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #374151;">Second Half</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">Afternoon session</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
                                         <label for="empLeaveFromDate">From Date <span style="color: #ef4444;">*</span></label>
                                         <input type="date" id="empLeaveFromDate" class="form-control" required onchange="calculateEmpLeaveDays()">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group" id="empLeaveToDateGroup">
                                         <label for="empLeaveToDate">To Date <span style="color: #ef4444;">*</span></label>
                                         <input type="date" id="empLeaveToDate" class="form-control" required onchange="calculateEmpLeaveDays()">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="empLeaveTotalDays">Total Days</label>
-                                    <input type="number" id="empLeaveTotalDays" class="form-control" readonly value="1" style="background: #e5e7eb;">
+                                    <input type="text" id="empLeaveTotalDays" class="form-control" readonly value="1" style="background: #e5e7eb;">
                                 </div>
                             </div>
                             
@@ -19466,11 +19495,45 @@ async function markProjectComplete(projectId) {
             document.getElementById('empLeaveToDate').valueAsDate = today;
         }
         
+        // Toggle half-day leave option
+        function toggleHalfDayLeave() {
+            const isHalfDay = document.getElementById('empLeaveHalfDay').checked;
+            const halfDayContainer = document.getElementById('halfDayPeriodContainer');
+            const toDateGroup = document.getElementById('empLeaveToDateGroup');
+
+            if (isHalfDay) {
+                halfDayContainer.style.display = 'block';
+                toDateGroup.style.display = 'none';
+                // Set toDate = fromDate for half-day
+                const fromDate = document.getElementById('empLeaveFromDate').value;
+                if (fromDate) {
+                    document.getElementById('empLeaveToDate').value = fromDate;
+                }
+                document.getElementById('empLeaveTotalDays').value = '0.5';
+            } else {
+                halfDayContainer.style.display = 'none';
+                toDateGroup.style.display = 'block';
+                calculateEmpLeaveDays();
+            }
+        }
+
         // Calculate employee leave days
         function calculateEmpLeaveDays() {
+            const isHalfDay = document.getElementById('empLeaveHalfDay')?.checked;
+
+            if (isHalfDay) {
+                // For half-day, sync toDate with fromDate and set 0.5
+                const fromDate = document.getElementById('empLeaveFromDate').value;
+                if (fromDate) {
+                    document.getElementById('empLeaveToDate').value = fromDate;
+                }
+                document.getElementById('empLeaveTotalDays').value = '0.5';
+                return;
+            }
+
             const fromDate = document.getElementById('empLeaveFromDate').value;
             const toDate = document.getElementById('empLeaveToDate').value;
-            
+
             if (fromDate && toDate) {
                 const from = new Date(fromDate);
                 const to = new Date(toDate);
@@ -19500,14 +19563,20 @@ async function markProjectComplete(projectId) {
                 }
             }
             
+            const isHalfDay = document.getElementById('empLeaveHalfDay')?.checked || false;
+            const halfDayPeriod = isHalfDay ? (document.querySelector('input[name="halfDayPeriod"]:checked')?.value || 'first_half') : null;
+            const totalDaysVal = isHalfDay ? 0.5 : (parseInt(document.getElementById('empLeaveTotalDays').value) || 1);
+
             const request = {
                 id: 'leave_' + Date.now(),
                 employeeName: document.getElementById('empLeaveName').value || (currentUser ? currentUser.email.split('@')[0] : 'Employee'),
                 department: document.getElementById('empLeaveDept').value || '',
                 leaveType: 'Pending HR Assignment', // HR will assign leave type during approval
                 fromDate: document.getElementById('empLeaveFromDate').value,
-                toDate: document.getElementById('empLeaveToDate').value,
-                totalDays: parseInt(document.getElementById('empLeaveTotalDays').value) || 1,
+                toDate: isHalfDay ? document.getElementById('empLeaveFromDate').value : document.getElementById('empLeaveToDate').value,
+                totalDays: totalDaysVal,
+                isHalfDay: isHalfDay,
+                halfDayPeriod: halfDayPeriod,
                 reason: document.getElementById('empLeaveReason').value,
                 emergencyContact: document.getElementById('empEmergencyContact')?.value || '',
                 emergencyPhone: document.getElementById('empEmergencyPhone')?.value || '',
@@ -19540,6 +19609,8 @@ async function markProjectComplete(projectId) {
                         fromDate: request.fromDate,
                         toDate: request.toDate,
                         totalDays: request.totalDays,
+                        isHalfDay: request.isHalfDay,
+                        halfDayPeriod: request.halfDayPeriod,
                         reason: request.reason,
                         emergencyContact: request.emergencyContact,
                         selectedTeamLead: request.selectedTeamLead,
@@ -19553,7 +19624,8 @@ async function markProjectComplete(projectId) {
                 // ============================================
                 // CREATE IN-APP NOTIFICATIONS FOR COO, DIRECTOR, HR
                 // ============================================
-                const notificationMessage = `🏖️ New Leave Request: ${request.employeeName} - ${request.totalDays} day(s) from ${request.fromDate} to ${request.toDate}`;
+                const halfDayLabel = request.isHalfDay ? ` (${request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half'})` : '';
+                const notificationMessage = `🏖️ New Leave Request: ${request.employeeName} - ${request.totalDays} day(s)${halfDayLabel} from ${request.fromDate} to ${request.toDate}`;
                 
                 // Notify COO
                 try {
@@ -19858,8 +19930,7 @@ async function markProjectComplete(projectId) {
                             </span>
                         </td>
                         <td style="padding: 1rem; text-align: center;">
-                            <span style="font-weight: 600; color: #374151;">${req.totalDays || 1}</span>
-                            <span style="font-size: 0.8rem; color: #6b7280;"> day${(req.totalDays || 1) > 1 ? 's' : ''}</span>
+                            ${req.isHalfDay ? '<span style="font-weight: 600; color: #b45309;">Half Day</span><br><span style="font-size: 0.75rem; color: #92400e;">' + (req.halfDayPeriod === 'first_half' ? '1st Half' : '2nd Half') + '</span>' : '<span style="font-weight: 600; color: #374151;">' + (req.totalDays || 1) + '</span><span style="font-size: 0.8rem; color: #6b7280;"> day' + ((req.totalDays || 1) > 1 ? 's' : '') + '</span>'}
                         </td>
                         <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #374151;">${formatDate(req.fromDate)}</td>
                         <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #374151;">${formatDate(req.toDate)}</td>
@@ -20039,7 +20110,8 @@ async function markProjectComplete(projectId) {
                                 </div>
                                 <div style="padding: 1rem; background: #fef3c7; border-radius: 10px;">
                                     <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.25rem;">Duration</div>
-                                    <div style="font-weight: 600; color: #78350f;">${req.totalDays || 1} Day${(req.totalDays || 1) > 1 ? 's' : ''}</div>
+                                    <div style="font-weight: 600; color: #78350f;">${req.isHalfDay ? 'Half Day' : (req.totalDays || 1) + ' Day' + ((req.totalDays || 1) > 1 ? 's' : '')}</div>
+                                    ${req.isHalfDay ? '<div style="font-size: 0.75rem; color: #b45309; margin-top: 0.25rem;">' + (req.halfDayPeriod === 'first_half' ? 'First Half (Morning)' : 'Second Half (Afternoon)') + '</div>' : ''}
                                 </div>
                                 <div style="padding: 1rem; background: #d1fae5; border-radius: 10px;">
                                     <div style="font-size: 0.75rem; color: #065f46; text-transform: uppercase; margin-bottom: 0.25rem;">From Date</div>
@@ -20136,6 +20208,8 @@ async function markProjectComplete(projectId) {
                 'From Date',
                 'To Date',
                 'Total Days',
+                'Half Day',
+                'Half Day Period',
                 'Status',
                 'Reason',
                 'Team Lead',
@@ -20160,6 +20234,8 @@ async function markProjectComplete(projectId) {
                 req.fromDate || '',
                 req.toDate || '',
                 req.totalDays || '',
+                req.isHalfDay ? 'Yes' : 'No',
+                req.isHalfDay ? (req.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') : '',
                 req.status || '',
                 (req.reason || '').replace(/,/g, ';').replace(/\n/g, ' '),
                 req.selectedTeamLead || '',

@@ -5421,6 +5421,10 @@ body.is-ios .nav-menu {
                             <a href="#" onclick="showPettyCash()" id="nav-petty-cash">
                             <span class="nav-icon">💵</span>Petty Cash</a>
                         </li>
+                        <li id="poTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showPOTracker(); return false;" id="nav-po-tracker">
+                            <span class="nav-icon">📑</span>P.O. Tracker</a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -5505,6 +5509,11 @@ body.is-ios .nav-menu {
                         <li id="hrPettyCashNavItem" style="display: none;">
                             <a href="#" onclick="showPettyCash()" id="nav-hr-petty-cash">
                                 <span class="nav-icon">💵</span>Petty Cash
+                            </a>
+                        </li>
+                        <li id="hrPoTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showPOTracker(); return false;" id="nav-hr-po-tracker">
+                                <span class="nav-icon">📑</span>P.O. Tracker
                             </a>
                         </li>
                     </ul>
@@ -7038,6 +7047,8 @@ body.is-ios .nav-menu {
             setDisplay('gstFilingNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('pettyCashNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('hrPettyCashNavItem', isHR);
+            setDisplay('poTrackerNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('hrPoTrackerNavItem', isHR);
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
@@ -16024,6 +16035,45 @@ async function deleteExpense(id) {
 }
 
 // ============================================
+// P.O. TRACKER MODULE - View P.O.s uploaded by BDM (HR & Accounts)
+// =====================================================================
+async function showPOTracker() {
+    setActiveNav('nav-po-tracker');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align:center;padding:3rem;"><div class="spinner"></div><p>Loading P.O. Tracker...</p></div>';
+    try {
+        const res = await apiCall('proposals');
+        if (!res.success) throw new Error(res.error || 'Failed to load proposals');
+        const wonWithPo = (res.data || []).filter(p => p.status === 'won' && (p.poNumber || p.poValue || p.poFileUrl));
+        const totalValue = wonWithPo.reduce((s, p) => s + (parseFloat(p.poValue) || 0), 0);
+        const rows = wonWithPo.length ? wonWithPo.map(p => `
+            <tr>
+                <td>${p.poNumber || '-'}</td>
+                <td>${p.projectName || p.title || '-'}</td>
+                <td>${p.clientName || p.client || '-'}</td>
+                <td>${p.createdByName || p.bdmName || '-'}</td>
+                <td>${(p.poCurrency || 'USD')} ${(parseFloat(p.poValue) || 0).toLocaleString()}</td>
+                <td>${p.wonDate ? new Date(p.wonDate).toLocaleDateString() : '-'}</td>
+                <td>${p.poFileUrl ? '<a href="'+p.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm">View P.O.</a>' : '<span style="color:#94a3b8;font-size:0.8rem;">No file</span>'}</td>
+            </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#64748b;">No P.O.s uploaded yet.</td></tr>';
+        mainContent.innerHTML = `
+            <div class="card">
+                <h2>P.O. Tracker</h2>
+                <div class="subtitle">Purchase Orders uploaded by BDM (read-only)</div>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin:1rem 0;">
+                    <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:#2563eb;">${wonWithPo.length}</div><div style="color:#64748b;font-size:0.8rem;">Total P.O.s</div></div>
+                    <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:#16a34a;">${totalValue.toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total P.O. Value</div></div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>P.O. #</th><th>Project</th><th>Client</th><th>BDM</th><th>Value</th><th>Won Date</th><th>Document</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    } catch (err) {
+        mainContent.innerHTML = `<div class="card"><h2 style="color:#ef4444;">Error</h2><p>${err.message}</p></div>`;
+    }
+}
+
 // PETTY CASH MODULE
 // ============================================
 

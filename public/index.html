@@ -5411,7 +5411,7 @@ body.is-ios .nav-menu {
                         </li>
                         <li id="subventorsNavItem" style="display: none;">
                             <a href="#" onclick="showSubventors()" id="nav-subventors">
-                            <span class="nav-icon">🏗️</span>Subventors</a>
+                            <span class="nav-icon">🏗️</span>Subvendors</a>
                         </li>
                         <li id="gstFilingNavItem" style="display: none;">
                             <a href="#" onclick="showGSTFiling()" id="nav-gst-filing">
@@ -15667,13 +15667,13 @@ async function showSubventors() {
                     </div>
                 </td>
             </tr>
-        `).join('') : '<tr><td colspan="9" class="text-center">No subventors added yet.</td></tr>';
+        `).join('') : '<tr><td colspan="9" class="text-center">No subvendors added yet.</td></tr>';
 
         main.innerHTML = `
             <div class="page-header">
-                <h2>Subventor Management</h2>
+                <h2>Subvendor Management</h2>
                 <div class="subtitle">Manage sub-contractors, purchase orders, and payment tracking.</div>
-                ${isAcct ? '<button class="btn btn-success" onclick="showAddSubventorModal()" style="margin-top:1rem;">+ Add Subventor</button>' : ''}
+                ${isAcct ? '<button class="btn btn-success" onclick="showAddSubventorModal()" style="margin-top:1rem;">+ Add Subvendor</button>' : ''}
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
                 <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#2563eb;">${subs.length}</div><div style="color:#64748b;font-size:0.8rem;">Total</div></div>
@@ -15704,7 +15704,7 @@ async function showAddSubventorModal() {
         <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
             <div class="modal-content" style="max-width:700px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
                 <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-                    <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">Add New Subventor</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter vendor details and purchase order info</p></div>
+                    <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">Add New Subvendor</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter vendor details and purchase order info</p></div>
                     <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
                 </div>
                 <form onsubmit="submitAddSubventor(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
@@ -15730,7 +15730,7 @@ async function showAddSubventorModal() {
                     <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Scope of Work</label><textarea id="sv_scope" class="form-control" rows="2"></textarea></div>
                     <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload P.O. Document (PDF)</label><input id="sv_poFile" type="file" accept=".pdf" class="form-control"></div>
                     <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="sv_remarks" class="form-control"></div>
-                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Subventor</button>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Subvendor</button>
                 </form>
             </div>
         </div>`;
@@ -15772,7 +15772,7 @@ async function submitAddSubventor(e) {
         const resp = await apiCall('subventors',{method:'POST',body:JSON.stringify(body)});
         if(!resp.success) throw new Error(resp.error);
         closeModal();
-        showNotification('Subventor added successfully!','success');
+        showNotification('Subvendor added successfully!','success');
         showSubventors();
     } catch(err){ alert('Error: '+err.message); }
     finally{ hideLoading(); }
@@ -15792,7 +15792,7 @@ async function viewSubventor(id) {
             <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
                 <div class="modal-content" style="max-width:750px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
                     <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-                        <div><h2 style="margin:0;font-size:1.2rem;">Subventor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
+                        <div><h2 style="margin:0;font-size:1.2rem;">Subvendor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
                         <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
                     </div>
                     <div style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
@@ -15826,7 +15826,7 @@ function showRecordSubventorPaymentModal(id) {
         <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
             <div class="modal-content" style="max-width:550px;width:95%;border-radius:16px;overflow:hidden;background:#fff;">
                 <div class="modal-header" style="background:linear-gradient(135deg,#059669,#10b981);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-                    <div><h2 style="margin:0;font-size:1.2rem;">Record Payment</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter payment details for this subventor</p></div>
+                    <div><h2 style="margin:0;font-size:1.2rem;">Record Payment</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter payment details for this subvendor</p></div>
                     <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
                 </div>
                 <form onsubmit="submitSubventorPayment(event,'${id}')" style="padding:1.5rem 2rem;">

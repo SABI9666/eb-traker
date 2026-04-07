@@ -5413,10 +5413,6 @@ body.is-ios .nav-menu {
                             <a href="#" onclick="showSubventors()" id="nav-subventors">
                             <span class="nav-icon">🏗️</span>Subventors</a>
                         </li>
-                        <li id="dailyExpensesNavItem" style="display: none;">
-                            <a href="#" onclick="showDailyExpenses()" id="nav-daily-expenses">
-                            <span class="nav-icon">📒</span>Daily Expenses</a>
-                        </li>
                         <li id="gstFilingNavItem" style="display: none;">
                             <a href="#" onclick="showGSTFiling()" id="nav-gst-filing">
                             <span class="nav-icon">📋</span>GST Filing</a>
@@ -5504,6 +5500,11 @@ body.is-ios .nav-menu {
                         <li id="employeeLeaveRequestNavItem" style="display: none;">
                             <a href="#" onclick="showEmployeeLeaveRequest()" id="nav-employee-leave">
                                 <span class="nav-icon">🏖️</span>Leave Request
+                            </a>
+                        </li>
+                        <li id="hrPettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-hr-petty-cash">
+                                <span class="nav-icon">💵</span>Petty Cash
                             </a>
                         </li>
                     </ul>
@@ -7034,9 +7035,9 @@ body.is-ios .nav-menu {
 
             setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR && !isDC);
             setDisplay('subventorsNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
-            setDisplay('dailyExpensesNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('gstFilingNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
             setDisplay('pettyCashNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('hrPettyCashNavItem', isHR);
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests

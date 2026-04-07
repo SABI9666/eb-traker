@@ -22609,7 +22609,8 @@ async function loadDLClientComments() {
     list.innerHTML = 'Loading...';
     try {
         const resp = await apiCall('projects?action=get_dc_comments&myDesignFiles=true');
-        const comments = (resp && resp.comments) || [];
+        const payload = (resp && resp.data && (resp.data.comments || resp.data.activities)) ? resp.data : resp;
+        const comments = (payload && payload.comments) || [];
         if (!comments.length) {
             list.innerHTML = '<div style="color:#94a3b8;padding:8px 0;">No client comments yet on your design files.</div>';
             return;
@@ -34725,8 +34726,10 @@ async function openDCActivityHistory(projectId, projectName) {
 
         if (!response.success) throw new Error(response.error || 'Failed to load history');
 
-        const comments = response.comments || [];
-        const activities = response.activities || [];
+        // apiCall may wrap raw responses as { success: true, data: <raw> }
+        const payload = (response.data && (response.data.comments || response.data.activities)) ? response.data : response;
+        const comments = payload.comments || [];
+        const activities = payload.activities || [];
 
         // Merge into a single timeline
         const timeline = [];

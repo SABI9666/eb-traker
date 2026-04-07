@@ -22166,6 +22166,7 @@ async function showDesignLeadPortal() {
                             <button onclick="showTimesheetModal('${project.id}')" style="background: #0ea5e9; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">⏱️ Log Hours</button>
                             <button onclick="viewProject('${project.id}')" style="background: #6b7280; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View Details</button>
                             <button onclick="viewBDMFiles('${project.id}', '${project.proposalId}')" style="background: #8b5cf6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View BDM Files</button>
+                            <button onclick="openDLDesignUploadModal('${project.id}', ${JSON.stringify(project.projectName || '').replace(/"/g, '&quot;')})" style="background: #0d9488; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">📐 Upload Design (IFA/IFC/Rev)</button>
                             ${project.status !== 'completed' ? `
                                 <button onclick="showAddVariationModal('${project.id}', '${project.projectCode}', '${project.projectName}')" style="background: var(--warning); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">➕ Add Variation</button>
                                 <button onclick="markProjectComplete('${project.id}')" style="background: var(--success); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">✅ Mark Complete</button>
@@ -22410,6 +22411,178 @@ async function showDesignLeadTimesheet() {
         hideLoading();
     }
 }
+
+// ============================================================================
+// DESIGN LEAD - DIRECT DESIGN FILE UPLOAD (IFA / IFC / Rev) -> DC (skips COO)
+// ============================================================================
+let _dlDesignFile = null;
+let _dlUploadType = 'file';
+
+function openDLDesignUploadModal(projectId, projectName) {
+    let modal = document.getElementById('dlDesignUploadModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'dlDesignUploadModal';
+        modal.className = 'modal';
+        modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+          <div style="background:#fff;border-radius:12px;max-width:560px;width:92%;padding:1.5rem;max-height:90vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+              <h3 style="margin:0;">Upload Design Files → Document Controller</h3>
+              <span style="cursor:pointer;font-size:1.5rem;" onclick="closeDLDesignUploadModal()">&times;</span>
+            </div>
+            <p style="color:#64748b;font-size:0.85rem;margin:0 0 1rem;">Upload IFA / IFC / Revision files as a single <strong>.zip</strong> archive, or share an external link. This will go directly to the Document Controller (no COO approval needed).</p>
+            <div style="background:#f0fdfa;border:1px solid #99f6e4;padding:0.6rem 0.85rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;"><strong>Project:</strong> <span id="dlDuProjectName"></span></div>
+            <input type="hidden" id="dlDuProjectId">
+
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+              <button type="button" id="dlDuTypeFile" class="btn btn-primary" onclick="setDLUploadType('file')" style="flex:1;">📦 ZIP File</button>
+              <button type="button" id="dlDuTypeLink" class="btn btn-secondary" onclick="setDLUploadType('link')" style="flex:1;">🔗 External Link</button>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+              <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">File Category</label>
+              <select id="dlDuCategory" style="width:100%;padding:0.55rem;border:1px solid #d1d5db;border-radius:6px;">
+                <option value="MIXED">Mixed (IFA + IFC + Rev)</option>
+                <option value="IFA">IFA</option>
+                <option value="IFC">IFC</option>
+                <option value="REV">Revision</option>
+              </select>
+            </div>
+
+            <div id="dlDuFileSection">
+              <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">ZIP File (max 200MB)</label>
+              <input type="file" id="dlDuFileInput" accept=".zip,application/zip,application/x-zip-compressed" onchange="handleDLDesignFileSelect(this)" style="width:100%;padding:0.5rem;border:1px dashed #cbd5e1;border-radius:8px;">
+              <div id="dlDuFileInfo" style="margin-top:0.5rem;font-size:0.8rem;color:#0d9488;"></div>
+            </div>
+
+            <div id="dlDuLinkSection" style="display:none;">
+              <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">Link Title</label>
+              <input type="text" id="dlDuLinkTitle" placeholder="e.g. Project XYZ – IFC Drawings" style="width:100%;padding:0.55rem;border:1px solid #d1d5db;border-radius:6px;margin-bottom:0.75rem;">
+              <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">External URL</label>
+              <input type="url" id="dlDuLinkUrl" placeholder="https://..." style="width:100%;padding:0.55rem;border:1px solid #d1d5db;border-radius:6px;">
+            </div>
+
+            <div style="margin-top:1rem;">
+              <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">Notes (optional)</label>
+              <textarea id="dlDuNotes" rows="3" style="width:100%;padding:0.55rem;border:1px solid #d1d5db;border-radius:6px;" placeholder="Any notes for the Document Controller..."></textarea>
+            </div>
+
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.25rem;">
+              <button class="btn btn-secondary" onclick="closeDLDesignUploadModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="submitDLDesignUpload()" style="background:#0d9488;">📤 Upload to DC</button>
+            </div>
+          </div>`;
+        document.body.appendChild(modal);
+    }
+    document.getElementById('dlDuProjectId').value = projectId;
+    document.getElementById('dlDuProjectName').textContent = projectName;
+    document.getElementById('dlDuFileInput').value = '';
+    document.getElementById('dlDuFileInfo').textContent = '';
+    document.getElementById('dlDuLinkUrl').value = '';
+    document.getElementById('dlDuLinkTitle').value = '';
+    document.getElementById('dlDuNotes').value = '';
+    document.getElementById('dlDuCategory').value = 'MIXED';
+    _dlDesignFile = null;
+    setDLUploadType('file');
+    modal.style.display = 'flex';
+}
+
+function closeDLDesignUploadModal() {
+    const m = document.getElementById('dlDesignUploadModal');
+    if (m) m.style.display = 'none';
+    _dlDesignFile = null;
+}
+
+function setDLUploadType(t) {
+    _dlUploadType = t;
+    document.getElementById('dlDuFileSection').style.display = (t === 'file') ? 'block' : 'none';
+    document.getElementById('dlDuLinkSection').style.display = (t === 'link') ? 'block' : 'none';
+    document.getElementById('dlDuTypeFile').className = (t === 'file') ? 'btn btn-primary' : 'btn btn-secondary';
+    document.getElementById('dlDuTypeLink').className = (t === 'link') ? 'btn btn-primary' : 'btn btn-secondary';
+}
+
+function handleDLDesignFileSelect(input) {
+    const file = input.files[0];
+    if (!file) { _dlDesignFile = null; return; }
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.zip')) {
+        showNotification ? showNotification('Please select a .zip archive', 'error') : alert('Please select a .zip archive');
+        input.value = '';
+        return;
+    }
+    if (file.size > 200 * 1024 * 1024) {
+        showNotification ? showNotification('File must be under 200MB', 'error') : alert('File must be under 200MB');
+        input.value = '';
+        return;
+    }
+    _dlDesignFile = file;
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    document.getElementById('dlDuFileInfo').textContent = `Selected: ${file.name} (${sizeMB} MB)`;
+}
+
+async function submitDLDesignUpload() {
+    const projectId = document.getElementById('dlDuProjectId').value;
+    const category = document.getElementById('dlDuCategory').value;
+    const notes = document.getElementById('dlDuNotes').value.trim();
+
+    let fileName, fileUrl, fileSize;
+    try {
+        showLoading();
+        if (_dlUploadType === 'file') {
+            if (!_dlDesignFile) { showNotification('Please select a ZIP file', 'error'); hideLoading(); return; }
+            const storageInstance = window.storage || firebase.storage();
+            const ts = Date.now();
+            const path = `design_files/${projectId}/dl_${ts}_${_dlDesignFile.name}`;
+            const ref = storageInstance.ref().child(path);
+            const task = await ref.put(_dlDesignFile);
+            fileUrl = await task.ref.getDownloadURL();
+            fileName = _dlDesignFile.name;
+            fileSize = _dlDesignFile.size;
+        } else {
+            const url = document.getElementById('dlDuLinkUrl').value.trim();
+            const title = document.getElementById('dlDuLinkTitle').value.trim();
+            if (!title) { showNotification('Please enter a link title', 'error'); hideLoading(); return; }
+            if (!url || !/^https?:\/\//i.test(url)) { showNotification('Please enter a valid URL', 'error'); hideLoading(); return; }
+            fileUrl = url;
+            fileName = title;
+            fileSize = 0;
+        }
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'upload_design_file',
+                data: {
+                    fileName,
+                    fileUrl,
+                    fileSize,
+                    notes,
+                    uploadType: _dlUploadType,
+                    isExternalLink: _dlUploadType === 'link',
+                    fileCategory: category,
+                    directToDC: true
+                }
+            })
+        });
+
+        if (!response.success) throw new Error(response.error || 'Upload failed');
+        showNotification('✅ Sent directly to Document Controller', 'success');
+        closeDLDesignUploadModal();
+        if (typeof showDesignLeadPortal === 'function') showDesignLeadPortal();
+    } catch (e) {
+        console.error('DL design upload error:', e);
+        showNotification('Failed: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+window.openDLDesignUploadModal = openDLDesignUploadModal;
+window.closeDLDesignUploadModal = closeDLDesignUploadModal;
+window.setDLUploadType = setDLUploadType;
+window.handleDLDesignFileSelect = handleDLDesignFileSelect;
+window.submitDLDesignUpload = submitDLDesignUpload;
 
 // Register globally
 window.showDesignLeadPortal = showDesignLeadPortal;

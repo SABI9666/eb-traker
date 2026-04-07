@@ -36032,7 +36032,7 @@ async function showITDashboard() {
             } else if (t.status === 'available_in_store') {
                 actionBtn = `<button class="btn btn-sm btn-success" onclick="itIssueItem('${t.id}')">Issue Item</button>`;
             } else {
-                actionBtn = `<button class="btn btn-sm btn-secondary" onclick="showITTicketActions('${t.id}','${t.status}')">Manage</button>`;
+                actionBtn = `<button class="btn btn-sm btn-secondary" onclick="showITTicketActions('${t.id}','${t.status}')">Manage</button> <button class="btn btn-sm btn-primary" onclick="showITTicketActions('${t.id}','${t.status}')" title="Edit">✏️ Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteITTicketAdmin('${t.id}','${t.ticketNumber}')" title="Delete">🗑️ Delete</button>`;
             }
             return `<tr data-status="${t.status}">
                 <td><strong style="color:#1e3a8a;">${t.ticketNumber||'-'}</strong></td>

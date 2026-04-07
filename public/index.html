@@ -5570,7 +5570,7 @@ body.is-ios .nav-menu {
                 </li>
                 <div class="nav-dept-divider"></div>
 
-                <!-- ========== DOCUMENT CONTROL ========== -->
+                <!-- ========== DOCUMENT CONTROL (Main Menu) ========== -->
                 <li class="nav-department" id="deptDocControl">
                     <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
                         <span class="dept-icon">📄</span>Document Control
@@ -5581,6 +5581,11 @@ body.is-ios .nav-menu {
                             <a href="#" onclick="showDocumentControllerDashboard(); return false;" id="nav-document-controller">
                                 <span class="nav-icon">📄</span>Document Controller
                                 <span id="dcPendingBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="dcTrackerMainNavItem" style="display: none;">
+                            <a href="#" onclick="showDCFileTracker(); return false;" id="nav-dc-tracker-main">
+                                <span class="nav-icon">📨</span>DC File Tracker
                             </a>
                         </li>
                     </ul>
@@ -7146,6 +7151,8 @@ body.is-ios .nav-menu {
 
             // DC File Tracker Nav - For COO and Director
             setDisplay('dcTrackerNavItem', canApproveDesign);
+            // Also show DC File Tracker as main Document Control menu item for COO/Director/DC
+            setDisplay('dcTrackerMainNavItem', canApproveDesign || isDC);
             setDisplay('fileAnalyticsNavItem', canApproveDesign);
             if (canApproveDesign) {
                 const dcTrackerNav = document.getElementById('dcTrackerNavItem');
@@ -22167,6 +22174,7 @@ async function showDesignLeadPortal() {
                             <button onclick="viewProject('${project.id}')" style="background: #6b7280; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View Details</button>
                             <button onclick="viewBDMFiles('${project.id}', '${project.proposalId}')" style="background: #8b5cf6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">View BDM Files</button>
                             <button onclick="openDLDesignUploadModal('${project.id}', ${JSON.stringify(project.projectName || '').replace(/"/g, '&quot;')})" style="background: #0d9488; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">📐 Upload Design (IFA/IFC/Rev)</button>
+                            <button onclick="openDCActivityHistory('${project.id}', ${JSON.stringify(project.projectName || '').replace(/"/g, '&quot;')})" style="background: #f59e0b; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">💬 Client Comments</button>
                             ${project.status !== 'completed' ? `
                                 <button onclick="showAddVariationModal('${project.id}', '${project.projectCode}', '${project.projectName}')" style="background: var(--warning); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">➕ Add Variation</button>
                                 <button onclick="markProjectComplete('${project.id}')" style="background: var(--success); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">✅ Mark Complete</button>
@@ -22225,6 +22233,15 @@ async function showDesignLeadPortal() {
                 <button onclick="filterDesignLeadProjects('completed')" class="btn btn-sm" id="dlFilterCompleted" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer;">Completed (${completedProjects})</button>
             </div>
 
+            <!-- Recent Client Comments from DC -->
+            <div id="dlClientCommentsPanel" style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                    <h3 style="margin:0;font-size:1rem;color:#1e293b;">💬 Recent Client Comments / Feedback (from DC)</h3>
+                    <button onclick="loadDLClientComments()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;">🔄 Refresh</button>
+                </div>
+                <div id="dlClientCommentsList" style="font-size:13px;color:#64748b;">Loading...</div>
+            </div>
+
             <!-- Project Cards -->
             <div id="designLeadProjectsList">
                 ${projectCardsHtml}
@@ -22233,6 +22250,8 @@ async function showDesignLeadPortal() {
 
         // Store projects data for filtering
         window._designLeadProjects = myProjects;
+        // Load DC client comments for this design lead's files
+        if (typeof loadDLClientComments === 'function') loadDLClientComments();
 
     } catch (error) {
         console.error('Error loading Design Lead Portal:', error);
@@ -22577,6 +22596,46 @@ async function submitDLDesignUpload() {
         hideLoading();
     }
 }
+
+async function loadDLClientComments() {
+    const list = document.getElementById('dlClientCommentsList');
+    if (!list) return;
+    list.innerHTML = 'Loading...';
+    try {
+        const resp = await apiCall('projects?action=get_dc_comments&myDesignFiles=true');
+        const comments = (resp && resp.comments) || [];
+        if (!comments.length) {
+            list.innerHTML = '<div style="color:#94a3b8;padding:8px 0;">No client comments yet on your design files.</div>';
+            return;
+        }
+        const typeMeta = {
+            'general': { icon: '💬', color: '#3b82f6', bg: '#eff6ff', label: 'Comment' },
+            'client_feedback': { icon: '📩', color: '#f59e0b', bg: '#fffbeb', label: 'Client Feedback' },
+            'rectification': { icon: '🔧', color: '#ef4444', bg: '#fef2f2', label: 'Rectification' },
+            'revision_request': { icon: '📝', color: '#f97316', bg: '#fff7ed', label: 'Revision Request' },
+            'resolved': { icon: '✅', color: '#10b981', bg: '#ecfdf5', label: 'Resolved' }
+        };
+        list.innerHTML = comments.slice(0, 10).map(c => {
+            const t = typeMeta[c.commentType] || typeMeta.general;
+            const ts = c.createdAt?.seconds ? new Date(c.createdAt.seconds * 1000) : null;
+            const tsStr = ts ? ts.toLocaleString('en-AU', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+            return `
+                <div style="border-left:3px solid ${t.color};background:${t.bg};border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-weight:600;font-size:12px;color:${t.color};">${t.icon} ${t.label} – ${c.projectName || ''}</span>
+                        <span style="font-size:11px;color:#94a3b8;">${tsStr}</span>
+                    </div>
+                    ${c.clientResponse ? `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:12px;color:#1e293b;"><strong style="color:#64748b;font-size:11px;">CLIENT:</strong> ${c.clientResponse}</div>` : ''}
+                    <div style="font-size:13px;color:#1e293b;">${c.comment}</div>
+                    <div style="margin-top:4px;font-size:11px;color:#94a3b8;">By ${c.createdByName || 'DC'} · File: ${c.fileName || ''}</div>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Error loading DL client comments:', e);
+        list.innerHTML = `<div style="color:#ef4444;">Error loading comments: ${e.message}</div>`;
+    }
+}
+window.loadDLClientComments = loadDLClientComments;
 
 window.openDLDesignUploadModal = openDLDesignUploadModal;
 window.closeDLDesignUploadModal = closeDLDesignUploadModal;
@@ -34173,10 +34232,16 @@ async function showDocumentControllerDashboard() {
                         <td>${file.uploadedByName || 'Designer'}</td>
                         <td>${file.approvedByName || 'COO'}</td>
                         <td>${approvalDate}</td>
-                        <td>
+                        <td style="white-space:nowrap;">
                             <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm">👁️ Preview</a>
                             <button class="btn btn-success btn-sm" onclick="dcSendToClient('${file.id}', '${file.projectId}')">
                                 📧 Send to Client
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="openDCCommentModal('${file.id}', '${file.projectId}', '${(file.fileName || '').replace(/'/g, '\\&#39;')}', '${(file.projectName || '').replace(/'/g, '\\&#39;')}')" style="font-size:12px;padding:5px 10px;">
+                                💬 Comment
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="openDCActivityHistory('${file.projectId}', '${(file.projectName || '').replace(/'/g, '\\&#39;')}')" style="font-size:12px;padding:5px 10px;">
+                                📋 History
                             </button>
                         </td>
                     </tr>

@@ -5188,27 +5188,8 @@ body.is-ios .nav-menu {
         }
 
     </script>
-    <script src="analytics.js">
-        <script src="bdm-po-patch.js"></script>
-        function switchDesignerTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.doc-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Update content visibility
-            document.getElementById('designer-drawings-content').style.display = 'none';
-            document.getElementById('designer-specs-content').style.display = 'none';
-            
-            if (tabName === 'drawings') {
-                document.getElementById('designer-drawings-content').style.display = 'block';
-            } else {
-                document.getElementById('designer-specs-content').style.display = 'block';
-            }
-        }
-
-    </script>
+    <script src="analytics.js"></script>
+    <script src="bdm-po-patch.js"></script>
 </head>
 <body>
     <div id="loginPage" class="login-page">
@@ -8257,6 +8238,10 @@ function renderProposals(proposals) {
             actionButtons += getProposalAllocationButton(p);
         }
 
+        if (currentUserRole === 'bdm' && statusLower === 'won') {
+            actionButtons += `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button> `;
+        }
+
         return `
         <div class="action-item" style="${otherFullyAllocated ? 'border-left: 3px solid #10b981; background: #f0fdf4;' : otherPartiallyAllocated ? 'border-left: 3px solid #f59e0b; background: #fffbeb;' : ''}">
             <div class="action-content">
@@ -10638,6 +10623,8 @@ function showCreateProposalModal() {
                     <button class="btn btn-success btn-sm" onclick="markProposalWon('${p.id}')">✅ WON</button>
                     <button class="btn btn-danger btn-sm" onclick="markProposalLost('${p.id}')" style="margin-left: 10px;">❌ LOST</button>
                  `;
+            } else if (currentUserRole === 'bdm' && statusLower === 'won') {
+                 actionsHtml = `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button>`;
             }
              // --- ADD THIS BLOCK: Generate Word Quote Button for BDM ---
             if (currentUserRole === 'bdm' && p.pricing && p.pricing.quoteValue) {

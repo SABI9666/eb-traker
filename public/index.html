@@ -5566,6 +5566,11 @@ body.is-ios .nav-menu {
                                 <span class="nav-icon">📊</span>IT Department
                             </a>
                         </li>
+                        <li id="itPettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-it-petty-cash">
+                                <span class="nav-icon">💵</span>Petty Cash
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <div class="nav-dept-divider"></div>
@@ -7181,6 +7186,7 @@ body.is-ios .nav-menu {
             }
             
             // IT Portal Nav Items
+            setDisplay('itPettyCashNavItem', isIT); // IT Petty Cash - IT team
             setDisplay('itDashboardNavItem', isIT); // IT Dashboard - only IT team
             setDisplay('itRequestNavItem', !isIT && !isDC && !isManagement); // IT Request - all users EXCEPT IT, DC, COO, Director
             setDisplay('itDepartmentNavItem', isManagement); // IT Department Report - COO & Director only
@@ -15650,7 +15656,7 @@ async function showSubventors() {
     try {
         const res = await apiCall('subventors');
         const subs = res.success ? res.data : [];
-        const isAcct = currentUserRole === 'accounts';
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
 
         const pending = subs.filter(s => s.paymentStatus === 'pending').length;
         const partial = subs.filter(s => s.paymentStatus === 'partial').length;
@@ -15914,7 +15920,7 @@ async function showDailyExpenses() {
         const res = await apiCall('daily-expenses?month='+(now.getMonth()+1)+'&year='+now.getFullYear());
         const expenses = res.success ? res.data : [];
         const summary = res.summary || {};
-        const isAcct = currentUserRole === 'accounts';
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
 
         const catBreakdown = summary.categoryBreakdown || {};
         const catHtml = Object.keys(catBreakdown).map(c=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #f1f5f9;"><span>${c}</span><strong>INR ${catBreakdown[c].toLocaleString()}</strong></div>`).join('')||'<div style="color:#94a3b8;">No expenses this month</div>';
@@ -16056,7 +16062,7 @@ async function showPettyCash() {
         const res = await apiCall('petty-cash?month='+(now.getMonth()+1)+'&year='+now.getFullYear());
         const entries = res.success ? res.data : [];
         const fund = res.fund || { totalFund:0, currentBalance:0, totalSpent:0 };
-        const isAcct = currentUserRole === 'accounts';
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
 
         const expenses = entries.filter(e=>e.entryType==='expense');
         const replenishments = entries.filter(e=>e.entryType==='replenish');
@@ -16310,7 +16316,7 @@ async function showGSTFiling() {
         const yr = new Date().getFullYear();
         const res = await apiCall('gst-filing?year='+yr);
         const records = res.success ? res.data : [];
-        const isAcct = currentUserRole === 'accounts';
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
 
         const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         const filedMap = {};

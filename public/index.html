@@ -28624,6 +28624,37 @@ function viewProjectDetails(projectId) {
         }
         
         const project = response.data;
+        const pc = project.projectContacts || {};
+        const tech = pc.technical || {};
+        const comm = pc.commercial || {};
+        const hasContacts = tech.bdmName || tech.bdmEmail || tech.clientPmName || tech.clientPmEmail
+            || comm.accountName || comm.accountEmail || comm.bdmName || comm.bdmEmail;
+        const contactRow = (label, name, email) => (name || email)
+            ? `<div style="margin-bottom:0.4rem;"><strong>${label}:</strong> ${name || ''}${email ? ` &lt;<a href="mailto:${email}">${email}</a>&gt;` : ''}</div>`
+            : '';
+        const contactsBlock = hasContacts ? `
+                        <div style="grid-column: 1 / -1; margin-top:0.75rem; padding:0.85rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                            <div style="font-weight:700; color:#1e293b; margin-bottom:0.5rem;">📇 Project Contacts</div>
+                            <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem;">
+                                <div>
+                                    <div style="font-size:0.75rem; text-transform:uppercase; color:#64748b; margin-bottom:0.35rem;">Technical</div>
+                                    ${contactRow('BDM', tech.bdmName, tech.bdmEmail)}
+                                    ${contactRow('Client PM', tech.clientPmName, tech.clientPmEmail)}
+                                </div>
+                                <div>
+                                    <div style="font-size:0.75rem; text-transform:uppercase; color:#64748b; margin-bottom:0.35rem;">Commercial</div>
+                                    ${contactRow('Account', comm.accountName, comm.accountEmail)}
+                                    ${contactRow('BDM', comm.bdmName, comm.bdmEmail)}
+                                </div>
+                            </div>
+                        </div>` : '';
+        const poBlock = (project.poNumber || project.poValue || project.poFileUrl) ? `
+                        <div style="grid-column: 1 / -1; margin-top:0.5rem; padding:0.85rem; background:#fef9e7; border:1px solid #f0c040; border-radius:8px;">
+                            <div style="font-weight:700; color:#7c6a0a; margin-bottom:0.5rem;">📄 Purchase Order</div>
+                            ${project.poNumber ? `<div><strong>P.O. Number:</strong> ${project.poNumber}</div>` : ''}
+                            ${project.poValue ? `<div><strong>P.O. Value:</strong> ${project.poCurrency || 'USD'} ${parseFloat(project.poValue).toLocaleString()}</div>` : ''}
+                            ${project.poFileUrl ? `<div><strong>Document:</strong> <a href="${project.poFileUrl}" target="_blank">${project.poFileName || 'View P.O.'}</a></div>` : ''}
+                        </div>` : '';
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.id = 'projectDetailsModal';
@@ -28645,6 +28676,8 @@ function viewProjectDetails(projectId) {
                         <div><strong>Target Date:</strong><br>${project.targetCompletionDate ? formatDate(project.targetCompletionDate) : 'Not set'}</div>
                         <div style="grid-column: 1 / -1;"><strong>Description:</strong><br>${project.projectDescription || 'No description provided'}</div>
                         <div style="grid-column: 1 / -1;"><strong>Special Instructions:</strong><br>${project.specialInstructions || 'None'}</div>
+                        ${poBlock}
+                        ${contactsBlock}
                     </div>
                 </div>
                 <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">

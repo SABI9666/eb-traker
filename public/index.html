@@ -24434,15 +24434,21 @@ async function submitProposalAllocation() {
                     .filter(e => isThisMonth(e.date))
                     .reduce((sum, e) => sum + parseFloat(e.hours || 0), 0);
                 
-                // Build entries table with proper date formatting and project code
+                // Build project lookup map for project number display
+                const projectLookup = {};
+                assignedProjects.forEach(p => { if (p.id) projectLookup[p.id] = p; });
+
+                // Build entries table with proper date formatting and project number
                 const entriesHtml = entries.length > 0 ? entries.slice(0, 20).map(entry => {
                     const entryDate = parseEntryDate(entry.date);
-                    const formattedDate = entryDate && !isNaN(entryDate.getTime()) 
+                    const formattedDate = entryDate && !isNaN(entryDate.getTime())
                         ? entryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                         : 'N/A';
-                    const projectDisplay = entry.projectCode 
-                        ? `${entry.projectCode}` 
-                        : (entry.projectName || 'Unknown Project');
+                    const proj = projectLookup[entry.projectId];
+                    const projNum = entry.projectNumber || proj?.projectNumber || null;
+                    const projectDisplay = projNum
+                        ? `<span style="font-weight:700;color:var(--primary-blue);">${projNum}</span> <small style="color:#6b7280;">${entry.projectName || ''}</small>`
+                        : (entry.projectName || entry.projectCode || 'Unknown Project');
                     const entryDateForEdit = entryDate && !isNaN(entryDate.getTime()) 
                         ? entryDate.toISOString().split('T')[0] 
                         : '';
@@ -28989,11 +28995,19 @@ async function loadDesignerTimesheet() {
         // Update table
         const tbody = document.getElementById('timesheetTableBody');
         if (tbody) {
+            // Build project lookup for project number display
+            const projLookup = {};
+            (projects || []).forEach(p => { if (p.id) projLookup[p.id] = p; });
+
             if (entries.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No timesheet entries yet</td></tr>';
             } else {
                 tbody.innerHTML = entries.map(entry => {
-                    const projectDisplay = entry.projectCode || entry.projectName || 'N/A';
+                    const proj2 = projLookup[entry.projectId];
+                    const projNum2 = entry.projectNumber || proj2?.projectNumber || null;
+                    const projectDisplay = projNum2
+                        ? `<span style="font-weight:700;color:var(--primary-blue);">${projNum2}</span> <small style="color:#6b7280;">${entry.projectName || ''}</small>`
+                        : (entry.projectName || entry.projectCode || 'N/A');
                     return `
                     <tr>
                         <td>${formatDate(entry.date)}</td>

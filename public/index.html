@@ -5385,6 +5385,12 @@ body.is-ios .nav-menu {
                                 <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
                             </a>
                         </li>
+                        <li id="variationTrackingNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOVariationTracking()" id="nav-variation-tracking">
+                                <span class="nav-icon">📑</span>Variation Tracking
+                                <span class="notification-count" id="pendingVariationsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
                         <li id="allocationRequestsNavItem" style="display: none;">
                             <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
                                 <span class="nav-icon">📋</span>Allocation Requests
@@ -7060,6 +7066,7 @@ body.is-ios .nav-menu {
             setDisplay('hrPoTrackerNavItem', isHR);
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
+            setDisplay('variationTrackingNavItem', (currentUserRole === 'coo' || currentUserRole === 'director') && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
             
             // HR Specific - Show HR Announcements and Leave Approval menus
@@ -8411,18 +8418,33 @@ function renderProposalsTable(proposals) {
 async function showAllProjects() {
     try {
         showLoading();
-        
+
         const response = await apiCall('proposals');
-        
+
         if (!response.success) {
             throw new Error(response.error || 'Failed to load proposals.');
         }
-        
+
         let allProposals = response.data || [];
-        
-        // Separate proposals and variations
+
+        // Proposals only (no isVariation mixing)
         const proposals = allProposals.filter(p => !p.isVariation);
-        const variations = allProposals.filter(p => p.isVariation);
+
+        // Fetch real pending variations from /api/variations
+        let variations = [];
+        try {
+            const varResponse = await apiCall('variations?status=pending_coo_approval');
+            if (varResponse.success) variations = varResponse.data || [];
+        } catch (e) {
+            console.warn('Could not load variations:', e.message);
+        }
+
+        // Update Variation Tracking nav badge
+        const varBadge = document.getElementById('pendingVariationsBadge');
+        if (varBadge) {
+            varBadge.textContent = variations.length;
+            varBadge.style.display = variations.length > 0 ? 'inline-block' : 'none';
+        }
         
         // Count proposals by CORRECT status values for COO
         const statusCounts = {
@@ -8532,18 +8554,18 @@ async function showAllProjects() {
                     Active Proposals (${filteredProposals.length})
                 </button>
                 <button class="tab-btn" onclick="switchTab(this, 'variations-section')">
-                    Pending Variations (${variations.filter(v => v.status === 'pending').length})
+                    Pending Variations (${variations.length})
                 </button>
             </div>
-            
+
             <!-- Proposals Section -->
             <div id="proposals-section" class="tab-content active">
                 ${renderProposalsTable(filteredProposals)}
             </div>
-            
+
             <!-- Variations Section -->
             <div id="variations-section" class="tab-content">
-                ${renderPendingVariationsTable(variations.filter(v => v.status === 'pending'))}
+                ${renderPendingVariationsTable(variations)}
             </div>
         `;
         
@@ -8606,6 +8628,139 @@ function renderPendingVariationsTable(variations) {
             </table>
         </div>
     `;
+}
+
+/**
+ * COO Variation Tracking - full page showing all variations (all statuses) with details & document links.
+ */
+async function showCOOVariationTracking() {
+    const main = document.getElementById('mainContent');
+    main.innerHTML = '<div style="padding:2rem;text-align:center;"><span class="loading-spinner"></span> Loading variation tracking...</div>';
+
+    try {
+        showLoading();
+        // Fetch ALL variations (no status filter)
+        const response = await apiCall('variations');
+        const allVariations = (response.success ? response.data : []) || [];
+
+        const pending   = allVariations.filter(v => v.status === 'pending_coo_approval');
+        const approved  = allVariations.filter(v => v.status === 'approved');
+        const rejected  = allVariations.filter(v => v.status === 'rejected');
+
+        // Update badge
+        const badge = document.getElementById('pendingVariationsBadge');
+        if (badge) {
+            badge.textContent = pending.length;
+            badge.style.display = pending.length > 0 ? 'inline-block' : 'none';
+        }
+
+        function statusBadge(status) {
+            const map = {
+                'pending_coo_approval': ['#fff3cd', '#856404', '⏳ Pending'],
+                'approved':             ['#d1fae5', '#065f46', '✅ Approved'],
+                'rejected':             ['#fee2e2', '#991b1b', '❌ Rejected']
+            };
+            const [bg, color, label] = map[status] || ['#f3f4f6', '#374151', status];
+            return `<span style="background:${bg};color:${color};padding:2px 8px;border-radius:10px;font-size:0.8rem;font-weight:600;">${label}</span>`;
+        }
+
+        function varRow(v) {
+            const amt = v.amount ? `${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits:2})}` : '—';
+            return `
+                <tr>
+                    <td><strong>${v.variationCode || '—'}</strong></td>
+                    <td><strong>${v.parentProjectName || '—'}</strong><br><small style="color:var(--text-light);">${v.clientCompany || ''}</small></td>
+                    <td>${v.clientName ? `${v.clientName}${v.clientEmail ? `<br><small>${v.clientEmail}</small>` : ''}` : '—'}</td>
+                    <td><strong>${v.estimatedHours || 0}h</strong></td>
+                    <td>${amt}</td>
+                    <td>${v.accountsDetails ? `<span title="${v.accountsDetails.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dashed var(--text-light);">View notes</span>` : '—'}</td>
+                    <td>${statusBadge(v.status)}</td>
+                    <td>${formatDate(v.createdAt)}</td>
+                    <td style="white-space:nowrap;">
+                        ${v.documentUrl ? `<a href="${v.documentUrl}" target="_blank" class="btn btn-outline btn-sm" title="View Document" style="margin-right:4px;">📄 Doc</a>` : ''}
+                        ${v.status === 'pending_coo_approval' ? `<button class="btn btn-primary btn-sm" onclick="showVariationApprovalModal('${v.id}')">Review</button>` : ''}
+                    </td>
+                </tr>`;
+        }
+
+        function varTable(list) {
+            if (!list.length) return '<p style="padding:1rem;color:var(--text-light);">No variations in this category.</p>';
+            return `
+                <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Code</th>
+                        <th>Project / Client</th>
+                        <th>Client Contact</th>
+                        <th>Hours</th>
+                        <th>Amount</th>
+                        <th>Accounts Notes</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody>${list.map(varRow).join('')}</tbody>
+                </table>
+                </div>`;
+        }
+
+        main.innerHTML = `
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+                <div>
+                    <h2>📑 Variation Tracking</h2>
+                    <p class="subtitle">Full history of all variation requests — pending, approved and rejected.</p>
+                </div>
+                <button class="btn btn-outline" onclick="showCOOVariationTracking()">🔄 Refresh</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="stat-card" style="border-left:4px solid var(--warning);">
+                    <div class="stat-label">Pending Review</div>
+                    <div class="stat-value" style="color:var(--warning);">${pending.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--success);">
+                    <div class="stat-label">Approved</div>
+                    <div class="stat-value" style="color:var(--success);">${approved.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--danger);">
+                    <div class="stat-label">Rejected</div>
+                    <div class="stat-value" style="color:var(--danger);">${rejected.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--primary-blue);">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value">${allVariations.length}</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs" id="varTrackingTabs">
+                <button class="tab-btn active" onclick="switchTab(this,'vt-pending')">⏳ Pending (${pending.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-approved')">✅ Approved (${approved.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-rejected')">❌ Rejected (${rejected.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-all')">📋 All (${allVariations.length})</button>
+            </div>
+
+            <div id="vt-pending" class="tab-content active card" style="padding:0;">
+                ${varTable(pending)}
+            </div>
+            <div id="vt-approved" class="tab-content card" style="padding:0;">
+                ${varTable(approved)}
+            </div>
+            <div id="vt-rejected" class="tab-content card" style="padding:0;">
+                ${varTable(rejected)}
+            </div>
+            <div id="vt-all" class="tab-content card" style="padding:0;">
+                ${varTable(allVariations)}
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Variation tracking error:', error);
+        main.innerHTML = `<div class="error-message"><h2>⚠️ Error</h2><p>${error.message}</p><button class="btn btn-primary" onclick="showCOOVariationTracking()">Retry</button></div>`;
+    } finally {
+        hideLoading();
+    }
 }
 
 /**

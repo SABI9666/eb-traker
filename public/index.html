@@ -5685,17 +5685,15 @@ body.is-ios .nav-menu {
         window.toggleDesignerHoursInput = function(checkbox) {
             const designerId = checkbox.value;
             const hoursInput = document.getElementById(`hours-${designerId}`);
-            
+
             if (checkbox.checked) {
                 hoursInput.disabled = false;
-                if (!hoursInput.value || hoursInput.value === '0') {
-                    hoursInput.value = '1'; // Default to 1 hour
-                }
+                // Do not default to any hours — hours are optional
             } else {
                 hoursInput.disabled = true;
                 hoursInput.value = '0';
             }
-            
+
             window.updateTotalAllocated();
         };
         
@@ -24528,14 +24526,26 @@ async function submitProposalAllocation() {
             console.log('🔄 showTimesheetModal called for project:', projectId);
             try {
                 showLoading();
-                
-                // Fetch all projects
-                const response = await apiCall('projects');
+
+                // Fetch projects and designer's own timesheets in parallel
+                const [response, timesheetRes] = await Promise.all([
+                    apiCall('projects'),
+                    apiCall('timesheets')
+                ]);
                 if (!response.success) {
                     throw new Error('Failed to load projects');
                 }
-                
+
                 const projects = response.data || [];
+                // Build per-project hours logged by current user
+                const myTimesheets = timesheetRes.success ? (timesheetRes.data || []) : [];
+                const myHoursPerProject = {};
+                myTimesheets.forEach(t => {
+                    if (t.projectId && !t.isNonProjectWork) {
+                        myHoursPerProject[t.projectId] = (myHoursPerProject[t.projectId] || 0) + (parseFloat(t.hours) || 0);
+                    }
+                });
+
                 // Filter for projects assigned to the current user (designer or design lead)
                 const assignedProjects = projects.filter(p => {
                     const inDesigners = p.assignedDesigners && p.assignedDesigners.includes(currentUser.uid);
@@ -24580,15 +24590,23 @@ async function submitProposalAllocation() {
                                         <select id="timesheetProjectId" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px;" required>
                                             <option value="">Select a project...</option>
                                             ${assignedProjects.map(project => {
-                                                // Show designer-specific allocation if available
-                                                const myAlloc = (project.assignedDesignerHours && project.assignedDesignerHours[currentUser.uid])
+                                                // Personal allocation: only use if explicitly > 0
+                                                const personalAlloc = (project.assignedDesignerHours && parseFloat(project.assignedDesignerHours[currentUser.uid]) > 0)
                                                     ? parseFloat(project.assignedDesignerHours[currentUser.uid])
-                                                    : (project.designerHours && project.designerHours[currentUser.uid])
+                                                    : (project.designerHours && parseFloat(project.designerHours[currentUser.uid]) > 0)
                                                         ? parseFloat(project.designerHours[currentUser.uid])
-                                                        : (parseFloat(project.maxAllocatedHours || 0) + parseFloat(project.additionalHours || 0));
+                                                        : 0;
+                                                // If no personal allocation, use total project budget
+                                                const myAlloc = personalAlloc > 0
+                                                    ? personalAlloc
+                                                    : (parseFloat(project.maxAllocatedHours || 0) + parseFloat(project.additionalHours || 0));
+                                                // If personal allocation, compare against designer's own hours; else use project total
+                                                const myLogged = personalAlloc > 0
+                                                    ? (myHoursPerProject[project.id] || 0)
+                                                    : (parseFloat(project.hoursLogged) || 0);
                                                 return `<option value="${project.id}"
                                                         data-allocated="${myAlloc}"
-                                                        data-logged="${project.hoursLogged || 0}">
+                                                        data-logged="${myLogged}">
                                                     ${project.projectName} - ${project.clientCompany}
                                                 </option>`;
                                             }).join('')}
@@ -27053,14 +27071,26 @@ function resetExecutiveDateFilter() {
 window.showTimesheetModalImpl = async function(projectId = null) {
             try {
                 showLoading();
-                
-                // Fetch all projects
-                const response = await apiCall('projects');
+
+                // Fetch projects and designer's own timesheets in parallel
+                const [response, timesheetRes] = await Promise.all([
+                    apiCall('projects'),
+                    apiCall('timesheets')
+                ]);
                 if (!response.success) {
                     throw new Error('Failed to load projects');
                 }
-                
+
                 const projects = response.data || [];
+                // Build per-project hours logged by current designer
+                const myTimesheets2 = timesheetRes.success ? (timesheetRes.data || []) : [];
+                const myHoursPerProject2 = {};
+                myTimesheets2.forEach(t => {
+                    if (t.projectId && !t.isNonProjectWork) {
+                        myHoursPerProject2[t.projectId] = (myHoursPerProject2[t.projectId] || 0) + (parseFloat(t.hours) || 0);
+                    }
+                });
+
                 // Filter for projects assigned to the current designer
                 // FIX: robust check for designer UID in either property
                 const assignedProjects = projects.filter(p => {
@@ -27092,14 +27122,20 @@ window.showTimesheetModalImpl = async function(projectId = null) {
                                         <select id="timesheetProjectId" class="form-control" required>
                                             <option value="">Select a project...</option>
                                             ${assignedProjects.map(project => {
-                                                const myAlloc2 = (project.assignedDesignerHours && project.assignedDesignerHours[currentUser.uid])
+                                                const personalAlloc2 = (project.assignedDesignerHours && parseFloat(project.assignedDesignerHours[currentUser.uid]) > 0)
                                                     ? parseFloat(project.assignedDesignerHours[currentUser.uid])
-                                                    : (project.designerHours && project.designerHours[currentUser.uid])
+                                                    : (project.designerHours && parseFloat(project.designerHours[currentUser.uid]) > 0)
                                                         ? parseFloat(project.designerHours[currentUser.uid])
-                                                        : (parseFloat(project.maxAllocatedHours || 0) + parseFloat(project.additionalHours || 0));
+                                                        : 0;
+                                                const myAlloc2 = personalAlloc2 > 0
+                                                    ? personalAlloc2
+                                                    : (parseFloat(project.maxAllocatedHours || 0) + parseFloat(project.additionalHours || 0));
+                                                const myLogged2 = personalAlloc2 > 0
+                                                    ? (myHoursPerProject2[project.id] || 0)
+                                                    : (parseFloat(project.hoursLogged) || 0);
                                                 return `<option value="${project.id}"
                                                         data-allocated="${myAlloc2}"
-                                                        data-logged="${project.hoursLogged || 0}">
+                                                        data-logged="${myLogged2}">
                                                     ${project.projectName} - ${project.clientCompany}
                                                 </option>`;
                                             }).join('')}

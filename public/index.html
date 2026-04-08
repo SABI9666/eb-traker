@@ -20765,14 +20765,108 @@ function renderExistingAllocations(project) {
                     <span style="color: #6b7280;">hours</span>
                 </div>
                 <div class="designer-edit-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
-                    <button type="button" class="btn btn-success btn-sm" onclick="saveExistingDesignerHours('${uid}', '${name}', '${email}')" 
+                    <button type="button" class="btn btn-success btn-sm" onclick="saveExistingDesignerHours('${uid}', '${(name || '').replace(/'/g, "\\'")}', '${(email || '').replace(/'/g, "\\'")}')"
                             style="padding: 0.4rem 0.75rem;">
                         💾 Save
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm"
+                            title="Delete this allocation"
+                            onclick="deleteExistingDesignerAllocation('${uid}', '${(name || '').replace(/'/g, "\\'")}', ${hours})"
+                            style="padding: 0.4rem 0.75rem;">
+                        🗑️ Delete
                     </button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Delete an existing designer allocation from inside the COO multi-designer modal.
+ * Used when the wrong designer or wrong hours were entered earlier.
+ */
+async function deleteExistingDesignerAllocation(designerUid, designerName, currentHours) {
+    const projectId = window.currentEditProjectId;
+    if (!projectId) {
+        alert('⚠️ Project ID missing');
+        return;
+    }
+
+    const reason = prompt(
+        `Delete ${designerName}'s allocation (${currentHours}h)?\n\n` +
+        `This will remove the designer from this project entirely.\n\n` +
+        `Please enter a reason (required):`
+    );
+
+    if (reason === null) return;
+    if (!reason || reason.trim().length < 3) {
+        alert('⚠️ A reason (at least 3 characters) is required to delete this allocation.');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_designer_allocation',
+                data: {
+                    designerUid: designerUid,
+                    reason: reason.trim()
+                }
+            })
+        });
+
+        if (response.success) {
+            alert(`✅ ${designerName}'s allocation has been removed.`);
+
+            // Update local cache
+            if (window.currentEditProject) {
+                const proj = window.currentEditProject;
+                proj.designerHours = proj.designerHours || {};
+                const removedHrs = parseFloat(proj.designerHours[designerUid]) || 0;
+                delete proj.designerHours[designerUid];
+
+                const idx = (proj.assignedDesignerUids || []).indexOf(designerUid);
+                if (idx !== -1) {
+                    proj.assignedDesignerUids.splice(idx, 1);
+                    if (proj.assignedDesignerNames) proj.assignedDesignerNames.splice(idx, 1);
+                    if (proj.assignedDesignerEmails) proj.assignedDesignerEmails.splice(idx, 1);
+                }
+
+                proj.totalAllocatedHours = Math.max(0, (parseFloat(proj.totalAllocatedHours) || 0) - removedHrs);
+
+                // If the deleted designer was the Design Lead, clear those fields too
+                if (proj.designLeadUid === designerUid) {
+                    proj.designLeadUid = null;
+                    proj.designLeadName = null;
+                    proj.designLeadEmail = null;
+                }
+
+                // Re-render the existing allocations list
+                if (typeof renderExistingAllocations === 'function') {
+                    renderExistingAllocations(proj);
+                }
+                if (typeof updateRemainingHoursWithExisting === 'function') {
+                    updateRemainingHoursWithExisting();
+                }
+            }
+
+            // Refresh project listings if available
+            if (typeof showAllProjects === 'function') {
+                try { await showAllProjects(); } catch (e) {}
+            }
+        } else {
+            throw new Error(response.error || 'Failed to delete allocation');
+        }
+    } catch (error) {
+        console.error('Error deleting allocation:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
 }
 
 /**
@@ -30657,6 +30751,11 @@ function toggleDesignHours() {
         </div>
         
         <div class="modal-footer">
+            <button type="button" class="btn btn-danger"
+                    onclick="clearProjectAllocation(document.getElementById('editAllocProjectId').value, document.getElementById('editAllocProjectName').textContent)"
+                    title="Remove the Design Lead and all designer allocations">
+                🗑️ Delete Full Allocation
+            </button>
             <button type="button" class="btn btn-cancel" onclick="closeCooEditAllocationModal()">Close</button>
         </div>
     </div>
@@ -31138,7 +31237,9 @@ function renderEditDesignerList(project) {
         const name = designerNames[index] || 'Unknown';
         const email = designerEmails[index] || '';
         const hours = parseFloat(designerHours[uid]) || 0;
-        
+        const safeName = (name || '').replace(/'/g, "\\'");
+        const safeEmail = (email || '').replace(/'/g, "\\'");
+
         return `
             <div class="designer-edit-row" id="editRow_${uid}">
                 <div class="designer-edit-info">
@@ -31146,22 +31247,137 @@ function renderEditDesignerList(project) {
                     <div class="email">${email}</div>
                 </div>
                 <div class="designer-edit-hours">
-                    <input type="number" id="editHours_${uid}" class="form-control" 
+                    <input type="number" id="editHours_${uid}" class="form-control"
                            value="${hours}" min="0" step="0.5" data-original="${hours}"
                            onchange="highlightHoursChange('${uid}')">
                     <span>hours</span>
                 </div>
                 <div class="designer-edit-actions">
-                    <button class="btn btn-success btn-sm" onclick="saveDesignerHours('${uid}', '${name}', '${email}')">
+                    <button class="btn btn-success btn-sm" onclick="saveDesignerHours('${uid}', '${safeName}', '${safeEmail}')">
                         💾 Save
                     </button>
-                    <button class="btn btn-outline btn-sm" onclick="requestDesignerHoursChange('${uid}', '${name}', '${email}', ${hours})">
+                    <button class="btn btn-outline btn-sm" onclick="requestDesignerHoursChange('${uid}', '${safeName}', '${safeEmail}', ${hours})">
                         📤 Request
+                    </button>
+                    <button class="btn btn-danger btn-sm" title="Delete this allocation"
+                            onclick="deleteDesignerAllocation('${uid}', '${safeName}', ${hours})">
+                        🗑️ Delete
                     </button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Delete a single designer allocation (wrong designer / wrong hours)
+ */
+async function deleteDesignerAllocation(designerUid, designerName, currentHours) {
+    const projectId = document.getElementById('editAllocProjectId').value;
+    if (!projectId) {
+        alert('⚠️ Project ID missing');
+        return;
+    }
+
+    const reason = prompt(
+        `Delete ${designerName}'s allocation (${currentHours}h)?\n\n` +
+        `This will remove the designer from this project entirely.\n\n` +
+        `Please enter a reason (required):`
+    );
+
+    if (reason === null) return; // user cancelled
+    if (!reason || reason.trim().length < 3) {
+        alert('⚠️ A reason (at least 3 characters) is required to delete this allocation.');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_designer_allocation',
+                data: {
+                    designerUid: designerUid,
+                    reason: reason.trim()
+                }
+            })
+        });
+
+        if (response.success) {
+            alert(`✅ ${designerName}'s allocation has been removed.`);
+            // Refresh modal data
+            await showCooEditAllocationModal(projectId);
+            // Refresh project listings if available
+            if (typeof showAllProjects === 'function') {
+                try { await showAllProjects(); } catch (e) {}
+            }
+        } else {
+            throw new Error(response.error || 'Failed to delete allocation');
+        }
+    } catch (error) {
+        console.error('Error deleting allocation:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Clear the entire allocation for a project (wrong Design Lead).
+ * This resets the project so a fresh allocation can be made.
+ */
+async function clearProjectAllocation(projectId, projectName) {
+    if (!projectId) {
+        alert('⚠️ Project ID missing');
+        return;
+    }
+
+    const confirmMsg =
+        `⚠️ DELETE ENTIRE ALLOCATION\n\n` +
+        `Project: ${projectName || 'this project'}\n\n` +
+        `This will remove the Design Lead and ALL designer allocations ` +
+        `so the project can be re-allocated from scratch.\n\n` +
+        `Use this when the wrong Design Lead was selected.\n\n` +
+        `Continue?`;
+    if (!confirm(confirmMsg)) return;
+
+    const reason = prompt('Please enter a reason for clearing this allocation (required):');
+    if (reason === null) return;
+    if (!reason || reason.trim().length < 3) {
+        alert('⚠️ A reason (at least 3 characters) is required.');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'clear_project_allocation',
+                data: { reason: reason.trim() }
+            })
+        });
+
+        if (response.success) {
+            alert('✅ Allocation cleared. The project can now be re-allocated.');
+            if (typeof closeCooEditAllocationModal === 'function') closeCooEditAllocationModal();
+            if (typeof showAllProjects === 'function') {
+                try { await showAllProjects(); } catch (e) {}
+            }
+        } else {
+            throw new Error(response.error || 'Failed to clear allocation');
+        }
+    } catch (error) {
+        console.error('Error clearing allocation:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
 }
 
 function highlightHoursChange(designerUid) {

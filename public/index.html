@@ -5385,6 +5385,12 @@ body.is-ios .nav-menu {
                                 <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
                             </a>
                         </li>
+                        <li id="variationTrackingNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOVariationTracking()" id="nav-variation-tracking">
+                                <span class="nav-icon">📑</span>Variation Tracking
+                                <span class="notification-count" id="pendingVariationsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
                         <li id="allocationRequestsNavItem" style="display: none;">
                             <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
                                 <span class="nav-icon">📋</span>Allocation Requests
@@ -7060,6 +7066,7 @@ body.is-ios .nav-menu {
             setDisplay('hrPoTrackerNavItem', isHR);
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
+            setDisplay('variationTrackingNavItem', (currentUserRole === 'coo' || currentUserRole === 'director') && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
             
             // HR Specific - Show HR Announcements and Leave Approval menus
@@ -8411,18 +8418,33 @@ function renderProposalsTable(proposals) {
 async function showAllProjects() {
     try {
         showLoading();
-        
+
         const response = await apiCall('proposals');
-        
+
         if (!response.success) {
             throw new Error(response.error || 'Failed to load proposals.');
         }
-        
+
         let allProposals = response.data || [];
-        
-        // Separate proposals and variations
+
+        // Proposals only (no isVariation mixing)
         const proposals = allProposals.filter(p => !p.isVariation);
-        const variations = allProposals.filter(p => p.isVariation);
+
+        // Fetch real pending variations from /api/variations
+        let variations = [];
+        try {
+            const varResponse = await apiCall('variations?status=pending_coo_approval');
+            if (varResponse.success) variations = varResponse.data || [];
+        } catch (e) {
+            console.warn('Could not load variations:', e.message);
+        }
+
+        // Update Variation Tracking nav badge
+        const varBadge = document.getElementById('pendingVariationsBadge');
+        if (varBadge) {
+            varBadge.textContent = variations.length;
+            varBadge.style.display = variations.length > 0 ? 'inline-block' : 'none';
+        }
         
         // Count proposals by CORRECT status values for COO
         const statusCounts = {
@@ -8532,18 +8554,18 @@ async function showAllProjects() {
                     Active Proposals (${filteredProposals.length})
                 </button>
                 <button class="tab-btn" onclick="switchTab(this, 'variations-section')">
-                    Pending Variations (${variations.filter(v => v.status === 'pending').length})
+                    Pending Variations (${variations.length})
                 </button>
             </div>
-            
+
             <!-- Proposals Section -->
             <div id="proposals-section" class="tab-content active">
                 ${renderProposalsTable(filteredProposals)}
             </div>
-            
+
             <!-- Variations Section -->
             <div id="variations-section" class="tab-content">
-                ${renderPendingVariationsTable(variations.filter(v => v.status === 'pending'))}
+                ${renderPendingVariationsTable(variations)}
             </div>
         `;
         
@@ -8606,6 +8628,159 @@ function renderPendingVariationsTable(variations) {
             </table>
         </div>
     `;
+}
+
+/**
+ * COO Variation Tracking - full page showing all variations (all statuses) with details & document links.
+ */
+async function showCOOVariationTracking() {
+    const main = document.getElementById('mainContent');
+    main.innerHTML = '<div style="padding:2rem;text-align:center;"><span class="loading-spinner"></span> Loading variation tracking...</div>';
+
+    try {
+        showLoading();
+        // Fetch ALL variations (no status filter)
+        const response = await apiCall('variations');
+        const allVariations = (response.success ? response.data : []) || [];
+
+        const pending         = allVariations.filter(v => v.status === 'pending_coo_approval');
+        const approved        = allVariations.filter(v => v.status === 'approved');
+        const rejected        = allVariations.filter(v => v.status === 'rejected');
+        const accountsUpdated = allVariations.filter(v => !!v.accountsUpdatedAt);
+
+        // Update badge
+        const badge = document.getElementById('pendingVariationsBadge');
+        if (badge) {
+            badge.textContent = pending.length;
+            badge.style.display = pending.length > 0 ? 'inline-block' : 'none';
+        }
+
+        function statusBadge(status) {
+            const map = {
+                'pending_coo_approval': ['#fff3cd', '#856404', '⏳ Pending'],
+                'approved':             ['#d1fae5', '#065f46', '✅ Approved'],
+                'rejected':             ['#fee2e2', '#991b1b', '❌ Rejected']
+            };
+            const [bg, color, label] = map[status] || ['#f3f4f6', '#374151', status];
+            return `<span style="background:${bg};color:${color};padding:2px 8px;border-radius:10px;font-size:0.8rem;font-weight:600;">${label}</span>`;
+        }
+
+        function varRow(v) {
+            const amt = v.amount ? `<strong>${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits:2})}</strong>` : '<span style="color:var(--text-light);">—</span>';
+            const acctUpdated = v.accountsUpdatedAt
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;" title="Updated by ${v.accountsUpdatedByName || 'Accounts'} on ${formatDate(v.accountsUpdatedAt)}">✓ Accounts Updated</span>`
+                : '<span style="color:var(--text-light);font-size:0.8rem;">Not updated</span>';
+            const acctNotes = v.accountsDetails
+                ? `<span title="${v.accountsDetails.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dashed var(--text-light);">View notes</span>`
+                : '—';
+            const invRef = v.invoiceReference || '—';
+            const terms  = v.paymentTerms || '—';
+            return `
+                <tr style="${v.accountsUpdatedAt ? 'background:rgba(16,185,129,0.04);' : ''}">
+                    <td>
+                        <strong>${v.variationCode || '—'}</strong><br>
+                        ${acctUpdated}
+                    </td>
+                    <td><strong>${v.parentProjectName || '—'}</strong><br><small style="color:var(--text-light);">${v.clientCompany || ''}</small></td>
+                    <td>${v.clientName ? `${v.clientName}${v.clientEmail ? `<br><small style="color:var(--text-light);">${v.clientEmail}</small>` : ''}` : '—'}</td>
+                    <td><strong>${v.estimatedHours || 0}h</strong></td>
+                    <td>${amt}</td>
+                    <td>${invRef}</td>
+                    <td>${terms}</td>
+                    <td>${acctNotes}</td>
+                    <td>${statusBadge(v.status)}</td>
+                    <td>${formatDate(v.createdAt)}</td>
+                    <td style="white-space:nowrap;">
+                        ${v.documentUrl ? `<a href="${v.documentUrl}" target="_blank" class="btn btn-outline btn-sm" title="View Variation Document" style="margin-right:4px;">📄</a>` : ''}
+                        ${v.status === 'pending_coo_approval' ? `<button class="btn btn-primary btn-sm" onclick="showVariationApprovalModal('${v.id}')">Review</button>` : ''}
+                    </td>
+                </tr>`;
+        }
+
+        function varTable(list) {
+            if (!list.length) return '<p style="padding:1rem;color:var(--text-light);">No variations in this category.</p>';
+            return `
+                <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Code / Accounts Status</th>
+                        <th>Project / Client</th>
+                        <th>Client Contact</th>
+                        <th>Hours</th>
+                        <th>Amount</th>
+                        <th>Invoice Ref / PO</th>
+                        <th>Payment Terms</th>
+                        <th>Accounts Notes</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody>${list.map(varRow).join('')}</tbody>
+                </table>
+                </div>`;
+        }
+
+        main.innerHTML = `
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+                <div>
+                    <h2>📑 Variation Tracking</h2>
+                    <p class="subtitle">Full history of all variation requests — pending, approved and rejected.</p>
+                </div>
+                <button class="btn btn-outline" onclick="showCOOVariationTracking()">🔄 Refresh</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="stat-card" style="border-left:4px solid var(--warning);">
+                    <div class="stat-label">Pending Review</div>
+                    <div class="stat-value" style="color:var(--warning);">${pending.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--success);">
+                    <div class="stat-label">Approved</div>
+                    <div class="stat-value" style="color:var(--success);">${approved.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--danger);">
+                    <div class="stat-label">Rejected</div>
+                    <div class="stat-value" style="color:var(--danger);">${rejected.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid #10b981;">
+                    <div class="stat-label">Accounts Updated</div>
+                    <div class="stat-value" style="color:#10b981;">${accountsUpdated.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--primary-blue);">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value">${allVariations.length}</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs" id="varTrackingTabs">
+                <button class="tab-btn active" onclick="switchTab(this,'vt-pending')">⏳ Pending (${pending.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-approved')">✅ Approved (${approved.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-rejected')">❌ Rejected (${rejected.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-all')">📋 All (${allVariations.length})</button>
+            </div>
+
+            <div id="vt-pending" class="tab-content active card" style="padding:0;">
+                ${varTable(pending)}
+            </div>
+            <div id="vt-approved" class="tab-content card" style="padding:0;">
+                ${varTable(approved)}
+            </div>
+            <div id="vt-rejected" class="tab-content card" style="padding:0;">
+                ${varTable(rejected)}
+            </div>
+            <div id="vt-all" class="tab-content card" style="padding:0;">
+                ${varTable(allVariations)}
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Variation tracking error:', error);
+        main.innerHTML = `<div class="error-message"><h2>⚠️ Error</h2><p>${error.message}</p><button class="btn btn-primary" onclick="showCOOVariationTracking()">Retry</button></div>`;
+    } finally {
+        hideLoading();
+    }
 }
 
 /**
@@ -14469,20 +14644,31 @@ function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variatio
     `).join('') : '<tr><td colspan="5" class="text-center">No projects pending invoicing.</td></tr>';
 
     // Variations to invoice HTML
-    const variationsHtml = variationsToInvoice.length > 0 ? variationsToInvoice.map(v => `
+    const variationsHtml = variationsToInvoice.length > 0 ? variationsToInvoice.map(v => {
+        const hasAccountsUpdate = !!v.accountsUpdatedAt;
+        const amt = v.amount ? `${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits:2})}` : '<span style="color:#94a3b8;">Not set</span>';
+        return `
         <tr>
-            <td><strong>${v.variationCode || 'N/A'}</strong></td>
-            <td>${v.parentProjectName || 'N/A'}</td>
-            <td>${v.clientCompany || 'N/A'}</td>
-            <td>${v.estimatedHours || 0} hrs</td>
-            <td>${v.scopeDescription || 'N/A'}</td>
             <td>
-                <button class="btn btn-success btn-sm" onclick="showCreateVariationInvoiceModal('${v.id}', '${v.parentProjectId}')">
-                    Create Variation Invoice
-                </button>
+                <strong>${v.variationCode || 'N/A'}</strong>
+                ${hasAccountsUpdate ? `<br><small style="color:#10b981;">✓ Updated by Accounts</small>` : ''}
             </td>
-        </tr>
-    `).join('') : '<tr><td colspan="6" class="text-center">No approved variations pending invoicing.</td></tr>';
+            <td>${v.parentProjectName || 'N/A'}</td>
+            <td>${v.clientCompany || 'N/A'}${v.clientName ? `<br><small>${v.clientName}</small>` : ''}</td>
+            <td>${v.estimatedHours || 0} hrs</td>
+            <td>${amt}</td>
+            <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="showAccountsUpdateVariationModal('${v.id}')">
+                        ✏️ Update Details
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="showCreateVariationInvoiceModal('${v.id}', '${v.parentProjectId}')">
+                        Create Invoice
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-center">No approved variations pending invoicing.</td></tr>';
 
     // Existing invoices HTML
     const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
@@ -14582,7 +14768,7 @@ function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variatio
                             <th>Parent Project</th>
                             <th>Client</th>
                             <th>Est. Hours</th>
-                            <th>Scope</th>
+                            <th>Amount</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -15015,6 +15201,66 @@ async function createInvoiceActionNew(event) {
         showPayments();
     } catch (error) {
         alert(`Error creating invoice: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Shows modal for Accounts to update financial & billing details on a variation.
+ */
+async function showAccountsUpdateVariationModal(variationId) {
+    try {
+        showLoading();
+        const response = await apiCall(`variations?id=${variationId}`);
+        if (!response.success || !response.data) throw new Error(response.error || 'Failed to load variation.');
+        const v = response.data;
+
+        // Populate modal
+        document.getElementById('acctVarId').value = variationId;
+        document.getElementById('acctVarInfo').innerHTML =
+            `<strong>${v.variationCode}</strong> — ${v.parentProjectName} (${v.clientCompany || ''})`;
+        document.getElementById('acctVarClientName').value = v.clientName || '';
+        document.getElementById('acctVarClientEmail').value = v.clientEmail || '';
+        document.getElementById('acctVarAmount').value = v.amount || '';
+        document.getElementById('acctVarCurrency').value = v.currency || '';
+        document.getElementById('acctVarAccountsDetails').value = v.accountsDetails || '';
+        document.getElementById('acctVarInvoiceRef').value = v.invoiceReference || '';
+        document.getElementById('acctVarPaymentTerms').value = v.paymentTerms || '';
+
+        document.getElementById('accountsUpdateVariationModal').style.display = 'flex';
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function submitAccountsVariationUpdate() {
+    const variationId = document.getElementById('acctVarId').value;
+    const data = {
+        clientName:      document.getElementById('acctVarClientName').value.trim(),
+        clientEmail:     document.getElementById('acctVarClientEmail').value.trim(),
+        amount:          document.getElementById('acctVarAmount').value,
+        currency:        document.getElementById('acctVarCurrency').value,
+        accountsDetails: document.getElementById('acctVarAccountsDetails').value.trim(),
+        invoiceReference:document.getElementById('acctVarInvoiceRef').value.trim(),
+        paymentTerms:    document.getElementById('acctVarPaymentTerms').value.trim()
+    };
+
+    try {
+        showLoading();
+        const response = await apiCall(`variations?id=${variationId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update_accounts_details', data })
+        });
+        if (!response.success) throw new Error(response.error || 'Update failed.');
+        document.getElementById('accountsUpdateVariationModal').style.display = 'none';
+        showSuccessModal('Details Updated', 'Variation accounts details have been saved. COO has been notified.');
+        await showPayments(); // refresh accounts portal
+    } catch (err) {
+        alert('Error: ' + err.message);
     } finally {
         hideLoading();
     }
@@ -25930,6 +26176,84 @@ Examples:
         </div>
     </div>
 
+
+    <!-- Accounts Update Variation Modal -->
+    <div id="accountsUpdateVariationModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal" style="max-width: 680px;">
+            <div class="modal-header">
+                <h2>✏️ Update Variation Details (Accounts)</h2>
+                <span class="close-modal" onclick="document.getElementById('accountsUpdateVariationModal').style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <input type="hidden" id="acctVarId">
+                <div class="info-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <p style="margin:0;"><strong>Variation:</strong> <span id="acctVarInfo"></span></p>
+                </div>
+
+                <!-- Client Details -->
+                <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem; padding-bottom: 1.25rem;">
+                    <h4 style="margin-bottom:1rem; color: var(--primary-blue);">Client Details</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarClientName">Client Contact Name</label>
+                            <input type="text" id="acctVarClientName" class="form-control" placeholder="e.g., John Smith">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarClientEmail">Client Email</label>
+                            <input type="email" id="acctVarClientEmail" class="form-control" placeholder="e.g., john@client.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Details -->
+                <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem; padding-bottom: 1.25rem;">
+                    <h4 style="margin-bottom:1rem; color: var(--primary-blue);">Financial Details</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarAmount">Variation Amount</label>
+                            <input type="number" id="acctVarAmount" class="form-control" step="0.01" min="0" placeholder="e.g., 5000.00">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarCurrency">Currency</label>
+                            <select id="acctVarCurrency" class="form-control">
+                                <option value="">-- Select --</option>
+                                <option value="AUD">AUD</option>
+                                <option value="USD">USD</option>
+                                <option value="GBP">GBP</option>
+                                <option value="EUR">EUR</option>
+                                <option value="NZD">NZD</option>
+                                <option value="SGD">SGD</option>
+                                <option value="CAD">CAD</option>
+                                <option value="AED">AED</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarInvoiceRef">Invoice Reference / PO Number</label>
+                            <input type="text" id="acctVarInvoiceRef" class="form-control" placeholder="e.g., PO-2025-001">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarPaymentTerms">Payment Terms</label>
+                            <input type="text" id="acctVarPaymentTerms" class="form-control" placeholder="e.g., Net 30 days">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accounts / Billing Notes -->
+                <div class="form-group">
+                    <h4 style="margin-bottom:0.75rem; color: var(--primary-blue);">Accounts / Billing Notes</h4>
+                    <textarea id="acctVarAccountsDetails" class="form-control" rows="4" placeholder="Internal billing instructions, notes, special conditions..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="document.getElementById('accountsUpdateVariationModal').style.display='none'">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitAccountsVariationUpdate()">
+                    💾 Save &amp; Notify COO
+                </button>
+            </div>
+        </div>
+    </div>
 
     <div id="addVariationModal" class="modal" style="display: none;">
         <div class="modal-content new-modal" style="max-width: 780px;">

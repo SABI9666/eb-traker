@@ -13420,19 +13420,28 @@ async function showDesignerAllocations() {
             // Get designer-specific allocated hours
             // Check assignedDesignerHours (from Design Lead assignment) first, then designerHours (from COO allocation)
             let myAllocatedHours = 0;
-            if (p.assignedDesignerHours && p.assignedDesignerHours[currentUser.uid]) {
-                myAllocatedHours = parseFloat(p.assignedDesignerHours[currentUser.uid]) || 0;
-            } else if (p.designerHours && p.designerHours[currentUser.uid]) {
-                myAllocatedHours = parseFloat(p.designerHours[currentUser.uid]) || 0;
+            let hasPersonalAllocation = false;
+            if (p.assignedDesignerHours && parseFloat(p.assignedDesignerHours[currentUser.uid]) > 0) {
+                myAllocatedHours = parseFloat(p.assignedDesignerHours[currentUser.uid]);
+                hasPersonalAllocation = true;
+            } else if (p.designerHours && parseFloat(p.designerHours[currentUser.uid]) > 0) {
+                myAllocatedHours = parseFloat(p.designerHours[currentUser.uid]);
+                hasPersonalAllocation = true;
             }
 
-            // Use designer's own logged hours, not the whole project total
-            const usedHours = parseFloat(myHoursPerProject[p.id]) || 0;
+            // If no personal hours allocated, use the total project budget (shared pool)
+            if (!hasPersonalAllocation) {
+                myAllocatedHours = totalProjectBudget;
+            }
 
-            // Calculate remaining based on designer's personal allocation
+            // Use designer's own logged hours for personal allocation, or total project hours for shared pool
+            const myLogged = parseFloat(myHoursPerProject[p.id]) || 0;
+            const usedHours = hasPersonalAllocation ? myLogged : (parseFloat(p.hoursLogged) || 0);
+
+            // Calculate remaining
             const myRemaining = myAllocatedHours - usedHours;
 
-            // Calculate percentage for progress bar (based on designer's allocation)
+            // Calculate percentage for progress bar
             const percentUsed = myAllocatedHours > 0 ? (usedHours / myAllocatedHours) * 100 : 0;
 
             // Status Logic
@@ -13464,12 +13473,12 @@ async function showDesignerAllocations() {
 
                     <td style="text-align: center;">
                         <span style="font-weight: bold; font-size: 1.1em; color: var(--primary-blue);">${myAllocatedHours.toFixed(1)}h</span>
-                        <br><small class="text-muted" style="font-size:0.75em;">Your Allocation</small>
-                        ${totalProjectBudget !== myAllocatedHours ? `<br><small style="font-size:0.7em; color: #888;">(Project: ${totalProjectBudget.toFixed(1)}h)</small>` : ''}
+                        <br><small class="text-muted" style="font-size:0.75em;">${hasPersonalAllocation ? 'Your Allocation' : 'Project Budget'}</small>
+                        ${hasPersonalAllocation && totalProjectBudget !== myAllocatedHours ? `<br><small style="font-size:0.7em; color: #888;">(Project: ${totalProjectBudget.toFixed(1)}h)</small>` : ''}
                         ${addHours > 0 ? `<br><small class="text-muted" style="font-size:0.7em;">(+${addHours}h buffer)</small>` : ''}
                     </td>
                     <td style="text-align: center;">
-                         <div>${usedHours.toFixed(1)}h</div>
+                         <div>${usedHours.toFixed(1)}h${!hasPersonalAllocation ? ' (all designers)' : ''}</div>
                          <div style="width: 100%; background: #eee; height: 6px; border-radius: 3px; margin-top: 5px;">
                             <div style="width: ${Math.min(percentUsed, 100)}%; background: ${statusColor}; height: 100%; border-radius: 3px;"></div>
                          </div>
@@ -13481,23 +13490,23 @@ async function showDesignerAllocations() {
                         ${myRemaining <= 0 ? `<br><small style="color: var(--danger); font-size: 0.7em;">Request more time</small>` : ''}
                     </td>
 
-                    <td class="action-column"> 
-                        <button class="btn btn-secondary btn-sm" 
+                    <td class="action-column">
+                        <button class="btn btn-secondary btn-sm"
                                 onclick="showProjectFilesModal('${p.id}', '${p.projectName.replace(/'/g, "\\'")}')">
                             📂 View Files
                         </button>
-                        <button class="btn btn-info btn-sm" 
+                        <button class="btn btn-info btn-sm"
                                 onclick="openDesignUploadModal('${p.id}', '${p.projectName.replace(/'/g, "\\'")}')">
                             📐 Upload Design
                         </button>
-                        <button class="btn btn-primary btn-sm" 
+                        <button class="btn btn-primary btn-sm"
                                 onclick="showTimesheetModal('${p.id}')"
                                 data-allocated="${myAllocatedHours}"
                                 data-remaining="${myRemaining}">
                             ⏱️ Log Time
                         </button>
-                        ${myRemaining <= 5 ? `
-                            <button class="btn btn-warning btn-sm" 
+                        ${myRemaining <= 5 && myAllocatedHours > 0 ? `
+                            <button class="btn btn-warning btn-sm"
                                     onclick="showRequestTimeModalDirect('${p.id}', '${p.projectName.replace(/'/g, "\\'")}', ${myAllocatedHours}, ${usedHours})">
                                 ⏰ Request Time
                             </button>
@@ -23020,7 +23029,7 @@ async function showAllocateProjectModal(projectId) {
                                         step="0.5"
                                         min="${hasLoggedHours ? logged : 0}"
                                         value="${currentHours}"
-                                        placeholder="Hours"
+                                        placeholder="Optional"
                                         ${!isAssigned ? 'disabled' : ''}
                                         data-min-hours="${hasLoggedHours ? logged : 0}"
                                         oninput="updateTotalAllocated()"
@@ -23152,15 +23161,8 @@ async function showAllocateProjectModal(projectId) {
                 const hours = parseFloat(hoursInput.value) || 0;
                 const minHours = parseFloat(hoursInput.dataset.minHours || 0);
 
-                // Validate hours - at least 0.5h for new, at least logged hours for existing
-                if (hours < 0.5) {
-                    alert(`Please allocate at least 0.5 hours for ${checkbox.dataset.name}`);
-                    hasError = true;
-                    return;
-                }
-
-                // Cannot reduce below hours already logged
-                if (minHours > 0 && hours < minHours) {
+                // Cannot reduce below hours already logged (only if hours were explicitly set)
+                if (hours > 0 && minHours > 0 && hours < minHours) {
                     alert(`Cannot allocate less than ${minHours.toFixed(1)}h for ${checkbox.dataset.name} — they have already logged ${minHours.toFixed(1)}h.`);
                     hasError = true;
                     return;
@@ -23187,9 +23189,9 @@ async function showAllocateProjectModal(projectId) {
             }
 
             // Confirmation
-            const confirmText = `Allocation Summary:\n\n` +
-                designerUids.map((uid, i) => `${designerNames[i]}: ${designerHours[uid]}h`).join('\n') +
-                `\n\nTotal: ${totalAllocated.toFixed(1)}h / ${maxHours.toFixed(1)}h\n\nProceed?`;
+            const confirmText = `Assignment Summary:\n\n` +
+                designerUids.map((uid, i) => `${designerNames[i]}${designerHours[uid] > 0 ? `: ${designerHours[uid]}h` : ' (no hours set)'}`).join('\n') +
+                `\n\nTotal Hours: ${totalAllocated > 0 ? totalAllocated.toFixed(1) + 'h' : 'none (designers share project budget)'} / ${maxHours.toFixed(1)}h budget\n\nProceed?`;
             if (!confirm(confirmText)) return;
 
             // Prepare assignment data
@@ -23212,7 +23214,7 @@ async function showAllocateProjectModal(projectId) {
                 });
 
                 if (result.success) {
-                    const summary = `${designerUids.length} designer(s) assigned with total ${totalAllocated.toFixed(1)} hours allocated.`;
+                    const summary = `${designerUids.length} designer(s) assigned${totalAllocated > 0 ? ` with total ${totalAllocated.toFixed(1)} hours allocated` : ''}.`;
                     showSuccessModal('Designers Updated Successfully!', summary);
                     closeDesignerAssignmentModal();
 
@@ -25830,7 +25832,8 @@ Examples:
                 <!-- Designer Assignment List -->
                 <div class="form-group">
                     <label style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: block;">
-                        Assign Designers & Hours <span class="required">*</span>
+                        Assign Designers <span class="required">*</span>
+                        <small style="font-weight: 400; color: var(--text-light); font-size: 0.85rem;">(hours per designer are optional)</small>
                     </label>
                     <div id="designersList" style="max-height: 400px; overflow-y: auto;">
                         <!-- Will be populated by JavaScript -->
@@ -26492,8 +26495,7 @@ window.submitDesignerAssignment = async function() {
         const hi = document.getElementById('hours-' + uid);
         const hours = parseFloat(hi.value) || 0;
         const minH = parseFloat(hi.dataset.minHours || 0);
-        if (hours < 0.5) { alert('Please allocate at least 0.5 hours for ' + cb.dataset.name); hasError = true; return; }
-        if (minH > 0 && hours < minH) { alert('Cannot allocate less than ' + minH.toFixed(1) + 'h for ' + cb.dataset.name + ' — already logged ' + minH.toFixed(1) + 'h.'); hasError = true; return; }
+        if (hours > 0 && minH > 0 && hours < minH) { alert('Cannot allocate less than ' + minH.toFixed(1) + 'h for ' + cb.dataset.name + ' — already logged ' + minH.toFixed(1) + 'h.'); hasError = true; return; }
         designerUids.push(uid); designerNames.push(cb.dataset.name); designerEmails.push(cb.dataset.email);
         designerHours[uid] = hours; totalAllocated += hours;
     });
@@ -26501,7 +26503,7 @@ window.submitDesignerAssignment = async function() {
     if (designerUids.length === 0) { alert('Please select at least one designer.'); return; }
     if (maxHours > 0 && totalAllocated > maxHours + 0.1) { alert('Total (' + totalAllocated.toFixed(1) + 'h) exceeds budget (' + maxHours.toFixed(1) + 'h). Please adjust.'); return; }
 
-    const confirmText = 'Allocation Summary:\n\n' + designerUids.map((uid, i) => designerNames[i] + ': ' + designerHours[uid] + 'h').join('\n') + '\n\nTotal: ' + totalAllocated.toFixed(1) + 'h / ' + maxHours.toFixed(1) + 'h\n\nProceed?';
+    const confirmText = 'Assignment Summary:\n\n' + designerUids.map((uid, i) => designerNames[i] + (designerHours[uid] > 0 ? ': ' + designerHours[uid] + 'h' : ' (no hours set)')).join('\n') + '\n\nTotal Hours: ' + (totalAllocated > 0 ? totalAllocated.toFixed(1) + 'h' : 'none (designers share project budget)') + ' / ' + maxHours.toFixed(1) + 'h budget\n\nProceed?';
     if (!confirm(confirmText)) return;
 
     try {
@@ -26511,7 +26513,7 @@ window.submitDesignerAssignment = async function() {
             body: JSON.stringify({ action: 'assign_designers', data: { designerUids, designerNames, designerEmails, designerHours, totalAllocatedHours: totalAllocated } })
         });
         if (result.success) {
-            if (typeof showSuccessModal === 'function') showSuccessModal('Designers Updated!', designerUids.length + ' designer(s) with ' + totalAllocated.toFixed(1) + 'h total.');
+            if (typeof showSuccessModal === 'function') showSuccessModal('Designers Updated!', designerUids.length + ' designer(s) assigned' + (totalAllocated > 0 ? ' with ' + totalAllocated.toFixed(1) + 'h total' : '') + '.');
             else alert('Designers assigned successfully!');
             window.closeDesignerAssignmentModal();
             if (typeof currentUserRole !== 'undefined' && currentUserRole === 'design_lead' && typeof showDesignLeadPortal === 'function') showDesignLeadPortal();

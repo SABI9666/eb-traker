@@ -8574,9 +8574,11 @@ function renderPendingVariationsTable(variations) {
             <td><strong>${v.parentProjectName || 'Unknown'}</strong><br><small>${v.clientCompany || ''}</small></td>
             <td><span class="project-number-badge" style="background: var(--warning); color: #856404;">${v.variationCode || 'N/A'}</span></td>
             <td><strong>${v.estimatedHours || 0}h</strong></td>
-            <td>${v.createdByName || 'Unknown'} <br><small>(${(v.createdByRole || '').replace('_', ' ')})</small></td>
+            <td>${v.amount ? `<strong>${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits: 2})}</strong>` : '<span style="color:var(--text-light);">—</span>'}</td>
+            <td>${v.createdByName || 'Unknown'}<br><small>(${(v.createdByRole || '').replace('_', ' ')})</small></td>
             <td>${formatDate(v.createdAt)}</td>
-            <td>
+            <td style="white-space: nowrap;">
+                ${v.documentUrl ? `<a href="${v.documentUrl}" target="_blank" class="btn btn-outline btn-sm" style="margin-right: 4px;" title="View Document">📄</a>` : ''}
                 <button class="btn btn-primary btn-sm" onclick="showVariationApprovalModal('${v.id}')">
                     Review
                 </button>
@@ -8591,7 +8593,8 @@ function renderPendingVariationsTable(variations) {
                     <tr>
                         <th>Parent Project</th>
                         <th>Variation Code</th>
-                        <th>Requested Hours</th>
+                        <th>Hours</th>
+                        <th>Amount</th>
                         <th>Submitted By</th>
                         <th>Date Submitted</th>
                         <th>Actions</th>
@@ -25929,21 +25932,22 @@ Examples:
 
 
     <div id="addVariationModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal" style="max-width: 700px;">
+        <div class="modal-content new-modal" style="max-width: 780px;">
             <div class="modal-header">
                 <h2>➕ Add Variation for Approval</h2>
                 <span class="close-modal" onclick="closeAddVariationModal()">&times;</span>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
                 <input type="hidden" id="variationParentProjectId" />
-                
+
                 <div class="info-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
                     <h4 style="color: var(--primary-blue);">Parent Project</h4>
                     <p style="margin: 0;"><strong>Project:</strong> <span id="variationParentProjectName"></span></p>
                     <p style="margin: 0;"><strong>Code:</strong> <span id="variationParentProjectCode"></span></p>
                 </div>
-                
+
                 <form id="addVariationForm">
+                    <!-- Variation Code & Hours -->
                     <div class="form-group">
                         <label for="variationCode">Variation Code <span class="required">*</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -25963,7 +25967,83 @@ Examples:
 
                     <div class="form-group">
                         <label for="variationScope">Scope of Work / Description <span class="required">*</span></label>
-                        <textarea id="variationScope" class="form-control" rows="5" placeholder="Describe the work required for this variation. This will be sent to the COO for approval." required></textarea>
+                        <textarea id="variationScope" class="form-control" rows="4" placeholder="Describe the work required for this variation. This will be sent to the COO for approval." required></textarea>
+                    </div>
+
+                    <!-- CLIENT DETAILS -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Client Details</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationClientName">Client Contact Name</label>
+                                <input type="text" id="variationClientName" class="form-control" placeholder="e.g., John Smith">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationClientEmail">Client Email</label>
+                                <input type="email" id="variationClientEmail" class="form-control" placeholder="e.g., john@client.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FINANCIAL DETAILS -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Financial Details</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationAmount">Variation Amount</label>
+                                <input type="number" id="variationAmount" class="form-control" step="0.01" min="0" placeholder="e.g., 5000.00">
+                                <small class="form-text">Financial value of this variation.</small>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationCurrency">Currency</label>
+                                <select id="variationCurrency" class="form-control">
+                                    <option value="">-- Select Currency --</option>
+                                    <option value="AUD">AUD - Australian Dollar</option>
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="NZD">NZD - New Zealand Dollar</option>
+                                    <option value="SGD">SGD - Singapore Dollar</option>
+                                    <option value="CAD">CAD - Canadian Dollar</option>
+                                    <option value="AED">AED - UAE Dirham</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCOUNTS DETAILS -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Accounts Details</h4>
+                        <div class="form-group">
+                            <label for="variationAccountsDetails">Accounts / Billing Notes</label>
+                            <textarea id="variationAccountsDetails" class="form-control" rows="3" placeholder="e.g., Invoice reference, PO number, billing instructions, payment terms..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- VARIATION DOCUMENT UPLOAD -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Variation Document</h4>
+                        <div class="form-group">
+                            <label for="variationDocument">Upload Variation Document (PDF or Word)</label>
+                            <div id="variationDocDropZone" style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; background: #f8f9fa; transition: border-color 0.2s;"
+                                onclick="document.getElementById('variationDocument').click()"
+                                ondragover="event.preventDefault(); this.style.borderColor='var(--primary-blue)';"
+                                ondragleave="this.style.borderColor='var(--border-color)';"
+                                ondrop="handleVariationDocDrop(event)">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+                                <p style="margin: 0; color: var(--text-light);">Click or drag & drop your variation document here</p>
+                                <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-light);">Supported: PDF, DOC, DOCX (max 50 MB)</p>
+                            </div>
+                            <input type="file" id="variationDocument" style="display: none;" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="onVariationDocSelected(this)">
+                            <div id="variationDocPreview" style="display: none; margin-top: 0.75rem; padding: 0.75rem; background: #e8f5e9; border-radius: 6px; display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="font-size: 1.5rem;">📎</span>
+                                <div style="flex: 1;">
+                                    <strong id="variationDocFileName" style="font-size: 0.9rem;"></strong>
+                                    <div id="variationDocFileSize" style="font-size: 0.8rem; color: var(--text-light);"></div>
+                                </div>
+                                <button type="button" onclick="clearVariationDoc()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1.2rem;" title="Remove file">&times;</button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -25976,15 +26056,16 @@ Examples:
         </div>
     </div>
     <div id="variationApprovalModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal" style="max-width: 800px;">
+        <div class="modal-content new-modal" style="max-width: 860px;">
             <div class="modal-header">
                 <h2>🔍 Review Variation Request</h2>
                 <span class="close-modal" onclick="closeModal()">&times;</span>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
                 <input type="hidden" id="approvalVariationId" />
                 <input type="hidden" id="approvalParentProjectId" />
 
+                <!-- VARIATION DETAILS -->
                 <div class="allocation-details-section">
                     <h3>Variation Details</h3>
                     <div class="details-grid">
@@ -25993,7 +26074,7 @@ Examples:
                             <span id="app-parentProjectName" class="detail-value"></span>
                         </div>
                         <div class="detail-item">
-                            <label>Client:</label>
+                            <label>Client Company:</label>
                             <span id="app-clientCompany" class="detail-value"></span>
                         </div>
                         <div class="detail-item highlight">
@@ -26015,7 +26096,61 @@ Examples:
                     </div>
                 </div>
 
-                <div class="form-section">
+                <!-- CLIENT DETAILS -->
+                <div id="app-clientDetailsSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Client Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item" id="app-clientNameRow" style="display: none;">
+                            <label>Client Contact:</label>
+                            <span id="app-clientName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item" id="app-clientEmailRow" style="display: none;">
+                            <label>Client Email:</label>
+                            <span id="app-clientEmail" class="detail-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FINANCIAL DETAILS -->
+                <div id="app-financialSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Financial Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item highlight">
+                            <label>Variation Amount:</label>
+                            <span id="app-amount" class="detail-value" style="font-size: 1.3rem; color: var(--success); font-weight: 700;"></span>
+                        </div>
+                        <div class="detail-item highlight">
+                            <label>Currency:</label>
+                            <span id="app-currency" class="detail-value" style="font-size: 1.1rem; font-weight: 600;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACCOUNTS DETAILS -->
+                <div id="app-accountsSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Accounts / Billing Details</h3>
+                    <div class="detail-item" style="background: white; padding: 1rem; border-radius: 8px;">
+                        <p id="app-accountsDetails" class="detail-value" style="line-height: 1.6; white-space: pre-wrap; margin: 0;"></p>
+                    </div>
+                </div>
+
+                <!-- VARIATION DOCUMENT -->
+                <div id="app-documentSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Variation Document</h3>
+                    <div style="background: white; padding: 1rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-size: 2rem;">📄</span>
+                        <div style="flex: 1;">
+                            <strong id="app-documentName" style="display: block;"></strong>
+                            <small style="color: var(--text-light);">Uploaded variation document</small>
+                        </div>
+                        <a id="app-documentLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none;">
+                            ⬇️ Download / View
+                        </a>
+                    </div>
+                </div>
+
+                <!-- APPROVAL DECISION -->
+                <div class="form-section" style="margin-top: 1.5rem;">
                     <h3>Approval Decision</h3>
                     <div class="form-group">
                         <label for="approvalNotes">Notes (Required for Rejection)</label>
@@ -29820,6 +29955,11 @@ async function submitDesignerUpload(event, projectId) {
             const modal = document.getElementById('addVariationModal');
             modal.style.display = 'none';
             document.getElementById('addVariationForm').reset();
+            // Clear file upload preview
+            const preview = document.getElementById('variationDocPreview');
+            if (preview) preview.style.display = 'none';
+            const fileInput = document.getElementById('variationDocument');
+            if (fileInput) fileInput.value = '';
         }
 
        /**
@@ -29853,15 +29993,57 @@ async function submitDesignerUpload(event, projectId) {
             }
         }
 
+        // --- Variation document file helpers ---
+        function onVariationDocSelected(input) {
+            if (input.files && input.files[0]) {
+                showVariationDocPreview(input.files[0]);
+            }
+        }
+
+        function handleVariationDocDrop(event) {
+            event.preventDefault();
+            document.getElementById('variationDocDropZone').style.borderColor = 'var(--border-color)';
+            const file = event.dataTransfer.files[0];
+            if (!file) return;
+            const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!allowed.includes(file.type)) {
+                alert('Only PDF and Word documents (.pdf, .doc, .docx) are allowed.');
+                return;
+            }
+            // Transfer to the file input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('variationDocument').files = dataTransfer.files;
+            showVariationDocPreview(file);
+        }
+
+        function showVariationDocPreview(file) {
+            const preview = document.getElementById('variationDocPreview');
+            document.getElementById('variationDocFileName').textContent = file.name;
+            document.getElementById('variationDocFileSize').textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+            preview.style.display = 'flex';
+        }
+
+        function clearVariationDoc() {
+            document.getElementById('variationDocument').value = '';
+            document.getElementById('variationDocPreview').style.display = 'none';
+        }
+
         /**
          * Submits the new variation to the backend for COO approval.
-         * Assumes a new backend endpoint: POST /api/variations
+         * Uses FormData to support optional document file upload.
          */
         async function submitVariationForApproval() {
             const parentProjectId = document.getElementById('variationParentProjectId').value;
             const variationCode = document.getElementById('variationCode').value;
             const estimatedHours = parseFloat(document.getElementById('variationHours').value);
             const scopeDescription = document.getElementById('variationScope').value;
+            const clientName = document.getElementById('variationClientName').value.trim();
+            const clientEmail = document.getElementById('variationClientEmail').value.trim();
+            const amount = document.getElementById('variationAmount').value;
+            const currency = document.getElementById('variationCurrency').value;
+            const accountsDetails = document.getElementById('variationAccountsDetails').value.trim();
+            const docFile = document.getElementById('variationDocument').files[0];
 
             // --- Validation ---
             if (!variationCode) {
@@ -29877,46 +30059,50 @@ async function submitDesignerUpload(event, projectId) {
                 return;
             }
 
-            // --- Prepare Data ---
-            const variationData = {
-                parentProjectId: parentProjectId,
-                variationCode: variationCode,
-                estimatedHours: estimatedHours,
-                scopeDescription: scopeDescription,
-                status: 'pending_coo_approval' // Set status for COO
-            };
-
             if (!confirm('This will submit the variation to the COO for approval. Continue?')) {
                 return;
             }
 
             try {
                 showLoading();
-                
-                // This assumes a new endpoint '/api/variations' exists on your backend
-                // to create variation records.
-                const response = await apiCall('variations', {
+
+                // Build FormData to support optional file upload
+                const formData = new FormData();
+                formData.append('parentProjectId', parentProjectId);
+                formData.append('variationCode', variationCode);
+                formData.append('estimatedHours', estimatedHours);
+                formData.append('scopeDescription', scopeDescription);
+                if (clientName) formData.append('clientName', clientName);
+                if (clientEmail) formData.append('clientEmail', clientEmail);
+                if (amount) formData.append('amount', amount);
+                if (currency) formData.append('currency', currency);
+                if (accountsDetails) formData.append('accountsDetails', accountsDetails);
+                if (docFile) formData.append('variationDocument', docFile);
+
+                // Use fetch directly (not apiCall) because we're sending FormData
+                const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                const apiBase = window.API_BASE_URL || 'https://eb-backend-4xu3.onrender.com/api/';
+                const url = apiBase.endsWith('/') ? apiBase + 'variations' : apiBase + '/variations';
+
+                const fetchResponse = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(variationData)
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
                 });
+                const response = await fetchResponse.json();
 
                 if (response.success) {
                     closeAddVariationModal();
-                    // Use the existing success modal
                     showSuccessModal(
                         'Variation Submitted!',
                         `Your request for variation "${variationCode}" has been sent to the COO for approval.`
                     );
-                    // --- ADD THIS LINE ---
-                   triggerEmailNotification('variation.request', {
-                    projectId: parentProjectId,
-                    variationCode: variationCode,
-                     hours: estimatedHours,
-                      // Grab project name from the modal if available
-                      projectName: document.getElementById('variationParentProjectName')?.textContent || 'Project'
-    });
-    // --------------------
+                    triggerEmailNotification('variation.request', {
+                        projectId: parentProjectId,
+                        variationCode: variationCode,
+                        hours: estimatedHours,
+                        projectName: document.getElementById('variationParentProjectName')?.textContent || 'Project'
+                    });
                 } else {
                     throw new Error(response.error || 'Failed to submit variation. Please check if the variation code is unique.');
                 }
@@ -29937,18 +30123,20 @@ async function submitDesignerUpload(event, projectId) {
          * Renders the table for pending variations.
          */
         function renderPendingVariationsTable(variations) {
-            if (variations.length === 0) {
+            if (!variations || variations.length === 0) {
                 return '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-light);">No pending variations found.</div>';
             }
 
             const variationsHtml = variations.map(v => `
                 <tr>
-                    <td><strong>${v.parentProjectName}</strong><br><small>${v.clientCompany}</small></td>
-                    <td><span class="project-number-badge" style="background: var(--warning); color: #856404;">${v.variationCode}</span></td>
-                    <td><strong>${v.estimatedHours}h</strong></td>
-                    <td>${v.createdByName} <br><small>(${v.createdByRole.replace('_', ' ')})</small></td>
+                    <td><strong>${v.parentProjectName || 'Unknown'}</strong><br><small>${v.clientCompany || ''}</small></td>
+                    <td><span class="project-number-badge" style="background: var(--warning); color: #856404;">${v.variationCode || 'N/A'}</span></td>
+                    <td><strong>${v.estimatedHours || 0}h</strong></td>
+                    <td>${v.amount ? `<strong>${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits: 2})}</strong>` : '<span style="color:var(--text-light);">—</span>'}</td>
+                    <td>${v.createdByName || 'Unknown'}<br><small>(${(v.createdByRole || '').replace('_', ' ')})</small></td>
                     <td>${formatDate(v.createdAt)}</td>
-                    <td>
+                    <td style="white-space: nowrap;">
+                        ${v.documentUrl ? `<a href="${v.documentUrl}" target="_blank" class="btn btn-outline btn-sm" style="margin-right: 4px;" title="View Document">📄</a>` : ''}
                         <button class="btn btn-primary btn-sm" onclick="showVariationApprovalModal('${v.id}')">
                             Review
                         </button>
@@ -29963,7 +30151,8 @@ async function submitDesignerUpload(event, projectId) {
                             <tr>
                                 <th>Parent Project</th>
                                 <th>Variation Code</th>
-                                <th>Requested Hours</th>
+                                <th>Hours</th>
+                                <th>Amount</th>
                                 <th>Submitted By</th>
                                 <th>Date Submitted</th>
                                 <th>Actions</th>
@@ -29978,33 +30167,80 @@ async function submitDesignerUpload(event, projectId) {
         }
 
         /**
-         * Fetches variation details and shows the approval modal.
+         * Fetches variation details and shows the approval modal (COO portal).
          */
         async function showVariationApprovalModal(variationId) {
             try {
                 showLoading();
                 const response = await apiCall(`variations?id=${variationId}`);
-                
+
                 if (!response.success || !response.data) {
                     throw new Error(response.error || 'Failed to fetch variation details.');
                 }
-                
+
                 const v = response.data;
-                
-                // Populate modal fields
+
+                // Core fields
                 document.getElementById('approvalVariationId').value = v.id;
                 document.getElementById('approvalParentProjectId').value = v.parentProjectId;
-                document.getElementById('app-parentProjectName').textContent = v.parentProjectName;
-                document.getElementById('app-clientCompany').textContent = v.clientCompany;
-                document.getElementById('app-variationCode').textContent = v.variationCode;
+                document.getElementById('app-parentProjectName').textContent = v.parentProjectName || '—';
+                document.getElementById('app-clientCompany').textContent = v.clientCompany || '—';
+                document.getElementById('app-variationCode').textContent = v.variationCode || '—';
                 document.getElementById('app-estimatedHours').textContent = `${v.estimatedHours}h`;
-                document.getElementById('app-submittedBy').textContent = `${v.createdByName} (${v.createdByRole.replace('_', ' ')})`;
-                document.getElementById('app-scopeDescription').textContent = v.scopeDescription;
-                document.getElementById('approvalNotes').value = ''; // Clear notes
-                
+                document.getElementById('app-submittedBy').textContent = `${v.createdByName} (${(v.createdByRole || '').replace('_', ' ')})`;
+                document.getElementById('app-scopeDescription').textContent = v.scopeDescription || '—';
+                document.getElementById('approvalNotes').value = '';
+
+                // Client details section
+                const clientSection = document.getElementById('app-clientDetailsSection');
+                const clientNameRow = document.getElementById('app-clientNameRow');
+                const clientEmailRow = document.getElementById('app-clientEmailRow');
+                if (v.clientName || v.clientEmail) {
+                    clientSection.style.display = '';
+                    if (v.clientName) {
+                        document.getElementById('app-clientName').textContent = v.clientName;
+                        clientNameRow.style.display = '';
+                    } else { clientNameRow.style.display = 'none'; }
+                    if (v.clientEmail) {
+                        document.getElementById('app-clientEmail').textContent = v.clientEmail;
+                        clientEmailRow.style.display = '';
+                    } else { clientEmailRow.style.display = 'none'; }
+                } else {
+                    clientSection.style.display = 'none';
+                }
+
+                // Financial details section
+                const financialSection = document.getElementById('app-financialSection');
+                if (v.amount || v.currency) {
+                    financialSection.style.display = '';
+                    document.getElementById('app-amount').textContent = v.amount ? Number(v.amount).toLocaleString('en-AU', { minimumFractionDigits: 2 }) : '—';
+                    document.getElementById('app-currency').textContent = v.currency || '—';
+                } else {
+                    financialSection.style.display = 'none';
+                }
+
+                // Accounts details section
+                const accountsSection = document.getElementById('app-accountsSection');
+                if (v.accountsDetails) {
+                    accountsSection.style.display = '';
+                    document.getElementById('app-accountsDetails').textContent = v.accountsDetails;
+                } else {
+                    accountsSection.style.display = 'none';
+                }
+
+                // Document section
+                const docSection = document.getElementById('app-documentSection');
+                if (v.documentUrl) {
+                    docSection.style.display = '';
+                    document.getElementById('app-documentName').textContent = v.documentOriginalName || 'Variation Document';
+                    document.getElementById('app-documentLink').href = v.documentUrl;
+                } else {
+                    docSection.style.display = 'none';
+                }
+
                 // Show the modal
                 document.getElementById('variationApprovalModal').style.display = 'flex';
-                
+
             } catch (error) {
                 alert(`Error: ${error.message}`);
             } finally {

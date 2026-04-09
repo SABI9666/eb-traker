@@ -24581,11 +24581,18 @@ async function submitProposalAllocation() {
                     const selectedOption = projectSelect.options[projectSelect.selectedIndex];
                     const allocated = parseFloat(selectedOption?.dataset?.allocated) || 0;
                     const logged = parseFloat(selectedOption?.dataset?.logged) || 0;
+                    const remaining = allocated - logged;
                     const newTotal = logged + hours;
+
+                    // HARD BLOCK: all allocated hours are exhausted — design lead must request more
+                    if (allocated > 0 && remaining <= 0) {
+                        alert('⛔ Hours Exhausted\n\nAll allocated hours for this project have been used up.\n\nThe Design Lead must request additional hours from the COO and get them approved before you can log more hours on this project.');
+                        return;
+                    }
 
                     if (newTotal > allocated && allocated > 0) {
                         console.warn(`Allocation exceeded: ${newTotal} > ${allocated}`);
-                        
+
                         const allocationData = {
                             totalHours: logged,
                             allocatedHours: allocated,
@@ -24644,7 +24651,12 @@ async function submitProposalAllocation() {
                     } else if (typeof showDesignerAllocations === 'function') {
                         showDesignerAllocations();
                     }
-                    
+
+                } else if (response.hoursExhausted) {
+                    hideLoading();
+                    closeTimesheetModal();
+                    alert('⛔ Hours Exhausted\n\nAll allocated hours for this project have been used up.\n\nThe Design Lead must request additional hours from the COO and get them approved before you can log more hours on this project.');
+
                 } else if (response.exceedsAllocation) {
                     hideLoading();
                     closeTimesheetModal();
@@ -24653,7 +24665,7 @@ async function submitProposalAllocation() {
                     } else {
                         alert('You have exceeded your allocated hours. Please contact COO for additional time.');
                     }
-                    
+
                 } else {
                     throw new Error(response.error || 'Failed to log hours');
                 }
@@ -25070,10 +25082,13 @@ async function submitProposalAllocation() {
                                                 const myLogged = personalAlloc > 0
                                                     ? (myHoursPerProject[project.id] || 0)
                                                     : (parseFloat(project.hoursLogged) || 0);
+                                                const myRemaining = myAlloc - myLogged;
+                                                const isExhausted = myAlloc > 0 && myRemaining <= 0;
                                                 return `<option value="${project.id}"
                                                         data-allocated="${myAlloc}"
-                                                        data-logged="${myLogged}">
-                                                    ${project.projectName} - ${project.clientCompany}
+                                                        data-logged="${myLogged}"
+                                                        data-exhausted="${isExhausted}">
+                                                    ${isExhausted ? '🚫 ' : ''}${project.projectName} - ${project.clientCompany}${isExhausted ? ' (Hours Exhausted)' : ''}
                                                 </option>`;
                                             }).join('')}
                                         </select>
@@ -25498,35 +25513,63 @@ Examples:
             const infoDiv = document.getElementById('timesheetAllocationInfo');
             const warningDiv = document.getElementById('timesheetWarning');
             const warningText = document.getElementById('timesheetWarningText');
-            
+            const submitBtn = document.querySelector('#timesheetModalOverlay .btn-success');
+
             if (!projectSelect || !projectSelect.value) {
                 if (infoDiv) infoDiv.style.display = 'none';
                 if (warningDiv) warningDiv.style.display = 'none';
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
                 return;
             }
-            
+
             const selectedOption = projectSelect.options[projectSelect.selectedIndex];
             const allocated = parseFloat(selectedOption.dataset.allocated) || 0;
             const logged = parseFloat(selectedOption.dataset.logged) || 0;
             const remaining = allocated - logged;
+            const isExhausted = allocated > 0 && remaining <= 0;
             const hoursToAdd = parseFloat(hoursInput.value) || 0;
             const newTotal = logged + hoursToAdd;
-            
+
             document.getElementById('timesheetCurrentHours').textContent = logged.toFixed(2) + 'h';
             document.getElementById('timesheetAllocatedHours').textContent = allocated.toFixed(2) + 'h';
             document.getElementById('timesheetRemainingHours').textContent = remaining.toFixed(2) + 'h';
-            document.getElementById('timesheetRemainingHours').style.color = 
-                remaining < 5 ? '#f44336' : '#4CAF50';
-            
+            document.getElementById('timesheetRemainingHours').style.color =
+                remaining <= 0 ? '#f44336' : (remaining < 5 ? '#ff9800' : '#4CAF50');
+
             infoDiv.style.display = 'block';
-            
-            // Show warning if exceeding allocation
-            if (hoursToAdd > 0 && newTotal > allocated && allocated > 0) {
-                const exceeded = newTotal - allocated;
-                warningText.textContent = `Adding ${hoursToAdd}h will exceed allocation by ${exceeded.toFixed(2)}h. You'll need to request additional time from COO.`;
+
+            if (isExhausted) {
+                // HARD BLOCK: all hours used up — design lead must request more
+                warningDiv.style.background = '#fef2f2';
+                warningDiv.style.borderLeftColor = '#ef4444';
+                warningText.innerHTML = `<strong style="color:#b91c1c;">⛔ Hours Exhausted</strong><br>
+                    All allocated hours for this project have been used up.<br>
+                    <span style="color:#6b7280;font-size:0.875rem;">The Design Lead must request additional hours from COO and get them approved before you can log more hours on this project.</span>`;
                 warningDiv.style.display = 'block';
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.style.opacity = '0.4';
+                    submitBtn.style.cursor = 'not-allowed';
+                    submitBtn.title = 'Hours exhausted — Design Lead must request additional hours from COO';
+                }
             } else {
-                warningDiv.style.display = 'none';
+                // Restore button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.style.cursor = 'pointer';
+                    submitBtn.title = '';
+                }
+                // Show warning if will exceed allocation
+                if (hoursToAdd > 0 && newTotal > allocated && allocated > 0) {
+                    const exceeded = newTotal - allocated;
+                    warningDiv.style.background = '#fff3cd';
+                    warningDiv.style.borderLeftColor = '#ff9800';
+                    warningText.innerHTML = `Adding ${hoursToAdd}h will exceed allocation by ${exceeded.toFixed(2)}h. You'll need to request additional time from COO.`;
+                    warningDiv.style.display = 'block';
+                } else {
+                    warningDiv.style.display = 'none';
+                }
             }
         };
         
@@ -27963,37 +28006,42 @@ function updateTimesheetAllocationInfo() {
                 return;
             }
 
-            // --- START: NEW FRONTEND ALLOCATION CHECK ---
+            // --- START: FRONTEND ALLOCATION CHECK ---
             const projectSelect = document.getElementById('timesheetProjectId');
             if (projectSelect) {
                 const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-                // Get allocation data from the dropdown option, which was set when the modal opened
                 const allocated = parseFloat(selectedOption.dataset.allocated) || 0;
                 const logged = parseFloat(selectedOption.dataset.logged) || 0;
+                const remaining = allocated - logged;
                 const newTotal = logged + hours;
 
+                // HARD BLOCK: hours are fully exhausted — design lead must request more from COO
+                if (allocated > 0 && remaining <= 0) {
+                    alert('⛔ Hours Exhausted\n\nAll allocated hours for this project have been used up.\n\nThe Design Lead must request additional hours from the COO and get them approved before you can log more hours on this project.');
+                    return;
+                }
+
                 if (newTotal > allocated && allocated > 0) {
-                    // Allocation exceeded. Manually trigger the "Request Time" flow without calling the API.
                     console.warn(`Frontend check: Allocation exceeded. ${newTotal} > ${allocated}. Triggering request modal.`);
-                    
+
                     const allocationData = {
-                        totalHours: logged, // Current hours logged
-                        allocatedHours: allocated, // Total allocated budget
-                        exceededBy: newTotal - allocated // How much it's over
+                        totalHours: logged,
+                        allocatedHours: allocated,
+                        exceededBy: newTotal - allocated
                     };
                     const timesheetData = { projectId, date, hours, description };
 
-                    closeTimesheetModal(); // Close the log hours modal
+                    closeTimesheetModal();
                     if (typeof showRequestAdditionalTimeModal === 'function') {
-                        showRequestAdditionalTimeModal(allocationData, timesheetData); // Show the request modal
+                        showRequestAdditionalTimeModal(allocationData, timesheetData);
                     } else {
                         alert('You have exceeded your allocated hours. Please contact COO for additional time.');
                     }
-                    
-                    return; // Stop before calling the API
+
+                    return;
                 }
             }
-            // --- END: NEW FRONTEND ALLOCATION CHECK ---
+            // --- END: FRONTEND ALLOCATION CHECK ---
             
             try {
                 showLoading();
@@ -28007,15 +28055,17 @@ function updateTimesheetAllocationInfo() {
                 if (response.success) {
                     closeTimesheetModal();
                     alert(`✅ ${hours} hours logged successfully for ${date}!`);
-                    
-                    // Refresh the designer allocations view
+
                     if (typeof showDesignerAllocations === 'function') {
                         showDesignerAllocations();
                     }
-                    
+
+                } else if (response.hoursExhausted) {
+                    hideLoading();
+                    closeTimesheetModal();
+                    alert('⛔ Hours Exhausted\n\nAll allocated hours for this project have been used up.\n\nThe Design Lead must request additional hours from the COO and get them approved before you can log more hours on this project.');
+
                 } else if (response.exceedsAllocation) {
-                    // This is now a fallback in case the frontend check fails or data is stale
-                    console.warn("Backend check: Allocation exceeded. This should have been caught by the frontend.");
                     hideLoading();
                     closeTimesheetModal();
                     if (typeof showRequestAdditionalTimeModal === 'function') {
@@ -28023,7 +28073,7 @@ function updateTimesheetAllocationInfo() {
                     } else {
                         alert('You have exceeded your allocated hours. Please contact COO for additional time.');
                     }
-                    
+
                 } else {
                     throw new Error(response.error || 'Failed to log hours');
                 }

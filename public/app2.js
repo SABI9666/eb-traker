@@ -1,3 +1,923 @@
+
+
+/**
+ * Save existing designer hours directly (within budget)
+ */
+async function saveExistingDesignerHours(designerUid, designerName, designerEmail) {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const newHours = parseFloat(input.value) || 0;
+    const oldHours = parseFloat(input.dataset.original) || 0;
+    
+    if (newHours === oldHours) {
+        alert('No changes to save');
+        return;
+    }
+    
+    // Check if within budget
+    const maxBudget = parseFloat(project.maxAllocatedHours) || 0;
+    const currentTotal = parseFloat(project.totalAllocatedHours) || 0;
+    const hoursDiff = newHours - oldHours;
+    const newTotal = currentTotal + hoursDiff;
+    
+    if (maxBudget > 0 && newTotal > maxBudget + 0.1) {
+        const exceed = (newTotal - maxBudget).toFixed(1);
+        alert(`⚠️ Cannot save: This would exceed the budget by ${exceed} hours.\n\nUse "Request" to submit for Director approval.`);
+        return;
+    }
+    
+    const confirmMsg = `Update ${designerName}'s allocation?\n\nCurrent: ${oldHours}h\nNew: ${newHours}h\nChange: ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_designer_allocation',
+                data: {
+                    designerUid,
+                    designerName,
+                    designerEmail,
+                    newAllocatedHours: newHours,
+                    reason: `Direct edit by COO: ${oldHours}h → ${newHours}h`
+                }
+            })
+        });
+        
+        if (response.success) {
+            alert(`✅ ${designerName}'s hours updated to ${newHours}h`);
+            
+            // Update local data
+            input.dataset.original = newHours;
+            input.style.border = '2px solid #10b981';
+            input.style.background = '#d1fae5';
+            
+            // Update stored project data
+            window.currentEditProject.designerHours = window.currentEditProject.designerHours || {};
+            window.currentEditProject.designerHours[designerUid] = newHours;
+            window.currentEditProject.totalAllocatedHours = newTotal;
+            
+            // Update totals display
+            const totalSpan = document.getElementById('existingAllocTotal');
+            if (totalSpan) {
+                let existingTotal = 0;
+                document.querySelectorAll('.existing-hours-input').forEach(inp => {
+                    existingTotal += parseFloat(inp.value) || 0;
+                });
+                totalSpan.textContent = `Total: ${existingTotal.toFixed(1)}h`;
+            }
+            
+            // Update remaining hours
+            document.getElementById('cooTotalProjectHours').dataset.alreadyAllocated = newTotal;
+            updateRemainingHours();
+            
+            setTimeout(() => {
+                input.style.border = '';
+                input.style.background = '';
+            }, 2000);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update hours');
+        }
+    } catch (error) {
+        console.error('Error updating hours:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Request hours change that exceeds budget (opens Director approval modal)
+ */
+function requestHoursChangeFromModal(designerUid, designerName, designerEmail, currentHours) {
+    const projectId = window.currentEditProjectId;
+    
+    // Close current modal
+    closeCooMultiDesignerModal();
+    
+    // Open request modal
+    showRequestAllocationChangeModal(projectId, designerUid, designerName, designerEmail, currentHours);
+}
+
+/**
+ * Request budget change (requires Director approval) - Opens modal
+ */
+function toggleBudgetEdit() {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const currentBudget = parseFloat(project.maxAllocatedHours) || 0;
+    
+    // Show the budget change modal
+    showBudgetChangeModal(projectId, project.projectName, currentBudget);
+}
+
+/**
+ * Show Budget Change Request Modal
+ */
+function showBudgetChangeModal(projectId, projectName, currentBudget) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('budgetChangeModal');
+    if (!modal) {
+        const modalHtml = `
+            <div id="budgetChangeModal" class="modal" style="display: none;">
+                <div class="modal-content new-modal" style="max-width: 550px;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div>
+                            <h2 style="color: white;">📊 Request Budget Change</h2>
+                            <div class="subtitle" style="color: rgba(255,255,255,0.9);">Requires Director Approval</div>
+                        </div>
+                        <span class="close-modal" onclick="closeBudgetChangeModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <input type="hidden" id="budgetChangeProjectId" />
+                        
+                        <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #f59e0b;">
+                            <div style="font-weight: 600; color: #92400e;" id="budgetChangeProjectName"></div>
+                            <div style="font-size: 0.9rem; color: #b45309;">Current Budget: <strong id="budgetChangeCurrent">0</strong> hours</div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="budgetChangeNewHours" style="font-weight: 600;">New Budget Hours <span class="required">*</span></label>
+                            <input type="number" id="budgetChangeNewHours" class="form-control" 
+                                   placeholder="Enter new total budget hours" min="1" step="0.5" required
+                                   oninput="updateBudgetChangeDiff()"
+                                   style="font-size: 1.1rem; padding: 0.75rem;">
+                            <div id="budgetChangeDiff" style="margin-top: 0.5rem; font-weight: 600;"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="budgetChangeReason" style="font-weight: 600;">Reason for Change <span class="required">*</span></label>
+                            <textarea id="budgetChangeReason" class="form-control" rows="4" required
+                                      placeholder="Please explain why the budget needs to be changed...&#10;&#10;Example: Additional scope added by client, unforeseen complexity, etc."
+                                      style="resize: vertical;"></textarea>
+                            <small class="form-text" style="color: #6b7280;">This comment is mandatory and will be sent to the Director for review.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-cancel" onclick="closeBudgetChangeModal()">Cancel</button>
+                        <button type="button" class="btn btn-warning" onclick="submitBudgetChangeFromModal()" style="background: #f59e0b; border-color: #f59e0b;">
+                            📤 Submit for Approval
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('budgetChangeModal');
+    }
+    
+    // Populate modal
+    document.getElementById('budgetChangeProjectId').value = projectId;
+    document.getElementById('budgetChangeProjectName').textContent = projectName;
+    document.getElementById('budgetChangeCurrent').textContent = currentBudget.toFixed(1);
+    document.getElementById('budgetChangeNewHours').value = '';
+    document.getElementById('budgetChangeReason').value = '';
+    document.getElementById('budgetChangeDiff').innerHTML = '';
+    
+    // Store current budget for calculation
+    document.getElementById('budgetChangeNewHours').dataset.current = currentBudget;
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close budget change modal
+ */
+function closeBudgetChangeModal() {
+    const modal = document.getElementById('budgetChangeModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Update budget change difference display
+ */
+function updateBudgetChangeDiff() {
+    const input = document.getElementById('budgetChangeNewHours');
+    const current = parseFloat(input.dataset.current) || 0;
+    const newValue = parseFloat(input.value) || 0;
+    const diff = newValue - current;
+    
+    const diffDisplay = document.getElementById('budgetChangeDiff');
+    
+    if (newValue > 0) {
+        if (diff > 0) {
+            diffDisplay.innerHTML = `<span style="color: #059669;">↑ Increase by ${diff.toFixed(1)} hours</span>`;
+        } else if (diff < 0) {
+            diffDisplay.innerHTML = `<span style="color: #dc2626;">↓ Decrease by ${Math.abs(diff).toFixed(1)} hours</span>`;
+        } else {
+            diffDisplay.innerHTML = `<span style="color: #6b7280;">No change</span>`;
+        }
+    } else {
+        diffDisplay.innerHTML = '';
+    }
+}
+
+/**
+ * Submit budget change request from modal
+ */
+async function submitBudgetChangeFromModal() {
+    const projectId = document.getElementById('budgetChangeProjectId').value;
+    const currentBudget = parseFloat(document.getElementById('budgetChangeNewHours').dataset.current) || 0;
+    const newBudget = parseFloat(document.getElementById('budgetChangeNewHours').value);
+    const reason = document.getElementById('budgetChangeReason').value.trim();
+    
+    // Validation
+    if (!newBudget || newBudget <= 0) {
+        alert('Please enter a valid new budget hours');
+        return;
+    }
+    
+    if (newBudget === currentBudget) {
+        alert('New budget is the same as current budget');
+        return;
+    }
+    
+    if (!reason) {
+        alert('Please provide a reason for the budget change. This is required for Director approval.');
+        document.getElementById('budgetChangeReason').focus();
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const project = window.currentEditProject;
+        
+        const response = await apiCall('allocation-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: projectId,
+                requestType: 'budget_change',
+                currentBudget: currentBudget,
+                requestedBudget: newBudget,
+                reason: reason,
+                projectName: project.projectName,
+                projectCode: project.projectNumber || project.projectCode,
+                clientCompany: project.clientCompany
+            })
+        });
+        
+        if (response.success) {
+            closeBudgetChangeModal();
+            alert(`✅ Budget change request submitted!\n\nCurrent: ${currentBudget}h\nRequested: ${newBudget}h\n\nAwaiting Director approval.`);
+        } else {
+            throw new Error(response.error || 'Failed to submit request');
+        }
+    } catch (error) {
+        console.error('Error submitting budget change:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Add a new designer allocation row
+ */
+function addDesignerAllocation() {
+    // Enforce max 2 design leads
+    const existingRows = document.querySelectorAll('.designer-allocation-row');
+    if (existingRows.length >= 2) {
+        alert('Maximum 2 design leads can be assigned per project.');
+        return;
+    }
+
+    designerAllocationCounter++;
+    const container = document.getElementById('designerAllocationsContainer');
+
+    const rowHtml = `
+        <div class="designer-allocation-row" id="designerRow${designerAllocationCounter}">
+            <div class="designer-row-header">
+                <div class="designer-row-number">${designerAllocationCounter}</div>
+                ${existingRows.length >= 1 ? `
+                    <button type="button" class="remove-designer-btn" onclick="removeDesignerAllocation(${designerAllocationCounter})">
+                        ✕ Remove
+                    </button>
+                ` : ''}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>Select Design Lead <span class="required">*</span></label>
+                    <select class="form-control designer-select" id="designer${designerAllocationCounter}"
+                            onchange="validateDesignerSelection()" required>
+                        <option value="">-- Select Design Lead --</option>
+                        ${availableDesigners.map(d => `
+                            <option value="${d.uid}"
+                                    data-name="${d.name}"
+                                    data-email="${d.email}"
+                                    data-role="${d.roleType}">
+                                👔 ${d.name} (${d.email})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group" style="flex: 1;">
+                    <label>Allocated Hours <span class="required">*</span></label>
+                    <input type="number" class="form-control hours-input"
+                           id="hours${designerAllocationCounter}"
+                           placeholder="0" min="0.5" step="0.5"
+                           oninput="updateRemainingHours()" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Specific Instructions (Optional)</label>
+                <textarea class="form-control" id="notes${designerAllocationCounter}"
+                          rows="2" placeholder="Any specific tasks or focus areas for this design lead..."></textarea>
+            </div>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', rowHtml);
+    updateRemainingHours();
+
+    // Hide "Add Design Lead" button if already at 2
+    const updatedRows = document.querySelectorAll('.designer-allocation-row');
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn && updatedRows.length >= 2) {
+        addBtn.style.display = 'none';
+    }
+}
+
+/**
+ * Remove a designer allocation row
+ */
+function removeDesignerAllocation(rowNumber) {
+    const row = document.getElementById(`designerRow${rowNumber}`);
+    if (row) {
+        row.remove();
+        updateRemainingHours();
+        validateDesignerSelection();
+        // Re-show Add button if under limit
+        const remainingRows = document.querySelectorAll('.designer-allocation-row');
+        const addBtn = document.getElementById('addDesignLeadBtn');
+        if (addBtn && remainingRows.length < 2) {
+            addBtn.style.display = 'inline-block';
+        }
+    }
+}
+
+/**
+ * ✅ FIXED: Update Remaining Hours Display - Shows allocation budget
+ */
+function updateRemainingHours() {
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value) || 0;
+    
+    // Get previously allocated hours (from database)
+    const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
+    
+    // Get current session allocation (being typed in modal)
+    const hoursInputs = document.querySelectorAll('.hours-input');
+    let currentSessionAllocation = 0;
+    hoursInputs.forEach(input => {
+        currentSessionAllocation += parseFloat(input.value) || 0;
+    });
+    
+    // Calculate totals
+    const totalAllocated = previouslyAllocated + currentSessionAllocation;
+    const remaining = totalBudget - totalAllocated;
+    
+    const remainingDisplay = document.getElementById('cooRemainingHours');
+    
+    // Build display HTML
+    let displayHtml = '';
+    
+    if (totalBudget === 0) {
+        displayHtml = `
+            <div style="font-size: 1.2rem; font-weight: 600; color: #f59e0b;">
+                ⚠️ Enter Total Hours First
+            </div>
+        `;
+    } else {
+        displayHtml = `
+            <div style="font-size: 1.8rem; font-weight: 700; color: ${remaining < 0 ? 'var(--danger)' : remaining === 0 ? 'var(--success)' : 'var(--warning)'}">
+                ${remaining >= 0 ? remaining.toFixed(1) : '(' + Math.abs(remaining).toFixed(1) + ')'} hrs
+            </div>
+        `;
+        
+        if (previouslyAllocated > 0 || currentSessionAllocation > 0) {
+            displayHtml += `
+                <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8; line-height: 1.3;">
+                    <div><strong>Total Budget:</strong> ${totalBudget.toFixed(1)} hrs</div>
+                    ${previouslyAllocated > 0 ? `<div><strong>Previously Allocated:</strong> ${previouslyAllocated.toFixed(1)} hrs</div>` : ''}
+                    ${currentSessionAllocation > 0 ? `<div><strong>Current Session:</strong> ${currentSessionAllocation.toFixed(1)} hrs</div>` : ''}
+                    <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 0.3rem; padding-top: 0.3rem;">
+                        <strong>Total Allocated:</strong> ${totalAllocated.toFixed(1)} hrs
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    remainingDisplay.innerHTML = displayHtml;
+    
+    // ============================================
+    // Submit Button Logic
+    // ============================================
+    
+    const submitBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-success');
+    
+    if (remaining < -0.1) {
+        // Over budget - BLOCK submission
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.5";
+            submitBtn.innerHTML = `⚠️ Reduce Hours (${Math.abs(remaining).toFixed(1)} over)`;
+        }
+    } else if (totalBudget === 0) {
+        // No budget set - BLOCK submission
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.5";
+            submitBtn.innerText = "Enter Hours First";
+        }
+    } else {
+        // Valid state - ENABLE submission
+        if (submitBtn && submitBtn.innerText !== "✅ Fully Allocated") {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.innerHTML = '<span class="btn-icon">✓</span> Allocate Project';
+        }
+    }
+}
+
+/**
+ * Validate that no designer is selected twice
+ */
+function validateDesignerSelection() {
+    const selects = document.querySelectorAll('.designer-select');
+    const selectedUids = [];
+    let hasDuplicate = false;
+    
+    selects.forEach(select => {
+        const row = select.closest('.designer-allocation-row');
+        row.classList.remove('error');
+        
+        if (select.value && selectedUids.includes(select.value)) {
+            row.classList.add('error');
+            hasDuplicate = true;
+        } else if (select.value) {
+            selectedUids.push(select.value);
+        }
+    });
+    
+    return !hasDuplicate;
+}
+
+/**
+ * Handle P.O. file selection in COO allocation modal
+ */
+function handleCooPoFileSelect(input, previewId) {
+    const preview = document.getElementById(previewId || 'cooPoFilePreview');
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type !== 'application/pdf') {
+            alert('Please upload a PDF file only.');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB.');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        preview.innerHTML = `📎 <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+/**
+ * ✅ FIXED: Submit COO Multi-Designer Allocation
+ * Handles both scenarios: estimation hours OR manual COO entry
+ */
+async function submitCooMultiDesignerAllocation() {
+    const projectId = document.getElementById('cooAllocProjectId').value;
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value);
+    const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
+    const hoursSource = totalHoursInput.dataset.hoursSource || 'unknown';
+
+    // Validation: Budget must be set
+    if (!totalBudget || totalBudget <= 0) {
+        alert('⚠️ Please enter the Total Allocated Hours before proceeding.');
+        return;
+    }
+
+    // Validation: Project section must be selected
+    const projectSection = document.getElementById('cooProjectSection').value;
+    if (!projectSection) {
+        alert('⚠️ Please select a Project Section (Engineering, Rebar, or Structural).');
+        return;
+    }
+
+    // Project Details inputs
+    const targetDate = document.getElementById('cooTargetCompletionDate').value;
+    const priority = document.getElementById('cooProjectPriority').value;
+    const generalNotes = document.getElementById('cooAllocationNotes').value;
+
+    // Collect design lead allocations
+    const selects = document.querySelectorAll('.designer-select');
+    if (selects.length === 0) {
+        alert('⚠️ Please add at least one design lead allocation.');
+        return;
+    }
+
+    const designerAllocations = [];
+    let currentSessionTotal = 0;
+    
+    for (let i = 0; i < selects.length; i++) {
+        const select = selects[i];
+        const rowNum = select.id.replace('designer', '');
+        const hoursInput = document.getElementById(`hours${rowNum}`);
+        const notesTextarea = document.getElementById(`notes${rowNum}`);
+        
+        if (!select.value) {
+            alert(`⚠️ Please select a designer for allocation #${i + 1}`);
+            return;
+        }
+        
+        const hours = parseFloat(hoursInput.value);
+        if (!hours || hours <= 0) {
+            alert(`⚠️ Please enter valid hours for allocation #${i + 1}`);
+            return;
+        }
+        
+        currentSessionTotal += hours;
+        
+        const selectedOption = select.options[select.selectedIndex];
+        designerAllocations.push({
+            designerUid: select.value,
+            designerName: selectedOption.dataset.name,
+            designerEmail: selectedOption.dataset.email,
+            designerRole: selectedOption.dataset.role,
+            allocatedHours: hours,
+            specificNotes: notesTextarea.value.trim()
+        });
+    }
+    
+    // ============================================
+    // ✅ CRITICAL: STRICT VALIDATION - Prevent over-allocation
+    // ============================================
+    
+    const newTotalAllocated = previouslyAllocated + currentSessionTotal;
+    
+    if (newTotalAllocated > totalBudget + 0.1) { // Allow 0.1 float tolerance
+        const overage = (newTotalAllocated - totalBudget).toFixed(1);
+        alert(`⛔ ALLOCATION BLOCKED: Exceeding budget by ${overage} hours\n\n` +
+              `Total Budget: ${totalBudget} hrs\n` +
+              `Previously Allocated: ${previouslyAllocated} hrs\n` +
+              `Trying to Add: ${currentSessionTotal} hrs\n` +
+              `Would Result In: ${newTotalAllocated} hrs\n\n` +
+              `Please reduce the allocation to proceed.`);
+        return; // ⛔ STOP EXECUTION
+    }
+
+    // Validate no duplicate designers
+    if (!validateDesignerSelection()) {
+        alert('⚠️ You cannot assign the same designer twice. Please select different designers.');
+        return;
+    }
+    
+    // ============================================
+    // P.O. Data Collection
+    // ============================================
+    const poFile = document.getElementById('cooPoFile').files[0] || null;
+    const poNumber = (document.getElementById('cooPoNumber').value || '').trim();
+    const poValue = parseFloat(document.getElementById('cooPoValue').value) || 0;
+    const poCurrency = document.getElementById('cooPoCurrency').value || 'USD';
+
+    // P.O. fields are optional - can be added later via Edit P.O. & Contacts
+
+    // ============================================
+    // Project Contacts Data Collection
+    // ============================================
+    const projectContacts = {
+        technical: {
+            bdmName: (document.getElementById('cooTechBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('cooTechBdmEmail').value || '').trim(),
+            clientPmName: (document.getElementById('cooTechClientPmName').value || '').trim(),
+            clientPmEmail: (document.getElementById('cooTechClientPmEmail').value || '').trim()
+        },
+        commercial: {
+            accountName: (document.getElementById('cooCommAccountName').value || '').trim(),
+            accountEmail: (document.getElementById('cooCommAccountEmail').value || '').trim(),
+            bdmName: (document.getElementById('cooCommBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('cooCommBdmEmail').value || '').trim()
+        }
+    };
+
+    // Confirmation
+    const poSummary = [];
+    if (poNumber) poSummary.push(`P.O. Number: ${poNumber}`);
+    if (poValue) poSummary.push(`P.O. Value: ${poCurrency} ${poValue.toLocaleString()}`);
+    if (poFile) poSummary.push(`P.O. File: ${poFile.name}`);
+
+    const contactSummary = [];
+    if (projectContacts.technical.bdmName) contactSummary.push(`Tech BDM: ${projectContacts.technical.bdmName}`);
+    if (projectContacts.technical.clientPmName) contactSummary.push(`Client PM: ${projectContacts.technical.clientPmName}`);
+    if (projectContacts.commercial.accountName) contactSummary.push(`Comm Account: ${projectContacts.commercial.accountName}`);
+    if (projectContacts.commercial.bdmName) contactSummary.push(`Comm BDM: ${projectContacts.commercial.bdmName}`);
+
+    const confirmText = `
+📊 Allocation Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total Budget: ${totalBudget} hrs
+${previouslyAllocated > 0 ? `Previously Allocated: ${previouslyAllocated} hrs\n` : ''}Current Allocation: ${currentSessionTotal} hrs
+New Total: ${newTotalAllocated} hrs
+Remaining: ${(totalBudget - newTotalAllocated).toFixed(1)} hrs
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Designers: ${designerAllocations.length}
+${designerAllocations.map((d, i) => `\n${i+1}. ${d.designerName}: ${d.allocatedHours} hrs`).join('')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${poSummary.length > 0 ? '\n📄 Purchase Order:\n' + poSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}${contactSummary.length > 0 ? '\n📇 Contacts:\n' + contactSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}
+
+Proceed with allocation?`.trim();
+    
+    if (!confirm(confirmText)) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        // ============================================
+        // ✅ CRITICAL: Prepare Payload for Backend
+        // ============================================
+
+        // Read P.O. file as base64 if provided
+        let poFileBase64 = null;
+        let poFileName = null;
+        if (poFile) {
+            poFileBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(poFile);
+            });
+            poFileName = poFile.name;
+        }
+
+        const allocationData = {
+            action: 'allocate_to_multiple_designers',
+            data: {
+                projectId: projectId,
+
+                // Set the budget and source
+                maxAllocatedHours: totalBudget,
+                maxHoursSource: hoursSource,
+
+                // Total allocated after this operation
+                totalAllocatedHours: newTotalAllocated,
+
+                // Design Lead allocations
+                designerAllocations: designerAllocations,
+
+                // Project section (Engineering/Rebar/Structural)
+                projectSection: projectSection,
+
+                // Project details
+                targetCompletionDate: targetDate || null,
+                priority: priority,
+                allocationNotes: generalNotes,
+
+                // Purchase Order (P.O.) data
+                poNumber: poNumber || null,
+                poValue: poValue || null,
+                poCurrency: poCurrency,
+                poFileBase64: poFileBase64,
+                poFileName: poFileName,
+
+                // Project Contacts (Technical & Commercial)
+                projectContacts: projectContacts,
+
+                // Legacy fields for backend compatibility
+                assignedDesignerUids: designerAllocations.map(d => d.designerUid),
+                assignedDesignerNames: designerAllocations.map(d => d.designerName),
+                assignedDesignerEmails: designerAllocations.map(d => d.designerEmail),
+                designerHours: designerAllocations.reduce((acc, d) => {
+                    acc[d.designerUid] = d.allocatedHours;
+                    return acc;
+                }, {}),
+
+                // Incremental flag
+                isIncremental: true
+            }
+        };
+        
+        // Send to backend
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(allocationData)
+        });
+        
+        if (response.success) {
+            showSuccessModal(
+                '✅ Project Allocated Successfully!',
+                `Designers have been notified and can now start working on the project.`
+            );
+            closeCooMultiDesignerModal();
+            
+            // Refresh the projects view
+            if (typeof showAllProjects === 'function') {
+                await showAllProjects();
+            }
+        } else {
+            throw new Error(response.error || 'Allocation failed');
+        }
+        
+    } catch (error) {
+        console.error('Error allocating project:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Close the COO multi-designer allocation modal
+ */
+function closeCooMultiDesignerModal() {
+    document.getElementById('cooMultiDesignerAllocationModal').style.display = 'none';
+    document.getElementById('designerAllocationsContainer').innerHTML = '';
+    designerAllocationCounter = 0;
+    // Reset section and re-show add button
+    const sectionSelect = document.getElementById('cooProjectSection');
+    if (sectionSelect) sectionSelect.value = '';
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn) addBtn.style.display = 'inline-block';
+    // Reset P.O. fields
+    const poFileInput = document.getElementById('cooPoFile');
+    if (poFileInput) poFileInput.value = '';
+    const poPreview = document.getElementById('cooPoFilePreview');
+    if (poPreview) poPreview.style.display = 'none';
+    const poNumber = document.getElementById('cooPoNumber');
+    if (poNumber) poNumber.value = '';
+    const poValueInput = document.getElementById('cooPoValue');
+    if (poValueInput) poValueInput.value = '';
+    const poCurrency = document.getElementById('cooPoCurrency');
+    if (poCurrency) poCurrency.value = 'USD';
+    // Reset contact fields
+    ['cooTechBdmName', 'cooTechBdmEmail', 'cooTechClientPmName', 'cooTechClientPmEmail',
+     'cooCommAccountName', 'cooCommAccountEmail', 'cooCommBdmName', 'cooCommBdmEmail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+}
+
+/**
+ * Show Edit P.O. & Contacts Modal
+ */
+async function showEditPoContactsModal(projectId) {
+    try {
+        showLoading();
+        const response = await apiCall(`projects?id=${projectId}`);
+        if (!response.success || !response.data) throw new Error('Failed to load project');
+
+        const project = response.data;
+
+        document.getElementById('editPocProjectId').value = projectId;
+        document.getElementById('editPocProjectNumber').textContent = project.projectNumber || 'N/A';
+        document.getElementById('editPocProjectName').textContent = project.projectName || 'N/A';
+        document.getElementById('editPocClientName').textContent = project.clientCompany || 'N/A';
+
+        // Populate P.O. fields
+        document.getElementById('editPoNumber').value = project.poNumber || '';
+        document.getElementById('editPoValue').value = project.poValue || '';
+        document.getElementById('editPoCurrency').value = project.poCurrency || 'USD';
+        const poPreview = document.getElementById('editPoFilePreview');
+        if (project.poFileName) {
+            poPreview.innerHTML = `📎 Existing: <strong>${project.poFileName}</strong> <a href="${project.poFileUrl || '#'}" target="_blank" style="color: #065f46;">(View)</a>`;
+            poPreview.style.display = 'block';
+        } else {
+            poPreview.style.display = 'none';
+        }
+        document.getElementById('editPoFile').value = '';
+
+        // Populate contact fields
+        const contacts = project.projectContacts || {};
+        const tech = contacts.technical || {};
+        const comm = contacts.commercial || {};
+        document.getElementById('editTechBdmName').value = tech.bdmName || '';
+        document.getElementById('editTechBdmEmail').value = tech.bdmEmail || '';
+        document.getElementById('editTechClientPmName').value = tech.clientPmName || '';
+        document.getElementById('editTechClientPmEmail').value = tech.clientPmEmail || '';
+        document.getElementById('editCommAccountName').value = comm.accountName || '';
+        document.getElementById('editCommAccountEmail').value = comm.accountEmail || '';
+        document.getElementById('editCommBdmName').value = comm.bdmName || '';
+        document.getElementById('editCommBdmEmail').value = comm.bdmEmail || '';
+
+        document.getElementById('editPoContactsModal').style.display = 'flex';
+    } catch (error) {
+        console.error('Error loading P.O. & Contacts:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeEditPoContactsModal() {
+    document.getElementById('editPoContactsModal').style.display = 'none';
+}
+
+async function submitEditPoContacts() {
+    const projectId = document.getElementById('editPocProjectId').value;
+    if (!projectId) return;
+
+    const poFile = document.getElementById('editPoFile').files[0] || null;
+    const poNumber = (document.getElementById('editPoNumber').value || '').trim();
+    const poValue = parseFloat(document.getElementById('editPoValue').value) || 0;
+    const poCurrency = document.getElementById('editPoCurrency').value || 'USD';
+
+    const projectContacts = {
+        technical: {
+            bdmName: (document.getElementById('editTechBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('editTechBdmEmail').value || '').trim(),
+            clientPmName: (document.getElementById('editTechClientPmName').value || '').trim(),
+            clientPmEmail: (document.getElementById('editTechClientPmEmail').value || '').trim()
+        },
+        commercial: {
+            accountName: (document.getElementById('editCommAccountName').value || '').trim(),
+            accountEmail: (document.getElementById('editCommAccountEmail').value || '').trim(),
+            bdmName: (document.getElementById('editCommBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('editCommBdmEmail').value || '').trim()
+        }
+    };
+
+    // Read P.O. file as base64 if provided
+    let poFileBase64 = null;
+    let poFileName = null;
+    if (poFile) {
+        if (poFile.type !== 'application/pdf') {
+            alert('Please upload a PDF file only.');
+            return;
+        }
+        poFileBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(poFile);
+        });
+        poFileName = poFile.name;
+    }
+
+    if (!confirm('Save P.O. and contact details for this project?')) return;
+
+    try {
+        showLoading();
+
+        const payload = {
+            action: 'update_po_contacts',
+            data: {
+                poNumber: poNumber || null,
+                poValue: poValue || null,
+                poCurrency: poCurrency,
+                poFileBase64: poFileBase64,
+                poFileName: poFileName,
+                projectContacts: projectContacts
+            }
+        };
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.success) {
+            showSuccessModal('✅ P.O. & Contacts Updated!', 'Details have been saved and notifications sent to the relevant teams.');
+            closeEditPoContactsModal();
+            if (typeof showAllProjects === 'function') await showAllProjects();
+        } else {
+            throw new Error(response.error || 'Update failed');
+        }
+    } catch (error) {
+        console.error('Error updating P.O. & Contacts:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
 /**
  * Show Continue Allocation Modal for partially allocated projects
  * Allows COO to allocate remaining hours to additional designers
@@ -3988,949 +4908,8 @@ Examples:
         };
         
         console.log('✅ COO Time Request functions registered (with Director Approved Allocation)');
-    </script>
-
-    <div id="cooProjectNumberSection" style="display: none;">
-        <div class="page-header">
-            <h2>Pricing & Project Number Management</h2>
-            <p class="subtitle">Review pricing and assign project numbers</p>
-        </div>
-        <div class="filters-bar">
-            <select id="projectNumberFilter" class="filter-select" onchange="filterProjectNumberProposals()">
-                <option value="all">All Proposals</option>
-                <option value="needs_number">Needs Project Number</option>
-                <option value="pending">Pending Approval</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-            </select>
-        </div>
-        <div class="card">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Project Name</th>
-                        <th>Client</th>
-                        <th>BDM</th>
-                        <th>Quote Value</th>
-                        <th>Project Number</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="projectNumberTableBody">
-                    <tr>
-                        <td colspan="7" class="text-center">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div id="projectNumberModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal">
-            <div class="modal-header">
-                <h2>Set Project Number</h2>
-                <span class="close-modal" onclick="closeProjectNumberModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="pnProposalId" />
-                <div class="info-section">
-                    <h4 id="pnProjectName"></h4>
-                    <p><strong>Client:</strong> <span id="pnClientName"></span></p>
-                    <p><strong>BDM:</strong> <span id="pnBdmName"></span></p>
-                    <p><strong>Quote Value:</strong> <span id="pnQuoteValue"></span></p>
-                </div>
-                <div class="form-group">
-                    <label for="projectNumberInput">Project Number <span class="required">*</span></label>
-                    <input type="text" id="projectNumberInput" class="form-control" placeholder="e.g., ABC25-001"
-                        required />
-                    <small class="form-text">Enter a unique project number for tracking</small>
-                </div>
-                <div class="warning-message">
-                    <strong>Note:</strong> This project number will be sent to the Director for approval before being
-                    finalized.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="closeProjectNumberModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitProjectNumber()">Save & Submit for
-                    Approval</button>
-            </div>
-        </div>
-    </div>
-    <div id="directorApprovalSection" style="display: none;">
-        <div class="page-header">
-            <h2>Project Number Approvals</h2>
-            <p class="subtitle">Review and approve project numbers set by COO</p>
-        </div>
-        <div class="card">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Project Name</th>
-                        <th>Client</th>
-                        <th>Project Number</th>
-                        <th>Set By</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="approvalTableBody">
-                    <tr>
-                        <td colspan="6" class="text-center">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div id="rejectionReasonModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal">
-            <div class="modal-header">
-                <h2>Reject Project Number</h2>
-                <span class="close-modal" onclick="closeRejectionModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="rejectProposalId" />
-                <input type="hidden" id="rejectProjectNumber" />
-                <p>You are about to reject project number: <strong id="rejectProjectNumberDisplay"></strong></p>
-                <div class="form-group">
-                    <label for="rejectionReason">Reason for Rejection <span class="required">*</span></label>
-                    <textarea id="rejectionReason" class="form-control" rows="4"
-                        placeholder="Please provide a reason for rejection..." required></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="closeRejectionModal()">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmRejection()">Reject</button>
-            </div>
-        </div>
-    </div>
-    <div id="allocationSection" style="display: none;">
-        <div class="page-header">
-            <h2>Allocate Won Projects</h2>
-            <p class="subtitle">Assign won projects to Design Managers</p>
-        </div>
-        <div class="card">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Project Name</th>
-                        <th>Client</th>
-                        <th>BDM</th>
-                        <th>Value</th>
-                        <th>Project Number</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="allocationProposalsTableBody">
-                    <tr>
-                        <td colspan="7" class="text-center">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div id="allocationModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal allocation-modal-large">
-            <div class="modal-header">
-                <h2>Allocate Project to Design Manager</h2>
-                <span class="close-modal" onclick="closeAllocationModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="allocationProposalId" />
-                <div class="allocation-details-section">
-                    <h3>Project Details</h3>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <label>Project Name:</label>
-                            <span id="allocProjectName" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Client:</label>
-                            <span id="allocClientName" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <label>BDM:</label>
-                            <span id="allocBdmName" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Quote Value:</label>
-                            <span id="allocQuoteValue" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item highlight">
-                            <label>Project Number:</label>
-                            <span id="allocProjectNumber" class="detail-value project-number-badge"></span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Location:</label>
-                            <span id="allocLocation" class="detail-value"></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-section">
-                    <h3>Allocation Details</h3>
-                    <div class="form-group">
-                        <label for="allocDesignLead">Design Manager / Lead <span class="required">*</span></label>
-                        <select id="allocDesignLead" class="form-control" required>
-                            <option value="">-- Select Design Manager --</option>
-                        </select>
-                        <small class="form-text">Select the Design Manager who will oversee this project</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="allocationComments3">Allocation Comments</label>
-                        <textarea id="allocationComments3" class="form-control" rows="4"
-                            placeholder="Add any special instructions, priorities, or notes for the Design Manager..."></textarea>
-                        <small class="form-text">These comments will be visible to the Design Manager</small>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="closeAllocationModal()">Cancel</button>
-                <button type="button" class="btn btn-primary btn-large" onclick="submitProposalAllocation()">
-                    <span class="btn-icon">✓</span> Allocate Project
-                </button>
-            </div>
-        </div>
-    </div>
-    <div id="allocatedProjectsSection" style="display: none;">
-        <div class="page-header">
-            <h2>My Allocated Projects</h2>
-            <p class="subtitle">Projects assigned to you by management</p>
-        </div>
-        <div class="card">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Project #</th>
-                        <th>Project Name</th>
-                        <th>Client</th>
-                        <th>Allocated By</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="allocatedProjectsTableBody">
-                    <tr>
-                        <td colspan="7" class="text-center">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
     
-    <div id="designerAssignmentModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal" style="max-width: 800px;">
-            <div class="modal-header">
-                <h2>👥 Assign Designers to Project</h2>
-                <span class="close-modal" onclick="closeDesignerAssignmentModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="assignProjectId" />
-                
-                <!-- Project Hours Summary -->
-                <div id="projectHoursSummary" style="background: #E8F5E9; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none;">
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Max Hours</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-blue);" id="displayMaxHours">0</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Additional</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="displayAdditionalHours">0</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Total Available</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="displayTotalHours">0</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Remaining</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger);" id="displayRemainingHours">0</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Designer Assignment List -->
-                <div class="form-group">
-                    <label style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: block;">
-                        Assign Designers <span class="required">*</span>
-                        <small style="font-weight: 400; color: var(--text-light); font-size: 0.85rem;">(hours per designer are optional)</small>
-                    </label>
-                    <div id="designersList" style="max-height: 400px; overflow-y: auto;">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                    <small class="form-text" style="display: block; margin-top: 0.5rem;">
-                        💡 Select designers and allocate hours to each. Total allocated hours cannot exceed available hours.
-                    </small>
-                </div>
-                
-                <!-- Allocated Hours Summary -->
-                <div style="background: #FFF3E0; padding: 1rem; border-radius: 8px; margin-top: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 600;">Total Hours Allocated:</span>
-                        <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-blue);" id="totalAllocatedHours">0</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="closeDesignerAssignmentModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitDesignerAssignment()">
-                    ✅ Assign Designers
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <div id="bdmFilesModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal">
-            <div class="modal-header">
-                <h2>BDM Uploaded Files</h2>
-                <span class="close-modal" onclick="closeBDMFilesModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="bdmFilesList" class="files-list">
-                    </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="closeBDMFilesModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="successModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal modal-success">
-            <div class="modal-body text-center">
-                <div class="success-icon">✓</div>
-                <h3 id="successMessage">Operation Successful!</h3>
-                <p id="successDetails"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="closeSuccessModal()">OK</button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Accounts Update Variation Modal -->
-    <div id="accountsUpdateVariationModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal" style="max-width: 680px;">
-            <div class="modal-header">
-                <h2>✏️ Update Variation Details (Accounts)</h2>
-                <span class="close-modal" onclick="document.getElementById('accountsUpdateVariationModal').style.display='none'">&times;</span>
-            </div>
-            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-                <input type="hidden" id="acctVarId">
-                <div class="info-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <p style="margin:0;"><strong>Variation:</strong> <span id="acctVarInfo"></span></p>
-                </div>
-
-                <!-- Client Details -->
-                <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem; padding-bottom: 1.25rem;">
-                    <h4 style="margin-bottom:1rem; color: var(--primary-blue);">Client Details</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label for="acctVarClientName">Client Contact Name</label>
-                            <input type="text" id="acctVarClientName" class="form-control" placeholder="e.g., John Smith">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label for="acctVarClientEmail">Client Email</label>
-                            <input type="email" id="acctVarClientEmail" class="form-control" placeholder="e.g., john@client.com">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Financial Details -->
-                <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem; padding-bottom: 1.25rem;">
-                    <h4 style="margin-bottom:1rem; color: var(--primary-blue);">Financial Details</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label for="acctVarAmount">Variation Amount</label>
-                            <input type="number" id="acctVarAmount" class="form-control" step="0.01" min="0" placeholder="e.g., 5000.00">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label for="acctVarCurrency">Currency</label>
-                            <select id="acctVarCurrency" class="form-control">
-                                <option value="">-- Select --</option>
-                                <option value="AUD">AUD</option>
-                                <option value="USD">USD</option>
-                                <option value="GBP">GBP</option>
-                                <option value="EUR">EUR</option>
-                                <option value="NZD">NZD</option>
-                                <option value="SGD">SGD</option>
-                                <option value="CAD">CAD</option>
-                                <option value="AED">AED</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label for="acctVarInvoiceRef">Invoice Reference / PO Number</label>
-                            <input type="text" id="acctVarInvoiceRef" class="form-control" placeholder="e.g., PO-2025-001">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label for="acctVarPaymentTerms">Payment Terms</label>
-                            <input type="text" id="acctVarPaymentTerms" class="form-control" placeholder="e.g., Net 30 days">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Accounts / Billing Notes -->
-                <div class="form-group">
-                    <h4 style="margin-bottom:0.75rem; color: var(--primary-blue);">Accounts / Billing Notes</h4>
-                    <textarea id="acctVarAccountsDetails" class="form-control" rows="4" placeholder="Internal billing instructions, notes, special conditions..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="document.getElementById('accountsUpdateVariationModal').style.display='none'">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="submitAccountsVariationUpdate()">
-                    💾 Save &amp; Notify COO
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="addVariationModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal" style="max-width: 780px;">
-            <div class="modal-header">
-                <h2>➕ Add Variation for Approval</h2>
-                <span class="close-modal" onclick="closeAddVariationModal()">&times;</span>
-            </div>
-            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-                <input type="hidden" id="variationParentProjectId" />
-
-                <div class="info-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <h4 style="color: var(--primary-blue);">Parent Project</h4>
-                    <p style="margin: 0;"><strong>Project:</strong> <span id="variationParentProjectName"></span></p>
-                    <p style="margin: 0;"><strong>Code:</strong> <span id="variationParentProjectCode"></span></p>
-                </div>
-
-                <form id="addVariationForm">
-                    <!-- Variation Code & Hours -->
-                    <div class="form-group">
-                        <label for="variationCode">Variation Code <span class="required">*</span></label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="text" id="variationCode" class="form-control" placeholder="e.g., STE25-513-V1" required>
-                            <button type="button" onclick="generateVariationCode()" class="btn btn-outline" style="width: auto; white-space: nowrap;">
-                                Generate
-                            </button>
-                        </div>
-                        <small class="form-text">A unique code for this variation.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="variationHours">Variation Hours <span class="required">*</span></label>
-                        <input type="number" id="variationHours" class="form-control" step="0.5" min="0.5" placeholder="Enter estimated hours for this variation" required>
-                        <small class="form-text">Estimated hours required to complete this variation.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="variationScope">Scope of Work / Description <span class="required">*</span></label>
-                        <textarea id="variationScope" class="form-control" rows="4" placeholder="Describe the work required for this variation. This will be sent to the COO for approval." required></textarea>
-                    </div>
-
-                    <!-- CLIENT DETAILS -->
-                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Client Details</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="variationClientName">Client Contact Name</label>
-                                <input type="text" id="variationClientName" class="form-control" placeholder="e.g., John Smith">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="variationClientEmail">Client Email</label>
-                                <input type="email" id="variationClientEmail" class="form-control" placeholder="e.g., john@client.com">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- FINANCIAL DETAILS -->
-                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Financial Details</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="variationAmount">Variation Amount</label>
-                                <input type="number" id="variationAmount" class="form-control" step="0.01" min="0" placeholder="e.g., 5000.00">
-                                <small class="form-text">Financial value of this variation.</small>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="variationCurrency">Currency</label>
-                                <select id="variationCurrency" class="form-control">
-                                    <option value="">-- Select Currency --</option>
-                                    <option value="AUD">AUD - Australian Dollar</option>
-                                    <option value="USD">USD - US Dollar</option>
-                                    <option value="GBP">GBP - British Pound</option>
-                                    <option value="EUR">EUR - Euro</option>
-                                    <option value="NZD">NZD - New Zealand Dollar</option>
-                                    <option value="SGD">SGD - Singapore Dollar</option>
-                                    <option value="CAD">CAD - Canadian Dollar</option>
-                                    <option value="AED">AED - UAE Dirham</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ACCOUNTS DETAILS -->
-                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Accounts Details</h4>
-                        <div class="form-group">
-                            <label for="variationAccountsDetails">Accounts / Billing Notes</label>
-                            <textarea id="variationAccountsDetails" class="form-control" rows="3" placeholder="e.g., Invoice reference, PO number, billing instructions, payment terms..."></textarea>
-                        </div>
-                    </div>
-
-                    <!-- VARIATION DOCUMENT UPLOAD -->
-                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Variation Document</h4>
-                        <div class="form-group">
-                            <label for="variationDocument">Upload Variation Document (PDF or Word)</label>
-                            <div id="variationDocDropZone" style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; background: #f8f9fa; transition: border-color 0.2s;"
-                                onclick="document.getElementById('variationDocument').click()"
-                                ondragover="event.preventDefault(); this.style.borderColor='var(--primary-blue)';"
-                                ondragleave="this.style.borderColor='var(--border-color)';"
-                                ondrop="handleVariationDocDrop(event)">
-                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
-                                <p style="margin: 0; color: var(--text-light);">Click or drag & drop your variation document here</p>
-                                <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-light);">Supported: PDF, DOC, DOCX (max 50 MB)</p>
-                            </div>
-                            <input type="file" id="variationDocument" style="display: none;" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="onVariationDocSelected(this)">
-                            <div id="variationDocPreview" style="display: none; margin-top: 0.75rem; padding: 0.75rem; background: #e8f5e9; border-radius: 6px; display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.5rem;">📎</span>
-                                <div style="flex: 1;">
-                                    <strong id="variationDocFileName" style="font-size: 0.9rem;"></strong>
-                                    <div id="variationDocFileSize" style="font-size: 0.8rem; color: var(--text-light);"></div>
-                                </div>
-                                <button type="button" onclick="clearVariationDoc()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1.2rem;" title="Remove file">&times;</button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="closeAddVariationModal()">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="submitVariationForApproval()">
-                    Submit for COO Approval
-                </button>
-            </div>
-        </div>
-    </div>
-    <div id="variationApprovalModal" class="modal" style="display: none;">
-        <div class="modal-content new-modal" style="max-width: 860px;">
-            <div class="modal-header">
-                <h2>🔍 Review Variation Request</h2>
-                <span class="close-modal" onclick="closeModal()">&times;</span>
-            </div>
-            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-                <input type="hidden" id="approvalVariationId" />
-                <input type="hidden" id="approvalParentProjectId" />
-
-                <!-- VARIATION DETAILS -->
-                <div class="allocation-details-section">
-                    <h3>Variation Details</h3>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <label>Parent Project:</label>
-                            <span id="app-parentProjectName" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Client Company:</label>
-                            <span id="app-clientCompany" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item highlight">
-                            <label>Variation Code:</label>
-                            <span id="app-variationCode" class="detail-value project-number-badge" style="background: var(--warning); color: #856404;"></span>
-                        </div>
-                        <div class="detail-item highlight">
-                            <label>Requested Hours:</label>
-                            <span id="app-estimatedHours" class="detail-value" style="font-size: 1.5rem; color: var(--primary-blue);"></span>
-                        </div>
-                        <div class="detail-item" style="grid-column: 1 / -1;">
-                            <label>Submitted By:</label>
-                            <span id="app-submittedBy" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item" style="grid-column: 1 / -1; background: white; padding: 1rem; border-radius: 8px;">
-                            <label>Scope of Work:</label>
-                            <p id="app-scopeDescription" class="detail-value" style="line-height: 1.6; white-space: pre-wrap;"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CLIENT DETAILS -->
-                <div id="app-clientDetailsSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
-                    <h3>Client Details</h3>
-                    <div class="details-grid">
-                        <div class="detail-item" id="app-clientNameRow" style="display: none;">
-                            <label>Client Contact:</label>
-                            <span id="app-clientName" class="detail-value"></span>
-                        </div>
-                        <div class="detail-item" id="app-clientEmailRow" style="display: none;">
-                            <label>Client Email:</label>
-                            <span id="app-clientEmail" class="detail-value"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FINANCIAL DETAILS -->
-                <div id="app-financialSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
-                    <h3>Financial Details</h3>
-                    <div class="details-grid">
-                        <div class="detail-item highlight">
-                            <label>Variation Amount:</label>
-                            <span id="app-amount" class="detail-value" style="font-size: 1.3rem; color: var(--success); font-weight: 700;"></span>
-                        </div>
-                        <div class="detail-item highlight">
-                            <label>Currency:</label>
-                            <span id="app-currency" class="detail-value" style="font-size: 1.1rem; font-weight: 600;"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ACCOUNTS DETAILS -->
-                <div id="app-accountsSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
-                    <h3>Accounts / Billing Details</h3>
-                    <div class="detail-item" style="background: white; padding: 1rem; border-radius: 8px;">
-                        <p id="app-accountsDetails" class="detail-value" style="line-height: 1.6; white-space: pre-wrap; margin: 0;"></p>
-                    </div>
-                </div>
-
-                <!-- VARIATION DOCUMENT -->
-                <div id="app-documentSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
-                    <h3>Variation Document</h3>
-                    <div style="background: white; padding: 1rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-size: 2rem;">📄</span>
-                        <div style="flex: 1;">
-                            <strong id="app-documentName" style="display: block;"></strong>
-                            <small style="color: var(--text-light);">Uploaded variation document</small>
-                        </div>
-                        <a id="app-documentLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none;">
-                            ⬇️ Download / View
-                        </a>
-                    </div>
-                </div>
-
-                <!-- APPROVAL DECISION -->
-                <div class="form-section" style="margin-top: 1.5rem;">
-                    <h3>Approval Decision</h3>
-                    <div class="form-group">
-                        <label for="approvalNotes">Notes (Required for Rejection)</label>
-                        <textarea id="approvalNotes" class="form-control" rows="4" placeholder="Add approval notes or a reason for rejection..."></textarea>
-                    </div>
-                </div>
-
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="button" class="btn btn-danger" style="margin-right: auto;" onclick="submitVariationApproval('rejected')">
-                    ❌ Reject
-                </button>
-                <button type="button" class="btn btn-success btn-large" onclick="submitVariationApproval('approved')">
-                    ✅ Approve Variation
-                </button>
-            </div>
-        </div>
-    </div>
-    <!-- ADD THIS LINE BEFORE CLOSING BODY TAG -->
-
-
-
-<!-- ============================================ -->
-<!-- STEP 2: ADD THESE SECTIONS BEFORE </body> -->
-<!-- Paste these complete sections -->
-<!-- ============================================ -->
-
-<!-- EXECUTIVE MONITORING SECTION -->
-<div id="executiveTimesheetMonitoring" style="display: none;">
-    <div class="page-header">
-        <h2>📊 Executive Timesheet Monitoring</h2>
-        <p class="subtitle">Advanced analytics and insights for project hours management</p>
-    </div>
-
-    <!-- Top Level Metrics -->
-    <div id="executiveMetrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-        <!-- Populated by JavaScript -->
-    </div>
-
-    <!-- Date Range Selector -->
-    <div class="card" style="margin-bottom: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; flex-wrap: wrap; gap: 1rem;">
-            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-light); display: block; margin-bottom: 0.25rem;">From Date:</label>
-                    <input type="date" id="executiveFromDate" class="form-control" style="width: auto;">
-                </div>
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-light); display: block; margin-bottom: 0.25rem;">To Date:</label>
-                    <input type="date" id="executiveToDate" class="form-control" style="width: auto;">
-                </div>
-                <button onclick="applyExecutiveDateFilter()" class="btn btn-primary" style="margin-top: 1.5rem;">
-                    Apply Filter
-                </button>
-                <button onclick="resetExecutiveDateFilter()" class="btn btn-outline" style="margin-top: 1.5rem;">
-                    Reset
-                </button>
-            </div>
-            
-            <div style="display: flex; gap: 0.5rem;">
-                <button onclick="exportExecutiveReport('summary')" class="btn btn-outline">
-                    📊 Export Summary
-                </button>
-                <button onclick="exportExecutiveReport('detailed')" class="btn btn-outline">
-                    📋 Export Detailed
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Stats Row -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <div class="stat-card">
-            <div class="stat-label">Active Projects</div>
-            <div class="stat-value" id="execActiveProjects">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Total Designers</div>
-            <div class="stat-value" id="execTotalDesigners">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Timesheet Entries</div>
-            <div class="stat-value" id="execTotalEntries">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Avg Hours/Project</div>
-            <div class="stat-value" id="execAvgHours">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Efficiency Rate</div>
-            <div class="stat-value" id="execEfficiency">0%</div>
-        </div>
-    </div>
-
-    <!-- Tabs for Different Views -->
-    <div class="tabs-container" style="margin-bottom: 1.5rem;">
-        <div class="tabs">
-            <div class="tab active" onclick="switchExecutiveTab('overview')">Overview</div>
-            <div class="tab" onclick="switchExecutiveTab('projects')">Projects</div>
-            <div class="tab" onclick="switchExecutiveTab('designers')">Designers</div>
-            <div class="tab" onclick="switchExecutiveTab('analytics')">Analytics</div>
-            <div class="tab" onclick="switchExecutiveTab('alerts')">Alerts</div>
-        </div>
-    </div>
-
-    <!-- Tab Content -->
-    <div id="executiveTabContent">
-        <!-- Content will be loaded dynamically -->
-    </div>
-</div>
-
-<!-- TIMESHEET SECTION FOR DESIGNERS -->
-<div id="timesheetSection" style="display: none;">
-    <div class="page-header">
-        <h2>⏱️ My Timesheet</h2>
-        <p class="subtitle">Track your hours on assigned projects</p>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h3>Log Hours</h3>
-            <button onclick="showTimesheetModal()" class="btn btn-primary">
-                <span class="btn-icon">+</span> Log Hours
-            </button>
-        </div>
-
-        <!-- Timesheet Summary -->
-        <div id="timesheetSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; padding: 1rem;">
-            <!-- Will be populated by JavaScript -->
-        </div>
-                            
-
-        <!-- Timesheet Entries Table -->
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Project</th>
-                    <th>Hours</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="timesheetTableBody">
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem;">
-                        No timesheet entries yet
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-
-<!-- ============================================ -->
-<!-- STEP 3: ADD THESE STYLES -->
-<!-- Add to your <style> section -->
-<!-- ============================================ -->
-
-<style>
-/* Executive Monitoring Styles */
-.metric-card {
-    border-radius: 12px;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    color: white;
-}
-
-.metric-icon {
-    font-size: 2.5rem;
-}
-
-.metric-content {
-    flex: 1;
-}
-
-.metric-label {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    margin-bottom: 0.5rem;
-}
-
-.metric-value {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1;
-}
-
-.metric-subtitle {
-    font-size: 0.85rem;
-    opacity: 0.8;
-    margin-top: 0.5rem;
-}
-
-.stat-card {
-    background: white;
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-}
-
-.stat-label {
-    font-size: 0.85rem;
-    color: var(--text-light);
-    margin-bottom: 0.5rem;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--primary-blue);
-}
-
-.tabs-container {
-    background: white;
-    border-radius: 12px;
-    border: 2px solid var(--border);
-    overflow: hidden;
-}
-
-.tabs {
-    display: flex;
-    gap: 0;
-}
-
-.tab {
-    flex: 1;
-    padding: 1rem;
-    text-align: center;
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--text-light);
-    transition: all 0.2s;
-    border-right: 1px solid var(--border);
-}
-
-.tab:last-child {
-    border-right: none;
-}
-
-.tab:hover {
-    background: var(--light-blue);
-}
-
-.tab.active {
-    background: var(--primary-blue);
-    color: white;
-}
-
-.project-card {
-    transition: all 0.2s;
-}
-
-.project-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-color: var(--primary-blue);
-}
-
-.hour-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: white;
-    border-radius: 8px;
-    border: 2px solid var(--border);
-}
-
-.hour-badge .label {
-    color: var(--text-light);
-    font-size: 0.85rem;
-}
-
-.hour-badge .value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-blue);
-}
-
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.status-submitted {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.status-approved {
-    background: #d4edda;
-    color: #155724;
-}
-
-.status-rejected {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.progress-bar-container {
-    background: #e0e0e0;
-    border-radius: 10px;
-    overflow: hidden;
-}
-</style>
-
-
-<!-- ============================================ -->
-<!-- STEP 4: ADD THIS COMPLETE JAVASCRIPT -->
-<!-- Add before closing </body> tag -->
-<!-- ============================================ -->
-<script>
 
 // ===================================
 // DESIGN LEAD - ASSIGN DESIGNERS (Independent script block)
@@ -5169,9 +5148,8 @@ window.closeDesignerAssignmentModal = function() {
 
 console.log('✅ Designer assignment functions registered (independent block)');
 
-</script>
 
-<script>
+
 
 // ===================================
 // EXECUTIVE MONITORING JAVASCRIPT
@@ -8877,658 +8855,8 @@ function toggleDesignHours() {
                 document.getElementById('designer-specs-content').style.display = 'block';
             }
         }
-    </script>
-<div id="cooMultiDesignerAllocationModal" class="modal" style="display: none;">
-    <div class="modal-content new-modal allocation-modal-large" style="max-width: 900px;">
-        <div class="modal-header">
-            <div>
-                <h2>🎯 Allocate Project to Design Lead</h2>
-                <div class="subtitle">Assign project to design lead(s) with hours budget</div>
-            </div>
-            <span class="close-modal" onclick="closeCooMultiDesignerModal()">&times;</span>
-        </div>
+    
 
-        <div class="modal-body">
-            <input type="hidden" id="cooAllocProjectId" />
-
-            <!-- Project Summary -->
-            <div class="allocation-details-section" style="margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px;">
-                <h3 style="color: white; margin-bottom: 1rem;">📋 Project Information</h3>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Project Number:</label>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div id="cooAllocProjectNumber" style="font-size: 1.2rem; font-weight: 700;"></div>
-                            <button type="button" onclick="toggleProjectNumberEdit()"
-                                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                                ✏️ Edit
-                            </button>
-                        </div>
-                        <div id="projectNumberEditContainer" style="display: none; margin-top: 0.5rem;">
-                            <input type="text" id="projectNumberEditInput"
-                                   style="padding: 0.5rem; border-radius: 4px; border: none; width: 150px; font-weight: 600;"
-                                   placeholder="Enter project number">
-                            <button type="button" onclick="saveProjectNumber()"
-                                    style="background: #10b981; border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
-                                💾 Save
-                            </button>
-                            <button type="button" onclick="cancelProjectNumberEdit()"
-                                    style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
-                                ✕
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Project Name:</label>
-                        <div id="cooAllocProjectName" style="font-size: 1rem; font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Client:</label>
-                        <div id="cooAllocClientName" style="font-size: 1rem; font-weight: 600;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Project Section Selection -->
-            <div class="form-section" style="background: #fef3c7; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; border: 2px solid #f59e0b;">
-                <h3 style="color: #92400e; margin: 0 0 1rem 0;">🏗️ Project Section</h3>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label for="cooProjectSection">Assign to Section <span class="required">*</span></label>
-                    <select id="cooProjectSection" class="form-control" required style="font-weight: 600; font-size: 1rem;">
-                        <option value="">-- Select Section --</option>
-                        <option value="Engineering">Engineering</option>
-                        <option value="Rebar">Rebar</option>
-                        <option value="Structural">Structural</option>
-                    </select>
-                    <small class="form-text">Categorize this project under the appropriate design section</small>
-                </div>
-            </div>
-
-            <!-- Total Hours Input -->
-            <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: var(--text-dark); margin: 0;">⏱️ Total Project Hours</h3>
-                    <button type="button" id="editBudgetBtn" class="btn btn-outline btn-sm" onclick="toggleBudgetEdit()" style="display: none;">
-                        ✏️ Edit Budget
-                    </button>
-                </div>
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooTotalProjectHours">Total Allocated Hours <span class="required">*</span></label>
-                        <input type="number" id="cooTotalProjectHours" class="form-control"
-                               placeholder="e.g., 120" min="1" step="0.5"
-                               oninput="updateRemainingHours()" required>
-                        <small class="form-text">Total hours budget for this project</small>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Remaining Hours to Allocate</label>
-                        <div id="cooRemainingHours" style="font-size: 2rem; font-weight: 700; color: var(--success); padding: 0.5rem;">
-                            0 hrs
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- EXISTING ALLOCATIONS SECTION -->
-            <div id="existingAllocationsSection" class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: #1e40af; margin: 0;">📊 Existing Design Lead Allocations</h3>
-                    <span id="existingAllocTotal" style="background: #3b82f6; color: white; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 600;"></span>
-                </div>
-                <div id="existingAllocationsList">
-                    <!-- Existing allocations will be rendered here -->
-                </div>
-            </div>
-
-            <!-- Design Lead Allocations -->
-            <div class="form-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: var(--text-dark); margin: 0;">👔 Select Design Lead(s)</h3>
-                    <button type="button" class="btn btn-outline" onclick="addDesignerAllocation()" id="addDesignLeadBtn">
-                        <span style="font-size: 1.2rem;">+</span> Add Design Lead
-                    </button>
-                </div>
-                <div style="background: #e0f2fe; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #0284c7;">
-                    <small style="color: #0369a1;">You can assign up to <strong>2 design leads</strong> per project. Each lead will manage designers within their allocated hours.</small>
-                </div>
-
-                <div id="designerAllocationsContainer">
-                    <!-- Design Lead allocation rows will be added here dynamically -->
-                </div>
-            </div>
-
-            <!-- Purchase Order (P.O.) Section -->
-            <div class="form-section" style="margin-top: 2rem; background: #fef9e7; padding: 1.5rem; border-radius: 10px; border: 2px solid #f0c040;">
-                <h3 style="color: #7c6a0a; margin-bottom: 0.5rem;">📄 Purchase Order (P.O.)</h3>
-                <p style="color: #92400e; font-size: 0.85rem; margin-bottom: 1rem;">Optional: Upload a P.O. PDF and/or enter the P.O. value. Can be added later. Tracking will be sent to Accounts & HR.</p>
-
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooPoFile">P.O. Document (PDF)</label>
-                        <input type="file" id="cooPoFile" class="form-control" accept=".pdf"
-                               style="padding: 0.5rem;" onchange="handleCooPoFileSelect(this)">
-                        <small class="form-text">Upload purchase order PDF</small>
-                        <div id="cooPoFilePreview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 6px; font-size: 0.85rem; color: #065f46;">
-                        </div>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooPoNumber">P.O. Number</label>
-                        <input type="text" id="cooPoNumber" class="form-control" placeholder="e.g., PO-2026-001">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooPoValue">P.O. Value / Amount</label>
-                        <input type="number" id="cooPoValue" class="form-control" placeholder="e.g., 50000" min="0" step="0.01">
-                        <small class="form-text">Enter the purchase order amount</small>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooPoCurrency">Currency <span class="required">*</span></label>
-                        <select id="cooPoCurrency" class="form-control" style="font-weight: 600;">
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="AUD">AUD - Australian Dollar</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="CAD">CAD - Canadian Dollar</option>
-                        </select>
-                        <small class="form-text">Select the P.O. currency</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Technical & Commercial Contacts Section -->
-            <div class="form-section" style="margin-top: 2rem; background: #eef2ff; padding: 1.5rem; border-radius: 10px; border: 2px solid #818cf8;">
-                <h3 style="color: #3730a3; margin-bottom: 0.5rem;">📇 Project Contacts</h3>
-                <p style="color: #4338ca; font-size: 0.85rem; margin-bottom: 1.5rem;">Optional: Enter technical and commercial contact details. Can be added later. Tracking will be sent to Document Control & Accounts.</p>
-
-                <!-- Technical Contact -->
-                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; border-left: 4px solid #22c55e;">
-                    <h4 style="color: #166534; margin: 0 0 1rem 0; font-size: 1rem;">Technical Contact</h4>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooTechBdmName">BDM Name</label>
-                            <input type="text" id="cooTechBdmName" class="form-control" placeholder="Enter BDM name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooTechBdmEmail">BDM Email</label>
-                            <input type="email" id="cooTechBdmEmail" class="form-control" placeholder="bdm@example.com">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooTechClientPmName">Client PM Name</label>
-                            <input type="text" id="cooTechClientPmName" class="form-control" placeholder="Enter Client PM name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooTechClientPmEmail">Client PM Email</label>
-                            <input type="email" id="cooTechClientPmEmail" class="form-control" placeholder="clientpm@example.com">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Commercial Contact -->
-                <div style="background: #fefce8; padding: 1.25rem; border-radius: 8px; border-left: 4px solid #eab308;">
-                    <h4 style="color: #854d0e; margin: 0 0 1rem 0; font-size: 1rem;">Commercial Contact</h4>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooCommAccountName">Their Account Contact Name</label>
-                            <input type="text" id="cooCommAccountName" class="form-control" placeholder="Enter account contact name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooCommAccountEmail">Their Account Contact Email</label>
-                            <input type="email" id="cooCommAccountEmail" class="form-control" placeholder="account@example.com">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooCommBdmName">BDM Name</label>
-                            <input type="text" id="cooCommBdmName" class="form-control" placeholder="Enter BDM name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cooCommBdmEmail">BDM Email</label>
-                            <input type="email" id="cooCommBdmEmail" class="form-control" placeholder="bdm@example.com">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Project Details -->
-            <div class="form-section" style="margin-top: 2rem;">
-                <h3 style="color: var(--text-dark); margin-bottom: 1rem;">📝 Project Details</h3>
-
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooTargetCompletionDate">Target Completion Date</label>
-                        <input type="date" id="cooTargetCompletionDate" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cooProjectPriority">Project Priority</label>
-                        <select id="cooProjectPriority" class="form-control">
-                            <option value="Normal">Normal</option>
-                            <option value="High">High</option>
-                            <option value="Urgent">Urgent</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="cooAllocationNotes">Allocation Notes</label>
-                    <textarea id="cooAllocationNotes" class="form-control" rows="3"
-                              placeholder="Add any special instructions or notes for the design lead..."></textarea>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal-footer">
-            <button type="button" class="btn btn-cancel" onclick="closeCooMultiDesignerModal()">Cancel</button>
-            <button type="button" class="btn btn-success btn-large" onclick="submitCooMultiDesignerAllocation()">
-                <span class="btn-icon">✓</span> Allocate Project
-            </button>
-        </div>
-    </div>
-</div>
-<!-- ============================================ -->
-<!-- Edit P.O. & Contacts Modal                  -->
-<!-- ============================================ -->
-<div id="editPoContactsModal" class="modal" style="display: none;">
-    <div class="modal-content new-modal" style="max-width: 850px;">
-        <div class="modal-header">
-            <div>
-                <h2>📝 Edit P.O. & Project Contacts</h2>
-                <div class="subtitle">Update purchase order and contact details for this project</div>
-            </div>
-            <span class="close-modal" onclick="closeEditPoContactsModal()">&times;</span>
-        </div>
-
-        <div class="modal-body">
-            <input type="hidden" id="editPocProjectId" />
-
-            <!-- Project Info Banner -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                    <div>
-                        <label style="font-size: 0.8rem; opacity: 0.9;">Project Number:</label>
-                        <div id="editPocProjectNumber" style="font-weight: 700;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; opacity: 0.9;">Project Name:</label>
-                        <div id="editPocProjectName" style="font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; opacity: 0.9;">Client:</label>
-                        <div id="editPocClientName" style="font-weight: 600;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- P.O. Section -->
-            <div class="form-section" style="background: #fef9e7; padding: 1.5rem; border-radius: 10px; border: 2px solid #f0c040; margin-bottom: 1.5rem;">
-                <h3 style="color: #7c6a0a; margin-bottom: 1rem;">📄 Purchase Order (P.O.)</h3>
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="editPoFile">P.O. Document (PDF)</label>
-                        <input type="file" id="editPoFile" class="form-control" accept=".pdf"
-                               style="padding: 0.5rem;" onchange="handleCooPoFileSelect(this, 'editPoFilePreview')">
-                        <div id="editPoFilePreview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 6px; font-size: 0.85rem; color: #065f46;"></div>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="editPoNumber">P.O. Number</label>
-                        <input type="text" id="editPoNumber" class="form-control" placeholder="e.g., PO-2026-001">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="editPoValue">P.O. Value / Amount</label>
-                        <input type="number" id="editPoValue" class="form-control" placeholder="e.g., 50000" min="0" step="0.01">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="editPoCurrency">Currency</label>
-                        <select id="editPoCurrency" class="form-control" style="font-weight: 600;">
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="AUD">AUD - Australian Dollar</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="CAD">CAD - Canadian Dollar</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Technical Contact -->
-            <div class="form-section" style="background: #eef2ff; padding: 1.5rem; border-radius: 10px; border: 2px solid #818cf8; margin-bottom: 1.5rem;">
-                <h3 style="color: #3730a3; margin-bottom: 1rem;">📇 Project Contacts</h3>
-
-                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; border-left: 4px solid #22c55e;">
-                    <h4 style="color: #166534; margin: 0 0 1rem 0; font-size: 1rem;">Technical Contact</h4>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editTechBdmName">BDM Name</label>
-                            <input type="text" id="editTechBdmName" class="form-control" placeholder="Enter BDM name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editTechBdmEmail">BDM Email</label>
-                            <input type="email" id="editTechBdmEmail" class="form-control" placeholder="bdm@example.com">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editTechClientPmName">Client PM Name</label>
-                            <input type="text" id="editTechClientPmName" class="form-control" placeholder="Enter Client PM name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editTechClientPmEmail">Client PM Email</label>
-                            <input type="email" id="editTechClientPmEmail" class="form-control" placeholder="clientpm@example.com">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Commercial Contact -->
-                <div style="background: #fefce8; padding: 1.25rem; border-radius: 8px; border-left: 4px solid #eab308;">
-                    <h4 style="color: #854d0e; margin: 0 0 1rem 0; font-size: 1rem;">Commercial Contact</h4>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editCommAccountName">Their Account Contact Name</label>
-                            <input type="text" id="editCommAccountName" class="form-control" placeholder="Enter account contact name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editCommAccountEmail">Their Account Contact Email</label>
-                            <input type="email" id="editCommAccountEmail" class="form-control" placeholder="account@example.com">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editCommBdmName">BDM Name</label>
-                            <input type="text" id="editCommBdmName" class="form-control" placeholder="Enter BDM name">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="editCommBdmEmail">BDM Email</label>
-                            <input type="email" id="editCommBdmEmail" class="form-control" placeholder="bdm@example.com">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal-footer">
-            <button type="button" class="btn btn-cancel" onclick="closeEditPoContactsModal()">Cancel</button>
-            <button type="button" class="btn btn-success btn-large" onclick="submitEditPoContacts()">
-                <span class="btn-icon">💾</span> Save P.O. & Contacts
-            </button>
-        </div>
-    </div>
-</div>
-
- <input type="file" id="wordTemplateInput" accept=".docx" style="display: none;" />
-    <!-- LOAD THE SEPARATE QUOTATION GENERATOR FILE -->
-    <script src="quotation_generator.js"></script>
-
-<!-- ============================================ -->
-<!-- FEATURE 1: COO → Director Approval Modal    -->
-<!-- ============================================ -->
-<div id="cooRequestAllocationChangeModal" class="modal" style="display: none;">
-    <div class="modal-content new-modal" style="max-width: 600px;">
-        <div class="modal-header">
-            <div>
-                <h2>📝 Request Allocation Change</h2>
-                <div class="subtitle">Submit change request to Director for approval</div>
-            </div>
-            <span class="close-modal" onclick="closeRequestAllocationChangeModal()">&times;</span>
-        </div>
-        
-        <div class="modal-body">
-            <input type="hidden" id="changeReqProjectId" />
-            <input type="hidden" id="changeReqDesignerUid" />
-            <input type="hidden" id="changeReqDesignerEmail" />
-            
-            <!-- Project & Designer Info -->
-            <div class="form-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Project:</label>
-                        <div id="changeReqProjectName" style="font-size: 1.1rem; font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Designer:</label>
-                        <div id="changeReqDesignerName" style="font-size: 1.1rem; font-weight: 600;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Hours Input -->
-            <div class="form-section">
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Current Allocated Hours</label>
-                        <input type="number" id="changeReqCurrentHours" class="form-control" readonly 
-                               style="background: #f3f4f6; font-weight: 600;">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>New Requested Hours <span class="required">*</span></label>
-                        <input type="number" id="changeReqNewHours" class="form-control" 
-                               placeholder="Enter new hours" min="0" step="0.5" required
-                               oninput="calculateHoursDifference()">
-                    </div>
-                </div>
-                
-                <div id="hoursDifferenceDisplay" style="text-align: center; padding: 1rem; margin: 1rem 0; border-radius: 8px; display: none;">
-                    <!-- Will show increase/decrease amount -->
-                </div>
-            </div>
-            
-            <!-- Mandatory Reason -->
-            <div class="form-section">
-                <div class="form-group">
-                    <label>Reason for Change <span class="required">*</span></label>
-                    <textarea id="changeReqReason" class="form-control" rows="4" 
-                              placeholder="Please provide a detailed reason for this allocation change request. This is mandatory for Director review."
-                              required></textarea>
-                    <small class="form-text" style="color: var(--danger);">⚠️ This field is mandatory</small>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button type="button" class="btn btn-cancel" onclick="closeRequestAllocationChangeModal()">Cancel</button>
-            <button type="button" class="btn btn-primary btn-large" onclick="submitAllocationChangeRequest()">
-                <span class="btn-icon">📤</span> Submit to Director
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- FEATURE 1: Director Approval Queue Modal    -->
-<!-- ============================================ -->
-<div id="directorAllocationRequestsModal" class="modal" style="display: none;">
-    <div class="modal-content new-modal allocation-modal-large" style="max-width: 1000px; max-height: 90vh;">
-        <div class="modal-header">
-            <div>
-                <h2>📋 Allocation Change Requests</h2>
-                <div class="subtitle">Review and approve/reject COO allocation change requests</div>
-            </div>
-            <span class="close-modal" onclick="closeDirectorAllocationRequestsModal()">&times;</span>
-        </div>
-        
-        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-            <div id="allocationRequestsList">
-                <!-- Requests will be loaded here -->
-                <div style="text-align: center; padding: 3rem; color: var(--text-light);">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
-                    <p>Loading requests...</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button type="button" class="btn btn-outline" onclick="closeDirectorAllocationRequestsModal()">Close</button>
-            <button type="button" class="btn btn-primary" onclick="loadAllocationRequests()">
-                🔄 Refresh
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- FEATURE 1: Director Review Single Request   -->
-<!-- ============================================ -->
-<div id="directorReviewRequestModal" class="modal" style="display: none;">
-    <div class="modal-content new-modal" style="max-width: 650px;">
-        <div class="modal-header">
-            <div>
-                <h2>🔍 Review Allocation Request</h2>
-                <div class="subtitle">Approve or reject this change request</div>
-            </div>
-            <span class="close-modal" onclick="closeDirectorReviewModal()">&times;</span>
-        </div>
-        
-        <div class="modal-body">
-            <input type="hidden" id="reviewRequestId" />
-            
-            <!-- Request Details -->
-            <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
-                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">📋 Request Details</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label style="font-size: 0.85rem; color: var(--text-light);">Project:</label>
-                        <div id="reviewProjectName" style="font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; color: var(--text-light);">Designer:</label>
-                        <div id="reviewDesignerName" style="font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; color: var(--text-light);">Requested By:</label>
-                        <div id="reviewRequestedBy" style="font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; color: var(--text-light);">Request Date:</label>
-                        <div id="reviewRequestDate" style="font-weight: 600;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Hours Change -->
-            <div class="form-section" style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
-                <h4 style="margin-bottom: 1rem; color: #92400e;">⏱️ Hours Change</h4>
-                <div style="display: flex; align-items: center; justify-content: space-around;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 0.85rem; color: #92400e;">Current</div>
-                        <div id="reviewCurrentHours" style="font-size: 2rem; font-weight: 700; color: #b45309;"></div>
-                    </div>
-                    <div style="font-size: 2rem; color: #92400e;">→</div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 0.85rem; color: #92400e;">Requested</div>
-                        <div id="reviewRequestedHours" style="font-size: 2rem; font-weight: 700; color: #b45309;"></div>
-                    </div>
-                    <div id="reviewHoursDiff" style="text-align: center; padding: 0.5rem 1rem; border-radius: 8px;"></div>
-                </div>
-            </div>
-            
-            <!-- COO Reason -->
-            <div class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
-                <h4 style="margin-bottom: 0.5rem; color: #1e40af;">💬 COO's Reason</h4>
-                <div id="reviewCooReason" style="font-style: italic; color: #1e3a8a;"></div>
-            </div>
-            
-            <!-- Director's Decision -->
-            <div class="form-section">
-                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">✍️ Your Decision</h4>
-                
-                <div class="form-group">
-                    <label>Final Approved Hours (you can adjust)</label>
-                    <input type="number" id="reviewFinalHours" class="form-control" 
-                           min="0" step="0.5" placeholder="Leave blank to use requested hours">
-                    <small class="form-text">Leave blank to approve the requested hours as-is</small>
-                </div>
-                
-                <div class="form-group">
-                    <label>Comment (optional for approval, required for rejection)</label>
-                    <textarea id="reviewDirectorComment" class="form-control" rows="3" 
-                              placeholder="Add your comments..."></textarea>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button type="button" class="btn btn-cancel" onclick="closeDirectorReviewModal()">Cancel</button>
-            <button type="button" class="btn btn-danger" onclick="rejectAllocationRequest()">
-                ❌ Reject
-            </button>
-            <button type="button" class="btn btn-success btn-large" onclick="approveAllocationRequest()">
-                ✅ Approve
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- FEATURE 2: COO Direct Edit Allocation Modal -->
-<!-- ============================================ -->
-<div id="cooEditAllocationModal" class="modal" style="display: none;">
-    <div class="modal-content new-modal" style="max-width: 800px;">
-        <div class="modal-header">
-            <div>
-                <h2>✏️ Edit Designer Allocations</h2>
-                <div class="subtitle">Directly adjust hours for assigned designers</div>
-            </div>
-            <span class="close-modal" onclick="closeCooEditAllocationModal()">&times;</span>
-        </div>
-        
-        <div class="modal-body">
-            <input type="hidden" id="editAllocProjectId" />
-            
-            <!-- Project Summary -->
-            <div class="form-section" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Project:</label>
-                        <div id="editAllocProjectName" style="font-size: 1rem; font-weight: 600;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Max Budget:</label>
-                        <div id="editAllocMaxBudget" style="font-size: 1.2rem; font-weight: 700;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Currently Allocated:</label>
-                        <div id="editAllocCurrentTotal" style="font-size: 1.2rem; font-weight: 700;"></div>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; opacity: 0.9;">Remaining:</label>
-                        <div id="editAllocRemaining" style="font-size: 1.2rem; font-weight: 700;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Designer List -->
-            <div class="form-section">
-                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">👥 Assigned Designers</h4>
-                <div id="editAllocDesignerList">
-                    <!-- Designer rows will be loaded here -->
-                    <div style="text-align: center; padding: 2rem; color: var(--text-light);">
-                        Loading designers...
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Request Change Option -->
-            <div class="form-section" style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
-                    <strong>💡 Note:</strong> For changes beyond budget limits, use "Request Change" to submit for Director approval.
-                </p>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button type="button" class="btn btn-danger"
-                    onclick="clearProjectAllocation(document.getElementById('editAllocProjectId').value, document.getElementById('editAllocProjectName').textContent)"
-                    title="Remove the Design Lead and all designer allocations">
-                🗑️ Delete Full Allocation
-            </button>
-            <button type="button" class="btn btn-cancel" onclick="closeCooEditAllocationModal()">Close</button>
-        </div>
-    </div>
-</div>
-
-<script>
 // ============================================
 // FEATURE 1 & 2: ALLOCATION CHANGE MANAGEMENT
 // ============================================
@@ -15992,242 +15320,8 @@ async function approveITTicket(ticketId, decision) {
 
 console.log('✅ IT Portal Module loaded');
 
-</script>
-
-<!-- ============================================
-     DESIGN FILE UPLOAD & APPROVAL MODALS
-     ============================================ -->
-
-<!-- Design File Upload Modal -->
-<div id="designFileUploadModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 550px;">
-        <div class="modal-header">
-            <h3>📤 Upload Design File</h3>
-            <button class="close-btn" onclick="closeDesignUploadModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <input type="hidden" id="designUploadProjectId">
-            <input type="hidden" id="designUploadProjectName">
-            
-            <!-- Project Info Display -->
-            <div class="client-preview-box" style="margin-bottom: 20px;">
-                <div class="client-preview-label">Project</div>
-                <div class="client-preview-value" id="designUploadProjectDisplay">-</div>
-            </div>
-            
-            <!-- Upload Type Toggle -->
-            <div class="form-group">
-                <label>Upload Type <span style="color: red;">*</span></label>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <button type="button" id="uploadTypeFile" class="btn btn-primary" onclick="setUploadType('file')" style="flex: 1;">
-                        📄 Upload PDF File
-                    </button>
-                    <button type="button" id="uploadTypeLink" class="btn btn-secondary" onclick="setUploadType('link')" style="flex: 1;">
-                        🔗 Add External Link
-                    </button>
-                </div>
-            </div>
-            
-            <!-- File Upload Zone (shown by default) -->
-            <div id="fileUploadSection">
-                <div class="form-group">
-                    <label>Design File (PDF) <span style="color: red;">*</span></label>
-                    <div class="upload-dropzone" id="designDropzone" onclick="document.getElementById('designFileInput').click()">
-                        <div class="upload-icon">📄</div>
-                        <div class="upload-text">Click to upload or drag and drop</div>
-                        <div class="upload-hint">PDF files only (Max 50MB)</div>
-                    </div>
-                    <input type="file" id="designFileInput" accept=".pdf" style="display: none;" onchange="handleDesignFileSelect(this)">
-                    <div id="selectedFileInfo" class="selected-file-info" style="display: none;">
-                        <span class="selected-file-icon">📄</span>
-                        <div class="selected-file-details">
-                            <div class="selected-file-name" id="selectedFileName">-</div>
-                            <div class="selected-file-size" id="selectedFileSize">-</div>
-                        </div>
-                        <button type="button" onclick="clearSelectedFile()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">✕</button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Link Upload Section (hidden by default) -->
-            <div id="linkUploadSection" style="display: none;">
-                <div class="form-group">
-                    <label>External Link <span style="color: red;">*</span></label>
-                    <input type="url" id="designExternalLink" class="form-control" placeholder="https://drive.google.com/file/d/..." style="margin-bottom: 8px;">
-                    <small style="color: #64748b;">Paste link from Google Drive, Dropbox, OneDrive, or any file sharing service</small>
-                </div>
-                <div class="form-group">
-                    <label>Link Title/File Name <span style="color: red;">*</span></label>
-                    <input type="text" id="designLinkTitle" class="form-control" placeholder="Project_Design_v1.pdf">
-                    <small style="color: #64748b;">A descriptive name for the linked file</small>
-                </div>
-            </div>
-            
-            <!-- Notes -->
-            <div class="form-group">
-                <label>Notes (Optional)</label>
-                <textarea id="designNotes" class="form-control" rows="2" placeholder="Any notes for the COO reviewer..."></textarea>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeDesignUploadModal()">Cancel</button>
-            <button class="btn btn-primary" id="designUploadBtn" onclick="uploadDesignFile()">
-                📤 Upload
-            </button>
-        </div>
-    </div>
-</div>
 
 
-<!-- COO Design Approval Modal -->
-<div id="designApprovalModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-            <h3>📐 Review Design File</h3>
-            <button class="close-btn" onclick="closeDesignApprovalModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <input type="hidden" id="approvalDesignFileId">
-            <input type="hidden" id="approvalProjectId">
-            
-            <!-- File Details -->
-            <div class="client-preview-box">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <div class="client-preview-label">Project</div>
-                        <div class="client-preview-value" id="approvalProjectName">-</div>
-                    </div>
-                    <div>
-                        <div class="client-preview-label">Client</div>
-                        <div class="client-preview-value" id="approvalClientCompany">-</div>
-                    </div>
-                    <div>
-                        <div class="client-preview-label">File Name</div>
-                        <div class="client-preview-value" id="approvalFileName">-</div>
-                    </div>
-                    <div>
-                        <div class="client-preview-label">Type</div>
-                        <div class="client-preview-value" id="approvalFileType">-</div>
-                    </div>
-                    <div>
-                        <div class="client-preview-label">Submitted By</div>
-                        <div class="client-preview-value" id="approvalSubmittedBy">-</div>
-                    </div>
-                </div>
-                <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 6px;">
-                    <small style="color: #92400e;">ℹ️ Client delivery details will be entered by Document Controller when sending.</small>
-                </div>
-            </div>
-            
-            <!-- Preview Button -->
-            <div style="text-align: center; margin: 20px 0;">
-                <a id="approvalPreviewLink" href="#" target="_blank" class="btn btn-secondary">
-                    👁️ Preview Design File
-                </a>
-            </div>
-            
-            <!-- Designer Notes -->
-            <div id="approvalDesignerNotes" style="display: none;">
-                <label style="font-weight: 600; color: #1e293b;">Designer Notes:</label>
-                <p id="approvalDesignerNotesText" style="background: #f8fafc; padding: 12px; border-radius: 8px; color: #475569; margin-top: 8px;"></p>
-            </div>
-            
-            <!-- Approval/Rejection Notes -->
-            <div class="form-group" style="margin-top: 20px;">
-                <label>Your Notes (Optional)</label>
-                <textarea id="approvalNotes" class="form-control" rows="3" placeholder="Add any notes or feedback..."></textarea>
-            </div>
-            
-            <!-- Rejection Reason (shown when rejecting) -->
-            <div id="rejectionReasonSection" class="form-group" style="display: none;">
-                <label>Rejection Reason <span style="color: red;">*</span></label>
-                <textarea id="rejectionReason" class="form-control" rows="3" placeholder="Please explain why this design file cannot be approved..."></textarea>
-            </div>
-        </div>
-        <div class="modal-footer" style="justify-content: space-between;">
-            <button class="btn btn-danger" onclick="toggleRejectionMode()">
-                ❌ Reject
-            </button>
-            <div>
-                <button class="btn btn-secondary" onclick="closeDesignApprovalModal()">Cancel</button>
-                <button class="btn btn-success" id="approveDesignBtn" onclick="approveDesignFile()">
-                    ✅ Approve
-                </button>
-                <button class="btn btn-danger" id="confirmRejectBtn" onclick="rejectDesignFile()" style="display: none;">
-                    ❌ Confirm Rejection
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Send to Client Modal -->
-<div id="sendToClientModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 550px;">
-        <div class="modal-header">
-            <h3>📧 Send Design to Client</h3>
-            <button class="close-btn" onclick="closeSendToClientModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <input type="hidden" id="sendDesignFileId">
-            <input type="hidden" id="sendProjectId">
-            
-            <!-- Success Banner -->
-            <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.5rem;">✅</span>
-                    <div>
-                        <strong style="color: #166534;">Design Approved!</strong>
-                        <p style="margin: 5px 0 0 0; color: #15803d; font-size: 0.9rem;">Ready to send to the client</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Send Details -->
-            <div class="client-preview-box">
-                <div style="display: grid; gap: 12px;">
-                    <div>
-                        <div class="client-preview-label">Project</div>
-                        <div class="client-preview-value" id="sendProjectName">-</div>
-                    </div>
-                    <div>
-                        <div class="client-preview-label">File</div>
-                        <div class="client-preview-value" id="sendFileName">-</div>
-                    </div>
-                    <div>
-                        <div class="client-preview-label">Sending To</div>
-                        <div class="client-preview-value" id="sendClientEmail" style="color: #2563eb; font-size: 1.1rem;">-</div>
-                        <div id="sendClientName" style="color: #64748b; font-size: 0.9rem; margin-top: 3px;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Custom Message -->
-            <div class="form-group" style="margin-top: 20px;">
-                <label>Custom Message (Optional)</label>
-                <textarea id="sendCustomMessage" class="custom-message-input" placeholder="Add a personalized message to include in the email to the client..."></textarea>
-                <small style="color: #64748b;">This will appear in the email body sent to the client</small>
-            </div>
-            
-            <!-- Warning -->
-            <div style="background: #fef3c7; padding: 12px 15px; border-radius: 8px; margin-top: 15px;">
-                <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
-                    ⚠️ <strong>Note:</strong> Once sent, the client will receive a professional email with a download link to the design file.
-                </p>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeSendToClientModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="sendDesignToClient()">
-                📧 Send to Client
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Safety script to force show Design Approval menu for COO/Director -->
-<script>
 // Run after page is fully loaded
 window.addEventListener('load', function() {
     setTimeout(function() {

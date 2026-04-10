@@ -24905,7 +24905,7 @@ async function submitProposalAllocation() {
                 
                 // Build project lookup map for project number display
                 const projectLookup = {};
-                assignedProjects.forEach(p => { if (p.id) projectLookup[p.id] = p; });
+                projects.forEach(p => { if (p.id) projectLookup[p.id] = p; });
 
                 // Build entries table with proper date formatting and project number
                 const entriesHtml = entries.length > 0 ? entries.slice(0, 20).map(entry => {

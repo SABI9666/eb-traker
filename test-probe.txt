@@ -20691,4 +20691,858 @@ async function showCooMultiDesignerAllocationModal(projectId) {
         if (tech.clientPmName) document.getElementById('cooTechClientPmName').value = tech.clientPmName;
         if (tech.clientPmEmail) document.getElementById('cooTechClientPmEmail').value = tech.clientPmEmail;
         if (comm.accountName) document.getElementById('cooCommAccountName').value = comm.accountName;
-        if (comm.accountEmail) document.getElementById('cooCommAccountEmail').value = comm.accountEmail
+        if (comm.accountEmail) document.getElementById('cooCommAccountEmail').value = comm.accountEmail;
+        if (comm.bdmName) document.getElementById('cooCommBdmName').value = comm.bdmName;
+        if (comm.bdmEmail) document.getElementById('cooCommBdmEmail').value = comm.bdmEmail;
+
+        // ============================================
+        // ✅ CRITICAL FIX: TWO SCENARIOS LOGIC
+        // ============================================
+        
+        const totalHoursInput = document.getElementById('cooTotalProjectHours');
+        
+        // SCENARIO A: Estimator entered HOURS (not tonnage)
+        const estimationHours = parseFloat(project.estimation?.totalHours || 0);
+        const estimationUsedTonnage = project.estimation?.usedTonnageForDesign || false;
+        
+        // SCENARIO B: Previously saved Max Hours (from manual COO entry OR approved budget change)
+        const savedMaxHours = parseFloat(project.maxAllocatedHours || 0);
+        
+        // Already allocated hours in the system
+        const previouslyAllocated = parseFloat(project.totalAllocatedHours || 0);
+        
+        let totalBudget = 0;
+        let isLocked = false;
+        let hoursSource = '';
+        
+        // ============================================
+        // ✅ FIX: Check if budget was changed/approved by Director
+        // If maxAllocatedHours > estimationHours, Director approved a budget increase
+        // Always use the larger value as it represents the current approved budget
+        // ============================================
+        
+        // LOGIC FLOW:
+        if (savedMaxHours > 0 && savedMaxHours > estimationHours) {
+            // ✅ PRIORITY: Budget was changed/approved by Director - use maxAllocatedHours
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_approved_budget_change';
+            console.log('✅ Using approved budget change:', savedMaxHours, '(original estimation was:', estimationHours, ')');
+            
+        } else if (estimationHours > 0 && !estimationUsedTonnage) {
+            // ✅ SCENARIO A: Estimator entered HOURS directly
+            totalBudget = estimationHours;
+            isLocked = true;
+            hoursSource = 'from_estimation_hours';
+            console.log('✅ Scenario A: Using estimation hours (not tonnage)');
+            
+        } else if (estimationUsedTonnage && savedMaxHours > 0) {
+            // ✅ SCENARIO B: Estimator used TONNAGE, COO manually entered hours
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_coo_manual_tonnage';
+            console.log('✅ Scenario B: Using COO manual hours (tonnage case)');
+            
+        } else if (estimationUsedTonnage && savedMaxHours === 0) {
+            // ⚠️ SCENARIO B (Not Yet Completed): Tonnage entered, COO needs to enter hours
+            totalBudget = 0;
+            isLocked = false;
+            hoursSource = 'awaiting_coo_manual_entry';
+            console.log('⚠️ Scenario B (Incomplete): Tonnage entered, awaiting COO manual entry');
+            
+        } else if (savedMaxHours > 0) {
+            // Fallback: Previously saved hours exist
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_previous_entry';
+            console.log('✅ Fallback: Using previously saved hours');
+        }
+        
+        // Calculate remaining budget
+        const remainingBudget = Math.max(0, totalBudget - previouslyAllocated);
+        
+        // ============================================
+        // Set UI State based on scenario
+        // ============================================
+        
+        totalHoursInput.value = totalBudget > 0 ? totalBudget : '';
+        totalHoursInput.readOnly = isLocked;
+        
+        // Show/hide Edit Budget button
+        const editBudgetBtn = document.getElementById('editBudgetBtn');
+        if (editBudgetBtn) {
+            editBudgetBtn.style.display = isLocked && totalBudget > 0 ? 'inline-block' : 'none';
+        }
+        
+        if (isLocked) {
+            // Locked state - budget is set
+            totalHoursInput.style.backgroundColor = '#e9ecef';
+            totalHoursInput.style.border = '2px solid #10b981';
+            totalHoursInput.style.fontWeight = '700';
+            
+            if (hoursSource === 'from_approved_budget_change') {
+                totalHoursInput.title = "🔒 Locked: Budget approved by Director (increased from original)";
+            } else if (hoursSource === 'from_estimation_hours') {
+                totalHoursInput.title = "🔒 Locked: Hours from Estimator (not tonnage)";
+            } else if (hoursSource === 'from_coo_manual_tonnage') {
+                totalHoursInput.title = "🔒 Locked: Hours manually entered by COO (tonnage case)";
+            } else {
+                totalHoursInput.title = "🔒 Locked: Budget previously set";
+            }
+            
+        } else {
+            // Unlocked state - COO needs to enter hours
+            totalHoursInput.style.backgroundColor = '#fff8dc';
+            totalHoursInput.style.border = '2px solid #f59e0b';
+            totalHoursInput.style.fontWeight = '600';
+            totalHoursInput.placeholder = "⚠️ Enter Total Hours (Tonnage was used in estimation)";
+            totalHoursInput.title = "Manual entry required: Estimator used tonnage";
+        }
+        
+        // Store metadata for calculations
+        totalHoursInput.dataset.alreadyAllocated = previouslyAllocated;
+        totalHoursInput.dataset.hoursSource = hoursSource;
+        
+        // ============================================
+        // ✅ NEW: RENDER EXISTING ALLOCATIONS WITH EDIT
+        // ============================================
+        
+        renderExistingAllocations(project);
+        
+        // ============================================
+        // Designer Allocation Section State
+        // ============================================
+        
+        const designerContainer = document.getElementById('designerAllocationsContainer');
+        const addDesignerBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-outline[onclick="addDesignerAllocation()"]');
+        const submitBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-success');
+        
+        // Reset form
+        designerAllocationCounter = 0;
+        designerContainer.innerHTML = '';
+        document.getElementById('cooAllocationNotes').value = '';
+        document.getElementById('cooTargetCompletionDate').value = '';
+        document.getElementById('cooProjectPriority').value = 'Normal';
+        
+        // ============================================
+        // LOGIC: When to enable/disable Designer Allocation
+        // ============================================
+        
+        if (totalBudget === 0) {
+            // ⚠️ CASE 1: No budget set yet (awaiting COO manual entry)
+            designerContainer.innerHTML = `
+                <div class="alert alert-info" style="padding: 1.5rem; background: #e3f2fd; color: #0d47a1; border: 2px solid #2196f3; border-radius: 8px; text-align: center;">
+                    <h4 style="margin: 0 0 0.5rem 0;">ℹ️ Total Hours Required</h4>
+                    <p style="margin: 0;">Please enter the <strong>Total Allocated Hours</strong> above before allocating to designers.</p>
+                </div>
+            `;
+            
+            if (addDesignerBtn) addDesignerBtn.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Enter Hours First";
+                submitBtn.style.opacity = "0.5";
+            }
+            
+            // Add event listener to enable designer section when hours are entered
+            totalHoursInput.addEventListener('input', function() {
+                const enteredHours = parseFloat(this.value) || 0;
+                if (enteredHours > 0) {
+                    // Enable designer allocation section
+                    designerContainer.innerHTML = '';
+                    addDesignerAllocation();
+                    
+                    if (addDesignerBtn) addDesignerBtn.style.display = 'inline-block';
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "Allocate Project";
+                        submitBtn.style.opacity = "1";
+                    }
+                    
+                    updateRemainingHours();
+                }
+            });
+            
+        } else if (remainingBudget <= 0.1) {
+            // CASE 2: Fully Allocated (LOCK)
+            designerContainer.innerHTML = `
+                <div style="padding: 2rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border: 1px solid #6ee7b7; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(16,185,129,0.1);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #059669; border-radius: 50%; color: white; font-size: 1.4rem; margin-bottom: 0.75rem; box-shadow: 0 2px 6px rgba(5,150,105,0.3);">&#10003;</div>
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #064e3b;">Allocation Complete</h4>
+                    <p style="margin: 0; color: #065f46;">
+                        All hours have been successfully allocated<br>
+                        <span style="font-size: 1.3rem; font-weight: 700; color: #047857; letter-spacing: -0.02em;">${previouslyAllocated.toFixed(1)} / ${totalBudget.toFixed(1)} hours</span>
+                    </p>
+                    <p style="margin: 0.75rem 0 0 0; font-size: 0.85rem; color: #047857; opacity: 0.75;">To modify existing allocations, use the Edit buttons above.</p>
+                </div>
+            `;
+
+            if (addDesignerBtn) addDesignerBtn.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Fully Allocated";
+                submitBtn.style.opacity = "0.6";
+            }
+            
+        } else {
+            // ✅ CASE 3: Partial or New Allocation (ENABLED)
+            if (addDesignerBtn) addDesignerBtn.style.display = 'inline-block';
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Allocate Project";
+                submitBtn.style.opacity = "1";
+            }
+            
+            addDesignerAllocation(); // Add first row
+        }
+        
+        // Show modal
+        document.getElementById('cooMultiDesignerAllocationModal').style.display = 'flex';
+        
+        // Update visual display
+        updateRemainingHours();
+        
+    } catch (error) {
+        console.error('Error showing allocation modal:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Toggle project number edit mode
+ */
+function toggleProjectNumberEdit() {
+    const container = document.getElementById('projectNumberEditContainer');
+    const input = document.getElementById('projectNumberEditInput');
+    const currentNumber = document.getElementById('cooAllocProjectNumber').textContent;
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'flex';
+        input.value = currentNumber === 'N/A' ? '' : currentNumber;
+        input.focus();
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+/**
+ * Cancel project number edit
+ */
+function cancelProjectNumberEdit() {
+    document.getElementById('projectNumberEditContainer').style.display = 'none';
+}
+
+/**
+ * Save project number
+ */
+async function saveProjectNumber() {
+    const projectId = document.getElementById('cooAllocProjectId').value;
+    const newProjectNumber = document.getElementById('projectNumberEditInput').value.trim();
+    
+    if (!newProjectNumber) {
+        alert('Please enter a project number');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_project_number',
+                data: {
+                    projectNumber: newProjectNumber
+                }
+            })
+        });
+        
+        if (response.success) {
+            // Update display
+            document.getElementById('cooAllocProjectNumber').textContent = newProjectNumber;
+            document.getElementById('projectNumberEditContainer').style.display = 'none';
+            
+            // Update global project data
+            if (window.currentEditProject) {
+                window.currentEditProject.projectNumber = newProjectNumber;
+            }
+            
+            alert('✅ Project number updated successfully!');
+        } else {
+            throw new Error(response.error || 'Failed to update project number');
+        }
+    } catch (error) {
+        console.error('Error updating project number:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * ✅ NEW: Render existing designer allocations with edit capabilities
+ */
+function renderExistingAllocations(project) {
+    const section = document.getElementById('existingAllocationsSection');
+    const list = document.getElementById('existingAllocationsList');
+    const totalSpan = document.getElementById('existingAllocTotal');
+    
+    const designerHours = project.designerHours || {};
+    const designerUids = project.assignedDesignerUids || [];
+    const designerNames = project.assignedDesignerNames || [];
+    const designerEmails = project.assignedDesignerEmails || [];
+    
+    // Check if there are existing allocations
+    if (designerUids.length === 0 || Object.keys(designerHours).length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    // Calculate total existing hours
+    let totalExisting = 0;
+    designerUids.forEach(uid => {
+        totalExisting += parseFloat(designerHours[uid]) || 0;
+    });
+    
+    // Show section
+    section.style.display = 'block';
+    totalSpan.textContent = `Total: ${totalExisting.toFixed(1)}h`;
+    
+    // Render each designer allocation
+    list.innerHTML = designerUids.map((uid, index) => {
+        const name = designerNames[index] || 'Unknown Designer';
+        const email = designerEmails[index] || '';
+        const hours = parseFloat(designerHours[uid]) || 0;
+        
+        return `
+            <div class="designer-edit-row" id="existingAlloc_${uid}" data-uid="${uid}" data-original="${hours}" 
+                 style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; border: 1px solid #e5e7eb;">
+                <div class="designer-edit-info" style="flex: 1;">
+                    <div class="name" style="font-weight: 600; color: #1f2937;">👤 ${name}</div>
+                    <div class="email" style="font-size: 0.85rem; color: #6b7280;">${email}</div>
+                </div>
+                <div class="designer-edit-hours" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="existingHours_${uid}" class="form-control existing-hours-input" 
+                           value="${hours}" min="0" step="0.5" data-original="${hours}"
+                           style="width: 100px; text-align: center; font-weight: 600;"
+                           onchange="highlightExistingHoursChange('${uid}')">
+                    <span style="color: #6b7280;">hours</span>
+                </div>
+                <div class="designer-edit-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="saveExistingDesignerHours('${uid}', '${(name || '').replace(/'/g, "\\'")}', '${(email || '').replace(/'/g, "\\'")}')"
+                            style="padding: 0.4rem 0.75rem;">
+                        💾 Save
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm"
+                            title="Delete this allocation"
+                            onclick="deleteExistingDesignerAllocation('${uid}', '${(name || '').replace(/'/g, "\\'")}', ${hours})"
+                            style="padding: 0.4rem 0.75rem;">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Delete an existing designer allocation from inside the COO multi-designer modal.
+ * Used when the wrong designer or wrong hours were entered earlier.
+ */
+async function deleteExistingDesignerAllocation(designerUid, designerName, currentHours) {
+    const projectId = window.currentEditProjectId;
+    if (!projectId) {
+        alert('⚠️ Project ID missing');
+        return;
+    }
+
+    const reason = prompt(
+        `Delete ${designerName}'s allocation (${currentHours}h)?\n\n` +
+        `This will remove the designer from this project entirely.\n\n` +
+        `Please enter a reason (required):`
+    );
+
+    if (reason === null) return;
+    if (!reason || reason.trim().length < 3) {
+        alert('⚠️ A reason (at least 3 characters) is required to delete this allocation.');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_designer_allocation',
+                data: {
+                    designerUid: designerUid,
+                    reason: reason.trim()
+                }
+            })
+        });
+
+        if (response.success) {
+            alert(`✅ ${designerName}'s allocation has been removed.`);
+
+            // Update local cache
+            if (window.currentEditProject) {
+                const proj = window.currentEditProject;
+                proj.designerHours = proj.designerHours || {};
+                const removedHrs = parseFloat(proj.designerHours[designerUid]) || 0;
+                delete proj.designerHours[designerUid];
+
+                const idx = (proj.assignedDesignerUids || []).indexOf(designerUid);
+                if (idx !== -1) {
+                    proj.assignedDesignerUids.splice(idx, 1);
+                    if (proj.assignedDesignerNames) proj.assignedDesignerNames.splice(idx, 1);
+                    if (proj.assignedDesignerEmails) proj.assignedDesignerEmails.splice(idx, 1);
+                }
+
+                proj.totalAllocatedHours = Math.max(0, (parseFloat(proj.totalAllocatedHours) || 0) - removedHrs);
+
+                // If the deleted designer was the Design Lead, clear those fields too
+                if (proj.designLeadUid === designerUid) {
+                    proj.designLeadUid = null;
+                    proj.designLeadName = null;
+                    proj.designLeadEmail = null;
+                }
+
+                // Re-render the existing allocations list
+                if (typeof renderExistingAllocations === 'function') {
+                    renderExistingAllocations(proj);
+                }
+                if (typeof updateRemainingHoursWithExisting === 'function') {
+                    updateRemainingHoursWithExisting();
+                }
+            }
+
+            // Refresh project listings if available
+            if (typeof showAllProjects === 'function') {
+                try { await showAllProjects(); } catch (e) {}
+            }
+        } else {
+            throw new Error(response.error || 'Failed to delete allocation');
+        }
+    } catch (error) {
+        console.error('Error deleting allocation:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Highlight changed hours in existing allocations
+ */
+function highlightExistingHoursChange(designerUid) {
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const original = parseFloat(input.dataset.original) || 0;
+    const current = parseFloat(input.value) || 0;
+    
+    if (current !== original) {
+        input.style.border = '2px solid #f59e0b';
+        input.style.background = '#fef3c7';
+    } else {
+        input.style.border = '';
+        input.style.background = '';
+    }
+    
+    // Also update the remaining hours display
+    updateRemainingHoursWithExisting();
+}
+
+/**
+ * Update remaining hours considering existing allocation changes
+ */
+function updateRemainingHoursWithExisting() {
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value) || 0;
+    
+    // Calculate existing allocations (current values in inputs)
+    let existingTotal = 0;
+    document.querySelectorAll('.existing-hours-input').forEach(input => {
+        existingTotal += parseFloat(input.value) || 0;
+    });
+    
+    // Get new session allocation
+    let newSessionTotal = 0;
+    document.querySelectorAll('.hours-input').forEach(input => {
+        newSessionTotal += parseFloat(input.value) || 0;
+    });
+    
+    const totalAllocated = existingTotal + newSessionTotal;
+    const remaining = totalBudget - totalAllocated;
+    
+    // Update display
+    const remainingDisplay = document.getElementById('cooRemainingHours');
+    if (remainingDisplay) {
+        remainingDisplay.innerHTML = `
+            <div style="font-size: 1.8rem; font-weight: 700; color: ${remaining < 0 ? 'var(--danger)' : remaining === 0 ? 'var(--success)' : 'var(--warning)'}">
+                ${remaining >= 0 ? remaining.toFixed(1) : '(' + Math.abs(remaining).toFixed(1) + ')'} hrs
+            </div>
+            <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8; line-height: 1.3;">
+                <div><strong>Total Budget:</strong> ${totalBudget.toFixed(1)} hrs</div>
+                ${existingTotal > 0 ? `<div><strong>Existing Allocations:</strong> ${existingTotal.toFixed(1)} hrs</div>` : ''}
+                ${newSessionTotal > 0 ? `<div><strong>New Allocations:</strong> ${newSessionTotal.toFixed(1)} hrs</div>` : ''}
+                <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 0.3rem; padding-top: 0.3rem;">
+                    <strong>Total Allocated:</strong> ${totalAllocated.toFixed(1)} hrs
+                </div>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Save existing designer hours directly (within budget)
+ */
+async function saveExistingDesignerHours(designerUid, designerName, designerEmail) {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const newHours = parseFloat(input.value) || 0;
+    const oldHours = parseFloat(input.dataset.original) || 0;
+    
+    if (newHours === oldHours) {
+        alert('No changes to save');
+        return;
+    }
+    
+    // Check if within budget
+    const maxBudget = parseFloat(project.maxAllocatedHours) || 0;
+    const currentTotal = parseFloat(project.totalAllocatedHours) || 0;
+    const hoursDiff = newHours - oldHours;
+    const newTotal = currentTotal + hoursDiff;
+    
+    if (maxBudget > 0 && newTotal > maxBudget + 0.1) {
+        const exceed = (newTotal - maxBudget).toFixed(1);
+        alert(`⚠️ Cannot save: This would exceed the budget by ${exceed} hours.\n\nUse "Request" to submit for Director approval.`);
+        return;
+    }
+    
+    const confirmMsg = `Update ${designerName}'s allocation?\n\nCurrent: ${oldHours}h\nNew: ${newHours}h\nChange: ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_designer_allocation',
+                data: {
+                    designerUid,
+                    designerName,
+                    designerEmail,
+                    newAllocatedHours: newHours,
+                    reason: `Direct edit by COO: ${oldHours}h → ${newHours}h`
+                }
+            })
+        });
+        
+        if (response.success) {
+            alert(`✅ ${designerName}'s hours updated to ${newHours}h`);
+            
+            // Update local data
+            input.dataset.original = newHours;
+            input.style.border = '2px solid #10b981';
+            input.style.background = '#d1fae5';
+            
+            // Update stored project data
+            window.currentEditProject.designerHours = window.currentEditProject.designerHours || {};
+            window.currentEditProject.designerHours[designerUid] = newHours;
+            window.currentEditProject.totalAllocatedHours = newTotal;
+            
+            // Update totals display
+            const totalSpan = document.getElementById('existingAllocTotal');
+            if (totalSpan) {
+                let existingTotal = 0;
+                document.querySelectorAll('.existing-hours-input').forEach(inp => {
+                    existingTotal += parseFloat(inp.value) || 0;
+                });
+                totalSpan.textContent = `Total: ${existingTotal.toFixed(1)}h`;
+            }
+            
+            // Update remaining hours
+            document.getElementById('cooTotalProjectHours').dataset.alreadyAllocated = newTotal;
+            updateRemainingHours();
+            
+            setTimeout(() => {
+                input.style.border = '';
+                input.style.background = '';
+            }, 2000);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update hours');
+        }
+    } catch (error) {
+        console.error('Error updating hours:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Request hours change that exceeds budget (opens Director approval modal)
+ */
+function requestHoursChangeFromModal(designerUid, designerName, designerEmail, currentHours) {
+    const projectId = window.currentEditProjectId;
+    
+    // Close current modal
+    closeCooMultiDesignerModal();
+    
+    // Open request modal
+    showRequestAllocationChangeModal(projectId, designerUid, designerName, designerEmail, currentHours);
+}
+
+/**
+ * Request budget change (requires Director approval) - Opens modal
+ */
+function toggleBudgetEdit() {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const currentBudget = parseFloat(project.maxAllocatedHours) || 0;
+    
+    // Show the budget change modal
+    showBudgetChangeModal(projectId, project.projectName, currentBudget);
+}
+
+/**
+ * Show Budget Change Request Modal
+ */
+function showBudgetChangeModal(projectId, projectName, currentBudget) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('budgetChangeModal');
+    if (!modal) {
+        const modalHtml = `
+            <div id="budgetChangeModal" class="modal" style="display: none;">
+                <div class="modal-content new-modal" style="max-width: 550px;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div>
+                            <h2 style="color: white;">📊 Request Budget Change</h2>
+                            <div class="subtitle" style="color: rgba(255,255,255,0.9);">Requires Director Approval</div>
+                        </div>
+                        <span class="close-modal" onclick="closeBudgetChangeModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <input type="hidden" id="budgetChangeProjectId" />
+                        
+                        <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #f59e0b;">
+                            <div style="font-weight: 600; color: #92400e;" id="budgetChangeProjectName"></div>
+                            <div style="font-size: 0.9rem; color: #b45309;">Current Budget: <strong id="budgetChangeCurrent">0</strong> hours</div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="budgetChangeNewHours" style="font-weight: 600;">New Budget Hours <span class="required">*</span></label>
+                            <input type="number" id="budgetChangeNewHours" class="form-control" 
+                                   placeholder="Enter new total budget hours" min="1" step="0.5" required
+                                   oninput="updateBudgetChangeDiff()"
+                                   style="font-size: 1.1rem; padding: 0.75rem;">
+                            <div id="budgetChangeDiff" style="margin-top: 0.5rem; font-weight: 600;"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="budgetChangeReason" style="font-weight: 600;">Reason for Change <span class="required">*</span></label>
+                            <textarea id="budgetChangeReason" class="form-control" rows="4" required
+                                      placeholder="Please explain why the budget needs to be changed...&#10;&#10;Example: Additional scope added by client, unforeseen complexity, etc."
+                                      style="resize: vertical;"></textarea>
+                            <small class="form-text" style="color: #6b7280;">This comment is mandatory and will be sent to the Director for review.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-cancel" onclick="closeBudgetChangeModal()">Cancel</button>
+                        <button type="button" class="btn btn-warning" onclick="submitBudgetChangeFromModal()" style="background: #f59e0b; border-color: #f59e0b;">
+                            📤 Submit for Approval
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('budgetChangeModal');
+    }
+    
+    // Populate modal
+    document.getElementById('budgetChangeProjectId').value = projectId;
+    document.getElementById('budgetChangeProjectName').textContent = projectName;
+    document.getElementById('budgetChangeCurrent').textContent = currentBudget.toFixed(1);
+    document.getElementById('budgetChangeNewHours').value = '';
+    document.getElementById('budgetChangeReason').value = '';
+    document.getElementById('budgetChangeDiff').innerHTML = '';
+    
+    // Store current budget for calculation
+    document.getElementById('budgetChangeNewHours').dataset.current = currentBudget;
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close budget change modal
+ */
+function closeBudgetChangeModal() {
+    const modal = document.getElementById('budgetChangeModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Update budget change difference display
+ */
+function updateBudgetChangeDiff() {
+    const input = document.getElementById('budgetChangeNewHours');
+    const current = parseFloat(input.dataset.current) || 0;
+    const newValue = parseFloat(input.value) || 0;
+    const diff = newValue - current;
+    
+    const diffDisplay = document.getElementById('budgetChangeDiff');
+    
+    if (newValue > 0) {
+        if (diff > 0) {
+            diffDisplay.innerHTML = `<span style="color: #059669;">↑ Increase by ${diff.toFixed(1)} hours</span>`;
+        } else if (diff < 0) {
+            diffDisplay.innerHTML = `<span style="color: #dc2626;">↓ Decrease by ${Math.abs(diff).toFixed(1)} hours</span>`;
+        } else {
+            diffDisplay.innerHTML = `<span style="color: #6b7280;">No change</span>`;
+        }
+    } else {
+        diffDisplay.innerHTML = '';
+    }
+}
+
+/**
+ * Submit budget change request from modal
+ */
+async function submitBudgetChangeFromModal() {
+    const projectId = document.getElementById('budgetChangeProjectId').value;
+    const currentBudget = parseFloat(document.getElementById('budgetChangeNewHours').dataset.current) || 0;
+    const newBudget = parseFloat(document.getElementById('budgetChangeNewHours').value);
+    const reason = document.getElementById('budgetChangeReason').value.trim();
+    
+    // Validation
+    if (!newBudget || newBudget <= 0) {
+        alert('Please enter a valid new budget hours');
+        return;
+    }
+    
+    if (newBudget === currentBudget) {
+        alert('New budget is the same as current budget');
+        return;
+    }
+    
+    if (!reason) {
+        alert('Please provide a reason for the budget change. This is required for Director approval.');
+        document.getElementById('budgetChangeReason').focus();
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const project = window.currentEditProject;
+        
+        const response = await apiCall('allocation-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: projectId,
+                requestType: 'budget_change',
+                currentBudget: currentBudget,
+                requestedBudget: newBudget,
+                reason: reason,
+                projectName: project.projectName,
+                projectCode: project.projectNumber || project.projectCode,
+                clientCompany: project.clientCompany
+            })
+        });
+        
+        if (response.success) {
+            closeBudgetChangeModal();
+            alert(`✅ Budget change request submitted!\n\nCurrent: ${currentBudget}h\nRequested: ${newBudget}h\n\nAwaiting Director approval.`);
+        } else {
+            throw new Error(response.error || 'Failed to submit request');
+        }
+    } catch (error) {
+        console.error('Error submitting budget change:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Add a new designer allocation row
+ */
+function addDesignerAllocation() {
+    // Enforce max 2 design leads
+    const existingRows = document.querySelectorAll('.designer-allocation-row');
+    if (existingRows.length >= 2) {
+        alert('Maximum 2 design leads can be assigned per project.');
+        return;
+    }
+
+    designerAllocationCounter++;
+    const container = document.getElementById('designerAllocationsContainer');
+
+    const rowHtml = `
+        <div class="designer-allocation-row" id="designerRow${designerAllocationCounter}">
+            <div class="designer-row-header">
+                <div class="designer-row-number">${designerAllocationCounter}</div>
+                ${existingRows.length >= 1 ? `
+                    <button type="button" class="remove-designer-btn" onclick="removeDesignerAllocation(${designerAllocationCounter})">
+                        ✕ Remove
+                    </button>
+                ` : ''}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>Select Design Lead <span class="required">*</span></label>
+                    <select class="form-control designer-select" id="designer${designerAllocationCounter}"
+                            onchange="validateDesignerSelection()" required>
+                        <option value="">-- Select Design Lead --</option>
+                        ${availableDesigners.map(d => `
+                            <option value="${d.uid}"
+                                    data-name="${d.name}"
+                                    data-email="${d.email}"
+                                    data-role="${d.roleType}">
+                                👔 ${d.name} (${d.email})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group" style="flex: 1;">
+                    <label>Allocated Hours <span class="required">*</span></label>
+                    <input type="number" class="form-control hours-input"
+                           id="hours${designerAllocationCounter}"
+                           placeholder="0" min="0.5" step="0.5"
+                           oninput="updateRemainingHours()" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Specific Instructions (Optional)</label>
+                <textarea class="form-control" id="notes${designerAllocationCounter}"
+                          rows="2" placeholder="Any specific tasks or focus areas for this design lead..."></textarea>
+            </div>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', rowHtml);
+    updateRemainingHours();
+
+    // Hide "Add Design Lead" button if already at 2
+    const updatedRows = document.querySelectorAll('.designer-allocation-row');
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn && updatedRows.length >= 2)

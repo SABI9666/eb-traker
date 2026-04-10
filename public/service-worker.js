@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.9.0 - Cache Version 49 (Restore app1.js + app2.js)
+// Version: 6.0.0 - Cache Version 50 (Fix broken JS cache)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v49';
-const STATIC_CACHE = 'ebtracker-static-v49';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v49';
+const CACHE_NAME = 'ebtracker-v50';
+const STATIC_CACHE = 'ebtracker-static-v50';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v50';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -41,20 +41,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v49: Installing...');
+  console.log('🔧 Service Worker v50: Installing...');
   
   event.waitUntil(
     Promise.all([
       // Cache static assets
       caches.open(STATIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v49: Caching static assets');
+          console.log('📦 Service Worker v50: Caching static assets');
           return cache.addAll(STATIC_ASSETS);
         }),
       // Cache external scripts (Firebase SDK including Storage)
       caches.open(DYNAMIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v49: Caching Firebase SDK');
+          console.log('📦 Service Worker v50: Caching Firebase SDK');
           return Promise.all(
             EXTERNAL_SCRIPTS.map(url => 
               cache.add(url).catch(err => {
@@ -65,11 +65,11 @@ self.addEventListener('install', (event) => {
         })
     ])
     .then(() => {
-      console.log('✅ Service Worker v49: All assets cached');
+      console.log('✅ Service Worker v50: All assets cached');
       return self.skipWaiting();
     })
     .catch((error) => {
-      console.error('❌ Service Worker v49: Cache failed', error);
+      console.error('❌ Service Worker v50: Cache failed', error);
     })
   );
 });
@@ -78,7 +78,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v49: Activating...');
+  console.log('🚀 Service Worker v50: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -88,16 +88,16 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            // Delete any cache that's not in our valid list
+            // Delete any cache that's not in our valid list (including all v49 caches)
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v49: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v50: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v49: Activated - Old caches cleared');
+        console.log('✅ Service Worker v50: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -105,12 +105,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v49: Notifying clients to refresh');
+        console.log('📢 Service Worker v50: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v49',
-            message: 'New version available! app1.js + app2.js loaded. Please refresh.'
+            version: 'v50',
+            message: 'App restored! Fixed JS loaded. Please refresh.'
           });
         });
       })
@@ -272,20 +272,9 @@ function offlineFallback() {
           max-width: 400px;
           box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
-        .offline-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-        }
-        h1 {
-          color: #1f2937;
-          margin-bottom: 1rem;
-          font-size: 1.5rem;
-        }
-        p {
-          color: #6b7280;
-          margin-bottom: 2rem;
-          line-height: 1.6;
-        }
+        .offline-icon { font-size: 4rem; margin-bottom: 1rem; }
+        h1 { color: #1f2937; margin-bottom: 1rem; font-size: 1.5rem; }
+        p { color: #6b7280; margin-bottom: 2rem; line-height: 1.6; }
         .retry-btn {
           background: linear-gradient(135deg, #667eea, #764ba2);
           color: white;
@@ -295,22 +284,6 @@ function offlineFallback() {
           font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .retry-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        .retry-btn:active {
-          transform: translateY(0);
-        }
-        .status-info {
-          margin-top: 1.5rem;
-          padding: 1rem;
-          background: #f3f4f6;
-          border-radius: 10px;
-          font-size: 0.85rem;
-          color: #6b7280;
         }
       </style>
     </head>
@@ -318,17 +291,11 @@ function offlineFallback() {
       <div class="offline-container">
         <div class="offline-icon">📡</div>
         <h1>You're Offline</h1>
-        <p>Please check your internet connection and try again. EBTracker requires an active connection to sync your data.</p>
+        <p>Please check your internet connection and try again.</p>
         <button class="retry-btn" onclick="window.location.reload()">🔄 Try Again</button>
-        <div class="status-info">
-          <strong>Tip:</strong> Your data is safe! Any unsaved changes will sync when you're back online.
-        </div>
       </div>
       <script>
-        // Auto-retry when connection is restored
-        window.addEventListener('online', () => {
-          window.location.reload();
-        });
+        window.addEventListener('online', () => { window.location.reload(); });
       </script>
     </body>
     </html>
@@ -341,215 +308,90 @@ function offlineFallback() {
 // PUSH NOTIFICATIONS
 // ==============================
 self.addEventListener('push', (event) => {
-  console.log('📬 Push notification received');
-  
   let data = {
     title: 'EBTracker',
     body: 'New notification from EBTracker',
     icon: '/icons/icon-192x192.png',
     url: '/'
   };
-  
   if (event.data) {
-    try {
-      data = { ...data, ...event.data.json() };
-    } catch (e) {
-      data.body = event.data.text();
-    }
+    try { data = { ...data, ...event.data.json() }; } catch (e) { data.body = event.data.text(); }
   }
-  
-  const options = {
-    body: data.body,
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
-    vibrate: [100, 50, 100],
-    tag: data.tag || 'ebtracker-notification',
-    renotify: true,
-    requireInteraction: data.requireInteraction || false,
-    data: {
-      url: data.url || '/',
-      timestamp: Date.now()
-    },
-    actions: data.actions || []
-  };
-  
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      vibrate: [100, 50, 100],
+      tag: data.tag || 'ebtracker-notification',
+      renotify: true,
+      data: { url: data.url || '/', timestamp: Date.now() }
+    })
   );
 });
 
-// Handle notification click
 self.addEventListener('notificationclick', (event) => {
-  console.log('🔔 Notification clicked');
   event.notification.close();
-  
   const urlToOpen = event.notification.data?.url || '/';
-  
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // If app is already open, focus it
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
             client.navigate(urlToOpen);
             return client.focus();
           }
         }
-        // Otherwise open new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
+        if (clients.openWindow) return clients.openWindow(urlToOpen);
       })
   );
-});
-
-// Handle notification close
-self.addEventListener('notificationclose', (event) => {
-  console.log('🔕 Notification closed');
 });
 
 // ==============================
 // MESSAGE HANDLER
 // ==============================
 self.addEventListener('message', (event) => {
-  console.log('📨 Message received:', event.data);
-  
   if (!event.data) return;
-  
   switch (event.data.type) {
     case 'SKIP_WAITING':
-      console.log('⏭️ Skip waiting requested');
       self.skipWaiting();
       break;
-      
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v49', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v50', cache: CACHE_NAME });
       break;
-      
     case 'CLEAR_CACHE':
-      console.log('🗑️ Clear cache requested');
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
-      }).then(() => {
-        event.ports[0]?.postMessage({ success: true });
-      });
+      }).then(() => { event.ports[0]?.postMessage({ success: true }); });
       break;
-      
-    case 'CACHE_URLS':
-      if (event.data.urls && Array.isArray(event.data.urls)) {
-        caches.open(DYNAMIC_CACHE).then(cache => {
-          cache.addAll(event.data.urls);
-        });
-      }
-      break;
-      
     case 'FORCE_REFRESH':
-      console.log('🔄 Force refresh requested');
       caches.keys().then(names => {
         return Promise.all(names.map(name => caches.delete(name)));
-      }).then(() => {
-        event.ports[0]?.postMessage({ success: true, message: 'All caches cleared' });
-      });
+      }).then(() => { event.ports[0]?.postMessage({ success: true, message: 'All caches cleared' }); });
       break;
-      
     default:
       console.log('Unknown message type:', event.data.type);
   }
 });
 
-// ==============================
-// PERIODIC BACKGROUND SYNC (if supported)
-// ==============================
-self.addEventListener('periodicsync', (event) => {
-  console.log('🔄 Periodic sync:', event.tag);
-  
-  if (event.tag === 'update-cache') {
+self.addEventListener('sync', (event) => {
+  const syncMap = {
+    'sync-announcements': 'SYNC_ANNOUNCEMENTS',
+    'sync-leave-requests': 'SYNC_LEAVE_REQUESTS',
+    'sync-screening-data': 'SYNC_SCREENING',
+    'sync-design-files': 'SYNC_DESIGN_FILES',
+    'sync-timesheets': 'SYNC_TIMESHEETS'
+  };
+  if (syncMap[event.tag]) {
     event.waitUntil(
-      caches.open(DYNAMIC_CACHE).then(cache => {
-        return cache.addAll(STATIC_ASSETS);
+      self.clients.matchAll().then(clients => {
+        clients.forEach(c => c.postMessage({ type: syncMap[event.tag], timestamp: Date.now() }));
       })
     );
   }
 });
 
-// ==============================
-// BACKGROUND SYNC (for offline actions)
-// ==============================
-self.addEventListener('sync', (event) => {
-  console.log('🔄 Background sync:', event.tag);
-  
-  if (event.tag === 'sync-announcements') {
-    event.waitUntil(syncAnnouncements());
-  }
-  
-  if (event.tag === 'sync-leave-requests') {
-    event.waitUntil(syncLeaveRequests());
-  }
-  
-  if (event.tag === 'sync-screening-data') {
-    event.waitUntil(syncScreeningData());
-  }
-  
-  if (event.tag === 'sync-design-files') {
-    event.waitUntil(syncDesignFiles());
-  }
-  
-  if (event.tag === 'sync-timesheets') {
-    event.waitUntil(syncTimesheets());
-  }
-});
+self.addEventListener('error', (event) => { console.error('❌ SW Error:', event.error); });
+self.addEventListener('unhandledrejection', (event) => { console.error('❌ SW Unhandled:', event.reason); });
 
-async function syncAnnouncements() {
-  console.log('📢 Syncing announcements...');
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({ type: 'SYNC_ANNOUNCEMENTS', timestamp: Date.now() });
-  });
-  return Promise.resolve();
-}
-
-async function syncLeaveRequests() {
-  console.log('🏖️ Syncing leave requests...');
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({ type: 'SYNC_LEAVE_REQUESTS', timestamp: Date.now() });
-  });
-  return Promise.resolve();
-}
-
-async function syncScreeningData() {
-  console.log('📝 Syncing screening data...');
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({ type: 'SYNC_SCREENING', timestamp: Date.now() });
-  });
-  return Promise.resolve();
-}
-
-async function syncDesignFiles() {
-  console.log('📐 Syncing design files...');
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({ type: 'SYNC_DESIGN_FILES', timestamp: Date.now() });
-  });
-  return Promise.resolve();
-}
-
-async function syncTimesheets() {
-  console.log('⏱️ Syncing timesheets...');
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({ type: 'SYNC_TIMESHEETS', timestamp: Date.now() });
-  });
-  return Promise.resolve();
-}
-
-self.addEventListener('error', (event) => {
-  console.error('❌ Service Worker Error:', event.error);
-});
-
-self.addEventListener('unhandledrejection', (event) => {
-  console.error('❌ Unhandled Promise Rejection:', event.reason);
-});
-
-console.log('✅ Service Worker v49: Loaded successfully - app1.js + app2.js restored');
+console.log('✅ Service Worker v50: Loaded - app restored with correct JS files');

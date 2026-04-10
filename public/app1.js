@@ -1,0 +1,16946 @@
+
+        function switchDesignerTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.doc-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content visibility
+            document.getElementById('designer-drawings-content').style.display = 'none';
+            document.getElementById('designer-specs-content').style.display = 'none';
+            
+            if (tabName === 'drawings') {
+                document.getElementById('designer-drawings-content').style.display = 'block';
+            } else {
+                document.getElementById('designer-specs-content').style.display = 'block';
+            }
+        }
+
+    </script>
+    <script src="analytics.js"></script>
+    <script src="bdm-po-patch.js"></script>
+</head>
+<body>
+    <div id="loginPage" class="login-page">
+        <div class="login-container">
+            <div class="login-left">
+                <div class="logo-circle">EB</div>
+                <h1 class="company-title">EDANBROOK</h1>
+                <p class="company-subtitle">Project Management System</p>
+            </div>
+            <div class="login-right">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="showTab('login')">Login</button>
+                    <button class="auth-tab" onclick="showTab('register')">Register</button>
+                </div>
+                <div id="authMessages"></div>
+                <div id="loginContent" class="auth-content active">
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="loginEmail">Email</label>
+                            <input type="email" id="loginEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Password</label>
+                            <input type="password" id="loginPassword" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showTab('forgotPassword'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; text-decoration: none;">Forgot Password?</a>
+                        </div>
+                    </form>
+                </div>
+                <div id="forgotPasswordContent" class="auth-content">
+                    <form id="forgotPasswordForm">
+                        <p style="color: var(--text-light); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                            Enter your email address and we'll send you a link to reset your password.
+                        </p>
+                        <div class="form-group">
+                            <label for="resetEmail">Email</label>
+                            <input type="email" id="resetEmail" class="form-control" required placeholder="Enter your registered email">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showTab('login'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; text-decoration: none;">Back to Login</a>
+                        </div>
+                    </form>
+                </div>
+                <div id="registerContent" class="auth-content">
+                    <form id="registerForm">
+                        <div class="role-selector">
+                            <label>Select Role:</label>
+                            <div class="role-buttons">
+                                <div class="role-btn active" data-role="bdm">BDM</div>
+                                <div class="role-btn" data-role="estimator">Estimator</div>
+                                <div class="role-btn" data-role="coo">COO</div>
+                                <div class="role-btn" data-role="director">Director</div>
+                                <div class="role-btn" data-role="design_lead">Design Lead</div>
+                                <div class="role-btn" data-role="designer">Designer</div>
+                                <div class="role-btn" data-role="document_controller">Doc Controller</div>
+                                <div class="role-btn" data-role="accounts">Accounts</div>
+                                <div class="role-btn" data-role="hr">HR</div>
+                                <div class="role-btn" data-role="it">IT Helpdesk</div>
+                            </div>
+                            <input type="hidden" id="selectedRole" value="bdm">
+                        </div>
+                        <div class="form-group">
+                            <label for="registerName">Full Name</label>
+                            <input type="text" id="registerName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">Email</label>
+                            <input type="email" id="registerEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Password</label>
+                            <input type="password" id="registerPassword" class="form-control" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-success">Register</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <div id="loadingSpinner" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+</div>
+<div id="appContainer" class="app-container">
+
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-circle">EB</div>
+                    <div class="company-info">
+                        <h1>EDANBROOK</h1>
+                        <div class="subtitle">EBTrack - Enhanced Project Management</div>
+                    </div>
+                </div>
+             <div class="user-info">
+                    <div id="userWelcome"></div>
+                    <div id="userRole"></div>
+
+                    <div class="notification-bell" onclick="toggleNotificationPanel()">
+                        🔔
+                        <span class="notification-count" id="notificationCount">0</span>
+                    </div>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+
+            <div class="notification-panel" id="notificationPanel">
+                <div class="notification-header">
+                    <h3>Notifications</h3>
+                    <button class="notification-close-btn" onclick="toggleNotificationPanel()" aria-label="Close notifications">&times;</button>
+                </div>
+                <div class="notification-list" id="notificationList">
+                    <div class="notification-item">Loading...</div>
+                </div>
+            </div>
+           
+
+
+
+
+        </header>
+
+        <div class="main-layout">
+            <nav class="sidebar">
+            <ul class="nav-menu">
+
+                <!-- ========== BUSINESS DEVELOPMENT ========== -->
+                <li class="nav-department" id="deptBDM">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">💼</span>Business Development
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="newProposalNavItem" style="display: none;">
+                            <a href="#" onclick="showCreateProposalModal()">
+                            <span class="nav-icon">➕</span>New Proposal</a>
+                        </li>
+                        <li id="analyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showAnalyticsDashboard()" id="nav-analytics">
+                            <span class="nav-icon">📈</span>Analytics</a>
+                        </li>
+                        <li id="proposalsNavItem"><a href="#" onclick="showProposals()" id="nav-proposals">
+                            <span class="nav-icon">📋</span>All Proposals</a>
+                        </li>
+                        <li id="filesNavItem"><a href="#" onclick="showFileUpload()" id="nav-files">
+                            <span class="nav-icon">📁</span>File Manager</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== ESTIMATION & WORKFLOW ========== -->
+                <li class="nav-department" id="deptEstimation">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🔄</span>Estimation & Workflow
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="workflowNavItem" style="display: none;">
+                            <a href="#" onclick="showWorkflow()" id="nav-workflow">
+                            <span class="nav-icon">🔄</span>Workflow</a>
+                        </li>
+                        <li id="reportsNavItem" style="display: none;">
+                            <a href="#" onclick="showReports()" id="nav-reports">
+                            <span class="nav-icon">📊</span>Reports</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== OPERATIONS & MANAGEMENT ========== -->
+                <li class="nav-department" id="deptOperations">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🏢</span>Operations & Management
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="projectsNavItem" style="display: none;">
+                            <a href="#" onclick="showProjects()" id="nav-projects">
+                            <span class="nav-icon">🏗️</span>Projects</a>
+                        </li>
+                        <li id="executiveMonitoringNavItem" style="display: none;">
+                            <a href="#" onclick="showProjectDashboard()" id="nav-project-dashboard">
+                            <span class="nav-icon">📊</span>Project Dashboard</a>
+                        </li>
+                        <li id="timeRequestsNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOTimeRequests()" id="nav-time-requests">
+                                <span class="nav-icon">⏰</span>Time Requests
+                                <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="variationTrackingNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOVariationTracking()" id="nav-variation-tracking">
+                                <span class="nav-icon">📑</span>Variation Tracking
+                                <span class="notification-count" id="pendingVariationsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="allocationRequestsNavItem" style="display: none;">
+                            <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
+                                <span class="nav-icon">📋</span>Allocation Requests
+                                <span class="notification-count" id="directorRequestsBadge" style="display: none; margin-left: 10px; background: var(--danger); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="activitiesNavItem"><a href="#" onclick="showActivities()" id="nav-activities">
+                            <span class="nav-icon">📝</span>Activities</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== FINANCE & ACCOUNTS ========== -->
+                <li class="nav-department" id="deptFinance">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">💰</span>Finance & Accounts
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="paymentsNavItem" style="display: none;">
+                            <a href="#" onclick="showPayments()" id="nav-payments">
+                            <span class="nav-icon">💰</span>Payments</a>
+                        </li>
+                        <li id="subventorsNavItem" style="display: none;">
+                            <a href="#" onclick="showSubventors()" id="nav-subventors">
+                            <span class="nav-icon">🏗️</span>Subvendors</a>
+                        </li>
+                        <li id="gstFilingNavItem" style="display: none;">
+                            <a href="#" onclick="showGSTFiling()" id="nav-gst-filing">
+                            <span class="nav-icon">📋</span>GST Filing</a>
+                        </li>
+                        <li id="pettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-petty-cash">
+                            <span class="nav-icon">💵</span>Petty Cash</a>
+                        </li>
+                        <li id="poTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showPOTracker(); return false;" id="nav-po-tracker">
+                            <span class="nav-icon">📑</span>P.O. Tracker</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== DESIGN DEPARTMENT ========== -->
+                <li class="nav-department" id="deptDesign">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🎨</span>Design Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="designLeadPortalNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignLeadPortal()" id="nav-design-lead-portal">
+                            <span class="nav-icon">🎯</span>Design Lead Portal</a>
+                        </li>
+                        <li id="designerAllocationsNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignerAllocations()" id="nav-designer-alloc">
+                            <span class="nav-icon">⏳</span>Project Allocations</a>
+                        </li>
+                        <li id="tasksNavItem" style="display: none;">
+                            <a href="#" onclick="showTasks()" id="nav-tasks">
+                            <span class="nav-icon">✅</span>My Tasks</a>
+                        </li>
+                        <li id="timesheetNavItem" style="display: none;">
+                            <a href="#" onclick="showTimesheet()" id="nav-timesheet">
+                                <span class="nav-icon">⏱️</span>My Timesheet
+                            </a>
+                        </li>
+                        <li id="myAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showMyAnalytics()" id="nav-my-analytics">
+                                <span class="nav-icon">📊</span>My Analytics
+                            </a>
+                        </li>
+                        <li id="designerAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignerWeeklyAnalytics(); return false;" id="nav-designer-analytics">
+                                <span class="nav-icon">📊</span>Designer Hours
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== HR DEPARTMENT ========== -->
+                <li class="nav-department" id="deptHR">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">👥</span>HR Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="hrAnnouncementsNavItem" style="display: none;">
+                            <a href="#" onclick="showHRDashboard()" id="nav-hr-announcements">
+                                <span class="nav-icon">📢</span>HR Announcements
+                            </a>
+                        </li>
+                        <li id="hrLeaveApprovalNavItem" style="display: none;">
+                            <a href="#" onclick="showHRLeaveApproval()" id="nav-hr-leave">
+                                <span class="nav-icon">📋</span>Leave Approval
+                                <span class="notification-count" id="hrLeaveRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="hrLeaveReportsNavItem" style="display: none;">
+                            <a href="#" onclick="showHRLeaveReports()" id="nav-hr-leave-reports">
+                                <span class="nav-icon">📊</span>Leave Reports
+                            </a>
+                        </li>
+                        <li id="hrITProcurementNavItem" style="display: none;">
+                            <a href="#" onclick="showHRITProcurement()" id="nav-hr-it-procurement">
+                                <span class="nav-icon">💰</span>IT Procurement
+                                <span class="notification-count" id="hrITPendingBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="hrScreeningNavItem" style="display: none;">
+                            <a href="#" onclick="showHRScreening()" id="nav-hr-screening">
+                                <span class="nav-icon">📝</span>Candidate Screening
+                            </a>
+                        </li>
+                        <li id="employeeLeaveRequestNavItem" style="display: none;">
+                            <a href="#" onclick="showEmployeeLeaveRequest()" id="nav-employee-leave">
+                                <span class="nav-icon">🏖️</span>Leave Request
+                            </a>
+                        </li>
+                        <li id="hrPettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-hr-petty-cash">
+                                <span class="nav-icon">💵</span>Petty Cash
+                            </a>
+                        </li>
+                        <li id="hrPoTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showPOTracker(); return false;" id="nav-hr-po-tracker">
+                                <span class="nav-icon">📑</span>P.O. Tracker
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== IT DEPARTMENT ========== -->
+                <li class="nav-department" id="deptIT">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🖥️</span>IT Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="itRequestNavItem" style="display: none;">
+                            <a href="#" onclick="showITRequestForm()" id="nav-it-request">
+                                <span class="nav-icon">🖥️</span>IT Request
+                            </a>
+                        </li>
+                        <li id="itDashboardNavItem" style="display: none;">
+                            <a href="#" onclick="showITDashboard()" id="nav-it-dashboard">
+                                <span class="nav-icon">🛠️</span>IT Dashboard
+                                <span class="notification-count" id="itOpenTicketsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="itDepartmentNavItem" style="display: none;">
+                            <a href="#" onclick="showITDepartmentReport()" id="nav-it-department">
+                                <span class="nav-icon">📊</span>IT Department
+                            </a>
+                        </li>
+                        <li id="itPettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-it-petty-cash">
+                                <span class="nav-icon">💵</span>Petty Cash
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== DOCUMENT CONTROL (Main Menu) ========== -->
+                <li class="nav-department" id="deptDocControl">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">📄</span>Document Control
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="documentControllerNavItem" style="display: none;">
+                            <a href="#" onclick="showDocumentControllerDashboard(); return false;" id="nav-document-controller">
+                                <span class="nav-icon">📄</span>Document Controller
+                                <span id="dcPendingBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="designApprovalNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignFileApprovals(); return false;" id="nav-design-approvals">
+                                <span class="nav-icon">✅</span>Design Approvals
+                                <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="dcTrackerMainNavItem" style="display: none;">
+                            <a href="#" onclick="showDCFileTracker(); return false;" id="nav-dc-tracker-main">
+                                <span class="nav-icon">📨</span>DC File Tracker
+                            </a>
+                        </li>
+                        <li id="fileAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showFileAnalyticsDashboard(); return false;" id="nav-file-analytics">
+                                <span class="nav-icon">📊</span>File Analytics
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== ADMINISTRATION ========== -->
+                <li class="nav-department" id="deptAdmin">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">⚙️</span>Administration
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="settingsNavItem" style="display: none;">
+                            <a href="#" onclick="showSettings()" id="nav-settings">
+                            <span class="nav-icon">⚙️</span>Settings</a>
+                        </li>
+                    </ul>
+                </li>
+
+            </ul>
+        </nav>
+
+            <main class="main-content" id="mainContent"></main>
+        </div>
+    </div>
+    <div id="projectFilesModal" class="modal">
+    <div class="modal-content large">
+        <span class="close-button" onclick="closeModal('projectFilesModal')">&times;</span>
+        <h3 id="projectFilesModalTitle">Project Files</h3>
+        <p class="text-muted" id="projectFilesModalSubtitle">Files attached to this project.</p>
+        <hr>
+
+        <div id="projectFilesContent">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeModal('projectFilesModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
+    <script>
+      // ============================================
+      // CACHE BUSTER - Version 1.0.3-final-20251125
+      // ============================================
+      console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
+      console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
+     
+        const firebaseConfig = {
+            apiKey: "AIzaSyBp7wCYMuM_FND-WnDlH0lrDJFGt4DqK-U", // Replace with your actual config
+            authDomain: "eb-tracker-ff945.firebaseapp.com",
+            projectId: "eb-tracker-ff945",
+            storageBucket: "eb-tracker-ff945.firebasestorage.app",
+            messagingSenderId: "854824137821",
+            appId: "1:854824137821:web:7a408282c2f7c1816c89b4"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // ============================================
+        // API & AUTH CONFIGURATION
+        // ============================================
+
+        // FIXED: Direct backend URL configuration
+        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+
+
+        console.log('🔧 Backend URL configured:', API_BASE);
+
+
+
+        const authorizedUsers = {
+            estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
+            coo: ["coo@edanbrook.com", "coo2@edanbrook.com"],
+            director: ["director@edanbrook.com", "ajit@edanbrook.com"],
+            design_lead: ["muruganantham.tech@edanbrook.in", "kathar.tech@edanbrook.in", "aravindhan.tech@edanbrook.in", "sathish.tech@edanbrook.in", "rebar.lead@edanbrook.com", "rebar.lead1@edanbrook.com"],
+            designer: [],
+            accounts: ["accounts@edanbrook.com", "accounts1@edanbrook.com", "finance@edanbrook.com"],
+            bdm: [],
+            it: ["ithelpdesk@edanbrook.com"]
+        };
+        let currentUser = null;
+        let currentUserRole = '';
+        let authToken = '';
+
+        // ============================================
+        // DIRECT FUNCTION DEFINITIONS - NO WRAPPERS
+        // ============================================
+        // Define these functions DIRECTLY here so onclick can find them
+        
+        // Store references that will be set later
+        let _assignDesignersFunc = null;
+        let _viewBDMFilesFunc = null;
+        let _viewProjectDetailsFunc = null;
+        
+        // Direct global functions - these MUST work
+        window.assignDesigners = function(projectId) {
+            console.log('👥 assignDesigners wrapper called with ID:', projectId);
+            // Delegate to the proper implementation if it has been registered
+            if (window._assignDesignersImpl) {
+                return window._assignDesignersImpl(projectId);
+            }
+            alert('Designer assignment not fully loaded. Please refresh the page and try again.');
+        };
+        
+        // Helper function to toggle hours input
+        window.toggleDesignerHoursInput = function(checkbox) {
+            const designerId = checkbox.value;
+            const hoursInput = document.getElementById(`hours-${designerId}`);
+
+            if (checkbox.checked) {
+                hoursInput.disabled = false;
+                // Do not default to any hours — hours are optional
+            } else {
+                hoursInput.disabled = true;
+                hoursInput.value = '0';
+            }
+
+            window.updateTotalAllocated();
+        };
+        
+        // Helper function to update total allocated hours
+        window.updateTotalAllocated = function() {
+            let total = 0;
+            const hoursInputs = document.querySelectorAll('.hours-input:not([disabled])');
+            hoursInputs.forEach(input => {
+                const value = parseFloat(input.value) || 0;
+                total += value;
+            });
+            
+            const totalDisplay = document.getElementById('totalAllocatedHours');
+            if (totalDisplay) {
+                totalDisplay.textContent = total.toFixed(1);
+            }
+        };
+        
+        // Function to submit designer assignment
+        window.submitDesignerAssignment = function() {
+            console.log('📝 submitDesignerAssignment wrapper - delegating to implementation');
+            if (window._submitDesignerAssignmentImpl) {
+                return window._submitDesignerAssignmentImpl();
+            }
+            alert('Designer assignment not fully loaded. Please refresh the page and try again.');
+        };
+        
+        // Function to close designer assignment modal
+        window.closeDesignerAssignmentModal = function() {
+            console.log('❌ Closing designer assignment modal');
+            const modal = document.getElementById('designerAssignmentModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+        
+        window.viewBDMFiles = function(projectId, proposalId) {
+            console.log('📁 viewBDMFiles called with:', projectId, proposalId);
+            
+            if (_viewBDMFilesFunc) {
+                return _viewBDMFilesFunc(projectId, proposalId);
+            }
+            
+            // Inline implementation
+            if (!proposalId) {
+                // Try to get proposalId from project
+                apiCall(`projects?id=${projectId}`).then(projResp => {
+                    if (projResp.success && projResp.data && projResp.data.proposalId) {
+                        window.viewBDMFiles(projectId, projResp.data.proposalId);
+                    } else {
+                        alert('Could not find proposal for this project');
+                    }
+                });
+                return;
+            }
+            
+            apiCall(`files?proposalId=${proposalId}`).then(response => {
+                const files = response.success ? response.data : [];
+                const bdmFiles = files.filter(f => f.fileType === 'project' || !f.fileType);
+                
+                const modal = document.getElementById('bdmFilesModal');
+                if (!modal) {
+                    alert('Files modal not found');
+                    return;
+                }
+                
+                const filesList = document.getElementById('bdmFilesList');
+                if (filesList) {
+                    filesList.innerHTML = '';
+                    if (bdmFiles.length > 0) {
+                        bdmFiles.forEach(file => {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'padding: 10px; border: 1px solid #ddd; margin: 5px 0;';
+                            div.innerHTML = `
+                                <strong>${file.fileName || file.originalName}</strong><br>
+                                <small>Uploaded: ${new Date(file.uploadedAt).toLocaleDateString()}</small><br>
+                                <a href="${file.url || file.fileUrl || file.downloadUrl || '#'}" target="_blank" class="btn btn-primary btn-sm">Download</a>
+                            `;
+                            filesList.appendChild(div);
+                        });
+                    } else {
+                        filesList.innerHTML = '<p>No files uploaded by BDM</p>';
+                    }
+                }
+                
+                modal.style.display = 'flex';
+            }).catch(error => {
+                console.error('Error loading files:', error);
+                alert('Failed to load files: ' + error.message);
+            });
+        };
+        
+        window.viewProject = function(projectId) {
+            console.log('🔍 viewProject called with ID:', projectId);
+            
+            if (_viewProjectDetailsFunc) {
+                return _viewProjectDetailsFunc(projectId);
+            }
+            
+            // Inline implementation
+            apiCall(`projects?id=${projectId}`).then(response => {
+                if (!response.success || !response.data) {
+                    alert('Failed to load project details');
+                    return;
+                }
+                
+                const project = response.data;
+                
+                // Create simple modal
+                const existingModal = document.getElementById('projectDetailsModal');
+                if (existingModal) existingModal.remove();
+                
+                const modal = document.createElement('div');
+                modal.id = 'projectDetailsModal';
+                modal.className = 'modal';
+                modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 10000;';
+                modal.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+                        <h2>📋 Project Details</h2>
+                        <p><strong>Project Name:</strong> ${project.projectName || 'N/A'}</p>
+                        <p><strong>Client:</strong> ${project.clientCompany || 'N/A'}</p>
+                        <p><strong>Project Code:</strong> ${project.projectCode || project.projectNumber || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${project.status || 'N/A'}</p>
+                        <p><strong>Design Manager:</strong> ${project.designLeadName || 'N/A'}</p>
+                        <p><strong>Target Date:</strong> ${project.targetCompletionDate || 'Not set'}</p>
+                        <p><strong>Description:</strong> ${project.description || 'No description provided'}</p>
+                        <p><strong>Special Instructions:</strong> ${project.specialInstructions || 'None'}</p>
+                        <button onclick="document.getElementById('projectDetailsModal').remove()" class="btn btn-primary" style="margin-top: 20px;">Close</button>
+                    </div>
+                `;
+                modal.onclick = (e) => {
+                    if (e.target === modal) modal.remove();
+                };
+                document.body.appendChild(modal);
+            }).catch(error => {
+                console.error('Error loading project:', error);
+                alert('Failed to load project details: ' + error.message);
+            });
+        };
+        
+        // Function to close BDM files modal
+        window.closeBDMFilesModal = function() {
+            console.log('❌ Closing BDM files modal');
+            const modal = document.getElementById('bdmFilesModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+        
+        console.log('✅ Direct function definitions loaded');
+
+        // ============================================
+        // UTILITY FUNCTIONS - SUCCESS/ERROR MODALS
+        // ============================================
+        
+        function closeSuccessModal() {
+            const modal = document.getElementById('successModal');
+            if (modal) modal.style.display = 'none';
+        }
+        
+        function showSuccessModal(message, details) {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                document.getElementById('successMessage').textContent = message;
+                document.getElementById('successDetails').textContent = details || '';
+                modal.style.display = 'flex';
+            }
+        }
+
+        // ============================================
+        // CORE API & AUTH FUNCTIONS
+        // ============================================
+
+        async function apiCall(endpoint, options = {}, retryCount = 0) {
+            const MAX_RETRIES = 2;
+            const RETRY_DELAY = 2000;
+            const url = `${API_BASE}/api/${endpoint}`;
+
+            if (!authToken && currentUser && !endpoint.includes('health')) {
+                try {
+                    authToken = await currentUser.getIdToken(true);
+                    console.log('🔑 Token refreshed for API call');
+                } catch (error) {
+                    console.error('❌ Failed to refresh token:', error);
+                    throw new Error('Authentication token expired. Please log in again.');
+                }
+            }
+          // Inside apiCall function...
+          const defaultHeaders = {};
+          if (authToken) {
+          defaultHeaders['Authorization'] = `Bearer ${authToken}`;
+    }
+
+       // ✅ CRITICAL: Do NOT set Content-Type for FormData. 
+        // The browser automatically sets it with the boundary.
+        if (!(options.body instanceof FormData)) {
+            defaultHeaders['Content-Type'] = 'application/json';
+        }
+
+        // --- FIX: Defined finalOptions object correctly ---
+        const finalOptions = {
+            method: options.method || 'GET',
+            ...options,
+            headers: { ...defaultHeaders, ...(options.headers || {}) },
+            mode: 'cors',
+            credentials: 'omit' // FIXED: Don't send credentials with origin: '*'
+        };
+
+        try {
+            console.log(`📤 API Call [${finalOptions.method}]: ${url}`);
+            const response = await fetch(url, finalOptions);
+            console.log(`📥 Response: ${response.status} ${response.statusText}`);
+
+            const contentType = response.headers.get('content-type');
+            let responseData;
+
+            if (contentType && contentType.includes('application/json')) {
+                const responseText = await response.text();
+                try {
+                    responseData = responseText ? JSON.parse(responseText) : {};
+                } catch (parseError) {
+                    console.error('❌ JSON parse error:', parseError);
+                    throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
+                }
+            } else {
+                responseData = await response.text();
+            }
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('❌ 401 Unauthorized - Token may be invalid');
+                    if (currentUser && retryCount === 0) {
+                        console.log('🔄 Attempting token refresh...');
+                        try {
+                            authToken = await currentUser.getIdToken(true);
+                            console.log('✅ Token refreshed, retrying request...');
+                            return await apiCall(endpoint, options, retryCount + 1);
+                        } catch (refreshError) {
+                            console.error('❌ Token refresh failed:', refreshError);
+                            await auth.signOut();
+                            throw new Error('Session expired. Please log in again.');
+                        }
+                    }
+                    throw new Error('Authentication failed. Please log in again.');
+                }
+                const errorMessage = responseData.message || responseData.error || `Request failed with status ${response.status}`;
+                throw new Error(errorMessage);
+            }
+
+            console.log('✅ API call successful');
+
+            // Handle different response formats
+            // If backend returns { success: true, data: {...} }, use it directly
+            // If backend returns data directly, wrap it
+            if (responseData && typeof responseData === 'object') {
+                // If it has success/data structure, return as is
+                if ('success' in responseData && 'data' in responseData) {
+                    return responseData;
+                }
+                // If it's raw data, wrap it
+                return { success: true, data: responseData };
+            }
+
+            // For non-object responses
+            return { success: true, data: responseData };
+
+        } catch (error) {
+            console.error(`❌ API call to ${endpoint} failed:`, error);
+            if ((error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) && retryCount < MAX_RETRIES) {
+                console.warn(`⚠️  Network error, retrying...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return await apiCall(endpoint, options, retryCount + 1);
+            }
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                throw new Error(
+                    `Cannot connect to backend at:\n${API_BASE}\n\n` +
+                    `Please check backend URL, CORS, and network.`
+                );
+            }
+            throw error;
+        }
+    }
+
+    // ============================================
+    // ✅ GLOBAL FILE UPLOAD FUNCTION
+    // ============================================
+    window.uploadFileDirectly = async function(file, proposalId, fileType) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`🚀 Uploading: ${file.name}`);
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            // CRITICAL: Send empty string if no proposalId - backend converts to null
+            formData.append('proposalId', proposalId || ''); 
+            formData.append('fileType', fileType || 'project');
+            
+            // Use 'files/upload-file' endpoint
+            const response = await apiCall('files/upload-file', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.success) {
+                throw new Error(response.error || 'Upload failed');
+            }
+            
+            console.log('✅ Upload successful!');
+            return response.data;
+            
+        } catch (error) {
+            console.error('❌ UPLOAD FAILED:', file.name, error.message);
+            throw error;
+        }
+    };
+    
+    // Also define as regular function for backward compatibility
+    async function uploadFileDirectly(file, proposalId, fileType) {
+        return window.uploadFileDirectly(file, proposalId, fileType);
+    }
+
+    // ============================================
+    // MOBILE SUPPORT & PWA FUNCTIONS
+    // ============================================
+    
+    // Detect mobile device
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+    }
+    
+    // Detect iOS
+    function isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+    
+    // Detect Android
+    function isAndroid() {
+        return /Android/i.test(navigator.userAgent);
+    }
+    
+    // Initialize mobile support
+    function initMobileSupport() {
+        const isMobile = isMobileDevice();
+        const iOS = isIOS();
+        const android = isAndroid();
+        
+        console.log(`📱 Mobile: ${isMobile}, iOS: ${iOS}, Android: ${android}`);
+        
+        // Add device class to body
+        if (isMobile) {
+            document.body.classList.add('is-mobile');
+            if (iOS) document.body.classList.add('is-ios');
+            if (android) document.body.classList.add('is-android');
+        }
+        
+        // Handle iOS viewport height bug (100vh issue)
+        if (iOS) {
+            setIOSViewportHeight();
+            window.addEventListener('resize', setIOSViewportHeight);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(setIOSViewportHeight, 100);
+            });
+        }
+        
+        // Handle Android keyboard
+        if (android) {
+            handleAndroidKeyboard();
+        }
+        
+        // Prevent pull-to-refresh on mobile
+        preventPullToRefresh();
+        
+        // Handle touch events for better mobile UX
+        setupTouchHandlers();
+        
+        // Setup PWA install prompt
+        setupPWAInstallPrompt();
+        
+        // Fix mobile announcements visibility
+        if (isMobile) {
+            fixMobileAnnouncementsVisibility();
+            // Also run after a delay to catch dynamically loaded content
+            setTimeout(fixMobileAnnouncementsVisibility, 1000);
+            setTimeout(fixMobileAnnouncementsVisibility, 3000);
+        }
+        
+        console.log('✅ Mobile support initialized');
+    }
+    
+    // Initialize Mobile Navigation - ensure proper scrolling and visibility
+    function initMobileNavigation() {
+        const navMenu = document.querySelector('.nav-menu');
+        const sidebar = document.querySelector('.sidebar');
+        
+        if (!navMenu || !sidebar) {
+            // Elements not yet in DOM, try again later
+            setTimeout(initMobileNavigation, 500);
+            return;
+        }
+        
+        // Function to update scroll indicators
+        function updateScrollIndicators() {
+            const scrollLeft = navMenu.scrollLeft;
+            const maxScroll = navMenu.scrollWidth - navMenu.clientWidth;
+            
+            // Add/remove classes for scroll shadow indicators
+            if (scrollLeft > 10) {
+                sidebar.classList.add('scroll-left');
+            } else {
+                sidebar.classList.remove('scroll-left');
+            }
+            
+            if (scrollLeft < maxScroll - 10) {
+                sidebar.classList.add('scroll-right');
+            } else {
+                sidebar.classList.remove('scroll-right');
+            }
+        }
+        
+        // Reset scroll to start on page load
+        navMenu.scrollLeft = 0;
+        
+        // Listen for scroll events to update indicators
+        navMenu.addEventListener('scroll', updateScrollIndicators, { passive: true });
+        
+        // Initial check for scroll indicators
+        setTimeout(updateScrollIndicators, 100);
+        
+        // Also update on window resize
+        window.addEventListener('resize', () => {
+            setTimeout(updateScrollIndicators, 100);
+        });
+        
+        // Scroll active nav item into view
+        function scrollActiveIntoView() {
+            const activeItem = navMenu.querySelector('a.active');
+            if (activeItem) {
+                const li = activeItem.parentElement;
+                if (li) {
+                    li.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+        }
+        
+        // MutationObserver to scroll to active item when it changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    if (mutation.target.classList.contains('active')) {
+                        scrollActiveIntoView();
+                    }
+                }
+            });
+        });
+        
+        // Observe all nav links for class changes
+        navMenu.querySelectorAll('a').forEach(link => {
+            observer.observe(link, { attributes: true, attributeFilter: ['class'] });
+        });
+        
+        console.log('✅ Mobile navigation initialized');
+    }
+    
+    // Fix announcements visibility on mobile devices
+    function fixMobileAnnouncementsVisibility() {
+        const sections = document.querySelectorAll('.announcements-section, #announcementsSectionMobile');
+        sections.forEach(section => {
+            if (section) {
+                section.style.display = 'block';
+                section.style.visibility = 'visible';
+                section.style.opacity = '1';
+                section.style.width = '100%';
+            }
+        });
+        
+        const containers = document.querySelectorAll('.announcements-container, #announcementsContainerMobile');
+        containers.forEach(container => {
+            if (container) {
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.gap = '1rem';
+                container.style.width = '100%';
+            }
+        });
+        
+        const cards = document.querySelectorAll('.announcement-card');
+        cards.forEach(card => {
+            if (card) {
+                card.style.display = 'block';
+                card.style.visibility = 'visible';
+                card.style.opacity = '1';
+                card.style.width = '100%';
+                card.style.marginBottom = '1rem';
+            }
+        });
+        
+        console.log('📢 Fixed mobile announcements visibility:', cards.length, 'cards found');
+    }
+    
+    // Make function globally accessible
+    window.fixMobileAnnouncementsVisibility = fixMobileAnnouncementsVisibility;
+    
+    // Fix iOS 100vh issue
+    function setIOSViewportHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    
+    // Handle Android keyboard visibility
+    function handleAndroidKeyboard() {
+        const originalHeight = window.innerHeight;
+        
+        window.addEventListener('resize', () => {
+            const currentHeight = window.innerHeight;
+            const heightDiff = originalHeight - currentHeight;
+            
+            // Keyboard is likely open if height reduced significantly
+            if (heightDiff > 150) {
+                document.body.classList.add('keyboard-open');
+            } else {
+                document.body.classList.remove('keyboard-open');
+            }
+        });
+    }
+    
+    // Prevent pull-to-refresh on mobile (except on scrollable areas)
+    function preventPullToRefresh() {
+        let lastTouchY = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            lastTouchY = e.touches[0].clientY;
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (e) => {
+            const touchY = e.touches[0].clientY;
+            const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+            
+            // If at top and pulling down
+            if (scrollTop === 0 && touchY > lastTouchY) {
+                // Check if target is scrollable
+                const target = e.target;
+                const isScrollable = target.closest('.modal-body, .nav-menu, .main-content');
+                
+                if (!isScrollable || isScrollable.scrollTop === 0) {
+                    // Prevent only if not in a scrollable area
+                }
+            }
+        }, { passive: true });
+    }
+    
+    // Setup touch handlers for better mobile UX
+    function setupTouchHandlers() {
+        // Add active state feedback on touch
+        document.addEventListener('touchstart', (e) => {
+            const btn = e.target.closest('.btn, .nav-menu a, .hr-card, .announcement-card');
+            if (btn) {
+                btn.classList.add('touch-active');
+            }
+        }, { passive: true });
+        
+        document.addEventListener('touchend', () => {
+            document.querySelectorAll('.touch-active').forEach(el => {
+                el.classList.remove('touch-active');
+            });
+        }, { passive: true });
+        
+        // Prevent double-tap zoom on buttons
+        let lastTap = 0;
+        document.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            
+            if (tapLength < 300 && tapLength > 0) {
+                if (e.target.closest('.btn, .nav-menu a')) {
+                    e.preventDefault();
+                }
+            }
+            lastTap = currentTime;
+        }, { passive: false });
+    }
+    
+    // PWA Install Prompt
+    let deferredPrompt = null;
+    
+    function setupPWAInstallPrompt() {
+        // Check if already in standalone mode (already installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+        
+        if (isStandalone) {
+            console.log('✅ App is running in standalone mode (installed)');
+            return;
+        }
+        
+        // For Android Chrome - native install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('📲 PWA install prompt available (Android)');
+            showInstallBanner('android');
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA was installed');
+            deferredPrompt = null;
+            hideInstallBanner();
+        });
+        
+        // For iOS Safari - show custom instructions
+        if (isIOS() && !isStandalone) {
+            // Delay to not annoy users immediately
+            setTimeout(() => {
+                showInstallBanner('ios');
+            }, 3000);
+        }
+    }
+    
+    function showInstallBanner(platform = 'android') {
+        // Check if already dismissed or installed
+        if (localStorage.getItem('pwaInstallDismissed')) {
+            const dismissedTime = parseInt(localStorage.getItem('pwaInstallDismissed'));
+            // Show again after 7 days
+            if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) {
+                return;
+            }
+        }
+        
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+        if (isStandalone) return;
+        
+        // Don't show on desktop
+        if (!isMobileDevice()) return;
+        
+        // Remove existing banner
+        hideInstallBanner();
+        
+        let bannerContent = '';
+        
+        if (platform === 'ios') {
+            // iOS Safari specific instructions
+            bannerContent = `
+                <div id="pwaInstallBanner" style="
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: white;
+                    padding: 1rem;
+                    z-index: 10000;
+                    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+                    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+                    animation: slideUp 0.3s ease;
+                ">
+                    <style>
+                        @keyframes slideUp {
+                            from { transform: translateY(100%); }
+                            to { transform: translateY(0); }
+                        }
+                    </style>
+                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                        <div style="font-size: 2.5rem;">📱</div>
+                        <div style="flex: 1;">
+                            <strong style="font-size: 1.1rem;">Install EBTracker App</strong>
+                            <p style="font-size: 0.85rem; opacity: 0.95; margin-top: 0.5rem; line-height: 1.4;">
+                                Install this app on your iPhone:
+                            </p>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.9rem;">
+                                <span style="background: rgba(255,255,255,0.2); padding: 0.25rem 0.5rem; border-radius: 6px;">1. Tap</span>
+                                <span style="font-size: 1.5rem;">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                        <path d="M12 2L12 14M12 2L8 6M12 2L16 6M4 14V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V14" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <span style="background: rgba(255,255,255,0.2); padding: 0.25rem 0.5rem; border-radius: 6px;">2. "Add to Home Screen"</span>
+                            </div>
+                        </div>
+                        <button onclick="dismissInstallBanner()" style="
+                            background: rgba(255,255,255,0.2);
+                            border: none;
+                            color: white;
+                            font-size: 1.5rem;
+                            cursor: pointer;
+                            padding: 0.5rem;
+                            border-radius: 50%;
+                            width: 36px;
+                            height: 36px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">×</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Android Chrome banner
+            bannerContent = `
+                <div id="pwaInstallBanner" style="
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: white;
+                    padding: 1rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 1rem;
+                    z-index: 10000;
+                    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+                    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+                    animation: slideUp 0.3s ease;
+                ">
+                    <style>
+                        @keyframes slideUp {
+                            from { transform: translateY(100%); }
+                            to { transform: translateY(0); }
+                        }
+                    </style>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                        <span style="font-size: 2rem;">📱</span>
+                        <div>
+                            <strong>Install EBTracker</strong>
+                            <p style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">Add to home screen for quick access</p>
+                        </div>
+                    </div>
+                    <button onclick="installPWA()" style="
+                        background: white;
+                        color: #667eea;
+                        border: none;
+                        padding: 0.75rem 1.25rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        white-space: nowrap;
+                    ">Install</button>
+                    <button onclick="dismissInstallBanner()" style="
+                        background: transparent;
+                        border: none;
+                        color: white;
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                        padding: 0.5rem;
+                    ">×</button>
+                </div>
+            `;
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', bannerContent);
+    }
+    
+    function hideInstallBanner() {
+        const banner = document.getElementById('pwaInstallBanner');
+        if (banner) {
+            banner.style.animation = 'slideDown 0.3s ease';
+            setTimeout(() => banner.remove(), 300);
+        }
+    }
+    
+    function dismissInstallBanner() {
+        hideInstallBanner();
+        localStorage.setItem('pwaInstallDismissed', Date.now().toString());
+    }
+    
+    async function installPWA() {
+        if (!deferredPrompt) {
+            // For iOS, show instructions
+            if (isIOS()) {
+                alert('To install:\n\n1. Tap the Share button (square with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm');
+            } else {
+                console.log('No install prompt available');
+            }
+            return;
+        }
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA install outcome: ${outcome}`);
+        deferredPrompt = null;
+        hideInstallBanner();
+    }
+    
+    // Check if running as installed PWA
+    function isRunningAsPWA() {
+        return window.matchMedia('(display-mode: standalone)').matches || 
+               window.navigator.standalone === true ||
+               document.referrer.includes('android-app://');
+    }
+    
+    // Register Service Worker
+    function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/service-worker.js');
+                    console.log('✅ Service Worker registered:', registration.scope);
+                    
+                    // Listen for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('🔄 Service Worker update found');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New content available
+                                showUpdateNotification();
+                            }
+                        });
+                    });
+                    
+                    // Check for updates periodically
+                    setInterval(() => {
+                        registration.update();
+                    }, 60 * 60 * 1000); // Every hour
+                    
+                } catch (error) {
+                    console.error('❌ Service Worker registration failed:', error);
+                }
+            });
+            
+            // Listen for messages from service worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'CACHE_UPDATED') {
+                    console.log('📢 Cache updated:', event.data.message);
+                    showUpdateNotification();
+                }
+            });
+        }
+    }
+    
+    // Show update notification
+    function showUpdateNotification() {
+        const notification = document.createElement('div');
+        notification.id = 'updateNotification';
+        notification.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 1rem;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                z-index: 10001;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                max-width: 90%;
+            ">
+                <span>🔄 New version available!</span>
+                <button onclick="location.reload()" style="
+                    background: white;
+                    color: #059669;
+                    border: none;
+                    padding: 0.5rem 1rem;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">Refresh</button>
+                <button onclick="this.parentElement.parentElement.remove()" style="
+                    background: transparent;
+                    border: none;
+                    color: white;
+                    font-size: 1.25rem;
+                    cursor: pointer;
+                ">×</button>
+            </div>
+        `;
+        
+        // Remove existing notification if any
+        const existing = document.getElementById('updateNotification');
+        if (existing) existing.remove();
+        
+        document.body.appendChild(notification);
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            const el = document.getElementById('updateNotification');
+            if (el) el.remove();
+        }, 10000);
+    }
+    
+    // Make functions globally available
+    window.installPWA = installPWA;
+    window.dismissInstallBanner = dismissInstallBanner;
+    window.isMobileDevice = isMobileDevice;
+    window.isIOS = isIOS;
+    window.isAndroid = isAndroid;
+    window.isRunningAsPWA = isRunningAsPWA;
+    window.showInstallBanner = showInstallBanner;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Application starting...');
+            console.log('Backend URL:', API_BASE);
+            
+            // Mobile Detection and Setup
+            initMobileSupport();
+            
+            // Initialize Mobile Navigation Scroll
+            initMobileNavigation();
+            
+            // Register Service Worker
+            registerServiceWorker();
+            
+            // Setup MutationObserver to fix announcements when they're added
+            if (isMobileDevice()) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.addedNodes.length) {
+                            mutation.addedNodes.forEach((node) => {
+                                if (node.nodeType === 1) { // Element node
+                                    if (node.classList && (
+                                        node.classList.contains('announcements-section') ||
+                                        node.classList.contains('announcement-card') ||
+                                        node.querySelector && node.querySelector('.announcement-card')
+                                    )) {
+                                        setTimeout(fixMobileAnnouncementsVisibility, 100);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                console.log('👀 MutationObserver for announcements set up');
+            }
+            
+            setupEventListeners();
+            testBackendConnection().then(connected => {
+                if (!connected) {
+                    console.error('⚠️ WARNING: Cannot connect to backend!');
+                } else {
+                    console.log('✅ Backend connection successful');
+                }
+            });
+
+            auth.onAuthStateChanged(async (user) => {
+                console.log('🔐 Auth state changed:', user ? `User logged in (${user.email})` : 'No user');
+
+                // Capture deep link params on first load (before login clears them)
+                if (!window._deepLinkCaptured) {
+                    window._deepLinkCaptured = true;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const action = urlParams.get('action');
+                    const id = urlParams.get('id');
+                    if (action) {
+                        window._pendingDeepLink = { action, id };
+                        console.log('🔗 Deep link captured:', window._pendingDeepLink);
+                    }
+                }
+
+                if (user) {
+                    currentUser = user;
+                    try {
+                        console.log('🔐 Getting fresh auth token...');
+                        authToken = await user.getIdToken(true);
+                        console.log('✅ Auth token obtained successfully');
+
+                        console.log('📂 Fetching user document from Firestore...');
+                        const userDoc = await db.collection('users').doc(user.uid).get();
+
+                        if (userDoc.exists) {
+                            currentUserRole = userDoc.data().role;
+                            console.log('✅ User role:', currentUserRole);
+                            console.log('🚀 Calling showApp()...');
+                            showApp();
+                        } else {
+                            console.error('❌ User document not found in Firestore for UID:', user.uid);
+                            await auth.signOut();
+                            showMessage('Your user account was not found. Please contact admin.', 'error');
+                        }
+                    } catch (error) {
+                        console.error('❌ Auth initialization error:', error);
+                        showMessage('Failed to initialize session: ' + error.message, 'error');
+                        await auth.signOut();
+                    }
+                } else {
+                    currentUser = null;
+                    currentUserRole = '';
+                    authToken = '';
+                    console.log('👤 User logged out, showing login page');
+                    showLogin();
+                }
+            });
+        });
+
+        // Refresh token every 50 minutes
+        setInterval(async () => {
+            if (currentUser) {
+                try {
+                    authToken = await currentUser.getIdToken(true);
+                    console.log('Auth token auto-refreshed');
+                } catch (error) {
+                    console.error('Token refresh failed:', error);
+                }
+            }
+        }, 50 * 60 * 1000);
+
+        function setupEventListeners() {
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('selectedRole').value = this.dataset.role;
+                });
+            });
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            console.log('🔐 handleLogin triggered');
+            try {
+                clearMessages();
+                showMessage('Logging in...', 'info');
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                if (!email || !password) {
+                    console.error('❌ Email or password is empty');
+                    showMessage('Please enter email and password', 'error');
+                    return;
+                }
+                
+                console.log('🔐 Attempting login for:', email);
+                
+                // Check if auth is available
+                if (!auth) {
+                    console.error('❌ Firebase auth not initialized');
+                    showMessage('Authentication service not ready. Please refresh.', 'error');
+                    return;
+                }
+                
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('✅ Login successful, user:', userCredential.user.uid);
+                authToken = await userCredential.user.getIdToken(true);
+                console.log('✅ Fresh token obtained');
+            } catch (error) {
+                console.error('❌ Login error:', error.code, error.message);
+                showMessage(
+                    error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found'
+                        ? 'Invalid email or password.'
+                        : error.code === 'auth/invalid-email'
+                        ? 'Invalid email format.'
+                        : error.code === 'auth/too-many-requests'
+                        ? 'Too many failed attempts. Please try again later.'
+                        : 'Login failed: ' + error.message,
+                    'error'
+                );
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value.toLowerCase();
+            const password = document.getElementById('registerPassword').value;
+            const role = document.getElementById('selectedRole').value;
+
+            try {
+                clearMessages();
+                if (authorizedUsers[role] && authorizedUsers[role].length > 0 && !authorizedUsers[role].includes(email)) {
+                    return showMessage(`Your email is not authorized for the ${role.replace('_', ' ').toUpperCase()} role.`, 'error');
+                }
+                showMessage('Creating account...', 'info');
+                const cred = await auth.createUserWithEmailAndPassword(email, password);
+                await cred.user.updateProfile({ displayName: name });
+                await db.collection('users').doc(cred.user.uid).set({
+                    name, email, role, status: 'active',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showMessage('Account created! Please log in.', 'success');
+                showTab('login');
+            } catch (error) {
+                showMessage(error.code.includes('in-use') ? 'An account with this email already exists.' : 'Registration failed.', 'error');
+            }
+        }
+
+        async function handleForgotPassword(e) {
+            e.preventDefault();
+            const email = document.getElementById('resetEmail').value.trim().toLowerCase();
+
+            if (!email) {
+                showMessage('Please enter your email address.', 'error');
+                return;
+            }
+
+            try {
+                clearMessages();
+                showMessage('Sending reset link...', 'info');
+
+                const response = await fetch(`${API_BASE}/api/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 429) {
+                    showMessage(data.error || 'Too many attempts. Please try again later.', 'error');
+                    return;
+                }
+
+                if (data.success) {
+                    showMessage('If an account exists with this email, a password reset link has been sent. Please check your inbox.', 'success');
+                    document.getElementById('resetEmail').value = '';
+                } else {
+                    showMessage(data.error || 'Something went wrong. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Forgot password error:', error);
+                showMessage('Unable to connect to the server. Please try again later.', 'error');
+            }
+        }
+
+        async function logout() {
+            await auth.signOut();
+        }
+
+       // ========== DEPARTMENT MENU FUNCTIONS ==========
+       function toggleDeptMenu(headerEl) {
+           const itemsEl = headerEl.nextElementSibling;
+           if (itemsEl) {
+               headerEl.classList.toggle('collapsed');
+               itemsEl.classList.toggle('collapsed');
+           }
+       }
+
+       function updateDeptGroupVisibility() {
+           // Hide department groups that have no visible menu items
+           document.querySelectorAll('.nav-department').forEach(dept => {
+               const items = dept.querySelectorAll('.nav-dept-items > li');
+               let hasVisibleItem = false;
+               items.forEach(item => {
+                   if (item.style.display !== 'none') {
+                       hasVisibleItem = true;
+                   }
+               });
+               dept.style.display = hasVisibleItem ? 'block' : 'none';
+               // Also hide the divider that follows this department
+               const nextSibling = dept.nextElementSibling;
+               if (nextSibling && nextSibling.classList.contains('nav-dept-divider')) {
+                   nextSibling.style.display = hasVisibleItem ? 'block' : 'none';
+               }
+           });
+       }
+
+       function showApp() {
+    // Use a small timeout to ensure DOM elements are ready
+    setTimeout(async () => {
+        console.log('--- showApp() EXECUTING ---');
+        try {
+            // Preload announcements from Firestore
+            await preloadAnnouncements();
+            
+            const loginPage = document.getElementById('loginPage');
+            const appContainer = document.getElementById('appContainer');
+            const userWelcome = document.getElementById('userWelcome');
+            const userRoleDisplay = document.getElementById('userRole');
+
+            if (!loginPage || !appContainer || !userWelcome || !userRoleDisplay) {
+                console.error("Core UI elements missing! Retrying...");
+                // Simple retry mechanism
+                if (!showApp.retried) {
+                    showApp.retried = true;
+                    setTimeout(showApp, 100);
+                    return;
+                }
+                throw new Error("Critical UI elements not found after retry.");
+            }
+
+            // 1. Update User Info - Get role with email fallback
+            let roleForCheck = (currentUserRole || '').trim().toLowerCase();
+            const userEmail = (currentUser?.email || '').toLowerCase();
+            
+            // Define COO and Director emails for direct check
+            const COO_EMAILS = ['coo@edanbrook.com', 'coo2@edanbrook.com'];
+            const DIRECTOR_EMAILS = ['director@edanbrook.com', 'ajit@edanbrook.com'];
+            const DC_EMAILS = ['iva@edanbrook.com', 'dc@edanbrook.com']; // Document Controller emails
+            const IT_EMAILS = ['ithelpdesk@edanbrook.com']; // IT Helpdesk emails
+            const DESIGN_LEAD_EMAILS = [
+                'muruganantham.tech@edanbrook.in',
+                'kathar.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'rebar.lead@edanbrook.com',
+                'rebar.lead1@edanbrook.com'
+            ]; // Design Lead emails
+
+            // Check if user is COO or Director by email (highest priority)
+            const isCOOByEmail = COO_EMAILS.includes(userEmail);
+            const isDirectorByEmail = DIRECTOR_EMAILS.includes(userEmail);
+            const isDCByEmail = DC_EMAILS.includes(userEmail);
+            const isITByEmail = IT_EMAILS.includes(userEmail);
+            const isDesignLeadByEmail = DESIGN_LEAD_EMAILS.includes(userEmail);
+
+            console.log('👤 User email:', userEmail);
+            console.log('👤 Is COO by email:', isCOOByEmail);
+            console.log('👤 Is Director by email:', isDirectorByEmail);
+            console.log('👤 Is DC by email:', isDCByEmail);
+            console.log('👤 Is IT by email:', isITByEmail);
+            console.log('👤 Is Design Lead by email:', isDesignLeadByEmail);
+            
+            // If role is empty or 'employee', try to detect from email
+            if (!roleForCheck || roleForCheck === 'employee' || roleForCheck === '') {
+                const emailLower = (currentUser?.email || '').toLowerCase();
+                console.log('⚠️ Role is empty/employee, checking email:', emailLower);
+                
+                if (emailLower.startsWith('coo@') || emailLower.includes('.coo@') || isCOOByEmail) {
+                    roleForCheck = 'coo';
+                    currentUserRole = 'coo'; // Update global for consistency
+                } else if (emailLower.startsWith('director@') || emailLower.includes('.director@') || isDirectorByEmail) {
+                    roleForCheck = 'director';
+                    currentUserRole = 'director';
+                } else if (isDCByEmail || emailLower === 'iva@edanbrook.com' || emailLower === 'dc@edanbrook.com') {
+                    roleForCheck = 'document_controller';
+                    currentUserRole = 'document_controller';
+                } else if (emailLower.startsWith('hr@') || emailLower.includes('.hr@') || emailLower === 'paul.a@edanbrook.com') {
+                    roleForCheck = 'hr';
+                    currentUserRole = 'hr';
+                } else if (emailLower.startsWith('bdm@') || emailLower.includes('.bdm@')) {
+                    roleForCheck = 'bdm';
+                    currentUserRole = 'bdm';
+                } else if (emailLower.startsWith('estimator@') || emailLower.includes('.estimator@')) {
+                    roleForCheck = 'estimator';
+                    currentUserRole = 'estimator';
+                } else if (emailLower.startsWith('accounts@') || emailLower.startsWith('accounts1@') || emailLower.includes('.accounts@')) {
+                    roleForCheck = 'accounts';
+                    currentUserRole = 'accounts';
+                } else if (isDesignLeadByEmail) {
+                    roleForCheck = 'design_lead';
+                    currentUserRole = 'design_lead';
+                } else if (emailLower.includes('.tech@')) {
+                    roleForCheck = 'designer';
+                    currentUserRole = 'designer';
+                } else if (isITByEmail || emailLower.startsWith('ithelpdesk@') || emailLower.startsWith('it@')) {
+                    roleForCheck = 'it';
+                    currentUserRole = 'it';
+                }
+                console.log('✅ Role after email detection:', roleForCheck);
+            }
+            
+            // Force COO/Director role if email matches (override any Firestore role)
+            if (isCOOByEmail && roleForCheck !== 'coo') {
+                console.log('⚠️ Forcing COO role based on email');
+                roleForCheck = 'coo';
+                currentUserRole = 'coo';
+            }
+            if (isDirectorByEmail && roleForCheck !== 'director') {
+                console.log('⚠️ Forcing Director role based on email');
+                roleForCheck = 'director';
+                currentUserRole = 'director';
+            }
+            // Force Document Controller role if email matches
+            if (isDCByEmail && roleForCheck !== 'document_controller') {
+                console.log('⚠️ Forcing Document Controller role based on email');
+                roleForCheck = 'document_controller';
+                currentUserRole = 'document_controller';
+            }
+            // Force IT role if email matches
+            if (isITByEmail && roleForCheck !== 'it') {
+                console.log('⚠️ Forcing IT role based on email');
+                roleForCheck = 'it';
+                currentUserRole = 'it';
+            }
+            // Force Design Lead role if email matches
+            if (isDesignLeadByEmail && roleForCheck !== 'design_lead') {
+                console.log('⚠️ Forcing Design Lead role based on email');
+                roleForCheck = 'design_lead';
+                currentUserRole = 'design_lead';
+            }
+            
+            userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;
+            userRoleDisplay.textContent = roleForCheck.replace('_', ' ').toUpperCase();
+
+            // 2. Switch Views
+            loginPage.style.display = 'none';
+            appContainer.style.display = 'block';
+
+            // 3. Set Nav Visibility based on Role
+            const setDisplay = (id, visible) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = visible ? 'block' : 'none';
+            };
+
+            // --- Role Checks ---
+            const isDesigner = roleForCheck === 'designer';
+            const isDesignLead = roleForCheck === 'design_lead';
+            const isManagement = ['coo', 'director'].includes(roleForCheck);
+            const isBDM = roleForCheck === 'bdm';
+            const isHR = roleForCheck === 'hr';
+            const isDC = roleForCheck === 'document_controller' || isDCByEmail;
+            const isIT = roleForCheck === 'it' || isITByEmail;
+            
+            console.log('==========================================');
+            console.log('🔍 NAVIGATION VISIBILITY DEBUG');
+            console.log('==========================================');
+            console.log('👤 roleForCheck:', roleForCheck);
+            console.log('👤 isDesigner:', isDesigner);
+            console.log('👤 isDesignLead:', isDesignLead);
+            console.log('👤 isManagement:', isManagement);
+            console.log('👤 isBDM:', isBDM);
+            console.log('👤 isHR:', isHR);
+            console.log('👤 isDC (Document Controller):', isDC);
+            console.log('👤 isIT (IT Helpdesk):', isIT);
+            console.log('📊 Designer Analytics visible for HR or Management:', isManagement || isHR);
+            console.log('==========================================');
+
+            // --- Menu Visibility ---
+            setDisplay('newProposalNavItem', isBDM);
+            setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR && !isDC); // Analytics for BDM/COO/Director
+            setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR && !isDC);
+            setDisplay('settingsNavItem', roleForCheck === 'director' || userEmail === 'sabin@edanbrook.com');
+            
+            // Designer Specifics: Hide Dashboard & Proposals, Show specific tools
+            setDisplay('dashboardNavItem', false); // Dashboard hidden for all users // Hide for Designer & Mgmt (Mgmt has Executive Dash)
+            const isAccounts = roleForCheck === 'accounts';
+            setDisplay('proposalsNavItem', !isDesigner && !isHR && !isDC && !isAccounts && !isIT); // HIDE All Proposals for Designer, HR, DC, Accounts, IT
+            setDisplay('filesNavItem', !isDesigner && !isManagement && !isHR && !isDC && !isAccounts && !isIT); // HIDE File Manager for HR, DC, Accounts, IT
+            
+            // Designer specific menus
+            setDisplay('projectsNavItem', isManagement && !isHR && !isDC); // Designers use "My Tasks" or "Allocations"
+            setDisplay('tasksNavItem', isDesigner);
+            setDisplay('timesheetNavItem', isDesigner);
+            setDisplay('myAnalyticsNavItem', isDesigner); // Designer sees their own analytics
+            setDisplay('designerAnalyticsNavItem', isManagement || isHR); // Designer Hours Analytics for COO/Director/HR
+            console.log('📊 designerAnalyticsNavItem visibility set to:', isManagement || isHR);
+            console.log('📊 isManagement:', isManagement, '| isHR:', isHR);
+            console.log('📊 Menu element:', document.getElementById('designerAnalyticsNavItem'));
+            setDisplay('designLeadPortalNavItem', isDesignLead); // Design Lead Portal
+            setDisplay('designerAllocationsNavItem', isDesigner); // SHOW New Menu
+
+            setDisplay('paymentsNavItem', ['accounts', 'coo', 'director', 'bdm'].includes(roleForCheck) && !isHR && !isDC);
+            setDisplay('subventorsNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('gstFilingNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('pettyCashNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('hrPettyCashNavItem', isHR);
+            setDisplay('poTrackerNavItem', ['accounts', 'coo', 'director'].includes(roleForCheck));
+            setDisplay('hrPoTrackerNavItem', isHR);
+            setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
+            setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
+            setDisplay('variationTrackingNavItem', (currentUserRole === 'coo' || currentUserRole === 'director') && !isHR && !isDC);
+            setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
+            
+            // HR Specific - Show HR Announcements and Leave Approval menus
+            setDisplay('hrAnnouncementsNavItem', isHR);
+            setDisplay('hrLeaveReportsNavItem', isHR); // Leave Reports - HR Only
+            setDisplay('hrScreeningNavItem', (isHR || ['coo', 'director'].includes(roleForCheck)) && !isDC); // HR Screening
+            
+            // Hide Activities from HR, DC, and IT (they have their own dashboards)
+            setDisplay('activitiesNavItem', !isHR && !isDC && !isIT);
+            
+            // Check if current user is a Team Lead (Designer Team Leads - 5 Total)
+            // These 5 emails are the ONLY team leads who can approve designer leaves
+            const TEAM_LEAD_EMAILS_NAV = [
+                'kathar.tech@edanbrook.in',
+                'muruganantham.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'meeraj.tech@edanbrook.in'
+            ];
+            
+            const userEmailLower = (currentUser?.email || '').toLowerCase().trim();
+            
+            // Simple check: is this email in the team lead list?
+            const isTeamLead = TEAM_LEAD_EMAILS_NAV.includes(userEmailLower);
+            
+            console.log('==========================================');
+            console.log('🔍 NAVIGATION DEBUG');
+            console.log('==========================================');
+            console.log('👤 User Email (lowercase):', userEmailLower);
+            console.log('👤 Role from Firestore:', roleForCheck);
+            console.log('👤 Is HR:', isHR);
+            console.log('👤 Is Team Lead:', isTeamLead);
+            console.log('📋 Team Lead Emails:', TEAM_LEAD_EMAILS_NAV);
+            console.log('🔍 Email in list?', TEAM_LEAD_EMAILS_NAV.includes(userEmailLower));
+            
+            // Leave Approval visible to HR, COO, Director, AND Team Leads
+            const canApproveLeave = isHR || ['coo', 'director'].includes(roleForCheck) || isTeamLead;
+            console.log('✅ Can Approve Leave:', canApproveLeave);
+            setDisplay('hrLeaveApprovalNavItem', canApproveLeave);
+            
+            // Design Approval nav visible to COO and Director (also check by email)
+            const canApproveDesign = ['coo', 'director'].includes(roleForCheck) || isCOOByEmail || isDirectorByEmail;
+            console.log('==========================================');
+            console.log('📐 DESIGN APPROVAL NAV DEBUG');
+            console.log('📐 roleForCheck:', roleForCheck);
+            console.log('📐 currentUserRole (raw):', currentUserRole);
+            console.log('📐 isCOOByEmail:', isCOOByEmail);
+            console.log('📐 isDirectorByEmail:', isDirectorByEmail);
+            console.log('📐 canApproveDesign:', canApproveDesign);
+            console.log('==========================================');
+            
+            // Set display
+            setDisplay('designApprovalNavItem', canApproveDesign);
+            
+            // Force show for COO/Director (extra safety)
+            if (canApproveDesign) {
+                const designNavItem = document.getElementById('designApprovalNavItem');
+                if (designNavItem) {
+                    designNavItem.style.display = 'block';
+                    designNavItem.style.visibility = 'visible';
+                    designNavItem.removeAttribute('hidden');
+                    console.log('📐 ✅ Design Approval Nav - FORCED VISIBLE');
+                    console.log('📐 Nav item element:', designNavItem);
+                } else {
+                    console.error('📐 ❌ Design Approval Nav - Element NOT FOUND in DOM!');
+                }
+                
+                // Also update the badge
+                updateDesignApprovalVisibility();
+                
+                // Double-check with delay (in case of render timing)
+                setTimeout(() => {
+                    const navItem = document.getElementById('designApprovalNavItem');
+                    if (navItem && navItem.style.display !== 'block') {
+                        navItem.style.display = 'block';
+                        console.log('📐 ✅ Design Approval Nav - DELAYED FORCE VISIBLE');
+                    }
+                }, 500);
+            } else {
+                console.log('📐 ⚠️ User is NOT COO or Director, hiding Design Approval Nav');
+            }
+
+            // DC File Tracker Nav - For COO and Director
+            setDisplay('dcTrackerNavItem', canApproveDesign);
+            // Also show DC File Tracker as main Document Control menu item for COO/Director/DC
+            setDisplay('dcTrackerMainNavItem', canApproveDesign || isDC);
+            setDisplay('fileAnalyticsNavItem', canApproveDesign);
+            if (canApproveDesign) {
+                const dcTrackerNav = document.getElementById('dcTrackerNavItem');
+                if (dcTrackerNav) {
+                    dcTrackerNav.style.display = 'block';
+                    dcTrackerNav.style.visibility = 'visible';
+                }
+                const analyticsNav = document.getElementById('fileAnalyticsNavItem');
+                if (analyticsNav) {
+                    analyticsNav.style.display = 'block';
+                    analyticsNav.style.visibility = 'visible';
+                }
+            }
+
+            // Document Controller Nav - Only for DC users
+            setDisplay('documentControllerNavItem', isDC);
+            if (isDC) {
+                console.log('📄 ✅ Document Controller Nav - VISIBLE');
+                const dcNavItem = document.getElementById('documentControllerNavItem');
+                if (dcNavItem) {
+                    dcNavItem.style.display = 'block';
+                    dcNavItem.style.visibility = 'visible';
+                }
+                // Update DC pending badge
+                updateDCPendingBadge();
+            }
+            
+            // IT Portal Nav Items
+            setDisplay('itPettyCashNavItem', isIT); // IT Petty Cash - IT team
+            setDisplay('itDashboardNavItem', isIT); // IT Dashboard - only IT team
+            setDisplay('itRequestNavItem', !isIT && !isDC && !isManagement); // IT Request - all users EXCEPT IT, DC, COO, Director
+            setDisplay('itDepartmentNavItem', isManagement); // IT Department Report - COO & Director only
+            setDisplay('hrITProcurementNavItem', isHR); // HR IT Procurement - HR only
+
+            // Update IT open tickets badge
+            if (isIT) {
+                updateITOpenTicketsBadge();
+            }
+            // Update HR IT procurement badge
+            if (isHR) {
+                updateHRITPendingBadge();
+            }
+
+            // Show Leave Request for all roles EXCEPT HR, COO, Director
+            // Note: Team Leads CAN submit their own leave requests (they see both menus)
+            const showLeaveRequest = !isHR && !['coo', 'director'].includes(roleForCheck);
+            console.log('✅ Show Leave Request Menu:', showLeaveRequest);
+            setDisplay('employeeLeaveRequestNavItem', showLeaveRequest);
+            console.log('==========================================');
+            
+            // Update badge for Director
+            if (currentUserRole === 'director') {
+                updateDirectorRequestsBadge();
+            }
+            
+            // Update HR leave requests badge for all approvers
+            if (canApproveLeave) {
+                updateHRLeaveRequestsBadge();
+            }
+
+            
+
+            // 4. Update Badges (if applicable)
+            if (['coo', 'director'].includes(roleForCheck)) {
+                updatePendingRequestsBadge();
+            }
+
+            // 4b. Update Department Group Visibility
+            updateDeptGroupVisibility();
+
+            // 5. Route to Initial View (check deep link first)
+            if (window._pendingDeepLink) {
+                const handled = handleDeepLink(window._pendingDeepLink);
+                window._pendingDeepLink = null;
+                // Clean URL params without reload
+                if (window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                if (!handled) {
+                    // Deep link not applicable, fall through to default routing
+                    routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement);
+                }
+            } else {
+                routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement);
+            }
+
+            // 6. Load Notifications
+            loadNotifications();
+
+        } catch (error) {
+            console.error("Error in showApp:", error);
+            alert("An error occurred while loading the application. Please refresh.");
+        } finally {
+            // ALWAYS hide loading spinner at the end
+            hideLoading();
+        }
+    }, 50);
+}
+// Initialize retry flag
+showApp.retried = false;
+
+/**
+ * Routes to the default view based on the user's role.
+ */
+function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement) {
+    if (roleForCheck === 'design_lead') {
+        showDesignLeadPortal();
+    } else if (isDesigner) {
+        showDesignerAllocations();
+    } else if (isHR) {
+        showHRDashboard();
+    } else if (isDC) {
+        showDocumentControllerDashboard();
+    } else if (roleForCheck === 'it') {
+        showITDashboard();
+    } else if (roleForCheck === 'accounts') {
+        showPayments();
+    } else if (isBDM || isManagement) {
+        showProposals();
+    } else {
+        showProposals();
+    }
+}
+
+/**
+ * Handles deep link navigation from email notifications.
+ * Returns true if the deep link was handled, false otherwise.
+ */
+function handleDeepLink(link) {
+    if (!link || !link.action) return false;
+    console.log('🔗 Handling deep link:', link);
+
+    try {
+        switch (link.action) {
+            case 'view-invoice':
+                if (link.id) {
+                    showPayments();
+                    setTimeout(() => viewPayment(link.id), 800);
+                    return true;
+                }
+                showPayments();
+                return true;
+
+            case 'view-payments':
+            case 'invoices':
+                showPayments();
+                return true;
+
+            case 'view-proposal':
+                if (link.id) {
+                    showProposals();
+                    setTimeout(() => viewProposal(link.id), 800);
+                    return true;
+                }
+                showProposals();
+                return true;
+
+            case 'view-proposals':
+            case 'proposals':
+                showProposals();
+                return true;
+
+            case 'view-project':
+                if (link.id) {
+                    showProposals();
+                    setTimeout(() => viewProposal(link.id), 800);
+                    return true;
+                }
+                showProposals();
+                return true;
+
+            case 'time-requests':
+                if (typeof showCOOTimeRequests === 'function') {
+                    showCOOTimeRequests();
+                    return true;
+                }
+                return false;
+
+            case 'variations':
+                showPayments();
+                return true;
+
+            case 'leave-requests':
+                if (typeof showHRLeaveApproval === 'function') {
+                    showHRLeaveApproval();
+                    return true;
+                }
+                return false;
+
+            case 'leave-status':
+                if (typeof showEmployeeLeaveRequest === 'function') {
+                    showEmployeeLeaveRequest();
+                    return true;
+                }
+                return false;
+
+            case 'designer-allocations':
+                if (typeof showDesignerAllocations === 'function') {
+                    showDesignerAllocations();
+                    return true;
+                }
+                return false;
+
+            case 'design-approvals':
+                if (typeof showDesignFileApprovals === 'function') {
+                    showDesignFileApprovals();
+                    return true;
+                }
+                return false;
+
+            case 'dc-tracker':
+                if (typeof showDCFileTracker === 'function') {
+                    showDCFileTracker();
+                    return true;
+                }
+                return false;
+
+            case 'document-controller':
+                if (typeof showDocumentControllerDashboard === 'function') {
+                    showDocumentControllerDashboard();
+                    return true;
+                }
+                return false;
+
+            case 'screening':
+                if (typeof showHRScreening === 'function') {
+                    showHRScreening();
+                    return true;
+                }
+                return false;
+
+            default:
+                console.warn('🔗 Unknown deep link action:', link.action);
+                return false;
+        }
+    } catch (err) {
+        console.error('🔗 Deep link error:', err);
+        return false;
+    }
+}
+
+        function showLogin() {
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('loginPage').style.display = 'flex';
+            clearMessages();
+        }
+
+        function showTab(tab) {
+            const loginRight = document.querySelector('.login-right');
+            if (loginRight) {
+                loginRight.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                const tabBtn = loginRight.querySelector(`[onclick="showTab('${tab}')"]`);
+                if (tabBtn) tabBtn.classList.add('active');
+                loginRight.querySelectorAll('.auth-content').forEach(c => c.classList.remove('active'));
+                const tabContent = document.getElementById(`${tab}Content`);
+                if (tabContent) tabContent.classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                const tabBtn = document.querySelector(`[onclick="showTab('${tab}')"]`);
+                if (tabBtn) tabBtn.classList.add('active');
+                document.querySelectorAll('.auth-content').forEach(c => c.classList.remove('active'));
+                const tabContent = document.getElementById(`${tab}Content`);
+                if (tabContent) tabContent.classList.add('active');
+            }
+            clearMessages();
+        }
+
+        function setActiveNav(navId) {
+            document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
+            document.getElementById(navId)?.classList.add('active');
+        }
+
+        // ============================================
+        // HELPER FUNCTIONS
+        // ============================================
+
+        function showLoading() { document.getElementById('loadingSpinner').style.display = 'flex'; }
+        function hideLoading() { document.getElementById('loadingSpinner').style.display = 'none'; }
+        function showMessage(message, type = 'info') {
+            const c = document.getElementById('authMessages');
+            if(c) c.innerHTML = `<div class="${type}-message">${message}</div>`;
+        }
+        function clearMessages() {
+            const c = document.getElementById('authMessages');
+            if(c) c.innerHTML = '';
+        }
+        // ================================================================
+// UNIFIED MODAL HANDLING (Replaces existing openModal/closeModal)
+// ================================================================
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) {
+        console.error('Modal not found:', modalId);
+        return;
+    }
+    // Support both old .modal and new .modal-overlay styles
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+}
+
+// Robust close function that handles specific IDs OR closes all if no ID provided
+function closeModal(modalId) {
+    if (modalId) {
+        // Case 1: Close specific modal by ID
+        const modal = document.getElementById(modalId);
+        if (modal) closeSingleModal(modal);
+    } else {
+        // Case 2: No ID provided (common in dynamic forms), close EVERYTHING currently open
+        document.querySelectorAll('.modal.show, .modal-overlay, .modal[style*="display: flex"], .modal[style*="display: block"]').forEach(modal => {
+             closeSingleModal(modal);
+        });
+    }
+    // Ensure body scroll is restored
+    if (document.querySelectorAll('.modal.show, .modal-overlay').length === 0) {
+        document.body.classList.remove('modal-open');
+    }
+}
+
+// Helper to safely close and optionally remove dynamic modals
+function closeSingleModal(modal) {
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    
+    // IMPORTANT: If it's a dynamic overlay (added via JS), remove it from DOM to prevent duplicates
+    if (modal.classList.contains('modal-overlay') || modal.parentElement === document.body) {
+        // Wait a tiny bit for any animations to finish if you have them, otherwise remove immediately
+        setTimeout(() => modal.remove(), 100);
+    }
+}
+
+// Global ESC key handler
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal(); // Close everything on Escape
+    }
+});
+
+// Global outside click handler for ALL modal types
+window.addEventListener('click', function(event) {
+    // Check if clicked element IS the overlay/background itself
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-overlay')) {
+        closeSingleModal(event.target);
+    }
+});
+        function formatDate(ts) {
+            // Handles Firebase timestamp objects, ISO strings, numeric timestamps, or Date objects
+            if (!ts) return 'N/A';
+            let date;
+
+            // Handle Firebase Timestamp object (seconds or _seconds)
+            if (ts && (ts.seconds || ts._seconds)) {
+                const seconds = ts.seconds || ts._seconds;
+                date = new Date(seconds * 1000);
+            } 
+            // Handle numeric timestamp (milliseconds)
+            else if (typeof ts === 'number') {
+                date = new Date(ts);
+            }
+            // Handle Date object
+            else if (ts instanceof Date) {
+                date = ts;
+            }
+            // Handle ISO string or other date string formats
+            else if (typeof ts === 'string') {
+                // Check if it's a valid date string
+                date = new Date(ts);
+            }
+            // Handle object with toDate method (Firestore Timestamp)
+            else if (ts && typeof ts.toDate === 'function') {
+                date = ts.toDate();
+            }
+            else {
+                return 'N/A';
+            }
+            
+            // Check if date is valid
+            if (!date || isNaN(date.getTime())) {
+                return 'N/A';
+            }
+
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+        
+        // Helper function to get local date string in YYYY-MM-DD format (timezone-safe)
+        // This avoids the issue where toISOString() converts to UTC and may shift the date
+        function getLocalDateStr(date) {
+            if (!date) date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        function formatFileSize(bytes) {
+            if (!bytes) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i), 2) + ' ' + sizes[i];
+        }
+
+        // ADDED FROM PROMPT
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} show`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+   // ENSURE THIS FUNCTION IS PRESENT (Fixes Email Triggering)
+// ================================================================
+async function triggerEmailNotification(eventName, data = {}) {
+    console.log(`📧 Triggering email for: ${eventName}`, data);
+    try {
+        // Safety check for createdBy if missing
+        if (!data.createdBy && currentUser) {
+             data.createdBy = currentUser.displayName || currentUser.email || 'System User';
+        }
+
+        const response = await apiCall('email/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event: eventName,
+                data: data
+            })
+        });
+
+        if (response.success) {
+            console.log(`✅ Email for [${eventName}] queued successfully.`);
+        } else {
+            console.warn(`⚠️ Email queue failed for [${eventName}]:`, response.error);
+        }
+    } catch (error) {
+        // Just log it, don't stop the app flow
+        console.error(`❌ Failed to send email for [${eventName}]:`, error.message);
+    }
+}
+
+        // ============================================
+        // DASHBOARD
+        // ============================================
+
+        async function showProposals() {
+            setActiveNav('nav-dashboard');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            try {
+                console.log('📊 Loading dashboard...');
+                const response = await apiCall('dashboard');
+                console.log('📊 Dashboard response:', response);
+                console.log('📊 Response.data:', response.data);
+                console.log('📊 Response.success:', response.success);
+                
+                // Handle different response formats
+                let dashboardData = null;
+                if (response.success && response.data) {
+                    dashboardData = response.data;
+                } else if (response.data) {
+                    // Backend might return data without success wrapper
+                    dashboardData = response.data;
+                } else if (response.success) {
+                    // Data might be in root level
+                    dashboardData = response;
+                } else {
+                    // Fallback - use response itself
+                    dashboardData = response;
+                }
+                
+                console.log('📊 Final dashboard data:', dashboardData);
+                
+                if (dashboardData && Object.keys(dashboardData).length > 0) {
+                    renderDashboard(dashboardData);
+                } else {
+                    throw new Error('No dashboard data received. Response: ' + JSON.stringify(response));
+                }
+            } catch (error) {
+                console.error('❌ Dashboard error:', error);
+                main.innerHTML = `
+                    <div class="error-message">
+                        <h3>⚠️ Dashboard Error</h3>
+                        <p>${error.message}</p>
+                        <button onclick="showProposals()" class="btn btn-primary">Retry</button>
+                        <button onclick="runDiagnostics()" class="btn btn-outline">Run Diagnostics</button>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function renderDashboard(data) {
+            console.log('🎨 Rendering dashboard with data:', data);
+            
+            // Handle different data formats
+            let stats = data.stats || data; // Backend might return stats directly or wrapped
+            
+            // Convert stats object to display format
+            const statsHtml = stats ? Object.entries(stats)
+                .filter(([k, v]) => typeof v === 'number') // Only show numeric values
+                .map(([k, v]) => `
+                    <div class="stat-card">
+                        <div class="stat-number">${v}</div>
+                        <div class="stat-label">${k.charAt(0).toUpperCase() + k.slice(1)}</div>
+                    </div>
+                `).join('') : '<div class="stat-card"><div class="stat-number">0</div><div class="stat-label">No Data</div></div>';
+
+            let actionsHtml = '';
+            if (data.actionItems?.length) {
+                const badges = currentUserRole === 'estimator' ? ['Upload BOQ', 'Enter Manhours'] :
+                                 currentUserRole === 'coo' ? ['Full Edit Access', 'Download Reports'] :
+                                 currentUserRole === 'director' ? ['Override Access', 'Strategic Reports'] :
+                                 currentUserRole === 'bdm' ? ['Upload Files'] : [];
+
+                const badgesHtml = badges.map(badge => `<span class="action-badge">${badge}</span>`).join('');
+
+                actionsHtml = `
+                    <h3>Your Action Items</h3>
+                    <div class="action-badges">${badgesHtml}</div>
+                    ${data.actionItems.map(item => `
+                        <div class="action-item">
+                            <div class="action-content">
+                                <strong>${item.projectName}</strong>
+                                <div class="action-meta">Client: ${item.clientCompany} | Status: ${item.status.replace(/_/g, ' ')}</div>
+                            </div>
+                            <div class="action-buttons">
+                                ${getActionButtons(item, currentUserRole)}
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+            } else {
+                actionsHtml = `
+                    <h3>Action Items</h3>
+                    <p>No pending action items. All caught up! 🎉</p>
+                `;
+            }
+
+            let executiveHtml = '';
+            if (currentUserRole === 'director' && data.executiveOverview) {
+                executiveHtml = `
+                    <div class="executive-overview">
+                        <h3>Executive Overview - Project Status Summary</h3>
+                        <div class="executive-stats">
+                            ${Object.entries(data.executiveOverview).map(([k, v]) => `
+                                <div class="exec-stat-card">
+                                    <div class="exec-stat-number">${v}</div>
+                                    <div class="exec-stat-label">${k}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const activitiesHtml = data.recentActivities?.length ? `
+                <div class="action-section">
+                    <h3>Recent Activities</h3>
+                    ${data.recentActivities.map(act => `
+                        <div class="action-item">
+                            <div class="action-content">
+                                <strong>${act.details}</strong>
+                                <div class="action-meta">By ${act.performedByName} (${act.performedByRole}) - ${formatDate(act.timestamp)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            // Pre-render announcements
+            const announcementsHtml = renderDashboardAnnouncements();
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="page-header">
+                    <h2>Dashboard</h2>
+                    <div class="subtitle">Welcome to EDANBROOK Project Management System</div>
+                </div>
+                ${announcementsHtml}
+                <div class="dashboard-stats">${statsHtml}</div>
+                ${executiveHtml}
+                <div class="action-section">${actionsHtml}</div>
+                ${activitiesHtml}
+            `;
+        }
+
+        function getActionButtons(item, role) {
+            let actionBtn = '';
+            switch(item.type) {
+                case 'estimation_required':
+                    if (role === 'estimator')
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${item.proposalId}')">ENTER MANHOURS</button>`;
+                    break;
+                case 'pricing_required':
+                    if (role === 'coo')
+                        // MODIFIED: Use new pricing form
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="showCOOPricingForm('${item.proposalId}')">SET PRICING</button>`;
+                    break;
+                case 'approval_required':
+                    if (role === 'director')
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="viewProposal('${item.proposalId}')">EXECUTIVE REVIEW</button>`;
+                    break;
+                case 'ready_for_client':
+                     if (role === 'bdm')
+                        actionBtn = `<button class="btn btn-success btn-sm" onclick="submitToClient('${item.proposalId}')">SUBMIT TO CLIENT</button>`;
+                     break;
+                case 'client_decision_pending':
+                     if (role === 'bdm')
+                        actionBtn = `
+                            <button class="btn btn-success btn-sm" onclick="markProposalWon('${item.proposalId}')">✅ WON</button>
+                            <button class="btn btn-danger btn-sm" onclick="markProposalLost('${item.proposalId}')">❌ LOST</button>
+                        `;
+                     break;
+                case 'project_allocation':
+                    // ** UPDATED to use new function name **
+                    if (role === 'coo' || role === 'director')
+                        // MODIFIED: Use new allocation modal
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="showProjectAllocationModal('${item.proposalId}')">ALLOCATE PROJECT</button>`;
+                    break;
+                case 'task_assignment':
+                    // This is for DESIGN LEAD to assign DESIGNERS
+                    if (role === 'design_lead')
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="assignDesigners('${item.projectId}')">ASSIGN DESIGNERS</button>`;
+                    break;
+                case 'invoice_required':
+                    if (role === 'accounts')
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="showCreateInvoiceModal('${item.projectId}')">CREATE INVOICE</button>`;
+                    break;
+                case 'follow_up_required':
+                    if (role === 'bdm' || role === 'accounts')
+                        actionBtn = `<button class="btn btn-warning btn-sm" onclick="viewPayment('${item.paymentId}')">FOLLOW UP</button>`;
+                    break;
+            }
+            const viewId = item.proposalId || item.projectId;
+            // Use viewProposal for proposal items, viewProject for project items
+            const viewFn = item.proposalId ? 'viewProposal' : 'viewProject';
+            const viewButton = viewId ? `<button class="btn btn-outline btn-sm" onclick="${viewFn}('${viewId}')">VIEW</button>` : '';
+            return `${actionBtn} ${viewButton}`;
+        }
+
+        // ============================================
+        // PROPOSALS (BDM, Estimator, COO, Director)
+        // ============================================
+
+        async function showProposals() {
+            setActiveNav('nav-proposals');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            main.innerHTML = '';
+
+            try {
+                console.log('🔄 Fetching proposals...');
+                const response = await apiCall('proposals');
+                console.log('📋 Proposals response:', response);
+                console.log('📋 Proposals data:', response.data);
+                console.log('📋 Response.success:', response.success);
+                console.log('📋 Number of proposals:', response.data?.length);
+                
+                // Handle different response formats
+                let proposalsData = null;
+                if (response.success && response.data) {
+                    proposalsData = response.data;
+                } else if (Array.isArray(response.data)) {
+                    proposalsData = response.data;
+                } else if (Array.isArray(response)) {
+                    proposalsData = response;
+                } else {
+                    proposalsData = [];
+                }
+                
+                console.log('📋 Final proposals data:', proposalsData, 'Length:', proposalsData.length);
+                
+                if (proposalsData && Array.isArray(proposalsData)) {
+                    renderProposals(proposalsData);
+                } else {
+                    throw new Error('Invalid proposals response format. Response: ' + JSON.stringify(response));
+                }
+            } catch (error) {
+                console.error('❌ Error fetching proposals:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading Proposals</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        let currentProposalFilter = 'all'; // Add this global variable at the top of your script
+
+function renderProposals(proposals) {
+    const createButton = currentUserRole === 'bdm' ? `
+        <button onclick="showCreateProposalModal()" class="btn btn-primary" style="margin-bottom: 2rem; width: auto;">
+            Create New Proposal
+        </button>
+    ` : '';
+
+    // Calculate counts for Director filters
+    const pendingApprovalCount = proposals.filter(p => {
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        return statusLower === 'pending_approval' || 
+               statusLower === 'pricing_complete' || 
+               (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost');
+    }).length;
+
+    const pendingPricingCount = proposals.filter(p => {
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        return (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber);
+    }).length;
+
+    const pendingEstimationCount = proposals.filter(p => {
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) &&
+               statusLower !== 'approved' &&
+               statusLower !== 'rejected' &&
+               statusLower !== 'won' &&
+               statusLower !== 'lost' &&
+               statusLower !== 'subcontracted' &&
+               !p.subcontractor;
+    }).length;
+
+    // Filter Buttons for Director AND COO
+    let directorFilterButtons = '';
+    if (currentUserRole === 'director' || currentUserRole === 'coo') {
+        // Calculate pending allocation count - ONLY unallocated projects
+        const pendingAllocationCount = proposals.filter(p =>
+            p.status === 'won' &&
+            p.pricing &&
+            p.pricing.projectNumber &&
+            !p.projectCreated &&
+            p.allocationStatus !== 'completed'
+        ).length;
+
+        // Calculate partially allocated count - projects that exist but need more hours allocated
+        const partiallyAllocatedCount = proposals.filter(p => {
+            if (p.status !== 'won' || !p.projectCreated) return false;
+            if (p.allocationStatus === 'partial') return true;
+            const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+            const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+            return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+        }).length;
+
+        // Calculate fully allocated count — backend stores allocationStatus as 'allocated'
+        const fullyAllocatedCount = proposals.filter(p => {
+            if (p.status !== 'won') return false;
+            if (p.allocationStatus === 'allocated' || p.allocationStatus === 'completed') return true;
+            const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+            const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+            return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
+        }).length;
+
+        // Project status counts
+        const projectWonCount = proposals.filter(p => p.status === 'won').length;
+        const projectLostCount = proposals.filter(p => p.status === 'lost').length;
+        // Awaiting = approved (awaiting client submission) + submitted_to_client (awaiting client decision)
+        const projectAwaitingCount = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client').length;
+        const subcontractedCount = proposals.filter(p => p.status === 'subcontracted' || p.subcontractor).length;
+
+        directorFilterButtons = `
+            <div class="filter-buttons-container">
+                <button class="filter-btn filter-btn-all ${currentProposalFilter === 'all' ? 'active' : ''}"
+                        onclick="filterProposals('all')">
+                    All Proposals
+                    <span class="filter-count">${proposals.length}</span>
+                </button>
+                <button class="filter-btn filter-btn-approval ${currentProposalFilter === 'pending_approval' ? 'active' : ''}"
+                        onclick="filterProposals('pending_approval')">
+                    Pending Approval
+                    <span class="filter-count">${pendingApprovalCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-pricing ${currentProposalFilter === 'pending_pricing' ? 'active' : ''}"
+                        onclick="filterProposals('pending_pricing')">
+                    Pending Pricing
+                    <span class="filter-count">${pendingPricingCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-estimation ${currentProposalFilter === 'pending_estimation' ? 'active' : ''}"
+                        onclick="filterProposals('pending_estimation')">
+                    Pending Estimation
+                    <span class="filter-count">${pendingEstimationCount}</span>
+                </button>
+                <button class="filter-btn ${currentProposalFilter === 'pending_allocation' ? 'active' : ''}"
+                        onclick="filterProposals('pending_allocation')"
+                        style="${currentProposalFilter === 'pending_allocation' ? 'background: #1e40af; color: white;' : 'background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af;'}">
+                    Pending Allocation
+                    <span class="filter-count">${pendingAllocationCount}</span>
+                </button>
+                ${partiallyAllocatedCount > 0 ? `
+                <button class="filter-btn ${currentProposalFilter === 'partially_allocated' ? 'active' : ''}"
+                        onclick="filterProposals('partially_allocated')"
+                        style="${currentProposalFilter === 'partially_allocated' ? 'background: #92400e; color: white;' : 'background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e;'}">
+                    Partially Allocated
+                    <span class="filter-count">${partiallyAllocatedCount}</span>
+                </button>
+                ` : ''}
+                <button class="filter-btn ${currentProposalFilter === 'fully_allocated' ? 'active' : ''}"
+                        onclick="filterProposals('fully_allocated')"
+                        style="${currentProposalFilter === 'fully_allocated' ? 'background: #065f46; color: white;' : 'background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46;'}">
+                    Allocated
+                    <span class="filter-count">${fullyAllocatedCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-won ${currentProposalFilter === 'project_won' ? 'active' : ''}"
+                        onclick="filterProposals('project_won')">
+                    🏆 Project Won
+                    <span class="filter-count">${projectWonCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-lost ${currentProposalFilter === 'project_lost' ? 'active' : ''}"
+                        onclick="filterProposals('project_lost')">
+                    ❌ Project Lost
+                    <span class="filter-count">${projectLostCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-awaiting ${currentProposalFilter === 'project_awaiting' ? 'active' : ''}"
+                        onclick="filterProposals('project_awaiting')">
+                    ⏳ Project Awaiting
+                    <span class="filter-count">${projectAwaitingCount}</span>
+                </button>
+                <button class="filter-btn ${currentProposalFilter === 'subcontracted' ? 'active' : ''}"
+                        onclick="filterProposals('subcontracted')"
+                        style="${currentProposalFilter === 'subcontracted' ? 'background: #5b21b6; color: white;' : 'background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #5b21b6;'}">
+                    Subcontracted
+                    <span class="filter-count">${subcontractedCount}</span>
+                </button>
+            </div>
+        `;
+    }
+
+    // Filter proposals based on current filter (WORKS FOR BOTH DIRECTOR AND COO NOW)
+    let filteredProposals = proposals;
+    if ((currentUserRole === 'director' || currentUserRole === 'coo') && currentProposalFilter !== 'all') {
+        console.log('🔍 Applying filter:', currentProposalFilter);
+        console.log('📊 Total proposals before filter:', proposals.length);
+        
+        if (currentProposalFilter === 'pending_approval') {
+            filteredProposals = proposals.filter(p => {
+                const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+                return statusLower === 'pending_approval' || 
+                       statusLower === 'pricing_complete' || 
+                       (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost');
+            });
+        } else if (currentProposalFilter === 'pending_pricing') {
+            filteredProposals = proposals.filter(p => {
+                const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+                return (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber);
+            });
+        } else if (currentProposalFilter === 'pending_estimation') {
+            filteredProposals = proposals.filter(p => {
+                const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+                return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) &&
+                       statusLower !== 'approved' &&
+                       statusLower !== 'rejected' &&
+                       statusLower !== 'won' &&
+                       statusLower !== 'lost' &&
+                       statusLower !== 'subcontracted' &&
+                       !p.subcontractor;
+            });
+        } else if (currentProposalFilter === 'pending_allocation') {
+            // Filter for won proposals needing allocation
+            filteredProposals = proposals.filter(p =>
+                p.status === 'won' &&
+                p.pricing &&
+                p.pricing.projectNumber &&
+                !p.projectCreated &&
+                p.allocationStatus !== 'completed'
+            );
+        } else if (currentProposalFilter === 'partially_allocated') {
+            filteredProposals = proposals.filter(p => {
+                if (p.status !== 'won' || !p.projectCreated) return false;
+                if (p.allocationStatus === 'partial') return true;
+                const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+            });
+        } else if (currentProposalFilter === 'fully_allocated') {
+            filteredProposals = proposals.filter(p => {
+                if (p.status !== 'won') return false;
+                if (p.allocationStatus === 'allocated' || p.allocationStatus === 'completed') return true;
+                const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                return p.projectCreated && maxHours > 0 && (maxHours - totalAllocated) <= 0.1;
+            });
+        } else if (currentProposalFilter === 'project_won') {
+            filteredProposals = proposals.filter(p => p.status === 'won');
+        } else if (currentProposalFilter === 'project_lost') {
+            filteredProposals = proposals.filter(p => p.status === 'lost');
+        } else if (currentProposalFilter === 'project_awaiting') {
+            filteredProposals = proposals.filter(p => p.status === 'approved' || p.status === 'submitted_to_client');
+        } else if (currentProposalFilter === 'subcontracted') {
+            filteredProposals = proposals.filter(p => p.status === 'subcontracted' || p.subcontractor);
+        }
+
+        console.log('📊 Filtered proposals:', filteredProposals.length);
+    }
+
+    const approvedProposals = filteredProposals.filter(p => p.status === 'approved');
+    const submittedProposals = filteredProposals.filter(p => p.status === 'submitted_to_client');
+    const wonProposals = filteredProposals.filter(p => p.status === 'won');
+    const otherProposals = filteredProposals.filter(p => !['approved', 'submitted_to_client', 'won'].includes(p.status));
+
+    let approvedSection = '';
+    if (currentUserRole === 'bdm' && approvedProposals.length > 0) {
+        approvedSection = `
+            <div class="action-section" style="margin-bottom: 2rem; background: #E8F5E9;">
+                <h3>✅ APPROVED Proposals - Ready for Client Submission</h3>
+                ${approvedProposals.map(p => `
+                    <div class="action-item" style="background: white;">
+                        <div class="action-content">
+                            <strong>${p.projectName}</strong>
+                            <div class="action-meta">Client: ${p.clientCompany} | Approved: ${formatDate(p.directorApproval?.approvedAt || p.createdAt)}</div>
+                        </div>
+                        <span class="proposal-status status-approved">APPROVED</span>
+                        <div class="action-buttons">
+                            <button onclick="submitToClient('${p.id}')" class="btn btn-primary btn-sm">📧 SUBMIT</button>
+                            <button onclick="markProposalWon('${p.id}')" class="btn btn-success btn-sm">✅ WON</button>
+                            <button onclick="markProposalLost('${p.id}')" class="btn btn-danger btn-sm">❌ LOST</button>
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    let submittedSection = '';
+    if (currentUserRole === 'bdm' && submittedProposals.length > 0) {
+        submittedSection = `
+            <div class="action-section" style="margin-bottom: 2rem; background: #E3F2FD;">
+                <h3>📧 SUBMITTED Proposals - Awaiting Client Decision</h3>
+                ${submittedProposals.map(p => `
+                    <div class="action-item" style="background: white;">
+                        <div class="action-content">
+                            <strong>${p.projectName}</strong>
+                            <div class="action-meta">Client: ${p.clientCompany} | Submitted: ${formatDate(p.updatedAt)}</div>
+                        </div>
+                        <span class="proposal-status status-submitted">SUBMITTED</span>
+                        <div class="action-buttons">
+                            <button onclick="markProposalWon('${p.id}')" class="btn btn-success btn-sm">✅ WON</button>
+                            <button onclick="markProposalLost('${p.id}')" class="btn btn-danger btn-sm">❌ LOST</button>
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    let wonSection = '';
+    if (wonProposals.length > 0) {
+        wonSection = `
+            <div class="action-section" style="margin-bottom: 2rem; background: #D5F4E6;">
+                <h3>🏆 WON Proposals</h3>
+                ${wonProposals.map(p => {
+                    let allocationInfo = '';
+                    let allocationButton = '';
+
+                    // Calculate allocation status
+                    const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                    const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                    const remainingToAllocate = maxHours - totalAllocated;
+
+                    // Determine status using both calculated values and backend allocationStatus
+                    const backendStatus = p.allocationStatus || '';
+                    const isFullyAllocated = (p.projectCreated && maxHours > 0 && totalAllocated >= maxHours) || backendStatus === 'completed';
+                    const isPartiallyAllocated = !isFullyAllocated && ((p.projectCreated && maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours) || backendStatus === 'partial');
+
+                    if (isFullyAllocated) {
+                        allocationInfo = `
+                            <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.9rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #6ee7b7; box-shadow: 0 1px 3px rgba(16,185,129,0.15);">
+                                <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #059669; border-radius: 50%; color: white; font-size: 0.65rem;">&#10003;</span>
+                                Allocated ${totalAllocated > 0 ? `(${totalAllocated}/${maxHours}h)` : ''}
+                            </div>`;
+                        if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                            allocationButton = `
+                                <button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">View Project</button>
+                                <button onclick="showCooEditAllocationModal('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #6b7280; color: #6b7280;">Edit Allocations</button>
+                            `;
+                        }
+                    }
+                    else if (isPartiallyAllocated) {
+                        const pct = maxHours > 0 ? Math.round((totalAllocated / maxHours) * 100) : 0;
+                        allocationInfo = `
+                            <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;">
+                                <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #fbbf24; box-shadow: 0 1px 3px rgba(245,158,11,0.15);">
+                                    Partially Allocated (${pct}%)
+                                </span>
+                                <div style="width: 120px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                                    <div style="width: ${pct}%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); border-radius: 3px;"></div>
+                                </div>
+                                <span style="font-size: 0.7rem; color: #78716c;">${totalAllocated}/${maxHours}h &middot; ${remainingToAllocate.toFixed(1)}h remaining</span>
+                            </div>`;
+                        if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                            allocationButton = `
+                                <button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-sm" style="background: #d97706; color: white; font-weight: 600; border: none;">
+                                    Continue Allocation
+                                </button>
+                                <button onclick="showCooEditAllocationModal('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #6b7280; color: #6b7280;">Edit</button>
+                            `;
+                        }
+                    }
+                    else if (p.pricing && p.pricing.projectNumber) {
+                        allocationInfo = `
+                            <span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #93c5fd; box-shadow: 0 1px 3px rgba(59,130,246,0.15);">
+                                Pending Allocation
+                            </span>`;
+                        if (currentUserRole === 'coo') {
+                            allocationButton = `<button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-primary btn-sm" style="font-weight: 600;">Allocate Project</button>`;
+                        }
+                    } else {
+                        allocationInfo = '<span style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #fca5a5; box-shadow: 0 1px 3px rgba(239,68,68,0.15);">Pending Pricing</span>';
+                    }
+
+                    return `
+                    <div class="action-item" style="background: white; ${isFullyAllocated ? 'border-left: 3px solid #10b981;' : isPartiallyAllocated ? 'border-left: 3px solid #f59e0b;' : ''}">
+                        <div class="action-content">
+                            <strong>${p.projectName}</strong>
+                            <div class="action-meta">
+                                Client: ${p.clientCompany} |
+                                Won: ${formatDate(p.wonDate)} |
+                                ${p.pricing && p.pricing.projectNumber ? `Project #: ${p.pricing.projectNumber}` : 'No Project Number'}
+                                ${maxHours > 0 ? ` | Budget: ${maxHours}h` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            ${allocationInfo}
+                        </div>
+                        <div class="action-buttons" style="margin-left: 1rem;">
+                            ${allocationButton}
+                            <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View</button>
+                        </div>
+                    </div>
+                `}).join('')}
+            </div>
+        `;
+    }
+
+    const proposalsHtml = otherProposals?.length ? otherProposals.map(p => {
+        let statusDisplay = p.status.toUpperCase().replace(/_/g, ' ');
+        let statusClass = p.status.toLowerCase().replace(/_/g, '-');
+
+        if (p.pricing && p.pricing.projectNumber && p.status === 'pricing_complete') {
+            statusDisplay = 'PRICING COMPLETE';
+            statusClass = 'pricing-complete';
+        } else if (p.status === 'estimated' && p.pricing && p.pricing.projectNumber) {
+            statusDisplay = 'PRICING COMPLETE';
+            statusClass = 'pricing-complete';
+        } else if (p.subcontractor || p.status === 'subcontracted') {
+            statusDisplay = 'SUBCONTRACTED';
+            statusClass = 'subcontracted';
+        }
+
+        // Allocation status for won proposals in the other list
+        const otherMaxHours = parseFloat(p.maxAllocatedHours) || 0;
+        const otherTotalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+        const otherBackendStatus = p.allocationStatus || '';
+        const otherFullyAllocated = (p.projectCreated && otherMaxHours > 0 && (otherMaxHours - otherTotalAllocated) <= 0.1) || otherBackendStatus === 'completed';
+        const otherPartiallyAllocated = !otherFullyAllocated && ((p.projectCreated && otherMaxHours > 0 && otherTotalAllocated > 0) || otherBackendStatus === 'partial');
+
+        let allocBadge = '';
+        if (p.status === 'won') {
+            if (otherFullyAllocated) {
+                allocBadge = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #6ee7b7; margin-left: 0.5rem;"><span style="display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; background: #059669; border-radius: 50%; color: white; font-size: 0.5rem;">&#10003;</span> Allocated</span>`;
+            } else if (otherPartiallyAllocated) {
+                allocBadge = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #fbbf24; margin-left: 0.5rem;">Partial</span>`;
+            } else if (p.pricing && p.pricing.projectNumber) {
+                allocBadge = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #fca5a5; margin-left: 0.5rem;">Not Allocated</span>`;
+            }
+        }
+
+        let actionButtons = '';
+        const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+
+        if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && statusLower !== 'subcontracted' && !p.subcontractor) {
+            actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}')">Add Estimation</button> `;
+            actionButtons += `<button class="btn btn-sm" style="background: #7c3aed; color: white; border: none;" onclick="showSubcontractorModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}')">Subcontractor</button> `;
+        }
+
+        if (currentUserRole === 'coo' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
+            actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
+        }
+
+        if (currentUserRole === 'director' && (statusLower === 'pending_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected'))) {
+            actionButtons += `
+                <button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">Reject</button>
+            `;
+        }
+
+        if ((currentUserRole === 'coo' || currentUserRole === 'director') && p.pricing && p.pricing.projectNumber) {
+            actionButtons += getProposalAllocationButton(p);
+        }
+
+        if (currentUserRole === 'bdm' && statusLower === 'won') {
+            actionButtons += `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button> `;
+        }
+
+        return `
+        <div class="action-item" style="${otherFullyAllocated ? 'border-left: 3px solid #10b981; background: #f0fdf4;' : otherPartiallyAllocated ? 'border-left: 3px solid #f59e0b; background: #fffbeb;' : ''}">
+            <div class="action-content">
+                <strong>${p.projectName}</strong>${allocBadge}
+                <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}</div>
+            </div>
+            <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
+            <div class="action-buttons">
+                ${actionButtons}
+                <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View Details</button>
+            </div>
+        </div>
+    `}).join('') : '<p>No proposals found for this filter.</p>';
+
+    const filterInfo = currentUserRole === 'director' && currentProposalFilter !== 'all' ? 
+        `<div class="subtitle" style="color: var(--primary-blue); font-weight: 600;">Filtered: ${currentProposalFilter.replace(/_/g, ' ').toUpperCase()}</div>` : 
+        `<div class="subtitle">Manage and track all project proposals</div>`;
+
+    document.getElementById('mainContent').innerHTML = `
+        <div class="page-header">
+            <h2>All Proposals</h2>
+            ${filterInfo}
+        </div>
+        ${renderDashboardAnnouncements()}
+        ${createButton}
+        ${directorFilterButtons}
+        ${approvedSection}
+        ${submittedSection}
+        ${wonSection}
+        <div class="action-section">
+            <h3>${currentUserRole === 'director' && currentProposalFilter !== 'all' ? 'Filtered Results' : 'All Other Proposals'}</h3>
+            ${proposalsHtml}
+        </div>
+    `;
+}
+
+// ============================================
+// FILTER PROPOSALS FUNCTION
+// ============================================
+function filterProposals(filterType) {
+    console.log('🔍 Filtering proposals by:', filterType);
+    currentProposalFilter = filterType;
+    showProposals(); // This will re-render with the new filter
+}
+        let currentFilter = 'all';  // For COO filter buttons
+         let currentProjectFilter = 'all';
+        let allProjectsData = [];
+        let allVariationsData = []; // <-- NEW: Add this line
+
+/**
+ * Renders the proposals table for COO dashboard (Global scope)
+ */
+function renderProposalsTable(proposals) {
+    if (!proposals || proposals.length === 0) {
+        return '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-light);">No proposals found for this filter.</div>';
+    }
+
+    const proposalsHtml = proposals.map(p => {
+        const statusDisplay = (p.status || 'DRAFT').toUpperCase().replace(/_/g, ' ');
+        const statusClass = (p.status || 'draft').toLowerCase().replace(/_/g, '-');
+        
+        // Calculate allocation status for won proposals
+        const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+        const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+        const remainingHours = maxHours - totalAllocated;
+
+        // Use backend allocationStatus as reliable fallback
+        const backendAllocStatus = p.allocationStatus || '';
+        const isFullyAllocated = (p.projectCreated && maxHours > 0 && remainingHours <= 0.1) || backendAllocStatus === 'completed';
+        const isPartiallyAllocated = !isFullyAllocated && ((p.projectCreated && maxHours > 0 && totalAllocated > 0 && remainingHours > 0.1) || backendAllocStatus === 'partial');
+        const isPendingAllocation = p.status === 'won' && p.pricing && p.pricing.projectNumber && !p.projectCreated && !isFullyAllocated;
+
+        // Action buttons based on proposal status
+        let actionButtons = '';
+
+        // COO can set pricing for estimated proposals
+        if (p.status === 'estimated' && (!p.pricing || !p.pricing.projectNumber)) {
+            actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
+        }
+
+        // COO can allocate won proposals with pricing
+        if (p.status === 'won' && p.pricing && p.pricing.projectNumber) {
+            if (isPendingAllocation) {
+                actionButtons += `<button class="btn btn-primary btn-sm" onclick="showProjectAllocationModal('${p.id}')">Allocate Project</button> `;
+            } else if (isPartiallyAllocated) {
+                actionButtons += `<button class="btn btn-sm" style="background: #d97706; color: white; border: none; font-weight: 600;" onclick="showProjectAllocationModal('${p.id}')">Continue (${remainingHours.toFixed(1)}h left)</button> `;
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #6b7280; color: #6b7280;">Edit</button> `;
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showEditPoContactsModal('${p.projectId}')" style="border-color: #6366f1; color: #6366f1;">P.O. & Contacts</button> `;
+            } else if (isFullyAllocated) {
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showCooEditAllocationModal('${p.projectId}')" style="border-color: #6b7280; color: #6b7280;">Edit Allocations</button> `;
+                actionButtons += `<button class="btn btn-outline btn-sm" onclick="showEditPoContactsModal('${p.projectId}')" style="border-color: #6366f1; color: #6366f1;">P.O. & Contacts</button> `;
+            }
+        }
+
+        // Allocation status indicator
+        let allocationStatus = '';
+        if (p.status === 'won' && p.pricing && p.pricing.projectNumber) {
+            if (isFullyAllocated) {
+                const pctFull = maxHours > 0 ? Math.round((totalAllocated / maxHours) * 100) : 100;
+                allocationStatus = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #6ee7b7;"><span style="display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; background: #059669; border-radius: 50%; color: white; font-size: 0.55rem;">&#10003;</span> Allocated${maxHours > 0 ? ` (${totalAllocated}/${maxHours}h)` : ''}</span>`;
+            } else if (isPartiallyAllocated) {
+                const pctPartial = maxHours > 0 ? Math.round((totalAllocated / maxHours) * 100) : 0;
+                allocationStatus = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #fbbf24;">Partial (${pctPartial}% &middot; ${remainingHours.toFixed(1)}h left)</span>`;
+            } else if (isPendingAllocation) {
+                allocationStatus = `<span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; border-radius: 12px; font-weight: 600; font-size: 0.7rem; border: 1px solid #93c5fd;">Needs Allocation</span>`;
+            }
+        }
+
+        return `
+            <tr style="${isFullyAllocated ? 'background: #f0fdf4;' : isPartiallyAllocated ? 'background: #fffbeb;' : ''}">
+                <td>
+                    <strong>${p.projectName}</strong><br>
+                    <small style="color: var(--text-light);">${p.clientCompany}</small>
+                    ${allocationStatus ? `<br>${allocationStatus}` : ''}
+                </td>
+                <td>
+                    <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
+                </td>
+                <td>
+                    ${p.estimation ? `<strong>${p.estimation.totalHours || 0}h</strong>` : '-'}
+                </td>
+                <td>
+                    ${p.pricing && p.pricing.projectNumber ?
+                        `<strong>${p.pricing.quoteValue || 0} ${p.pricing.currency || ''}</strong><br>
+                         <small>Project #: ${p.pricing.projectNumber}</small>
+                         ${maxHours > 0 ? `<br><small>Budget: ${maxHours}h</small>` : ''}` :
+                        '-'}
+                </td>
+                <td>${formatDate(p.createdAt)}</td>
+                <td>
+                    <div class="action-buttons">
+                        ${actionButtons}
+                        <button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View Details</button>
+                        ${p.projectCreated && p.projectId ? `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">View Project</button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Status</th>
+                        <th>Estimated Hours</th>
+                        <th>Pricing / Budget</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${proposalsHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function showAllProjects() {
+    try {
+        showLoading();
+
+        const response = await apiCall('proposals');
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to load proposals.');
+        }
+
+        let allProposals = response.data || [];
+
+        // Proposals only (no isVariation mixing)
+        const proposals = allProposals.filter(p => !p.isVariation);
+
+        // Fetch real pending variations from /api/variations
+        let variations = [];
+        try {
+            const varResponse = await apiCall('variations?status=pending_coo_approval');
+            if (varResponse.success) variations = varResponse.data || [];
+        } catch (e) {
+            console.warn('Could not load variations:', e.message);
+        }
+
+        // Update Variation Tracking nav badge
+        const varBadge = document.getElementById('pendingVariationsBadge');
+        if (varBadge) {
+            varBadge.textContent = variations.length;
+            varBadge.style.display = variations.length > 0 ? 'inline-block' : 'none';
+        }
+        
+        // Count proposals by CORRECT status values for COO
+        const statusCounts = {
+            all: proposals.length,
+            // Estimation Completed = proposals with estimation data
+            estimation: proposals.filter(p => 
+                p.status === 'estimated' || 
+                (p.estimation && p.estimation.totalHours)
+            ).length,
+            // Pricing Pending = estimated but no pricing yet
+            pricing: proposals.filter(p => 
+                (p.status === 'estimated' || p.estimation) && 
+                (!p.pricing || !p.pricing.projectNumber)
+            ).length,
+            // Pending Allocation = won proposals with pricing but NOT allocated at all
+            pending: proposals.filter(p => 
+                p.status === 'won' && 
+                p.pricing && 
+                p.pricing.projectNumber && 
+                !p.projectCreated  // Not created = not allocated
+            ).length,
+            // Partially Allocated = project created but totalAllocatedHours < maxAllocatedHours
+            partial: proposals.filter(p => {
+                if (p.status !== 'won' || !p.projectCreated) return false;
+                const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+            }).length
+        };
+        
+        // Filter proposals based on current filter
+        let filteredProposals = proposals;
+        if (currentFilter === 'estimation') {
+            // Show all proposals with estimation
+            filteredProposals = proposals.filter(p => 
+                p.status === 'estimated' || 
+                (p.estimation && p.estimation.totalHours)
+            );
+        } else if (currentFilter === 'pricing') {
+            // Show estimated proposals waiting for pricing
+            filteredProposals = proposals.filter(p => 
+                (p.status === 'estimated' || p.estimation) && 
+                (!p.pricing || !p.pricing.projectNumber)
+            );
+        } else if (currentFilter === 'pending') {
+            // Show won proposals waiting for INITIAL allocation only
+            filteredProposals = proposals.filter(p => 
+                p.status === 'won' && 
+                p.pricing && 
+                p.pricing.projectNumber && 
+                !p.projectCreated
+            );
+        } else if (currentFilter === 'partial') {
+            // Show partially allocated projects
+            filteredProposals = proposals.filter(p => {
+                if (p.status !== 'won' || !p.projectCreated) return false;
+                const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+            });
+        }
+        
+        const main = document.getElementById('mainContent');
+        
+        main.innerHTML = `
+            <h1>COO Dashboard</h1>
+            
+            <!-- Filter Buttons -->
+            <div class="filter-buttons-container">
+                <button class="filter-btn filter-btn-all ${currentFilter === 'all' ? 'active' : ''}" 
+                        onclick="filterCOOProposals('all')">
+                    📊 All Proposals
+                    <span class="filter-count">${statusCounts.all}</span>
+                </button>
+                
+                <button class="filter-btn filter-btn-estimation ${currentFilter === 'estimation' ? 'active' : ''}" 
+                        onclick="filterCOOProposals('estimation')">
+                    ✅ Estimation Completed
+                    <span class="filter-count">${statusCounts.estimation}</span>
+                </button>
+                
+                <button class="filter-btn filter-btn-pricing ${currentFilter === 'pricing' ? 'active' : ''}" 
+                        onclick="filterCOOProposals('pricing')">
+                    💰 Pricing Pending
+                    <span class="filter-count">${statusCounts.pricing}</span>
+                </button>
+                
+                <button class="filter-btn filter-btn-pending ${currentFilter === 'pending' ? 'active' : ''}" 
+                        onclick="filterCOOProposals('pending')">
+                    🎯 Pending Allocation
+                    <span class="filter-count">${statusCounts.pending}</span>
+                </button>
+                
+                ${statusCounts.partial > 0 ? `
+                <button class="filter-btn ${currentFilter === 'partial' ? 'active' : ''}" 
+                        onclick="filterCOOProposals('partial')"
+                        style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                    ⏳ Partially Allocated
+                    <span class="filter-count">${statusCounts.partial}</span>
+                </button>
+                ` : ''}
+            </div>
+            
+            <!-- Tabs for Proposals and Variations -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab(this, 'proposals-section')">
+                    Active Proposals (${filteredProposals.length})
+                </button>
+                <button class="tab-btn" onclick="switchTab(this, 'variations-section')">
+                    Pending Variations (${variations.length})
+                </button>
+            </div>
+
+            <!-- Proposals Section -->
+            <div id="proposals-section" class="tab-content active">
+                ${renderProposalsTable(filteredProposals)}
+            </div>
+
+            <!-- Variations Section -->
+            <div id="variations-section" class="tab-content">
+                ${renderPendingVariationsTable(variations)}
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('COO Dashboard error:', error);
+        document.getElementById('mainContent').innerHTML = `
+            <div class="error-message">
+                <h2>⚠️ Error Loading Dashboard</h2>
+                <p>${error.message}</p>
+                <button class="btn btn-primary" onclick="showAllProjects()">Retry</button>
+            </div>
+        `;
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Renders the table for pending variations (Global scope for COO Dashboard)
+ */
+function renderPendingVariationsTable(variations) {
+    if (!variations || variations.length === 0) {
+        return '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-light);">No pending variations found.</div>';
+    }
+
+    const variationsHtml = variations.map(v => `
+        <tr>
+            <td><strong>${v.parentProjectName || 'Unknown'}</strong><br><small>${v.clientCompany || ''}</small></td>
+            <td><span class="project-number-badge" style="background: var(--warning); color: #856404;">${v.variationCode || 'N/A'}</span></td>
+            <td><strong>${v.estimatedHours || 0}h</strong></td>
+            <td>${v.amount ? `<strong>${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits: 2})}</strong>` : '<span style="color:var(--text-light);">—</span>'}</td>
+            <td>${v.createdByName || 'Unknown'}<br><small>(${(v.createdByRole || '').replace('_', ' ')})</small></td>
+            <td>${formatDate(v.createdAt)}</td>
+            <td style="white-space: nowrap;">
+                ${v.documentUrl ? `<a href="${v.documentUrl}" target="_blank" class="btn btn-outline btn-sm" style="margin-right: 4px;" title="View Document">📄</a>` : ''}
+                <button class="btn btn-primary btn-sm" onclick="showVariationApprovalModal('${v.id}')">
+                    Review
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    return `
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Parent Project</th>
+                        <th>Variation Code</th>
+                        <th>Hours</th>
+                        <th>Amount</th>
+                        <th>Submitted By</th>
+                        <th>Date Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${variationsHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * COO Variation Tracking - full page showing all variations (all statuses) with details & document links.
+ */
+async function showCOOVariationTracking() {
+    const main = document.getElementById('mainContent');
+    main.innerHTML = '<div style="padding:2rem;text-align:center;"><span class="loading-spinner"></span> Loading variation tracking...</div>';
+
+    try {
+        showLoading();
+        // Fetch ALL variations (no status filter)
+        const response = await apiCall('variations');
+        const allVariations = (response.success ? response.data : []) || [];
+
+        const pending         = allVariations.filter(v => v.status === 'pending_coo_approval');
+        const approved        = allVariations.filter(v => v.status === 'approved');
+        const rejected        = allVariations.filter(v => v.status === 'rejected');
+        const accountsUpdated = allVariations.filter(v => !!v.accountsUpdatedAt);
+
+        // Update badge
+        const badge = document.getElementById('pendingVariationsBadge');
+        if (badge) {
+            badge.textContent = pending.length;
+            badge.style.display = pending.length > 0 ? 'inline-block' : 'none';
+        }
+
+        function statusBadge(status) {
+            const map = {
+                'pending_coo_approval': ['#fff3cd', '#856404', '⏳ Pending'],
+                'approved':             ['#d1fae5', '#065f46', '✅ Approved'],
+                'rejected':             ['#fee2e2', '#991b1b', '❌ Rejected']
+            };
+            const [bg, color, label] = map[status] || ['#f3f4f6', '#374151', status];
+            return `<span style="background:${bg};color:${color};padding:2px 8px;border-radius:10px;font-size:0.8rem;font-weight:600;">${label}</span>`;
+        }
+
+        function varRow(v) {
+            const amt = v.amount ? `<strong>${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits:2})}</strong>` : '<span style="color:var(--text-light);">—</span>';
+            const acctUpdated = v.accountsUpdatedAt
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;" title="Updated by ${v.accountsUpdatedByName || 'Accounts'} on ${formatDate(v.accountsUpdatedAt)}">✓ Accounts Updated</span>`
+                : '<span style="color:var(--text-light);font-size:0.8rem;">Not updated</span>';
+            const acctNotes = v.accountsDetails
+                ? `<span title="${v.accountsDetails.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dashed var(--text-light);">View notes</span>`
+                : '—';
+            const invRef = v.invoiceReference || '—';
+            const terms  = v.paymentTerms || '—';
+            return `
+                <tr style="${v.accountsUpdatedAt ? 'background:rgba(16,185,129,0.04);' : ''}">
+                    <td>
+                        <strong>${v.variationCode || '—'}</strong><br>
+                        ${acctUpdated}
+                    </td>
+                    <td><strong>${v.parentProjectName || '—'}</strong><br><small style="color:var(--text-light);">${v.clientCompany || ''}</small></td>
+                    <td>${v.clientName ? `${v.clientName}${v.clientEmail ? `<br><small style="color:var(--text-light);">${v.clientEmail}</small>` : ''}` : '—'}</td>
+                    <td><strong>${v.estimatedHours || 0}h</strong></td>
+                    <td>${amt}</td>
+                    <td>${invRef}</td>
+                    <td>${terms}</td>
+                    <td>${acctNotes}</td>
+                    <td>${statusBadge(v.status)}</td>
+                    <td>${formatDate(v.createdAt)}</td>
+                    <td style="white-space:nowrap;">
+                        ${v.documentUrl ? `<a href="${v.documentUrl}" target="_blank" class="btn btn-outline btn-sm" title="View Variation Document" style="margin-right:4px;">📄</a>` : ''}
+                        ${v.status === 'pending_coo_approval' ? `<button class="btn btn-primary btn-sm" onclick="showVariationApprovalModal('${v.id}')">Review</button>` : ''}
+                    </td>
+                </tr>`;
+        }
+
+        function varTable(list) {
+            if (!list.length) return '<p style="padding:1rem;color:var(--text-light);">No variations in this category.</p>';
+            return `
+                <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Code / Accounts Status</th>
+                        <th>Project / Client</th>
+                        <th>Client Contact</th>
+                        <th>Hours</th>
+                        <th>Amount</th>
+                        <th>Invoice Ref / PO</th>
+                        <th>Payment Terms</th>
+                        <th>Accounts Notes</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody>${list.map(varRow).join('')}</tbody>
+                </table>
+                </div>`;
+        }
+
+        main.innerHTML = `
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+                <div>
+                    <h2>📑 Variation Tracking</h2>
+                    <p class="subtitle">Full history of all variation requests — pending, approved and rejected.</p>
+                </div>
+                <button class="btn btn-outline" onclick="showCOOVariationTracking()">🔄 Refresh</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="stat-card" style="border-left:4px solid var(--warning);">
+                    <div class="stat-label">Pending Review</div>
+                    <div class="stat-value" style="color:var(--warning);">${pending.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--success);">
+                    <div class="stat-label">Approved</div>
+                    <div class="stat-value" style="color:var(--success);">${approved.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--danger);">
+                    <div class="stat-label">Rejected</div>
+                    <div class="stat-value" style="color:var(--danger);">${rejected.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid #10b981;">
+                    <div class="stat-label">Accounts Updated</div>
+                    <div class="stat-value" style="color:#10b981;">${accountsUpdated.length}</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--primary-blue);">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value">${allVariations.length}</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs" id="varTrackingTabs">
+                <button class="tab-btn active" onclick="switchTab(this,'vt-pending')">⏳ Pending (${pending.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-approved')">✅ Approved (${approved.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-rejected')">❌ Rejected (${rejected.length})</button>
+                <button class="tab-btn" onclick="switchTab(this,'vt-all')">📋 All (${allVariations.length})</button>
+            </div>
+
+            <div id="vt-pending" class="tab-content active card" style="padding:0;">
+                ${varTable(pending)}
+            </div>
+            <div id="vt-approved" class="tab-content card" style="padding:0;">
+                ${varTable(approved)}
+            </div>
+            <div id="vt-rejected" class="tab-content card" style="padding:0;">
+                ${varTable(rejected)}
+            </div>
+            <div id="vt-all" class="tab-content card" style="padding:0;">
+                ${varTable(allVariations)}
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Variation tracking error:', error);
+        main.innerHTML = `<div class="error-message"><h2>⚠️ Error</h2><p>${error.message}</p><button class="btn btn-primary" onclick="showCOOVariationTracking()">Retry</button></div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Filter COO Proposals by type
+ */
+function filterCOOProposals(filterType) {
+    currentFilter = filterType;
+    showAllProjects(); // Reload with new filter
+}
+
+
+        
+// EXECUTIVE TIMESHEET MONITORING DASHBOARD
+// Add these functions to your index.html <script> section
+// ============================================
+
+/**
+ * Show Executive Timesheet Dashboard (COO/Director only)
+ */
+// ============================================
+// PROJECT DASHBOARD (COO/Director)
+// Replaces old Executive Dashboard
+// ============================================
+
+async function showProjectDashboard() {
+    setActiveNav('nav-project-dashboard');
+    try {
+        showLoading();
+
+        const response = await apiCall('timesheets?action=executive_dashboard');
+        if (!response.success) throw new Error(response.error || 'Failed to load project dashboard');
+
+        const { metrics, projects, sectionBreakdown, totalRevenueByCurrency, revenuePeriods, analytics, subcontractorData } = response.data;
+        const sb = sectionBreakdown || {};
+        const trc = totalRevenueByCurrency || {};
+        const subData = subcontractorData || { projects: [], revenueByCurrency: {}, totalRevenue: 0, count: 0 };
+
+        // Section colors
+        const sectionColors = { Engineering: '#3b82f6', Rebar: '#f59e0b', Structural: '#10b981', Unassigned: '#6b7280' };
+
+        // Currency symbols
+        const currencySymbols = { USD: '$', GBP: '\u00A3', CAD: 'C$', AUD: 'A$', AED: 'AED ' };
+
+        // Format currency value
+        const fmt = (val) => {
+            if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
+            if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+            return val.toFixed(0);
+        };
+
+        // Render revenue by currency for a given revenueByCurrency object
+        const renderRevByCurrency = (rbc) => {
+            if (!rbc) return '';
+            return Object.entries(rbc)
+                .filter(([_, v]) => v > 0)
+                .map(([cur, val]) => `<div style="display: flex; justify-content: space-between;"><span style="font-weight: 600;">${currencySymbols[cur] || cur + ' '}</span><span>${fmt(val)}</span></div>`)
+                .join('') || '<div style="color: var(--text-light);">No revenue</div>';
+        };
+
+        // Build period revenue table
+        function buildPeriodRevenueTable(periods, fmtFn, curSymbols) {
+            if (!periods || periods.length === 0) return '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No data available.</p>';
+            // Get all currencies that have any value
+            const allCurs = new Set();
+            periods.forEach(p => Object.entries(p.revenue || {}).forEach(([c, v]) => { if (v > 0) allCurs.add(c); }));
+            const currencies = ['USD', 'GBP', 'CAD', 'AUD'].filter(c => allCurs.has(c));
+            // Add other currencies
+            allCurs.forEach(c => { if (!currencies.includes(c)) currencies.push(c); });
+            if (currencies.length === 0) currencies.push('USD');
+
+            const curColors = { USD: '#10b981', GBP: '#6366f1', CAD: '#f59e0b', AUD: '#3b82f6' };
+
+            const headerCells = currencies.map(c => `<th style="text-align: right; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; border-bottom: 2px solid #e5e7eb;">${c}</th>`).join('');
+
+            const rows = periods.map(p => {
+                const rev = p.revenue || {};
+                const cells = currencies.map(c => {
+                    const val = rev[c] || 0;
+                    const col = curColors[c] || '#374151';
+                    const sym = curSymbols[c] || c + ' ';
+                    return `<td style="text-align: right; padding: 0.75rem 1rem; font-weight: ${val > 0 ? '700' : '400'}; color: ${val > 0 ? col : '#d1d5db'}; font-size: 0.95rem;">${val > 0 ? sym + fmtFn(val) : '-'}</td>`;
+                }).join('');
+                return `
+                    <tr style="border-bottom: 1px solid #f3f4f6;">
+                        <td style="padding: 0.75rem 1rem;">
+                            <div style="font-weight: 600; color: #111827;">${p.label}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-light);">${p.count} project${p.count !== 1 ? 's' : ''}</div>
+                        </td>
+                        ${cells}
+                    </tr>
+                `;
+            }).join('');
+
+            // Totals row
+            const totalCells = currencies.map(c => {
+                const total = periods.reduce((s, p) => s + ((p.revenue || {})[c] || 0), 0);
+                const col = curColors[c] || '#374151';
+                const sym = curSymbols[c] || c + ' ';
+                return `<td style="text-align: right; padding: 0.75rem 1rem; font-weight: 800; color: ${total > 0 ? col : '#d1d5db'}; font-size: 1rem; border-top: 2px solid #e5e7eb;">${total > 0 ? sym + fmtFn(total) : '-'}</td>`;
+            }).join('');
+
+            return `
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; border-bottom: 2px solid #e5e7eb;">Period</th>
+                                ${headerCells}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                            <tr style="background: #f8fafc;">
+                                <td style="padding: 0.75rem 1rem; font-weight: 800; color: #111827; border-top: 2px solid #e5e7eb;">Total</td>
+                                ${totalCells}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Build section cards
+        const sectionCardsHtml = ['Engineering', 'Rebar', 'Structural'].map(sec => {
+            const d = sb[sec] || { count: 0, revenue: 0, revenueByCurrency: {}, hoursAllocated: 0, hoursLogged: 0 };
+            const color = sectionColors[sec];
+            const utilPct = d.hoursAllocated > 0 ? ((d.hoursLogged / d.hoursAllocated) * 100).toFixed(0) : 0;
+            return `
+                <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); border-top: 4px solid ${color}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; color: ${color};">${sec}</h3>
+                        <span style="background: ${color}; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">${d.count} Projects</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.5rem;">Revenue by Currency</div>
+                            <div style="font-size: 0.9rem; color: ${color};">
+                                ${renderRevByCurrency(d.revenueByCurrency)}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase;">Hours Used</div>
+                            <div style="font-size: 1.4rem; font-weight: 700; color: ${color};">${d.hoursLogged.toFixed(0)}h / ${d.hoursAllocated.toFixed(0)}h</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; background: #f3f4f6; border-radius: 8px; height: 8px; overflow: hidden;">
+                        <div style="background: ${color}; height: 100%; width: ${Math.min(utilPct, 100)}%; border-radius: 8px; transition: width 0.5s;"></div>
+                    </div>
+                    <div style="text-align: right; font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">${utilPct}% utilized</div>
+                </div>
+            `;
+        }).join('');
+
+        // Unassigned count
+        const unassigned = sb['Unassigned'] || { count: 0 };
+
+        // Build professional project cards with expandable designer breakdown
+        const projectCardsHtml = projects.map((p, idx) => {
+            const secColor = sectionColors[p.projectSection] || '#6b7280';
+            const statusClass = p.isExceeded ? 'danger' : (p.percentageUsed > 80 ? 'warning' : 'success');
+            const statusColor = p.isExceeded ? '#ef4444' : (p.percentageUsed > 80 ? '#f59e0b' : '#10b981');
+            const pctUsed = (p.percentageUsed || 0).toFixed(0);
+            const totalLogged = (p.hoursLogged || 0);
+            const totalAlloc = p.allocatedHours || 0;
+            const designerDetail = (p.designerHoursDetail || []).sort((a, b) => (b.hoursLogged || b.hours || 0) - (a.hoursLogged || a.hours || 0));
+
+            // Build designer rows
+            let designerRowsHtml = '';
+            if (designerDetail.length > 0) {
+                designerRowsHtml = designerDetail.map(d => {
+                    const dLogged = d.hoursLogged !== undefined ? d.hoursLogged : (d.hours || 0);
+                    const dAlloc = d.allocatedHours || 0;
+                    const dPct = dAlloc > 0 ? ((dLogged / dAlloc) * 100).toFixed(0) : (dLogged > 0 ? 100 : 0);
+                    const dColor = dPct > 100 ? '#ef4444' : (dPct > 80 ? '#f59e0b' : '#3b82f6');
+                    const dShare = totalLogged > 0 ? ((dLogged / totalLogged) * 100).toFixed(0) : 0;
+                    return '<tr style="border-bottom: 1px solid #f3f4f6;">'
+                        + '<td style="padding: 0.6rem 1rem;"><div style="display: flex; align-items: center; gap: 0.5rem;">'
+                        + '<div style="width: 28px; height: 28px; border-radius: 50%; background: ' + dColor + '15; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: ' + dColor + ';">' + (d.name || 'U').charAt(0).toUpperCase() + '</div>'
+                        + '<span style="font-weight: 500; color: #111827;">' + (d.name || 'Unknown') + '</span></div></td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 600; color: ' + dColor + ';">' + dLogged.toFixed(1) + 'h</td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center; color: #6b7280;">' + (dAlloc > 0 ? dAlloc.toFixed(1) + 'h' : '-') + '</td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center;">'
+                        + '<div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">'
+                        + '<div style="background: #f3f4f6; border-radius: 4px; height: 6px; width: 60px; overflow: hidden;">'
+                        + '<div style="background: ' + dColor + '; height: 100%; width: ' + Math.min(dPct, 100) + '%; border-radius: 4px;"></div></div>'
+                        + '<span style="font-size: 0.75rem; font-weight: 600; color: ' + dColor + ';">' + dPct + '%</span></div></td>'
+                        + '<td style="padding: 0.6rem 1rem; text-align: center;"><span style="background: #f3f4f6; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; color: #374151;">' + dShare + '%</span></td>'
+                        + '</tr>';
+                }).join('');
+            } else {
+                designerRowsHtml = '<tr><td colspan="5" style="padding: 1.5rem; text-align: center; color: #9ca3af; font-style: italic;">No designer hours logged yet</td></tr>';
+            }
+
+            return '<div class="pd-project-card" data-section="' + (p.projectSection || 'Unassigned') + '" style="background: white; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">'
+                // Project Header (clickable)
+                + '<div onclick="toggleProjectDetail(' + idx + ')" style="padding: 1.25rem 1.5rem; cursor: pointer; display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 1.5rem; align-items: center; border-left: 4px solid ' + secColor + ';">'
+                // Col 1: Project Info
+                + '<div>'
+                + '<div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;">'
+                + (p.projectNumber ? '<span style="font-size: 0.85rem; font-weight: 700; color: var(--primary-blue); background: #eff6ff; padding: 2px 8px; border-radius: 6px;">' + p.projectNumber + '</span>' : '')
+                + '<strong style="font-size: 1rem; color: #111827;">' + p.projectName + '</strong>'
+                + '<span style="background: ' + secColor + '; color: white; padding: 1px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;">' + (p.projectSection || 'N/A') + '</span>'
+                + '<span class="badge badge-info" style="font-size: 0.65rem; text-transform: capitalize;">' + (p.status || '').replace(/_/g, ' ') + '</span>'
+                + '</div>'
+                + '<div style="font-size: 0.8rem; color: var(--text-light);">' + (p.projectCode || '') + (p.clientCompany ? ' | ' + p.clientCompany : '') + '</div>'
+                + '</div>'
+                // Col 2: Design Lead
+                + '<div style="text-align: center;">'
+                + '<div style="font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 2px;">Design Lead</div>'
+                + '<div style="font-weight: 600; font-size: 0.85rem; color: #111827;">' + (p.designLeadName || '<span style="color:#9ca3af;">Not Assigned</span>') + '</div>'
+                + '</div>'
+                // Col 3: Hours Progress
+                + '<div style="text-align: center; min-width: 140px;">'
+                + '<div style="font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 2px;">Hours Used</div>'
+                + '<div style="font-weight: 700; font-size: 1.1rem; color: ' + statusColor + ';">' + totalLogged.toFixed(1) + 'h <span style="font-weight: 400; font-size: 0.8rem; color: #9ca3af;">/ ' + totalAlloc + 'h</span></div>'
+                + '<div style="background: #f3f4f6; border-radius: 4px; height: 6px; margin-top: 4px; overflow: hidden;">'
+                + '<div style="background: ' + statusColor + '; height: 100%; width: ' + Math.min(pctUsed, 100) + '%; border-radius: 4px; transition: width 0.3s;"></div></div>'
+                + '</div>'
+                // Col 4: Designers Count
+                + '<div style="text-align: center;">'
+                + '<div style="font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 2px;">Designers</div>'
+                + '<div style="font-weight: 700; font-size: 1.1rem; color: #3b82f6;">' + designerDetail.length + '</div>'
+                + '</div>'
+                // Col 5: Expand Arrow
+                + '<div style="color: #9ca3af; font-size: 1.2rem; transition: transform 0.2s;" id="pdArrow' + idx + '">&#9662;</div>'
+                + '</div>'
+                // Expandable Designer Detail Section
+                + '<div id="pdDetail' + idx + '" style="display: none; border-top: 1px solid #e5e7eb; background: #fafbfc;">'
+                + '<div style="padding: 1rem 1.5rem;">'
+                + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">'
+                + '<h4 style="margin: 0; font-size: 0.9rem; color: #374151;">Designer Hours Breakdown</h4>'
+                + '<span style="font-size: 0.75rem; color: var(--text-light);">' + pctUsed + '% of budget used</span>'
+                + '</div>'
+                + '<table style="width: 100%; border-collapse: collapse;">'
+                + '<thead><tr style="background: #f1f5f9;">'
+                + '<th style="text-align: left; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Designer</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Logged</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Allocated</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Usage</th>'
+                + '<th style="text-align: center; padding: 0.5rem 1rem; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Share</th>'
+                + '</tr></thead>'
+                + '<tbody>' + designerRowsHtml + '</tbody>'
+                + '<tfoot><tr style="background: #f8fafc; border-top: 2px solid #e5e7eb;">'
+                + '<td style="padding: 0.6rem 1rem; font-weight: 700; color: #111827;">Total</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: ' + statusColor + ';">' + totalLogged.toFixed(1) + 'h</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: #374151;">' + (totalAlloc > 0 ? totalAlloc + 'h' : '-') + '</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: ' + statusColor + ';">' + pctUsed + '%</td>'
+                + '<td style="padding: 0.6rem 1rem; text-align: center; font-weight: 700; color: #374151;">100%</td>'
+                + '</tr></tfoot>'
+                + '</table></div></div></div>';
+        }).join('');
+
+        // Section filter buttons for project table
+        const sectionFilterHtml = `
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <button onclick="filterProjectDashboardTable('all')" class="pd-filter-btn pd-filter-active" style="background: var(--primary-blue); color: white; border: none; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">All (${metrics.allocatedProjects || metrics.totalProjects})</button>
+                <button onclick="filterProjectDashboardTable('Engineering')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Engineering (${(sb.Engineering||{count:0}).count})</button>
+                <button onclick="filterProjectDashboardTable('Rebar')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Rebar (${(sb.Rebar||{count:0}).count})</button>
+                <button onclick="filterProjectDashboardTable('Structural')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Structural (${(sb.Structural||{count:0}).count})</button>
+                ${unassigned.count > 0 ? `<button onclick="filterProjectDashboardTable('Unassigned')" class="pd-filter-btn" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;">Unassigned (${unassigned.count})</button>` : ''}
+            </div>
+        `;
+
+        const dashboardHtml = `
+            <div class="page-header">
+                <h2>Project Dashboard</h2>
+                <p class="subtitle">Overview of all projects by section with revenue and designer hours</p>
+            </div>
+
+            <!-- Top Metrics -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">${metrics.allocatedProjects || 0}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Allocated Projects</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6;">${(metrics.totalLoggedHours || 0).toFixed(0)}h</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Hours Logged</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #f59e0b;">${(metrics.totalAllocatedHours || 0).toFixed(0)}h</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Hours Allocated</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: #5b21b6;">${subData.count}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Subcontracted</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; text-align: center; border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">${metrics.projectsAboveTimeline}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light);">Exceeded Timeline</div>
+                </div>
+            </div>
+
+            <!-- Revenue Analytics (Allocated Projects Only) -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <!-- Period Tabs -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0;">Project Revenue <span style="font-size: 0.75rem; color: var(--text-light); font-weight: 400;">(Allocated Projects)</span></h3>
+                    <div style="display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid #d1d5db;">
+                        <button onclick="switchRevenuePeriod('total')" class="rev-tab rev-tab-active" style="padding: 0.5rem 1rem; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; background: var(--primary-blue); color: white;">Overall</button>
+                        <button onclick="switchRevenuePeriod('monthly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Monthly</button>
+                        <button onclick="switchRevenuePeriod('quarterly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Quarterly</button>
+                        <button onclick="switchRevenuePeriod('yearly')" class="rev-tab" style="padding: 0.5rem 1rem; border: none; border-left: 1px solid #d1d5db; cursor: pointer; font-weight: 500; font-size: 0.85rem; background: white; color: #374151;">Yearly</button>
+                    </div>
+                </div>
+
+                <!-- Overall Revenue -->
+                <div id="revPanel-total" class="rev-panel">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem;">
+                        ${[['USD', '$', '#10b981'], ['GBP', '\u00A3', '#6366f1'], ['CAD', 'C$', '#f59e0b'], ['AUD', 'A$', '#3b82f6']].map(([cur, sym, col]) => {
+                            const val = trc[cur] || 0;
+                            return `
+                                <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid ${col};">
+                                    <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
+                                    <div style="font-size: 1.6rem; font-weight: 700; color: ${col};">${sym}${fmt(val)}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${(() => {
+                            const otherCurs = Object.entries(trc).filter(([k]) => !['USD','GBP','CAD','AUD'].includes(k)).filter(([_,v]) => v > 0);
+                            return otherCurs.map(([cur, val]) => `
+                                <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid #6b7280;">
+                                    <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">${cur}</div>
+                                    <div style="font-size: 1.6rem; font-weight: 700; color: #6b7280;">${cur} ${fmt(val)}</div>
+                                </div>
+                            `).join('');
+                        })()}
+                    </div>
+                </div>
+
+                <!-- Monthly Revenue -->
+                <div id="revPanel-monthly" class="rev-panel" style="display: none;">
+                    ${buildPeriodRevenueTable((revenuePeriods || {}).monthly || [], fmt, currencySymbols)}
+                </div>
+
+                <!-- Quarterly Revenue -->
+                <div id="revPanel-quarterly" class="rev-panel" style="display: none;">
+                    ${buildPeriodRevenueTable((revenuePeriods || {}).quarterly || [], fmt, currencySymbols)}
+                </div>
+
+                <!-- Yearly Revenue -->
+                <div id="revPanel-yearly" class="rev-panel" style="display: none;">
+                    ${buildPeriodRevenueTable((revenuePeriods || {}).yearly || [], fmt, currencySymbols)}
+                </div>
+            </div>
+
+            <!-- Subcontractor Revenue Section -->
+            ${(() => {
+                if (subData.count <= 0) return '';
+                const subCurrencyCards = [['USD', '$', '#10b981'], ['GBP', '\u00A3', '#6366f1'], ['CAD', 'C$', '#f59e0b'], ['AUD', 'A$', '#3b82f6']]
+                    .map(([cur, sym]) => {
+                        const val = (subData.revenueByCurrency || {})[cur] || 0;
+                        if (val <= 0) return '';
+                        return '<div style="text-align: center; padding: 1rem; background: #faf5ff; border-radius: 10px; border-left: 4px solid #5b21b6;">'
+                            + '<div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">' + cur + '</div>'
+                            + '<div style="font-size: 1.6rem; font-weight: 700; color: #5b21b6;">' + sym + fmt(val) + '</div>'
+                            + '</div>';
+                    }).join('');
+                const otherSubCurs = Object.entries(subData.revenueByCurrency || {}).filter(([k]) => !['USD','GBP','CAD','AUD'].includes(k)).filter(([_,v]) => v > 0)
+                    .map(([cur, val]) => '<div style="text-align: center; padding: 1rem; background: #faf5ff; border-radius: 10px; border-left: 4px solid #5b21b6;">'
+                        + '<div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; margin-bottom: 0.3rem;">' + cur + '</div>'
+                        + '<div style="font-size: 1.6rem; font-weight: 700; color: #5b21b6;">' + cur + ' ' + fmt(val) + '</div>'
+                        + '</div>').join('');
+                const subRows = (subData.projects || []).map(sp =>
+                    '<tr style="border-bottom: 1px solid #f3f4f6;">'
+                    + '<td style="padding: 0.75rem 1rem; font-weight: 600; color: #111827;">' + (sp.projectNumber ? '<span style="color: var(--primary-blue);">' + sp.projectNumber + '</span> - ' : '') + (sp.projectName || '') + '</td>'
+                    + '<td style="padding: 0.75rem 1rem; color: #374151;">' + (sp.clientCompany || '') + '</td>'
+                    + '<td style="padding: 0.75rem 1rem;"><span style="background: #ede9fe; color: #5b21b6; padding: 2px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;">' + (sp.subcontractorName || '') + '</span></td>'
+                    + '<td style="text-align: right; padding: 0.75rem 1rem; font-weight: 700; color: #5b21b6;">' + (currencySymbols[sp.currency] || sp.currency + ' ') + fmt(sp.quoteValue || 0) + '</td>'
+                    + '</tr>'
+                ).join('');
+                return '<div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); border-left: 4px solid #5b21b6; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">'
+                    + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">'
+                    + '<h3 style="margin: 0; color: #5b21b6;">Subcontractor Value <span style="background: #5b21b6; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-left: 0.5rem;">' + subData.count + ' Projects</span></h3>'
+                    + '</div>'
+                    + '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">'
+                    + subCurrencyCards + otherSubCurs
+                    + '</div>'
+                    + '<div style="overflow-x: auto;">'
+                    + '<table style="width: 100%; border-collapse: collapse;">'
+                    + '<thead><tr style="background: #faf5ff;">'
+                    + '<th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Project</th>'
+                    + '<th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Client</th>'
+                    + '<th style="text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Subcontractor</th>'
+                    + '<th style="text-align: right; padding: 0.75rem 1rem; font-size: 0.8rem; color: #5b21b6; text-transform: uppercase; border-bottom: 2px solid #e9d5ff;">Value</th>'
+                    + '</tr></thead>'
+                    + '<tbody>' + subRows + '</tbody>'
+                    + '</table></div></div>';
+            })()}
+
+            <!-- Section Breakdown Cards -->
+            <h3 style="margin-bottom: 1rem;">Section Breakdown <span style="font-size: 0.75rem; color: var(--text-light); font-weight: 400;">(Allocated Projects)</span></h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                ${sectionCardsHtml}
+            </div>
+
+            <!-- Project Design Hours -->
+            <div style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Project Design Hours</h3>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button onclick="expandAllProjects(true)" style="background: none; border: 1px solid #d1d5db; padding: 0.3rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #374151;">Expand All</button>
+                        <button onclick="expandAllProjects(false)" style="background: none; border: 1px solid #d1d5db; padding: 0.3rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: #374151;">Collapse All</button>
+                    </div>
+                </div>
+                ${sectionFilterHtml}
+                <div id="projectDashboardCards">
+                    ${projectCardsHtml}
+                </div>
+            </div>
+
+            <!-- Section Revenue Chart -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem;">Revenue by Section</h3>
+                    <canvas id="sectionRevenueChart" width="400" height="300"></canvas>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem;">Projects by Section</h3>
+                    <canvas id="sectionProjectsChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('mainContent').innerHTML = dashboardHtml;
+
+        // Store projects for filtering
+        window._pdProjects = projects;
+
+        // Render charts
+        setTimeout(() => {
+            renderProjectDashboardCharts(sb);
+        }, 200);
+
+    } catch (error) {
+        console.error('Error loading project dashboard:', error);
+        document.getElementById('mainContent').innerHTML = `<div class="error-message"><h3>Error</h3><p>${error.message}</p></div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+// Alias for backward compatibility
+function showExecutiveDashboard() { showProjectDashboard(); }
+
+/**
+ * Filter project dashboard cards by section
+ */
+function filterProjectDashboardTable(section) {
+    // Update button styles
+    document.querySelectorAll('.pd-filter-btn').forEach(btn => {
+        btn.style.background = '#f3f4f6';
+        btn.style.color = '#374151';
+        btn.style.border = '1px solid #d1d5db';
+        btn.classList.remove('pd-filter-active');
+    });
+    event.target.style.background = 'var(--primary-blue)';
+    event.target.style.color = 'white';
+    event.target.style.border = 'none';
+    event.target.classList.add('pd-filter-active');
+
+    const cards = document.querySelectorAll('.pd-project-card');
+    cards.forEach(card => {
+        if (section === 'all') {
+            card.style.display = '';
+        } else {
+            card.style.display = card.dataset.section === section ? '' : 'none';
+        }
+    });
+}
+
+/**
+ * Toggle individual project detail panel
+ */
+function toggleProjectDetail(idx) {
+    const detail = document.getElementById('pdDetail' + idx);
+    const arrow = document.getElementById('pdArrow' + idx);
+    if (!detail) return;
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    } else {
+        detail.style.display = 'none';
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    }
+}
+
+/**
+ * Expand or collapse all project detail panels
+ */
+function expandAllProjects(expand) {
+    const projects = window._pdProjects || [];
+    projects.forEach((_, idx) => {
+        const detail = document.getElementById('pdDetail' + idx);
+        const arrow = document.getElementById('pdArrow' + idx);
+        if (detail) {
+            detail.style.display = expand ? 'block' : 'none';
+            if (arrow) arrow.style.transform = expand ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+    });
+}
+
+/**
+ * Render section charts
+ */
+function renderProjectDashboardCharts(sb) {
+    const sections = ['Engineering', 'Rebar', 'Structural'];
+    const colors = ['#3b82f6', '#f59e0b', '#10b981'];
+
+    // Revenue chart
+    const revCtx = document.getElementById('sectionRevenueChart');
+    if (revCtx && typeof Chart !== 'undefined') {
+        new Chart(revCtx, {
+            type: 'bar',
+            data: {
+                labels: sections,
+                datasets: [{
+                    label: 'Revenue (AED)',
+                    data: sections.map(s => (sb[s] || { revenue: 0 }).revenue),
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: { y: { beginAtZero: true, ticks: { callback: v => 'AED ' + (v >= 1000000 ? (v/1000000).toFixed(1) + 'M' : v >= 1000 ? (v/1000).toFixed(0) + 'K' : v) } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // Projects count chart
+    const projCtx = document.getElementById('sectionProjectsChart');
+    if (projCtx && typeof Chart !== 'undefined') {
+        new Chart(projCtx, {
+            type: 'doughnut',
+            data: {
+                labels: sections,
+                datasets: [{
+                    data: sections.map(s => (sb[s] || { count: 0 }).count),
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+}
+
+/**
+ * Switch revenue period tab
+ */
+function switchRevenuePeriod(period) {
+    // Update tab styles
+    document.querySelectorAll('.rev-tab').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#374151';
+        btn.style.fontWeight = '500';
+        btn.classList.remove('rev-tab-active');
+    });
+    event.target.style.background = 'var(--primary-blue)';
+    event.target.style.color = 'white';
+    event.target.style.fontWeight = '600';
+    event.target.classList.add('rev-tab-active');
+
+    // Hide all panels, show selected
+    document.querySelectorAll('.rev-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById(`revPanel-${period}`);
+    if (panel) panel.style.display = 'block';
+}
+
+window.showProjectDashboard = showProjectDashboard;
+window.showExecutiveDashboard = showExecutiveDashboard;
+window.filterProjectDashboardTable = filterProjectDashboardTable;
+window.switchRevenuePeriod = switchRevenuePeriod;
+window.toggleProjectDetail = toggleProjectDetail;
+window.expandAllProjects = expandAllProjects;
+
+// ============================================
+// ADDITIONAL TIME REQUEST FUNCTIONALITY
+// ============================================
+
+/**
+ * Show timesheet form with allocation check (Designer)
+ */
+async function showTimesheetForm(projectId = null) {
+    try {
+        showLoading();
+        
+        // Fetch projects for dropdown
+        const projectsResponse = await apiCall('projects?assignedToMe=true');
+        
+        if (!projectsResponse.success) {
+            throw new Error('Failed to load projects');
+        }
+        
+        const projects = projectsResponse.data || [];
+        
+        const formHtml = `
+            <div class="page-header">
+                <h2>⏱️ Log Time</h2>
+                <p class="subtitle">Record your work hours for projects</p>
+            </div>
+            
+            <div class="card" style="max-width: 600px;">
+                <form id="timesheetForm" onsubmit="submitTimesheet(event)">
+                    <!-- Work Type Selection -->
+                    <div class="form-group">
+                        <label>Work Type *</label>
+                        <select class="form-control" id="timesheetWorkType" onchange="handleWorkTypeChange()" required>
+                            <option value="project">📁 Project Work</option>
+                            <option value="training">📚 Training</option>
+                            <option value="sample_designing">🎨 Sample Designing</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Non-Project Info Banner -->
+                    <div id="nonProjectInfoBanner" style="display: none; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span id="nonProjectIcon" style="font-size: 1.5rem;">📚</span>
+                            <div>
+                                <strong id="nonProjectTitle">Training Hours</strong>
+                                <p style="margin: 0; font-size: 0.85rem; opacity: 0.9;">These hours will be tracked separately</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="projectSelectionGroup">
+                        <label>Project *</label>
+                        <select class="form-control" id="timesheetProjectId" onchange="checkProjectAllocation()" required>
+                            <option value="">Select a project</option>
+                            ${projects.map(p => `
+                                <option value="${p.id}" ${projectId === p.id ? 'selected' : ''}>
+                                    ${p.projectName} (${p.projectCode})
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    
+                    <div id="allocationInfo" style="display: none; margin-bottom: 1.5rem;"></div>
+                    
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" class="form-control" id="timesheetDate" 
+                               max="${new Date().toISOString().split('T')[0]}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Activity/Description *</label>
+                        <textarea class="form-control" id="timesheetDescription" rows="3" 
+                                  placeholder="Describe what you worked on..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Hours Worked * <span id="allocatedHoursLabel" style="color: var(--text-light);"></span></label>
+                        <input type="number" class="form-control" id="timesheetHours" 
+                               step="0.5" min="0.5" max="24" placeholder="e.g., 4.5" 
+                               oninput="checkHoursAllocation()" required>
+                        <small id="hoursWarning" style="display: none; color: var(--danger); margin-top: 0.5rem;"></small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Notes (Optional)</label>
+                        <input type="text" class="form-control" id="timesheetNotes" 
+                               placeholder="Additional notes...">
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary" id="submitTimesheetBtn">
+                            Submit Timesheet
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="showTasks()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Request Additional Time Modal -->
+            <div id="requestTimeModal" class="modal">
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h3>Request Additional Time</h3>
+                        <button class="modal-close" onclick="closeRequestTimeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 1.5rem; color: var(--text-dark);">
+                            The hours you're trying to log exceed the project's allocated time. 
+                            Please request additional time from your manager.
+                        </p>
+                        
+                        <form id="requestTimeForm" onsubmit="submitTimeRequest(event)">
+                            <div class="form-group">
+                                <label>Requested Additional Hours *</label>
+                                <input type="number" class="form-control" id="requestedHours" 
+                                       step="0.5" min="0.5" required>
+                                <small style="color: var(--text-light);">Pre-filled with exceeded amount, but you can adjust</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Reason *</label>
+                                <textarea class="form-control" id="requestReason" rows="4" 
+                                          placeholder="Explain why additional time is needed..." required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Attachment (Optional)</label>
+                                <input type="file" class="form-control" id="requestAttachment" 
+                                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                <small style="color: var(--text-light);">Upload supporting documents if needed</small>
+                            </div>
+                            
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="submit" class="btn btn-primary">
+                                    Submit Request
+                                </button>
+                                <button type="button" class="btn btn-outline" onclick="closeRequestTimeModal()">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('mainContent').innerHTML = formHtml;
+        
+        // Set default date to today
+        document.getElementById('timesheetDate').valueAsDate = new Date();
+        
+        // If projectId provided, check allocation
+        if (projectId) {
+            await checkProjectAllocation();
+        }
+        
+    } catch (error) {
+        console.error('Error showing timesheet form:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Check project allocation and display info
+ */
+async function checkProjectAllocation() {
+    const projectId = document.getElementById('timesheetProjectId').value;
+    const allocationInfo = document.getElementById('allocationInfo');
+    const allocatedHoursLabel = document.getElementById('allocatedHoursLabel');
+    
+    if (!projectId) {
+        allocationInfo.style.display = 'none';
+        allocatedHoursLabel.textContent = '';
+        return;
+    }
+    
+    try {
+        // Fetch project details
+        const projectResponse = await apiCall(`projects?id=${projectId}`);
+        
+        if (!projectResponse.success) {
+            throw new Error('Failed to load project details');
+        }
+        
+        const project = projectResponse.data;
+        
+        // Fetch designer's timesheets for this project
+        const timesheetsResponse = await apiCall(`timesheets?projectId=${projectId}`);
+        const timesheets = timesheetsResponse.data || [];
+        
+        const hoursLogged = timesheets.reduce((sum, t) => sum + (t.hours || 0), 0);
+        const allocatedHours = project.allocatedHours || 0;
+        const remainingHours = allocatedHours - hoursLogged;
+        const percentUsed = allocatedHours > 0 ? (hoursLogged / allocatedHours * 100).toFixed(1) : 0;
+        
+        // Store for later use
+        window.currentProjectAllocation = {
+            allocatedHours,
+            hoursLogged,
+            remainingHours,
+            projectId,
+            projectName: project.projectName
+        };
+        
+        // Display allocation info
+        const statusClass = remainingHours < 0 ? 'danger' : (remainingHours < allocatedHours * 0.2 ? 'warning' : 'success');
+        
+        allocationInfo.innerHTML = `
+            <div class="info-message" style="background: var(--light-blue); border-left: 4px solid var(--${statusClass});">
+                <strong>Project Allocation:</strong><br>
+                Allocated: ${allocatedHours}h | Used: ${hoursLogged.toFixed(1)}h | 
+                Remaining: ${remainingHours.toFixed(1)}h (${percentUsed}% used)
+            </div>
+        `;
+        allocationInfo.style.display = 'block';
+        
+        allocatedHoursLabel.textContent = `(Remaining: ${remainingHours.toFixed(1)}h)`;
+        
+    } catch (error) {
+        console.error('Error checking allocation:', error);
+    }
+}
+
+/**
+ * Check if entered hours exceed allocation
+ */
+function checkHoursAllocation() {
+    const hours = parseFloat(document.getElementById('timesheetHours').value);
+    const hoursWarning = document.getElementById('hoursWarning');
+    
+    if (!hours || !window.currentProjectAllocation) {
+        hoursWarning.style.display = 'none';
+        return;
+    }
+    
+    const { remainingHours } = window.currentProjectAllocation;
+    
+    if (hours > remainingHours && remainingHours >= 0) {
+        hoursWarning.textContent = `⚠️ Entered hours exceed project allocation by ${(hours - remainingHours).toFixed(1)}h. You'll need to request additional time.`;
+        hoursWarning.style.display = 'block';
+    } else {
+        hoursWarning.style.display = 'none';
+    }
+}
+
+/**
+ * Submit timesheet (LEGACY - use window.submitTimesheet instead)
+ */
+async function submitTimesheetLegacy(event) {
+    if (event) event.preventDefault();
+    
+    // Redirect to the main submitTimesheet function
+    window.submitTimesheet();
+}
+
+/**
+ * Show request additional time modal
+ */
+function showRequestTimeModal(allocationData) {
+    const modal = document.getElementById('requestTimeModal');
+    const requestedHours = document.getElementById('requestedHours');
+    
+// Pre-fill with exceeded amount
+    if (allocationData && allocationData.exceededBy) {
+        requestedHours.value = Math.ceil(allocationData.exceededBy * 2) / 2; // Round up to nearest 0.5
+    }
+// --- ADD THIS ---
+// Store pending timesheet data in the form for submission
+const form = document.getElementById('requestTimeForm');
+const timesheetData = {
+    date: document.getElementById('timesheetDate').value,
+    hours: parseFloat(document.getElementById('timesheetHours').value),
+    description: document.getElementById('timesheetDescription').value,
+};
+form.dataset.pendingTimesheet = JSON.stringify(timesheetData);
+// --- END ADD ---
+modal.style.display = 'flex';
+
+
+}
+
+/**
+ * Close request time modal
+ */
+function closeRequestTimeModal() {
+    document.getElementById('requestTimeModal').style.display = 'none';
+    document.getElementById('requestTimeForm').reset();
+}
+
+/**
+ * Submit time request
+ */
+async function submitTimeRequest(event) {
+    event.preventDefault();
+    
+    const projectId = document.getElementById('timesheetProjectId').value;
+    const requestedHours = parseFloat(document.getElementById('requestedHours').value);
+    const reason = document.getElementById('requestReason').value;
+    const attachmentFile = document.getElementById('requestAttachment').files[0];
+    // --- ADD THIS ---
+    const form = document.getElementById('requestTimeForm');
+    const pendingTimesheetData = JSON.parse(form.dataset.pendingTimesheet || 'null');
+    // --- END ADD ---
+    
+    try {
+        showLoading();
+        
+        let attachmentUrl = null;
+        
+        // Upload attachment if provided
+        if (attachmentFile) {
+            // TODO: Implement file upload to Firebase Storage
+            // For now, we'll skip this or you can add your storage logic
+            console.log('Attachment upload not implemented yet');
+        }
+        
+        const response = await apiCall('time-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId,
+                requestedHours,
+                reason,
+                attachmentUrl,
+                pendingTimesheetData // <-- ADD THIS
+            })
+        });
+        
+        if (response.success) {
+            closeRequestTimeModal();
+            showSuccessModal(
+                'Request Submitted',
+                `Your request for ${requestedHours}h additional time has been sent for approval.`
+            );
+            await showTasks();
+        } else {
+            throw new Error(response.error || 'Failed to submit request');
+        }
+        
+    } catch (error) {
+        console.error('Error submitting time request:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Show pending time requests (COO Portal)
+ */
+async function showPendingTimeRequests() {
+    try {
+        showLoading();
+        
+        const response = await apiCall('time-requests?status=pending');
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to load time requests');
+        }
+        
+        const requests = response.data || [];
+        
+        const requestsHtml = `
+            <div class="page-header">
+                <h2>⏰ Pending Time Requests</h2>
+                <p class="subtitle">Review and approve additional time requests from designers</p>
+                <span class="badge badge-warning" style="font-size: 1.2rem; padding: 0.5rem 1rem;">
+                    ${requests.length} Pending
+                </span>
+            </div>
+            
+            ${requests.length === 0 ? `
+                <div class="card" style="padding: 3rem; text-align: center;">
+                    <p style="color: var(--text-light); font-size: 1.2rem;">
+                        No pending time requests at the moment.
+                    </p>
+                </div>
+            ` : `
+                <div class="card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Designer</th>
+                                <th>Current Allocation</th>
+                                <th>Requested Hours</th>
+                                <th>Reason</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${requests.map(r => `
+                                <tr>
+                                    <td>
+                                        <strong>${r.projectName}</strong><br>
+                                        <small>${r.projectCode} • ${r.clientCompany}</small>
+                                    </td>
+                                    <td>
+                                        ${r.designerName}<br>
+                                        <small>${r.designerEmail}</small>
+                                    </td>
+                                    <td>
+                                        ${r.currentHoursLogged.toFixed(1)}h / ${r.currentAllocatedHours}h<br>
+                                        <small style="color: var(--text-light);">
+                                            ${((r.currentHoursLogged / r.currentAllocatedHours) * 100).toFixed(0)}% used
+                                        </small>
+                                    </td>
+                                    <td><strong style="color: var(--warning);">+${r.requestedHours}h</strong></td>
+                                    <td>
+                                        <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                                            ${r.reason}
+                                        </div>
+                                    </td>
+                                    <td>${formatDate(r.createdAt)}</td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm" 
+                                                onclick="showTimeRequestReviewModal('${r.id}')">
+                                            Review
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `}
+        `;
+        
+        document.getElementById('mainContent').innerHTML = requestsHtml;
+        
+    } catch (error) {
+        console.error('Error loading time requests:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Show time request review modal (COO)
+ */
+async function showTimeRequestReviewModal(requestId) {
+    try {
+        showLoading();
+        
+        const response = await apiCall(`time-requests?id=${requestId}`);
+        
+        if (!response.success) {
+            throw new Error('Failed to load request details');
+        }
+        
+        const request = response.data;
+        
+        const modalHtml = `
+            <div id="timeRequestReviewModal" class="modal" style="display: flex;">
+                <div class="modal-content" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h3>Review Time Request</h3>
+                        <button class="modal-close" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Project Info -->
+                        <div class="info-message" style="margin-bottom: 1.5rem;">
+                            <strong>Project:</strong> ${request.projectName} (${request.projectCode})<br>
+                            <strong>Client:</strong> ${request.clientCompany}<br>
+                            <strong>Design Lead:</strong> ${request.designLeadName || 'Not Assigned'}
+                        </div>
+                        
+                        <!-- Designer Info -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Designer</label>
+                                <p>${request.designerName}<br><small>${request.designerEmail}</small></p>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Requested</label>
+                                <p style="font-size: 1.5rem; color: var(--warning); font-weight: 700;">
+                                    +${request.requestedHours}h
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Current Allocation -->
+                        <div style="background: var(--background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Current Status</label>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Allocated: ${request.currentAllocatedHours}h</span>
+                                <span>Used: ${request.currentHoursLogged.toFixed(1)}h</span>
+                                <span style="color: var(--danger);">Remaining: ${(request.currentAllocatedHours - request.currentHoursLogged).toFixed(1)}h</span>
+                            </div>
+                            <div class="progress-bar" style="margin-top: 0.5rem;">
+                                <div class="progress-fill progress-danger" 
+                                     style="width: ${Math.min((request.currentHoursLogged / request.currentAllocatedHours) * 100, 100)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reason -->
+                        <div class="form-group">
+                            <label style="font-weight: 600;">Reason for Request</label>
+                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
+                                ${request.reason}
+                            </div>
+                        </div>
+                        
+                        ${request.attachmentUrl ? `
+                            <div class="form-group">
+                                <label style="font-weight: 600;">Attachment</label>
+                                <a href="${request.attachmentUrl}" target="_blank" class="btn btn-outline btn-sm">
+                                    View Attachment
+                                </a>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Review Form -->
+                        <form onsubmit="submitTimeRequestReview(event, '${requestId}')">
+                            <div class="form-group">
+                                <label>Approved Hours</label>
+                                <input type="number" class="form-control" id="approvedHours" 
+                                       step="0.5" min="0.5" value="${request.requestedHours}" required>
+                                <small style="color: var(--text-light);">You can adjust the approved amount</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Comment</label>
+                                <textarea class="form-control" id="reviewComment" rows="3" 
+                                          placeholder="Add notes or feedback..."></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="applyToTimesheet" checked>
+                                    Apply approved hours to current timesheet
+                                </label>
+                            </div>
+                            
+                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                                <button type="button" class="btn btn-success" 
+                                        onclick="reviewTimeRequest('${requestId}', 'approve')">
+                                    Approve
+                                </button>
+                                <button type="button" class="btn btn-danger" 
+                                        onclick="reviewTimeRequest('${requestId}', 'reject')">
+                                    Reject
+                                </button>
+                                <button type="button" class="btn btn-warning" 
+                                        onclick="reviewTimeRequest('${requestId}', 'request_info')">
+                                    Request More Info
+                                </button>
+                                <button type="button" class="btn btn-outline" onclick="closeModal()">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Append modal to body
+        const existingModal = document.getElementById('timeRequestReviewModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        console.error('Error showing review modal:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Review time request (approve/reject/request info)
+ */
+async function reviewTimeRequest(requestId, action) {
+    const approvedHours = parseFloat(document.getElementById('approvedHours').value);
+    const comment = document.getElementById('reviewComment').value;
+    const applyToTimesheet = document.getElementById('applyToTimesheet').checked;
+    
+    // Validation
+    if (action === 'approve' && (!approvedHours || approvedHours <= 0)) {
+        alert('Please enter valid approved hours');
+        return;
+    }
+    
+    if (action === 'reject' && !comment.trim()) {
+        alert('Please provide a reason for rejection');
+        return;
+    }
+    
+    const confirmMsg = action === 'approve' 
+        ? `Approve ${approvedHours}h additional time for this project?`
+        : action === 'reject'
+        ? 'Reject this time request?'
+        : 'Request more information from the designer?';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`time-requests?id=${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action,
+                approvedHours: action === 'approve' ? approvedHours : undefined,
+                comment: comment.trim(),
+                applyToTimesheet: action === 'approve' ? applyToTimesheet : undefined
+            })
+        });
+        
+        if (response.success) {
+            closeModal();
+            showSuccessModal(
+                `Request ${action.charAt(0).toUpperCase() + action.slice(1)}ed`,
+                `The time request has been processed successfully.`
+            );
+            await showPendingTimeRequests(); // Refresh the list
+        } else {
+            throw new Error(response.error || 'Failed to process request');
+        }
+        
+    } catch (error) {
+        console.error('Error reviewing time request:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+
+
+/**
+ * Add required CSS for new features (add to <style> section)
+ */
+/*
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #E1E8ED;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.progress-success {
+    background: var(--success);
+}
+
+.progress-warning {
+    background: var(--warning);
+}
+
+.progress-danger {
+    background: var(--danger);
+}
+
+.badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-secondary {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.executive-section {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+*/
+
+// ============================================
+// UPDATE NAVIGATION MENU
+// Add these menu items to the appropriate role sections:
+// ============================================
+
+/*
+For COO/Director role navigation:
+<li><a href="#" onclick="showExecutiveDashboard()">📊 Executive Dashboard</a></li>
+<li><a href="#" onclick="showPendingTimeRequests()">⏰ Time Requests <span class="badge badge-warning" id="pendingRequestsBadge"></span></a></li>
+
+For Designer role navigation:
+<li><a href="#" onclick="showTimesheetForm()">⏱️ Log Time</a></li>
+<li><a href="#" onclick="showMyTimeRequests()">📋 My Time Requests</a></li>
+*/
+
+/**
+ * Show designer's own time requests
+ */
+async function showMyTimeRequests() {
+    try {
+        showLoading();
+        
+        const response = await apiCall('time-requests');
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to load time requests');
+        }
+        
+        const requests = response.data || [];
+        
+        const requestsHtml = `
+            <div class="page-header">
+                <h2>📋 My Time Requests</h2>
+                <p class="subtitle">Track your additional time requests</p>
+            </div>
+            
+            ${requests.length === 0 ? `
+                <div class="card" style="padding: 3rem; text-align: center;">
+                    <p style="color: var(--text-light); font-size: 1.2rem;">
+                        You haven't submitted any time requests yet.
+                    </p>
+                </div>
+            ` : `
+                <div class="card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Requested Hours</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Response</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${requests.map(r => {
+                                const statusBadge = r.status === 'approved' 
+                                    ? `<span class="badge badge-success">Approved (${r.approvedHours}h)</span>`
+                                    : r.status === 'rejected'
+                                    ? '<span class="badge badge-danger">Rejected</span>'
+                                    : r.status === 'info_requested'
+                                    ? '<span class="badge badge-warning">Info Requested</span>'
+                                    : '<span class="badge badge-info">Pending</span>';
+                                
+                                return `
+                                    <tr>
+                                        <td>
+                                            <strong>${r.projectName}</strong><br>
+                                            <small>${r.projectCode}</small>
+                                        </td>
+                                        <td><strong>+${r.requestedHours}h</strong></td>
+                                        <td>${statusBadge}</td>
+                                        <td>${formatDate(r.createdAt)}</td>
+                                        <td>
+                                            ${r.reviewComment ? `
+                                                <small>${r.reviewComment}</small><br>
+                                                <small style="color: var(--text-light);">
+                                                    by ${r.reviewedBy} on ${formatDate(r.reviewedAt)}
+                                                </small>
+                                            ` : '-'}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `}
+        `;
+        
+        document.getElementById('mainContent').innerHTML = requestsHtml;
+        
+    } catch (error) {
+        console.error('Error loading time requests:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============================================
+// INITIALIZE - Update pending requests badge
+// ============================================
+           async function updatePendingRequestsBadge() {
+            // FIX: Use the correct global variable 'currentUserRole'
+            const userRole = currentUserRole ? currentUserRole.trim().toLowerCase() : '';
+            if (!['coo', 'director'].includes(userRole)) {
+                return;
+            }
+            try {
+                const response = await apiCall('time-requests?status=pending');
+                
+                // FIX: Your API returns { success: true, data: [...] }
+                // We need the .length of the 'data' array, not a 'count' property.
+                const count = (response.success && Array.isArray(response.data)) ? response.data.length : 0;
+                
+                const badge = document.getElementById('pendingRequestsBadge');
+                if (badge) {
+                    if (count > 0) {
+                        badge.textContent = count;
+                        // FIX: Use 'inline-block' for proper flow in the nav item
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating badge:', error);
+            }
+        }
+
+// Call this periodically or on page load
+setInterval(updatePendingRequestsBadge, 60000); // Update every minute
+       function renderAllProjects() {
+            // --- MODIFIED: Add variation counts ---
+            const wonProjects = allProjectsData.filter(p => p.status === 'won');
+            const lostProjects = allProjectsData.filter(p => p.status === 'lost');
+            const pendingProjects = allProjectsData.filter(p => p.status === 'pending' || p.status === 'draft');
+            const approvedProjects = allProjectsData.filter(p => p.status === 'approved');
+            const allocatedProjects = wonProjects.filter(p => p.projectCreated && p.designLeadAssigned);
+            const toBeAllocatedProjects = wonProjects.filter(p => !p.designLeadAssigned);
+            
+            const pendingVariations = allVariationsData; // <-- NEW
+            // --- END OF MODIFICATION ---
+
+            // Filter projects based on current filter
+            let filteredProjects = allProjectsData;
+            let contentHtml = ''; // <-- NEW: Use a variable for content
+
+            switch(currentProjectFilter) {
+                case 'won': filteredProjects = wonProjects; break;
+                case 'loss': filteredProjects = lostProjects; break;
+                case 'pending': filteredProjects = pendingProjects; break;
+                case 'approved': filteredProjects = approvedProjects; break;
+                case 'toBeAllocated': filteredProjects = toBeAllocatedProjects; break;
+                case 'allocated': filteredProjects = allocatedProjects; break;
+                // <-- NEW: Add case for variations -->
+                case 'pendingVariations':
+                    contentHtml = renderPendingVariationsTable(pendingVariations);
+                    break;
+                default:
+                    filteredProjects = allProjectsData;
+            }
+
+            // --- MODIFIED: Build project table only if not showing variations ---
+            if (currentProjectFilter !== 'pendingVariations') {
+                const projectsHtml = filteredProjects.map(p => {
+                    // 1. Robust Allocation Check: Check multiple flags to ensure accuracy
+                    const isAllocated = p.allocationStatus === 'allocated' || p.projectCreated || p.designLeadAssigned;
+                    const isManagement = ['coo', 'director'].includes(currentUserRole);
+
+                    // 2. Define clear allocation status indicators based on the robust check
+                    const allocationStatusDisplay = isAllocated ? 
+                        '<span class="proposal-status status-approved">✅ Allocated</span>' : 
+                        (p.status === 'won' ? '<span class="proposal-status status-warning">⏳ To Be Allocated</span>' : 
+                        '<span class="proposal-status status-pending">-</span>');
+                    
+                    // 3. Default action button
+                    let actionButtons = `<button onclick="viewProposal('${p.id}')" class="btn btn-outline btn-sm">View Details</button>`;
+                    
+                    // 4. Management Actions
+                    if (isManagement) {
+                        // ONLY show "Allocate" if it's WON, needs a number, and is NOT yet allocated
+                        if (p.status === 'won' && !isAllocated && p.pricing?.projectNumber) {
+                            actionButtons = `
+                                <button onclick="showProjectAllocationModal('${p.id}')" class="btn btn-success btn-sm">🎯 Allocate</button>
+                                ${actionButtons}
+                            `;
+                        } 
+                        // Optional: If it IS allocated and has a project ID, show a button to jump to the project view
+                        else if (isAllocated && p.projectId) {
+                             // actionButtons = `<button onclick="viewProject('${p.projectId}')" class="btn btn-outline btn-sm">📂 Open Project</button> ` + actionButtons;
+                        }
+                    }
+                    
+                    return `
+                        <tr>
+                            <td><strong>${p.projectName}</strong></td>
+                            <td>${p.clientCompany}</td>
+                            <td>${p.createdByName || 'N/A'}</td>
+                            <td>${p.pricing?.currency || ''} ${p.pricing?.quoteValue || 'N/A'}</td>
+                            <td>${p.pricing?.projectNumber ? 
+                                `<span class="project-number-badge" style="font-size: 0.9rem;">${p.pricing.projectNumber}</span>` : 
+                                '<span class="proposal-status status-pending">Not Assigned</span>'}</td>
+                            <td><span class="proposal-status status-${p.status}">${p.status.toUpperCase()}</span></td>
+                            <td>${allocationStatusDisplay}</td>
+                            <td><div class="action-buttons">${actionButtons}</div></td>
+                        </tr>
+                    `;
+                }).join('');
+
+                contentHtml = `
+                    <div class="card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Project Name</th>
+                                    <th>Client</th>
+                                    <th>BDM</th>
+                                    <th>Value</th>
+                                    <th>Project Number</th>
+                                    <th>Status</th>
+                                    <th>Allocation Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${projectsHtml || '<tr><td colspan="8" class="text-center">No projects found</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            // --- END OF MODIFICATION ---
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="page-header">
+                    <h2>All Projects Overview</h2>
+                    <div class="subtitle">Complete view of all projects across all statuses</div>
+                </div>
+                
+                <div class="projects-summary">
+                    <div class="summary-card won">
+                        <h4>Won Projects</h4>
+                        <div class="number">${wonProjects.length}</div>
+                    </div>
+                    <div class="summary-card loss">
+                        <h4>Lost Projects</h4>
+                        <div class="number">${lostProjects.length}</div>
+                    </div>
+                    <div class="summary-card pending">
+                        <h4>Pending Approval</h4>
+                        <div class="number">${pendingProjects.length}</div>
+                    </div>
+                    <div class="summary-card allocated">
+                        <h4>Allocated</h4>
+                        <div class="number">${allocatedProjects.length}</div>
+                    </div>
+                    <div class="summary-card pending" style="border-top-color: var(--warning);">
+                        <h4>Pending Variations</h4>
+                        <div class="number">${pendingVariations.length}</div>
+                    </div>
+                </div>
+                
+                <div class="project-filter-tabs">
+                    <div class="filter-tab ${currentProjectFilter === 'all' ? 'active' : ''}" onclick="filterAllProjects('all')">
+                        All Projects <span class="count">${allProjectsData.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'won' ? 'active' : ''}" onclick="filterAllProjects('won')">
+                        Won <span class="count">${wonProjects.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'loss' ? 'active' : ''}" onclick="filterAllProjects('loss')">
+                        Loss <span class="count">${lostProjects.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'pending' ? 'active' : ''}" onclick="filterAllProjects('pending')">
+                        Pending <span class="count">${pendingProjects.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'approved' ? 'active' : ''}" onclick="filterAllProjects('approved')">
+                        Approved <span class="count">${approvedProjects.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'toBeAllocated' ? 'active' : ''}" onclick="filterAllProjects('toBeAllocated')">
+                        To Be Allocated <span class="count">${toBeAllocatedProjects.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'allocated' ? 'active' : ''}" onclick="filterAllProjects('allocated')">
+                        Allocated <span class="count">${allocatedProjects.length}</span>
+                    </div>
+                    <div class="filter-tab ${currentProjectFilter === 'pendingVariations' ? 'active' : ''}" 
+                         style="${pendingVariations.length > 0 ? 'background: var(--warning); color: #856404; border-color: var(--warning);' : ''}"
+                         onclick="filterAllProjects('pendingVariations')">
+                        Pending Variations <span class="count">${pendingVariations.length}</span>
+                    </div>
+                </div>
+                
+                ${contentHtml}
+            `;
+        }
+        function filterAllProjects(filterType) {
+            currentProjectFilter = filterType;
+            renderAllProjects();
+        }
+  // ================================================================
+// FIXED: showCreateProposalModal (Unified layout with fixed footer)
+// ================================================================
+function showCreateProposalModal() {
+    closeModal();
+    window.currentStagedFiles = []; // Reset staged files
+
+    // Constants for limits
+    const MAX_SINGLE_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
+    const MAX_TOTAL_UPLOAD_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
+
+    const projectTypes = [
+        'Steel Detailing', 'Miscellaneous Steel', 'Connection Design', 'PE Stamping',
+        'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'
+    ];
+
+    const modalHtml = `
+        <div class="modal-overlay" id="createProposalOverlay">
+            <div class="modal-content" style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; padding: 0;">
+                <div class="modal-header" style="padding: 1.5rem; flex-shrink: 0;">
+                    <div>
+                        <h2 style="margin: 0;">Create New Proposal</h2>
+                        <div class="subtitle">Start a new project</div>
+                    </div>
+                    <span class="close-modal" onclick="closeModal()">&times;</span>
+                </div>
+
+                <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                    <form id="createProposalForm">
+                        <div class="form-section">
+                            <h4 style="margin-top: 0;">Project Details</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Project Name <span class="required">*</span></label>
+                                    <input type="text" id="projectName" class="form-control" placeholder="Enter project name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Client Company <span class="required">*</span></label>
+                                    <input type="text" id="clientCompany" class="form-control" placeholder="Enter client company" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Client Name (Optional)</label>
+                                    <input type="text" id="clientName" class="form-control" placeholder="Enter client contact name">
+                                </div>
+                                <div class="form-group">
+                                    <!-- Empty for layout balance -->
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Project Type <span class="required">*</span></label>
+                                    <div class="checkbox-list" style="max-height: 150px; overflow-y: auto;">
+                                        ${projectTypes.map(type => `
+                                            <label class="designer-checkbox">
+                                                <input type="checkbox" name="projectType" value="${type}">
+                                                ${type}
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div style="margin-bottom: 1rem;">
+                                        <label>Timeline (Days)</label>
+                                        <input type="text" id="timeline" class="form-control" placeholder="e.g., 15">
+                                    </div>
+                                    <div>
+                                        <label>Country</label>
+                                        <select id="country" class="form-control">
+                                            <option value="">Select Country</option>
+                                            <option value="Australia">Australia</option>
+                                            <option value="USA">USA</option>
+                                            <option value="Canada">Canada</option>
+                                            <option value="UK">UK</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Priority</label>
+                                <select id="priority" class="form-control">
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Scope of Work <span class="required">*</span></label>
+                                <textarea id="scopeOfWork" class="form-control" rows="4" placeholder="Describe the project scope..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Comments (Optional)</label>
+                                <textarea id="projectComments" class="form-control" rows="3" placeholder="Internal notes..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Upload Project Files (PDF, DWG, ZIP)</h4>
+                            <div class="upload-area" id="proposalUploadArea" style="padding: 2rem; border: 2px dashed var(--primary-blue);">
+                                <div style="font-size: 2.5rem; margin-bottom: 1rem;">📁</div>
+                                <p>Click or Drag & Drop files here</p>
+                                <div style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">
+                                    Max 3GB per file • Supports PDF, DOCX, DWG, ZIP, JPG, PNG
+                                </div>
+                                <input type="file" id="proposalFileInput" multiple style="display: none;" accept=".pdf,.docx,.doc,.dwg,.zip,.jpg,.jpeg,.png">
+                            </div>
+                            <div id="proposalFileUploadError" style="color: var(--danger); font-weight: 600; margin-top: 1rem;"></div>
+                            
+                            <div id="proposalStagedFilesContainer" style="margin-top: 1.5rem; display: none;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <strong>Selected Files:</strong>
+                                    <span id="totalSizeIndicator" style="color: var(--text-light);">0 MB / 10 GB</span>
+                                </div>
+                                <div id="proposalStagedFilesList" style="max-height: 300px; overflow-y: auto;"></div>
+                            </div>
+                            <div id="status" style="margin-top: 1rem; color: var(--primary-blue); font-weight: 600;"></div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Project Links</h4>
+                            <div id="linksContainer">
+                                <div class="link-input-group" style="margin-bottom: 1rem;">
+                                    <input type="url" class="form-control" placeholder="https://" style="margin-bottom: 0.5rem;">
+                                    <input type="text" class="form-control" placeholder="Link Title (e.g., Dropbox Folder)">
+                                </div>
+                            </div>
+                            <button type="button" onclick="addLinkField()" class="btn btn-outline btn-sm" style="width: auto;">+ Add Another Link</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer" style="padding: 1.5rem; flex-shrink: 0; background: white; border-top: 1px solid var(--border);">
+                    <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                    <button type="submit" form="createProposalForm" class="btn btn-primary">Create Proposal</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // --- File Handling ---
+    const uploadArea = document.getElementById('proposalUploadArea');
+    const fileInput = document.getElementById('proposalFileInput');
+    const errorDiv = document.getElementById('proposalFileUploadError');
+
+    uploadArea.onclick = () => fileInput.click();
+
+    // Drag and drop support
+    uploadArea.ondragover = (e) => { e.preventDefault(); uploadArea.style.background = 'var(--light-blue)'; };
+    uploadArea.ondragleave = () => { uploadArea.style.background = ''; };
+    uploadArea.ondrop = (e) => {
+        e.preventDefault();
+        uploadArea.style.background = '';
+        handleFiles(e.dataTransfer.files);
+    };
+
+    fileInput.onchange = () => handleFiles(fileInput.files);
+
+    function handleFiles(files) {
+        errorDiv.textContent = '';
+        let currentTotalSize = window.currentStagedFiles.reduce((sum, f) => sum + f.size, 0);
+
+        Array.from(files).forEach(file => {
+            if (file.size > MAX_SINGLE_FILE_SIZE) {
+                errorDiv.innerHTML += `<div style="margin-bottom: 0.25rem;">⚠️ Skipped <strong>${file.name}</strong>: Exceeds 3GB limit.</div>`;
+                return;
+            }
+            if (currentTotalSize + file.size > MAX_TOTAL_UPLOAD_SIZE) {
+                errorDiv.innerHTML += `<div style="margin-bottom: 0.25rem; color: var(--danger);">⛔ Skipped <strong>${file.name}</strong>: Would exceed 10GB total limit.</div>`;
+                return;
+            }
+            // Check for duplicates
+            if (!window.currentStagedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                window.currentStagedFiles.push(file);
+                currentTotalSize += file.size;
+            }
+        });
+
+        fileInput.value = ''; // Reset input
+        renderStagedFiles();
+    }
+
+    window.renderStagedFiles = function() {
+        const container = document.getElementById('proposalStagedFilesList');
+        const mainContainer = document.getElementById('proposalStagedFilesContainer');
+        const totalIndicator = document.getElementById('totalSizeIndicator');
+        
+        if (window.currentStagedFiles.length === 0) {
+            mainContainer.style.display = 'none';
+            return;
+        }
+
+        mainContainer.style.display = 'block';
+        let totalSize = 0;
+
+        container.innerHTML = window.currentStagedFiles.map((file, index) => {
+            totalSize += file.size;
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; margin-bottom: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        📄 <span style="font-weight: 500;">${file.name}</span> 
+                        <span style="color: var(--text-light); font-size: 0.85rem; margin-left: 8px;">(${formatFileSize(file.size)})</span>
+                    </div>
+                    <button type="button" onclick="removeStagedFile(${index})" 
+                            style="background: #fee2e2; border: none; color: var(--danger); cursor: pointer; padding: 4px 8px; border-radius: 4px;">
+                        ✕
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        // Update total size indicator
+        const totalMB = (totalSize / (1024 * 1024)).toFixed(0);
+        const percent = Math.min((totalSize / MAX_TOTAL_UPLOAD_SIZE) * 100, 100).toFixed(0);
+        totalIndicator.textContent = `${totalMB} MB / 10 GB (${percent}%)`;
+        totalIndicator.style.color = percent > 90 ? 'var(--danger)' : 'var(--text-light)';
+    };
+
+    window.removeStagedFile = function(index) {
+        window.currentStagedFiles.splice(index, 1);
+        renderStagedFiles();
+    };
+
+    // --- Form Submission ---
+    document.getElementById('createProposalForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const selectedTypes = Array.from(document.querySelectorAll('input[name="projectType"]:checked')).map(cb => cb.value);
+        if (selectedTypes.length === 0) {
+            alert('Please select at least one Project Type.');
+            return;
+        }
+
+        const projectLinks = [];
+        document.querySelectorAll('#linksContainer .link-input-group').forEach(group => {
+            const url = group.querySelector('input[type="url"]').value;
+            const title = group.querySelector('input[type="text"]').value;
+            if (url) projectLinks.push({ url, title: title || url, description: title });
+        });
+
+        const formData = {
+            projectName: document.getElementById('projectName').value,
+            clientCompany: document.getElementById('clientCompany').value,
+            clientName: document.getElementById('clientName').value || '',
+            projectType: selectedTypes,
+            country: document.getElementById('country').value,
+            timeline: document.getElementById('timeline').value,
+            priority: document.getElementById('priority').value,
+            scopeOfWork: document.getElementById('scopeOfWork').value,
+            projectComments: document.getElementById('projectComments').value,
+            projectLinks: projectLinks
+        };
+
+        // DISABLE SUBMIT BUTTON
+        const submitBtn = document.querySelector('#createProposalForm button[type="submit"]');
+        if (submitBtn) {
+             submitBtn.disabled = true;
+             submitBtn.textContent = 'Creating...';
+        }
+
+        try {
+            // 1. Create Proposal
+            const response = await apiCall('proposals', { method: 'POST', body: JSON.stringify(formData) });
+            if (!response.success || !response.data) throw new Error('Invalid response from server');
+            const proposalId = response.data.id;
+
+            // 2. Upload Files (using new direct method with visual status)
+            if (window.currentStagedFiles.length > 0) {
+                const statusDiv = document.getElementById('status');
+                if (statusDiv) statusDiv.style.display = 'block';
+                
+                let uploadCount = 0;
+                for (const file of window.currentStagedFiles) {
+                    uploadCount++;
+                    if (statusDiv) statusDiv.innerHTML = `⏳ Uploading file ${uploadCount} of ${window.currentStagedFiles.length}: <strong>${file.name}</strong>...`;
+                    
+                    try {
+                        await uploadFileDirectly(file, proposalId, 'project');
+                        console.log(`✅ Uploaded: ${file.name}`);
+                    } catch (uploadError) {
+                        console.error(`❌ Failed to upload ${file.name}:`, uploadError);
+                        alert(`Failed to upload ${file.name}: ${uploadError.message}\n\nYou can try uploading it again later from the proposal details.`);
+                    }
+                }
+                 if (statusDiv) statusDiv.innerHTML = '✅ All files processed.';
+            }
+
+            // 3. Save Links (if added via files endpoint for consistency)
+            if (projectLinks.length > 0) {
+                await apiCall('files', {
+                    method: 'POST',
+                    body: JSON.stringify({ links: projectLinks, proposalId: proposalId, fileType: 'link' })
+                });
+            }
+
+            // 4. Notifications
+             try {
+                 const userName = (currentUser && (currentUser.displayName || currentUser.email)) ? 
+                                  (currentUser.displayName || currentUser.email) : 'System User';
+                 const userEmail = (currentUser && currentUser.email) ? currentUser.email : '';
+
+                 await triggerEmailNotification('project.submitted', {
+                    projectName: formData.projectName,
+                    createdBy: userName,
+                    bdmName: userName,
+                    bdmEmail: userEmail,
+                    clientName: formData.clientCompany,
+                    projectId: proposalId
+                });
+            } catch (err) { console.warn("Email notification non-fatal error:", err); }
+
+            alert('✅ Proposal created successfully!');
+            closeModal();
+            showProposals();
+        } catch (error) {
+            console.error('Creation failed:', error);
+            alert(`Creation failed: ${error.message}`);
+             // Re-enable button on error
+            if (submitBtn) {
+                 submitBtn.disabled = false;
+                 submitBtn.textContent = 'Create Proposal';
+            }
+        }
+    });
+}
+      
+
+      function addLinkField() {
+    const container = document.getElementById('linksContainer');
+    const newLinkGroup = document.createElement('div');
+    newLinkGroup.className = 'link-input-group';
+    newLinkGroup.style.marginBottom = '1rem';
+    newLinkGroup.innerHTML = `
+        <input type="url" class="form-control" placeholder="Enter URL" style="margin-bottom: 0.5rem;">
+        <input type="text" class="form-control" placeholder="Link title/description (optional)">
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="margin-top: 0.5rem;">Remove</button>
+    `;
+    container.appendChild(newLinkGroup);
+}
+
+        async function viewProposal(proposalId) {
+            // ... (This function remains unchanged)
+            try {
+                showLoading();
+                const { success, data } = await apiCall(`proposals?id=${proposalId}`);
+                if (success && data) {
+                    const filesResponse = await apiCall(`files?proposalId=${proposalId}`);
+                    const files = filesResponse.success ? filesResponse.data : [];
+                    renderProposalDetailModal(data, files);
+                } else {
+                    throw new Error('Failed to load proposal');
+                }
+            } catch (error) {
+                alert(`Error fetching proposal: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderProposalDetailModal(p, files = []) {
+             console.log('Rendering proposal modal. User Role:', currentUserRole, 'Proposal Status:', p.status); // DEBUG Line
+            
+            // Normalize file URLs - ensure each file has a 'url' property
+            files = files.map(f => ({
+                ...f,
+                url: f.url || f.fileUrl || f.downloadUrl || '',
+                originalName: f.originalName || f.fileName || 'Unknown File'
+            }));
+            
+            const projectFiles = files.filter(f => !f.fileType || f.fileType === 'project');
+            const estimationFiles = files.filter(f => f.fileType === 'estimation');
+            const linkFiles = files.filter(f => f.fileType === 'link');
+            let actionsHtml = '';
+
+            // Role-based actions - normalize status to lowercase for comparison
+            const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+            
+            // ESTIMATOR: Show Add Estimation button
+            if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation)) {
+                actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}')">Add Estimation</button>`;
+            
+            // COO: Show pricing form when estimation is done
+            } else if (currentUserRole === 'coo' && (statusLower === 'estimated' || statusLower === 'won' || statusLower === 'pricing_complete' || statusLower === 'pending_approval' || statusLower === 'pending_pricing' || p.estimation)) {
+                // If no pricing yet, show pricing button
+                if (!p.pricing || !p.pricing.projectNumber) {
+                    actionsHtml = `<button class="btn btn-success" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button>`;
+                } else {
+                    actionsHtml = getProposalAllocationButton(p);
+                }
+            
+            // MODIFIED: Director can approve/reject proposals with pending_approval status or after pricing
+            } else if (currentUserRole === 'director') { 
+                if (statusLower === 'pending_approval' || statusLower === 'pending_director_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost')) {
+                    actionsHtml = `
+                        <button class="btn btn-danger" onclick="showRejectModal('${p.id}')">❌ Reject</button>
+                        <button class="btn btn-success" onclick="showApproveModal('${p.id}')">✅ Approve</button>
+                    `;
+                } else if (statusLower === 'won') {
+                    // Get allocation/view buttons if status is 'won'
+                    actionsHtml = getProposalAllocationButton(p);
+                } else if (statusLower === 'approved') {
+                    actionsHtml = '<span style="color: var(--success); font-weight: 600;">✅ Already Approved</span>';
+                } else if (statusLower === 'rejected') {
+                    actionsHtml = '<span style="color: var(--danger); font-weight: 600;">❌ Already Rejected</span>';
+                }
+            
+            } else if (currentUserRole === 'bdm' && statusLower === 'approved') {
+                actionsHtml = `<button class="btn btn-success" onclick="submitToClient('${p.id}')">Submit to Client</button>`;
+                 // BDM can also directly mark as WON/LOST if approved
+                 actionsHtml += ` <button class="btn btn-success btn-sm" onclick="markProposalWon('${p.id}')" style="margin-left: 10px;">✅ WON</button>`;
+                 actionsHtml += ` <button class="btn btn-danger btn-sm" onclick="markProposalLost('${p.id}')" style="margin-left: 10px;">❌ LOST</button>`;
+            } else if (currentUserRole === 'bdm' && statusLower === 'submitted_to_client') {
+                 actionsHtml = `
+                    <button class="btn btn-success btn-sm" onclick="markProposalWon('${p.id}')">✅ WON</button>
+                    <button class="btn btn-danger btn-sm" onclick="markProposalLost('${p.id}')" style="margin-left: 10px;">❌ LOST</button>
+                 `;
+            } else if (currentUserRole === 'bdm' && statusLower === 'won') {
+                 actionsHtml = `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button>`;
+            }
+             // --- ADD THIS BLOCK: Generate Word Quote Button for BDM ---
+            if (currentUserRole === 'bdm' && p.pricing && p.pricing.quoteValue) {
+                 actionsHtml += `
+                    <button class="btn btn-outline btn-sm" style="margin-left: 10px; border-color: #2563eb; color: #2563eb;" 
+                            onclick="generateWordQuote('${p.id}')">
+                        📄 Generate Word Quote
+                    </button>
+                 `;
+            }
+
+
+            // BDM delete button - only for own proposals and if not too far in workflow
+      // BDM edit and delete buttons - only for own proposals and if not allocated
+        if (currentUserRole === 'bdm' && p.createdByUid === currentUser.uid) {
+            // Only prevent edit/delete if proposal is allocated to a Design Manager
+            if (!p.allocationStatus || p.allocationStatus !== 'allocated') {
+                actionsHtml += ` 
+                    <button class="btn btn-primary btn-sm" 
+                            onclick="editProposal('${p.id}')" 
+                            style="margin-left: 10px;">
+                        ✏️ Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm" 
+                            onclick="deleteProposal('${p.id}')" 
+                            style="margin-left: 10px;">
+                        🗑️ Delete
+                    </button>
+                `;
+            }
+        }
+
+        // COO and Director can also edit proposals
+        if (['coo', 'director'].includes(currentUserRole) && (!p.allocationStatus || p.allocationStatus !== 'allocated')) {
+            actionsHtml += ` 
+                <button class="btn btn-primary btn-sm" 
+                        onclick="editProposal('${p.id}')" 
+                        style="margin-left: 10px;">
+                    ✏️ Edit
+                </button>
+            `;
+        }
+            // Build links section
+            let linksHtml = '';
+            if (linkFiles.length > 0 || (p.projectLinks && p.projectLinks.length > 0)) {
+                const allLinks = [
+                    ...linkFiles,
+                    ...(p.projectLinks || []).map(link => ({
+                        id: link.url, // Use URL as temporary ID if not a file entity
+                        url: link.url,
+                        originalName: link.title || link.url,
+                        linkDescription: link.description || '',
+                        canDelete: false // Cannot delete proposalLinks directly here
+                    }))
+                ];
+                linksHtml = `
+                    <div class="form-section">
+                        <h4>Project Links 🔗</h4>
+                        ${allLinks.map(link => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #fff; border-radius: 5px; margin-bottom: 0.5rem; border: 1px solid var(--border);">
+                                <div style="flex: 1;">
+                                    <span>🔗 ${link.originalName || link.url}</span>
+                                    ${link.linkDescription ? `<div style="font-size: 0.85rem; color: var(--text-light);">${link.linkDescription}</div>` : ''}
+                                </div>
+                                <div>
+                                    <button class="btn btn-outline btn-sm" onclick="window.open('${link.url}', '_blank')">Open Link</button>
+                                    ${link.canDelete ? `
+                                        <button class="btn btn-warning btn-sm" onclick="editLink('${link.id}', '${p.id}')">✏️ Edit</button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteLink('${link.id}', '${p.id}')">🗑️ Delete</button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // Build estimation files section with access control
+            let estimationFilesHtml = '';
+            if (estimationFiles.length > 0) {
+                if (canAccessEstimationFile(p.status)) {
+                    const estimationFilesItems = estimationFiles.map(file => {
+                        const fileUrl = file.url || file.fileUrl || file.downloadUrl || '#';
+                        const fileName = file.originalName || file.fileName || 'Unknown File';
+                        const deleteBtn = file.canDelete ? 
+                            `<button class="btn btn-danger btn-sm" onclick="deleteFile('${file.id}'); closeModal(); viewProposal('${p.id}');">🗑️ Delete</button>` : '';
+                        return `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #fff; border-radius: 5px; margin-bottom: 0.5rem; border: 1px solid var(--border);">
+                                <span>📊 ${fileName}</span>
+                                <div>
+                                    <button class="btn btn-outline btn-sm" onclick="window.open('${fileUrl}', '_blank')">View</button>
+                                    <button class="btn btn-primary btn-sm" onclick="downloadFile('${fileUrl}', '${fileName}')">Download</button>
+                                    ${deleteBtn}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    estimationFilesHtml = `
+                        <div class="form-section">
+                            <h4>Estimation Files ${getFileAccessIndicator({ fileType: 'estimation' }, p.status)}</h4>
+                            ${estimationFilesItems}
+                        </div>
+                    `;
+                } else {
+                    estimationFilesHtml = `
+                        <div class="form-section">
+                            <h4>Estimation Files ${getFileAccessIndicator({ fileType: 'estimation' }, p.status)}</h4>
+                            <div class="warning-message">
+                                <strong>Access Restricted:</strong> Estimation files available after Director approval.
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+           const modalHtml = `
+                <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                    <div class="modal-content" style="max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column;">
+                        
+                        <div class="modal-header" style="text-align: left; flex-shrink: 0;"> 
+                            <div> 
+                                <h2 style="color: white; margin-bottom: 0;">${p.projectName}</h2> 
+                                <div class="subtitle" style="color: rgba(255,255,255,0.9); text-align: left;">${p.clientCompany}</div> 
+                            </div>
+                            <span class="close-modal" onclick="closeModal()">&times;</span> 
+                        </div>
+
+                        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 2rem 3rem;">
+                            <div style="margin-bottom: 2rem;"> 
+                                <strong>Status:</strong>
+                                <span class="proposal-status status-${p.status.toLowerCase().replace(/_/g, '-')}">
+                                    ${p.status.replace(/_/g, ' ').toUpperCase()}
+                                </span>
+                            </div>
+
+                            <div style="display: grid; gap: 2rem;"> 
+                                <div class="form-section">
+                                    <h4>Project Details</h4>
+                                    <p><strong>Scope:</strong> ${p.scopeOfWork || 'N/A'}</p>
+                                    <p><strong>Timeline:</strong> ${p.timeline || 'N/A'}</p>
+                                    <p><strong>Country:</strong> ${p.country || 'N/A'}</p>
+                                    ${p.clientName ? `<p><strong>Client Name:</strong> ${p.clientName}</p>` : ''}
+                                    <p><strong>Created by:</strong> ${p.createdByName || 'N/A'} on ${formatDate(p.createdAt)}</p>
+                                </div>
+
+                                ${linksHtml}
+
+                                <div class="form-section">
+                                    <h4>Project Files ${getFileAccessIndicator({ fileType: 'project' }, p.status)}</h4>
+                                    ${projectFiles.length ? projectFiles.map(file => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #fff; border-radius: 5px; margin-bottom: 0.5rem; border: 1px solid var(--border);">
+                                            <span>📄 ${file.originalName}</span>
+                                            <div>
+                                                <button class="btn btn-outline btn-sm" onclick="window.open('${file.url}', '_blank')">View</button>
+                                                <button class="btn btn-primary btn-sm" onclick="downloadFile('${file.url}', '${file.originalName}')">Download</button>
+                                                ${file.canDelete ? `
+                                                    <button class="btn btn-danger btn-sm" onclick="deleteFile('${file.id}'); closeModal(); viewProposal('${p.id}');">🗑️ Delete</button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    `).join('') : '<p>No project files uploaded.</p>'}
+                                </div>
+
+                              ${p.estimation ? `
+                                    <div class="form-section">
+                                        <h4>Estimation Details</h4>
+                                        
+                                        <p><strong>Total Hours:</strong> ${p.estimation.manhours || p.estimation.totalHours || 'N/A'}</p>
+                                        
+                                        <p><strong>Tonnage:</strong> ${p.estimation.tonnage || 'N/A'}</p>
+                                        
+                                        <p><strong>Services:</strong> ${p.estimation.services?.join(', ') || 'N/A'}</p>
+                                        
+                                        <p><strong>Estimated By:</strong> ${p.estimation.estimatorName || p.estimation.estimatedByName || p.estimation.estimatedBy || 'N/A'}</p>
+                                        
+                                        ${p.estimation.notes ? `<p><strong>Notes:</strong> ${p.estimation.notes}</p>` : ''}
+                                    </div>
+                                ` : ''}
+
+                                ${estimationFilesHtml}
+
+                              ${p.pricing ? `
+    <div class="form-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4>Pricing Information 💰</h4>
+            ${['coo', 'director'].includes(currentUserRole) && p.status !== 'won' && p.status !== 'lost' ? `
+                <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); showEditPricingModal('${p.id}')">
+                    ✏️ Edit Pricing
+                </button>
+            ` : ''}
+        </div>
+        <p><strong>Project Number:</strong> ${p.pricing.projectNumber || 'N/A'}</p>
+        <p><strong>Quote Value:</strong> ${p.pricing.currency || ''} ${p.pricing.quoteValue || 'N/A'}</p>
+        <p><strong>Profit Margin:</strong> ${p.pricing.profitMargin || 'N/A'}%</p>
+        <p><strong>Hourly Rate:</strong> ${p.pricing.hourlyRate || 'N/A'}</p>
+        <p><strong>Priced By:</strong> ${p.pricing.pricedBy || 'N/A'}</p>
+        ${p.pricing.costBreakdown ? `
+            <div style="margin-top: 1rem; padding: 1rem; background: var(--light-blue); border-radius: 8px;">
+                <strong>Cost Breakdown:</strong>
+                <div style="margin-top: 0.5rem;">
+                    <span>Material: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.material || 0}</span> |
+                    <span>Labor: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.labor || 0}</span> |
+                    <span>Overhead: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.overhead || 0}</span> |
+                    <span>Other: ${p.pricing.currency || ''} ${p.pricing.costBreakdown.other || 0}</span>
+                </div>
+            </div>
+        ` : ''}
+        ${p.pricing.notes ? `
+            <div style="margin-top: 0.5rem;">
+                <strong>Notes:</strong> 
+                <p style="white-space: pre-wrap; background: #f9fafb; padding: 0.75rem; border-radius: 4px; margin-top: 0.25rem;">${p.pricing.notes}</p>
+            </div>
+        ` : ''}
+    </div>
+` : ''}
+
+                                ${p.directorApproval ? `
+                                    <div class="form-section">
+                                        <h4>Director Approval</h4>
+                                        <p><strong>Status:</strong> ${p.directorApproval.approved ? 'Approved' : 'Rejected'}</p>
+                                        ${p.directorApproval.comments ? `<p><strong>Comments:</strong> ${p.directorApproval.comments}</p>` : ''}
+                                        <p><strong>By:</strong> ${p.directorApproval.approvedBy || p.directorApproval.rejectedBy || 'N/A'}</p>
+                                        <p><strong>Date:</strong> ${formatDate(p.directorApproval.approvedAt || p.directorApproval.rejectedAt)}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div class="modal-footer" style="flex-shrink: 0; padding: 1.5rem 3rem; background: #f9fafb; border-top: 1px solid var(--border);"> 
+                            <button onclick="closeModal()" class="btn btn-outline">Close</button>
+                            ${actionsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+
+        function getFileAccessIndicator(file, proposalStatus) {
+            // ... (This function remains unchanged)
+            if (!file.fileType || file.fileType === 'project') {
+                return '<span class="file-access-indicator access-full">📁 Project File</span>';
+            }
+            if (file.fileType === 'estimation') {
+                if (currentUserRole === 'bdm') {
+                    if (proposalStatus === 'approved' || proposalStatus === 'submitted_to_client') {
+                        return '<span class="file-access-indicator access-full">📊 Estimation (Approved)</span>';
+                    } else {
+                        return '<span class="file-access-indicator access-pending">📊 Estimation (Pending Approval)</span>';
+                    }
+                } else {
+                    return '<span class="file-access-indicator access-full">📊 Estimation File</span>';
+                }
+            }
+            return '';
+        }
+        function canAccessEstimationFile(proposalStatus) {
+            // ... (This function remains unchanged)
+            if (['estimator', 'coo', 'director'].includes(currentUserRole)) {
+                return true;
+            }
+            if (currentUserRole === 'bdm') {
+                return proposalStatus === 'approved' || proposalStatus === 'submitted_to_client';
+            }
+            return false;
+        }
+      function showEstimationModal(id, projectName = 'N/A') {
+    closeModal();
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+            <div class="modal-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2>Manhour Entry & Estimation</h2>
+                    <span class="close-modal" onclick="closeModal()">&times;</span>
+                </div>
+                <form id="estimationForm" class="modal-form">
+                    <input type="hidden" id="estProjectName" value="${projectName}">
+                    
+                    <div class="form-section">
+                        <h4>View Project Files</h4>
+                        <div id="projectFilesView">Loading...</div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Manhour Breakdown</h4>
+                        <div class="input-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="tonnageInput">Tonnage (Optional)</label>
+                                <input type="number" id="tonnageInput" class="form-control" value="0" min="0" step="0.01" oninput="handleTonnageInput()">
+                            </div>
+                            <div class="form-group" style="flex: 1; display: flex; align-items: center; padding-top: 25px;">
+                                <label style="cursor: pointer; display: flex; align-items: center;">
+                                    <input type="checkbox" id="useTonnageForDesign" onchange="toggleDesignHours()" style="width: 20px; height: 20px; margin-right: 10px;">
+                                    Use Tonnage to calculate Design Hours
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div class="form-group"><label>Design Hours</label><input type="number" id="designHours" class="form-control" value="0" min="0" step="0.5" oninput="calculateTotalHours()" required></div>
+                            <div class="form-group"><label>Detailing Hours</label><input type="number" id="detailingHours" class="form-control" value="0" min="0" step="0.5" oninput="calculateTotalHours()" required></div>
+                            <div class="form-group"><label>Checking Hours</label><input type="number" id="checkingHours" class="form-control" value="0" min="0" step="0.5" oninput="calculateTotalHours()" required></div>
+                            <div class="form-group"><label>Revision Hours</label><input type="number" id="revisionHours" class="form-control" value="0" min="0" step="0.5" oninput="calculateTotalHours()"></div>
+                            <div class="form-group"><label>Project Management</label><input type="number" id="pmHours" class="form-control" value="0" min="0" step="0.5" oninput="calculateTotalHours()"></div>
+                            <div class="form-group"><label>Total Hours</label><input type="number" id="totalHours" class="form-control" style="background: #ffffff; font-weight: bold;" value="0" oninput="calculateTotalHours()"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Select Services</h4>
+                        <div class="service-grid">
+                            <label class="service-item"><input type="checkbox" name="services" value="Steel Detailing"><span>Steel Detailing</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="Miscellaneous Steel"><span>Miscellaneous Steel</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="Connection Design"><span>Connection Design</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="PE Stamping"><span>PE Stamping</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="Joist Detailing"><span>Joist Detailing</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="As-built Drawings"><span>As-built Drawings</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="Engineering Services"><span>Engineering Services</span></label>
+                            <label class="service-item"><input type="checkbox" name="services" value="Rebar Detailing"><span>Rebar Detailing</span></label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Attachments</h4>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Upload BOQ & Calculation Files</label>
+                            <div class="upload-area" id="boqUploadArea" onclick="document.getElementById('boqFileInput').click()" style="padding: 1.5rem;">
+                                <div style="font-size: 2rem;">📊</div>
+                                <p>Click to upload BOQ, MTO, Excel files</p>
+                                <input type="file" id="boqFileInput" multiple style="display: none;" 
+                                       accept=".xlsx,.xls,.csv,.pdf,.doc,.docx">
+                            </div>
+                            <div id="boqFilePreview" style="margin-top: 0.5rem;"></div>
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Upload Images (Drawings, Sketches)</label>
+                            <div class="upload-area" id="imageUploadArea" onclick="document.getElementById('imageFileInput').click()" style="padding: 1.5rem; border-color: var(--success);">
+                                <div style="font-size: 2rem;">🖼️</div>
+                                <p>Click to upload Images</p>
+                                <input type="file" id="imageFileInput" multiple style="display: none;" 
+                                       accept="image/png, image/jpeg, image/jpg, .pdf">
+                            </div>
+                            <div id="imageFilePreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                        <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                        <button type="button" onclick="saveEstimation('${id}')" class="btn btn-success">Save Estimation</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    loadProjectFiles(id);
+
+    // BOQ File Listener
+    document.getElementById('boqFileInput').addEventListener('change', function() {
+        const files = this.files;
+        const preview = document.getElementById('boqFilePreview');
+        if (files.length > 0) {
+            preview.innerHTML = Array.from(files).map(f => 
+                `<div style="padding: 5px; background: #f8f9fa; border: 1px solid #dee2e6; margin-top: 5px; border-radius: 4px;">
+                    📊 ${f.name} (${(f.size/1024).toFixed(0)} KB)
+                 </div>`
+            ).join('');
+        } else {
+            preview.innerHTML = '';
+        }
+    });
+
+    // NEW: Image File Listener with Thumbnail Preview
+    document.getElementById('imageFileInput').addEventListener('change', function() {
+        const files = Array.from(this.files);
+        const previewContainer = document.getElementById('imageFilePreview');
+        previewContainer.innerHTML = ''; // Clear previous previews
+
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const isImage = file.type.startsWith('image/');
+                const div = document.createElement('div');
+                div.style.cssText = 'width: 80px; height: 80px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; position: relative;';
+                
+                if (isImage) {
+                    div.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;" title="${file.name}">`;
+                } else {
+                    // Fallback for non-images (like PDFs if allowed in standard input)
+                    div.innerHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f8f9fa; font-size: 2rem;">📄</div>`;
+                }
+                previewContainer.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    // Service selection toggling
+    document.querySelectorAll('.service-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') {
+                const checkbox = this.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+            }
+            this.classList.toggle('checked', this.querySelector('input[type="checkbox"]').checked);
+        });
+    });
+    
+    // ✅ FIX: Initialize calculation and unlock all fields
+    setTimeout(() => {
+        calculateTotalHours();
+    }, 100);
+}
+
+      async function saveEstimation(proposalId) {
+    const services = Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value);
+    
+    // Get both values
+    const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
+    const tonnage = parseFloat(document.getElementById('tonnageInput').value) || 0;
+    
+    // ✅ CRITICAL: Check if tonnage checkbox is checked
+    const useTonnageCheckbox = document.getElementById('useTonnageForDesign');
+    const usedTonnageForDesign = useTonnageCheckbox ? useTonnageCheckbox.checked : false;
+
+    // MODIFIED VALIDATION: Allow if EITHER Total Hours OR Tonnage is greater than 0
+    if (totalHours === 0 && tonnage === 0) {
+        return alert('Please enter either Manhours OR Tonnage to proceed.');
+    }
+    if (services.length === 0) return alert('Please select at least one service.');
+
+    const estimationData = {
+        tonnage: tonnage,
+        
+        // ✅ CRITICAL NEW FIELDS FOR ALLOCATION LOGIC
+        usedTonnageForDesign: usedTonnageForDesign,
+        tonnageValue: usedTonnageForDesign ? tonnage : null,
+        
+        designHours: document.getElementById('designHours').value || 0,
+        detailingHours: document.getElementById('detailingHours').value || 0,
+        checkingHours: document.getElementById('checkingHours').value || 0,
+        revisionHours: document.getElementById('revisionHours').value || 0,
+        pmHours: document.getElementById('pmHours').value || 0,
+        totalHours: totalHours,
+        manhours: totalHours, // <-- ✅ THIS IS THE FIX
+        services: services,
+        notes: 'Estimation completed'
+    };
+
+    try {
+        showLoading();
+        
+        // 1. Collect ALL files from BOTH inputs (BOQ and Images)
+        const boqFiles = Array.from(document.getElementById('boqFileInput').files);
+        const imageFiles = Array.from(document.getElementById('imageFileInput').files);
+        const allFiles = [...boqFiles, ...imageFiles];
+
+        // 2. Upload if any files exist
+        if (allFiles.length > 0) {
+            const formData = new FormData();
+            allFiles.forEach(file => formData.append('files', file));
+            formData.append('proposalId', proposalId);
+            formData.append('fileType', 'estimation');
+            await apiCall('files', { method: 'POST', body: formData });
+        }
+
+        // 3. Save Estimation Data
+        const response = await apiCall(`proposals?id=${proposalId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ action: 'add_estimation', data: estimationData })
+        });
+
+        if (response.success) {
+            alert('Estimation saved successfully!');
+            const projectName = document.getElementById('estProjectName')?.value || 'Unknown Project';
+            // Ensure triggerEmailNotification exists before calling
+            if (typeof triggerEmailNotification === 'function') {
+                 triggerEmailNotification('estimation.complete', { projectName: projectName });
+            }
+            closeModal();
+            showProposals();
+        } else {
+             throw new Error(response.error || 'Failed to save estimation');
+        }
+    } catch (error) {
+        alert('Error saving estimation: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+      function showSubcontractorModal(proposalId, projectName) {
+    closeModal();
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>Mark as Subcontractor Project</h2>
+                    <span class="close-modal" onclick="closeModal()">&times;</span>
+                </div>
+                <form id="subcontractorForm" class="modal-form">
+                    <div class="form-section">
+                        <p style="margin-bottom: 1rem; color: #4b5563;">
+                            Project: <strong>${projectName}</strong>
+                        </p>
+                        <p style="margin-bottom: 1rem; color: #6b7280; font-size: 0.9rem;">
+                            This will mark the project as subcontracted and remove it from pending estimation.
+                        </p>
+                        <div class="form-group">
+                            <label for="subcontractorName">Subcontractor Name <span style="color: red;">*</span></label>
+                            <input type="text" id="subcontractorName" class="form-control" placeholder="Enter subcontractor name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="subcontractorNotes">Notes (Optional)</label>
+                            <textarea id="subcontractorNotes" class="form-control" rows="3" placeholder="Any additional notes..."></textarea>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                        <button type="button" onclick="saveSubcontractor('${proposalId}')" class="btn" style="background: #7c3aed; color: white; border: none;">Confirm Subcontractor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function saveSubcontractor(proposalId) {
+    const subcontractorName = (document.getElementById('subcontractorName').value || '').trim();
+    const notes = (document.getElementById('subcontractorNotes').value || '').trim();
+
+    if (!subcontractorName) {
+        return alert('Please enter the subcontractor name.');
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`proposals?id=${proposalId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'mark_subcontractor',
+                data: { subcontractorName, notes }
+            })
+        });
+
+        if (response.success) {
+            alert('Project marked as subcontractor successfully!');
+            closeModal();
+            showProposals();
+        } else {
+            throw new Error(response.error || 'Failed to mark as subcontractor');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+        async function loadProjectFiles(proposalId) {
+            try {
+                const { success, data } = await apiCall(`files?proposalId=${proposalId}`);
+                const projectFilesView = document.getElementById('projectFilesView');
+                if (success && data) {
+                    // Normalize file URLs
+                    const normalizedFiles = data.map(f => ({
+                        ...f,
+                        url: f.url || f.fileUrl || f.downloadUrl || '',
+                        originalName: f.originalName || f.fileName || 'Unknown File'
+                    }));
+                    const projectFiles = normalizedFiles.filter(f => !f.fileType || f.fileType === 'project');
+                    const filesHtml = projectFiles.length ? projectFiles.map(file => `
+                        <div class="action-item" style="margin-bottom: 1rem; padding: 1rem;">
+                            <div class="action-content"><strong>📄 ${file.originalName}</strong></div>
+                            <div class="action-buttons">
+                                <button class="btn btn-outline btn-sm" onclick="window.open('${file.url}', '_blank')">VIEW</button>
+                                <button class="btn btn-primary btn-sm" onclick="downloadFile('${file.url}', '${file.originalName}')">DOWNLOAD</button>
+                            </div>
+                        </div>
+                    `).join('') : '<p>No project files available.</p>';
+                    if (projectFilesView) projectFilesView.innerHTML = filesHtml;
+                }
+            } catch (error) {
+                const projectFilesView = document.getElementById('projectFilesView');
+                if (projectFilesView) projectFilesView.innerHTML = `<p class="error-message">Error loading files: ${error.message}</p>`;
+            }
+        }
+
+        function downloadFile(url, filename) {
+            // ... (This function remains unchanged)
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showPricingModal(id) {
+            // ... (This function remains unchanged, though it is no longer called by the modal)
+            closeModal();
+            apiCall(`proposals?id=${id}`).then(response => {
+                const proposal = response.data;
+                const estimation = proposal.estimation || {};
+                const modalHtml = `
+                    <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                        <div class="modal-content" style="max-width: 1200px;">
+                            <div class="modal-header"><h2>Project Editor - COO Full Access</h2></div>
+                            <form id="pricingForm" class="modal-form">
+                                <div class="form-section">
+                                    <h4>Current Estimation Summary</h4>
+                                    <p><strong>Total Hours:</strong> ${estimation.totalHours || 'N/A'}</p>
+                                    <p><strong>Services:</strong> ${estimation.services?.join(', ') || 'N/A'}</p>
+                                </div>
+                                <div class="form-section">
+                                    <h4>Edit Services</h4>
+                                    <div class="service-grid">
+                                        ${['Steel Detailing', 'Miscellaneous Steel Detailing', 'Connection Design', 'PE Stamping', 'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'].map(service => `
+                                            <label class="service-item ${estimation.services?.includes(service) ? 'checked' : ''}">
+                                                <input type="checkbox" name="editServices" value="${service}" ${estimation.services?.includes(service) ? 'checked' : ''}>
+                                                <span>${service}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="form-section">
+                                    <h4>Pricing Details</h4>
+                                    <div class="form-row">
+                                        <div class="form-group"><label>Hourly Rate ($)</label><input type="number" id="hourlyRate" class="form-control" placeholder="85.00" step="0.01" required></div>
+                                        <div class="form-group"><label>Profit Margin (%)</label><input type="number" id="profitMargin" class="form-control" placeholder="25.0" step="0.1" required></div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group"><label>Final Quote Value ($)</label><input type="number" id="quoteValue" class="form-control" placeholder="0.00" step="0.01" required></div>
+                                        <div class="form-group"><label>Currency</label><select id="currency" class="form-control"><option value="USD">USD</option><option value="AUD">AUD</option></select></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                                    <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                                    <button type="button" onclick="savePricing('${id}')" class="btn btn-primary">Save & Send to Director</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                document.getElementById('hourlyRate')?.addEventListener('input', calculateQuote);
+                document.getElementById('profitMargin')?.addEventListener('input', calculateQuote);
+                function calculateQuote() {
+                    const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+                    const margin = parseFloat(document.getElementById('profitMargin').value) || 0;
+                    const hours = estimation.totalHours || 0;
+                    const baseValue = rate * hours;
+                    const quoteValue = baseValue * (1 + margin / 100);
+                    document.getElementById('quoteValue').value = quoteValue.toFixed(2);
+                }
+
+                document.querySelectorAll('.service-item').forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        if (e.target.tagName !== 'INPUT') {
+                            const checkbox = this.querySelector('input[type="checkbox"]');
+                            checkbox.checked = !checkbox.checked;
+                        }
+                        this.classList.toggle('checked', this.querySelector('input[type="checkbox"]').checked);
+                    });
+                });
+            });
+        }
+
+        async function savePricing(id) {
+            // ... (This function remains unchanged, though it is no longer called by the modal)
+            const services = Array.from(document.querySelectorAll('input[name="editServices"]:checked')).map(cb => cb.value);
+            const data = {
+                hourlyRate: document.getElementById('hourlyRate').value,
+                profitMargin: document.getElementById('profitMargin').value,
+                quoteValue: document.getElementById('quoteValue').value,
+                currency: document.getElementById('currency').value,
+                updatedServices: services
+            };
+            try {
+                showLoading();
+                await handleProposalAction(id, 'set_pricing', data, 'Pricing updated and sent to Director!');
+            } catch (error) {
+                alert('Error saving pricing: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handleProposalAction(id, action, data = {}, msg) {
+            // ... (This function remains unchanged)
+            try {
+                showLoading();
+                const { success } = await apiCall(`proposals?id=${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ action, data })
+                });
+                if (success) {
+                    closeModal();
+                    showProposals();
+                    alert(msg);
+                }
+            } catch(err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Show Approve Modal with proper dialog
+        function showApproveModal(proposalId) {
+            closeModal(); // Close proposal detail modal first
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header" style="background: var(--success); color: white;">
+                            <h2>✅ Approve Proposal</h2>
+                        </div>
+                        <div class="modal-body" style="padding: 2rem;">
+                            <div class="success-message" style="margin-bottom: 1.5rem;">
+                                <strong>Approve this proposal?</strong>
+                                <p style="margin-top: 0.5rem;">The proposal will be marked as approved and the BDM will be notified to submit it to the client.</p>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="approveComments">Comments (Optional)</label>
+                                <textarea id="approveComments" class="form-control" rows="4" 
+                                    placeholder="Add any approval comments or special instructions..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button onclick="closeModal(); viewProposal('${proposalId}')" class="btn btn-outline">Cancel</button>
+                            <button onclick="confirmApproveProposal('${proposalId}')" class="btn btn-success">
+                                ✅ Confirm Approval
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        // Confirm and execute approval
+        async function confirmApproveProposal(id) {
+            const comments = document.getElementById('approveComments').value;
+            
+            try {
+                showLoading();
+           const response = await apiCall(`proposals?id=${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'approve_proposal', // <-- CORRECT
+                        data: { comments: comments || 'Approved by Director' }
+                    })
+                });
+                
+                if (response.success) {
+                    closeModal();
+                    showNotification('✅ Proposal approved successfully!', 'success');
+                    // Refresh the view
+                    if (typeof showProposals === 'function') {
+                        showProposals();
+                    } else if (typeof showDashboard === 'function') {
+                        showProposals();
+                    }
+                } else {
+                    throw new Error(response.error || 'Failed to approve proposal');
+                }
+            } catch (error) {
+                console.error('Error approving proposal:', error);
+                alert('Error approving proposal: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Show Reject Modal with proper dialog
+        function showRejectModal(proposalId) {
+            closeModal(); // Close proposal detail modal first
+            
+            const modalHtml = `
+                <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header" style="background: var(--danger); color: white;">
+                            <h2>❌ Reject Proposal</h2>
+                        </div>
+                        <div class="modal-body" style="padding: 2rem;">
+                        <input type="hidden" id="approveProjectName" value="${projectName}">
+                            <div class="error-message" style="margin-bottom: 1.5rem;">
+                                <strong>Reject this proposal?</strong>
+                                <p style="margin-top: 0.5rem;">The proposal will be marked as rejected and sent back for revision. Please provide a reason.</p>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rejectReason">Reason for Rejection <span class="required">*</span></label>
+                                <textarea id="rejectReason" class="form-control" rows="4" 
+                                    placeholder="Please explain why this proposal is being rejected..." required></textarea>
+                                <small class="form-text">This information will be sent to the team for revision.</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button onclick="closeModal(); viewProposal('${proposalId}')" class="btn btn-outline">Cancel</button>
+                            <button onclick="confirmRejectProposal('${proposalId}')" class="btn btn-danger">
+                                ❌ Confirm Rejection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        // Confirm and execute rejection
+        async function confirmRejectProposal(id) {
+            const reason = document.getElementById('rejectReason').value.trim();
+            
+            if (!reason) {
+                alert('Please provide a reason for rejection');
+                return;
+            }
+            
+            try {
+                showLoading();
+                const response = await apiCall(`proposals?id=${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'reject_proposal', // <-- CORRECT
+                        data: { reason: reason } // Also fix the data key from 'comments' to 'reason'
+                    })
+                });
+                
+                if (response.success) {
+                    closeModal();
+                    showNotification('Proposal rejected and sent for revision', 'warning');
+                    // Refresh the view
+                    if (typeof showProposals === 'function') {
+                        showProposals();
+                    } else if (typeof showDashboard === 'function') {
+                        showProposals();
+                    }
+                } else {
+                    throw new Error(response.error || 'Failed to reject proposal');
+                }
+            } catch (error) {
+                console.error('Error rejecting proposal:', error);
+                alert('Error rejecting proposal: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Keep old functions for backward compatibility but use new modals
+        async function approveProposal(id) {
+            showApproveModal(id);
+        }
+        
+        async function rejectProposal(id) {
+            showRejectModal(id);
+        }
+        async function submitToClient(id) {
+            // ... (This function remains unchanged)
+            const method = prompt("Submission method:", "email");
+            if (!method) return;
+            try {
+                showLoading();
+                const response = await apiCall(`proposals?id=${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ action: 'submit_to_client', data: { method } })
+                });
+                if (response.success) {
+                    alert('✅ Proposal submitted to client!');
+                    closeModal();
+                    showProposals();
+                } else {
+                    throw new Error(response.error || 'Submit failed');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        async function markProposalWon(proposalId) {
+            // ... (This function remains unchanged)
+            if (!confirm('Mark this proposal as WON? COO will create the project.')) return;
+            try {
+                showLoading();
+                const response = await apiCall(`proposals?id=${proposalId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        action: 'mark_won',
+                        data: { wonDate: new Date().toISOString() }
+                    })
+                });
+                if (response.success) {
+                    alert('✅ Proposal marked as WON!\n\nCOO will be notified.');
+                    // --- ADD THIS LINE ---
+                    // Note: You might need to pass clientName/projectName to this function or fetch it
+                     triggerEmailNotification('project.won', { proposalId: proposalId }); 
+                     // --------------------
+                    closeModal();
+                    showProposals();
+                } else {
+                    throw new Error(response.error || 'Failed to mark as WON');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        async function markProposalLost(proposalId) {
+            // ... (This function remains unchanged)
+            const reason = prompt('Reason for losing this proposal:');
+            if (!reason) return;
+            try {
+                showLoading();
+                const response = await apiCall(`proposals?id=${proposalId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        action: 'mark_lost',
+                        data: { lostDate: new Date().toISOString(), reason }
+                    })
+                });
+                if (response.success) {
+                    alert('Proposal marked as LOST.');
+                    // --- ADD THIS LINE ---
+                    triggerEmailNotification('project.lost', { proposalId: proposalId, reason: reason });
+                    // --------------------
+                    closeModal();
+                    showProposals();
+                } else {
+                    throw new Error(response.error || 'Failed to mark as LOST');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+     // ================================================================
+// UPDATED: editProposal (2GB Total Limit / 100MB Per File)
+// ================================================================
+async function editProposal(proposalId) {
+    try {
+        showLoading();
+        window.currentEditStagedFiles = [];
+        // Constants for limits
+        const MAX_SINGLE_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
+        const MAX_TOTAL_UPLOAD_SIZE = 10 * 1024 * 1024 * 1024; // 10GB Total
+
+        const [proposalResponse, filesResponse] = await Promise.all([
+            apiCall(`proposals?id=${proposalId}`),
+            apiCall(`files?proposalId=${proposalId}`)
+        ]);
+
+        if (!proposalResponse.success || !proposalResponse.data) throw new Error('Failed to load proposal details');
+
+        const p = proposalResponse.data;
+        const allFiles = filesResponse.success ? filesResponse.data : [];
+        const existingProjectFiles = allFiles.filter(f => !f.fileType || f.fileType === 'project');
+        const existingLinks = allFiles.filter(f => f.fileType === 'link');
+
+        closeModal();
+
+        const projectTypes = [
+            'Steel Detailing', 'Miscellaneous Steel', 'Connection Design', 'PE Stamping',
+            'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'
+        ];
+
+        const modalHtml = `
+            <div class="modal-overlay" id="editProposalOverlay">
+                <div class="modal-content" style="max-width: 900px; max-height: 95vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h2>Edit Proposal</h2>
+                        <div class="subtitle">${p.projectName || 'Untitled Project'}</div>
+                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                    </div>
+
+                    <form id="editProposalForm" class="modal-form">
+                        <div class="auth-tabs" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border);">
+                            <button type="button" class="auth-tab active" onclick="switchEditTab(event, 'edit-details')">Details</button>
+                            <button type="button" class="auth-tab" onclick="switchEditTab(event, 'edit-files')">Files & Links</button>
+                        </div>
+
+                        <div id="edit-details" class="edit-tab-content active">
+                             <div class="form-row">
+                                <div class="form-group">
+                                    <label>Project Name *</label>
+                                    <input type="text" id="editProjectName" class="form-control" value="${p.projectName || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Client Company *</label>
+                                    <input type="text" id="editClientCompany" class="form-control" value="${p.clientCompany || ''}" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Client Name (Optional)</label>
+                                    <input type="text" id="editClientName" class="form-control" value="${p.clientName || ''}" placeholder="Enter client contact name">
+                                </div>
+                                <div class="form-group">
+                                    <!-- Empty for layout balance -->
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Project Type *</label>
+                                    <div class="checkbox-list" style="max-height: 150px; overflow-y: auto; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: white;">
+                                        ${projectTypes.map(type => {
+                                            const isChecked = Array.isArray(p.projectType) && p.projectType.includes(type) ? 'checked' : '';
+                                            return `<label style="display: flex; align-items: center; margin-bottom: 8px; cursor: pointer;">
+                                                        <input type="checkbox" name="editProjectType" value="${type}" ${isChecked} style="margin-right: 10px;"> ${type}
+                                                    </label>`;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div style="margin-bottom: 1rem;">
+                                        <label>Timeline (Days)</label>
+                                        <input type="text" id="editTimeline" class="form-control" value="${p.timeline || ''}">
+                                    </div>
+                                     <div>
+                                        <label>Country</label>
+                                        <select id="editCountry" class="form-control">
+                                            <option value="">Select Country</option>
+                                            <option value="Australia" ${p.country === 'Australia' ? 'selected' : ''}>Australia</option>
+                                            <option value="USA" ${p.country === 'USA' ? 'selected' : ''}>USA</option>
+                                            <option value="Canada" ${p.country === 'Canada' ? 'selected' : ''}>Canada</option>
+                                            <option value="UK" ${p.country === 'UK' ? 'selected' : ''}>UK</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Priority</label>
+                                <select id="editPriority" class="form-control">
+                                    <option value="Medium" ${p.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                                    <option value="High" ${p.priority === 'High' ? 'selected' : ''}>High</option>
+                                    <option value="Low" ${p.priority === 'Low' ? 'selected' : ''}>Low</option>
+                                </select>
+                            </div>
+                             <div class="form-group">
+                                <label>Scope of Work *</label>
+                                <textarea id="editScopeOfWork" class="form-control" rows="6" required>${p.scopeOfWork || ''}</textarea>
+                            </div>
+                        </div>
+
+                        <div id="edit-files" class="edit-tab-content" style="display: none;">
+                            <div class="form-section">
+                                <h4>Current Files</h4>
+                                <div id="existingFilesList">
+                                    ${existingProjectFiles.length > 0 ? existingProjectFiles.map(f => `
+                                        <div class="file-item" id="file-${f.id}">
+                                            <div class="file-info"><span class="file-name">📄 ${f.originalName}</span><span class="file-size">${formatFileSize(f.fileSize)}</span></div>
+                                            <button type="button" class="btn btn-danger btn-sm" style="width: auto;" onclick="deleteFileImmediate('${f.id}', 'file-${f.id}')">Delete</button>
+                                        </div>
+                                    `).join('') : '<p class="text-muted">No files currently attached.</p>'}
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>Upload New Files</h4>
+                                <div class="upload-area" id="editUploadArea" style="padding: 1.5rem; border: 2px dashed var(--primary-blue);">
+                                    <p>📁 Click to add more files</p>
+                                     <div style="color: var(--text-light); font-size: 0.9rem;">Max 3GB per file</div>
+                                    <input type="file" id="editFileInput" multiple style="display: none;">
+                                </div>
+                                <div id="editFileUploadError" style="color: var(--danger); font-weight: 600; margin-top: 1rem;"></div>
+                                
+                                <div id="editStagedFilesContainer" style="margin-top: 1rem; display: none;">
+                                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <strong>New Files to Upload:</strong>
+                                        <span id="editTotalSizeIndicator" style="color: var(--text-light);">0 MB / 2048 MB</span>
+                                    </div>
+                                    <div id="editStagedFilesList"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>Current Links</h4>
+                                <div id="existingLinksList">
+                                     ${existingLinks.length > 0 ? existingLinks.map(l => `
+                                        <div class="file-item" id="link-${l.id}">
+                                            <div class="file-info"><span class="file-name">🔗 ${l.originalName || l.url}</span><a href="${l.url}" target="_blank" style="font-size: 0.85rem;">${l.url}</a></div>
+                                            <button type="button" class="btn btn-danger btn-sm" style="width: auto;" onclick="deleteFileImmediate('${l.id}', 'link-${l.id}')">Delete</button>
+                                        </div>
+                                    `).join('') : '<p class="text-muted">No links attached.</p>'}
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h4>Add New Links</h4>
+                                <div id="editLinksContainer">
+                                    <div class="link-input-group" style="margin-bottom: 1rem;">
+                                        <input type="url" class="form-control" placeholder="Enter URL" style="margin-bottom: 0.5rem;">
+                                        <input type="text" class="form-control" placeholder="Link title (optional)">
+                                    </div>
+                                </div>
+                                <button type="button" onclick="addEditLinkField()" class="btn btn-outline btn-sm" style="width: auto;">+ Add Another Link</button>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save All Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // --- Event Handlers ---
+        window.switchEditTab = function(e, tabId) {
+            document.querySelectorAll('.edit-tab-content').forEach(el => el.style.display = 'none');
+            document.getElementById(tabId).style.display = 'block';
+            document.querySelectorAll('#editProposalForm .auth-tab').forEach(el => el.classList.remove('active'));
+            e.target.classList.add('active');
+        };
+
+        const editUploadArea = document.getElementById('editUploadArea');
+        const editFileInput = document.getElementById('editFileInput');
+        const editErrorDiv = document.getElementById('editFileUploadError');
+
+        if (editUploadArea && editFileInput) {
+            editUploadArea.onclick = () => editFileInput.click();
+            editFileInput.onchange = () => handleEditFiles(editFileInput.files);
+
+             // Drag and drop support for edit
+            editUploadArea.ondragover = (e) => { e.preventDefault(); editUploadArea.style.background = 'var(--light-blue)'; };
+            editUploadArea.ondragleave = () => { editUploadArea.style.background = ''; };
+            editUploadArea.ondrop = (e) => {
+                e.preventDefault();
+                editUploadArea.style.background = '';
+                handleEditFiles(e.dataTransfer.files);
+            };
+        }
+
+        function handleEditFiles(files) {
+            editErrorDiv.textContent = '';
+            let currentTotalSize = window.currentEditStagedFiles.reduce((sum, f) => sum + f.size, 0);
+
+            Array.from(files).forEach(file => {
+                if (file.size > MAX_SINGLE_FILE_SIZE) {
+                    editErrorDiv.innerHTML += `<div style="margin-bottom: 0.25rem;">⚠️ Skipped <strong>${file.name}</strong>: Exceeds 100MB limit.</div>`;
+                    return;
+                }
+                if (currentTotalSize + file.size > MAX_TOTAL_UPLOAD_SIZE) {
+                    editErrorDiv.innerHTML += `<div style="margin-bottom: 0.25rem; color: var(--danger);">⛔ Skipped <strong>${file.name}</strong>: Would exceed 2GB total limit.</div>`;
+                    return;
+                }
+                if (!window.currentEditStagedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                    window.currentEditStagedFiles.push(file);
+                    currentTotalSize += file.size;
+                }
+            });
+            if(editFileInput) editFileInput.value = '';
+            renderEditStagedFiles();
+        }
+
+        window.renderEditStagedFiles = function() {
+            const container = document.getElementById('editStagedFilesList');
+            const mainContainer = document.getElementById('editStagedFilesContainer');
+            const totalIndicator = document.getElementById('editTotalSizeIndicator');
+
+            if (window.currentEditStagedFiles.length === 0) {
+                mainContainer.style.display = 'none';
+                return;
+            }
+
+            mainContainer.style.display = 'block';
+            let totalSize = 0;
+            container.innerHTML = window.currentEditStagedFiles.map((file, index) => {
+                 totalSize += file.size;
+                 return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #E8F5E9; margin-bottom: 8px; border-radius: 6px;">
+                        <span>🆕 ${file.name} (${formatFileSize(file.size)})</span>
+                        <button type="button" onclick="window.currentEditStagedFiles.splice(${index}, 1); renderEditStagedFiles();" 
+                                style="background: none; border: none; cursor: pointer; color: var(--danger);">✕</button>
+                    </div>
+                `;
+            }).join('');
+
+             // Update total size indicator
+            const totalMB = (totalSize / (1024 * 1024)).toFixed(0);
+            const percent = Math.min((totalSize / MAX_TOTAL_UPLOAD_SIZE) * 100, 100).toFixed(0);
+            totalIndicator.textContent = `${totalMB} MB / 2048 MB (${percent}%)`;
+            totalIndicator.style.color = percent > 90 ? 'var(--danger)' : 'var(--text-light)';
+        };
+
+        window.deleteFileImmediate = async function(fileId, elementId) {
+            if(!confirm('Are you sure you want to delete this permanently?')) return;
+            try {
+                const el = document.getElementById(elementId);
+                if(el) el.style.opacity = '0.5'; 
+                const res = await apiCall(`files?id=${fileId}`, { method: 'DELETE' });
+                if (res.success) { if(el) el.remove(); } 
+                else { alert('Failed to delete file.'); if(el) el.style.opacity = '1'; }
+            } catch(e) { alert('Error deleting file: ' + e.message); }
+        };
+
+        window.addEditLinkField = function() {
+             const container = document.getElementById('editLinksContainer');
+             const div = document.createElement('div');
+             div.className = 'link-input-group';
+             div.style.marginBottom = '1rem';
+             div.innerHTML = '<input type="url" class="form-control" placeholder="Enter URL" style="margin-bottom: 0.5rem;"><input type="text" class="form-control" placeholder="Link title (optional)">';
+             container.appendChild(div);
+        }
+
+        document.getElementById('editProposalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            try {
+                const selectedTypes = Array.from(document.querySelectorAll('input[name="editProjectType"]:checked')).map(cb => cb.value);
+                if (selectedTypes.length === 0) throw new Error('Please select at least one Project Type.');
+
+                // Collect new links from the form
+                const newLinks = [];
+                document.querySelectorAll('#editLinksContainer .link-input-group').forEach(group => {
+                    const url = group.querySelector('input[type="url"]').value;
+                    const title = group.querySelector('input[type="text"]').value;
+                    if (url) newLinks.push({ url, title: title || url, description: title });
+                });
+
+                // Update proposal details (using correct action: update_basic_info)
+                await apiCall(`proposals?id=${proposalId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ 
+                        action: 'update_basic_info', 
+                        data: {
+                            projectName: document.getElementById('editProjectName').value || '',
+                            clientCompany: document.getElementById('editClientCompany').value || '',
+                            clientName: document.getElementById('editClientName').value || '',
+                            projectType: selectedTypes,
+                            timeline: document.getElementById('editTimeline').value || '',
+                            country: document.getElementById('editCountry').value || '',
+                            priority: document.getElementById('editPriority').value || 'Medium',
+                            scopeOfWork: document.getElementById('editScopeOfWork').value || '',
+                            projectLinks: newLinks.length > 0 ? newLinks : undefined
+                        } 
+                    })
+                });
+
+                // Upload new files (using new direct method)
+                if (window.currentEditStagedFiles.length > 0) {
+                    console.log("Starting edit file uploads...");
+                    for (const file of window.currentEditStagedFiles) {
+                        try {
+                            await uploadFileDirectly(file, proposalId, 'project');
+                            console.log(`✅ Uploaded: ${file.name}`);
+                        } catch (uploadError) {
+                            console.error(`❌ Failed to upload ${file.name}:`, uploadError);
+                            alert(`Failed to upload ${file.name}: ${uploadError.message}`);
+                        }
+                    }
+                }
+
+                alert('✅ Proposal updated successfully!');
+                closeModal();
+                if (document.getElementById('nav-proposals').classList.contains('active')) {
+                    showProposals();
+                } else {
+                    viewProposal(proposalId);
+                }
+            } catch (err) {
+                alert('Error updating: ' + err.message);
+            } finally {
+                hideLoading();
+            }
+        });
+
+    } catch (error) {
+        console.error('Edit error:', error);
+        alert('Error loading edit form: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// REPLACE YOUR EXISTING deleteProposal FUNCTION WITH THIS:
+    async function deleteProposal(proposalId) {
+    if (!confirm('Are you VERY SURE you want to delete this proposal? This action cannot be undone.')) return;
+    
+    try {
+        showLoading();
+        const response = await apiCall(`proposals?id=${proposalId}`, { 
+            method: 'DELETE' 
+        });
+        
+        if (response.success) {
+            alert('Proposal deleted successfully!');
+            closeModal(); // Close details modal if open
+            // Force a slight delay to ensure backend processes before re-fetching
+            setTimeout(() => {
+                showProposals(); 
+            }, 500);
+        } else {
+            throw new Error(response.error || 'Failed to delete proposal');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Error deleting proposal: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+    
+// ============================================
+        // COO PRICING FORM WITH PROJECT NUMBER CREATION
+        // ============================================
+        async function showCOOPricingForm(proposalId) {
+            try {
+                showLoading();
+                const response = await apiCall(`proposals?id=${proposalId}`);
+                        
+                if (!response.success || !response.data) {
+                    throw new Error('Failed to load proposal');
+                }
+                        
+                const proposal = response.data;
+                        
+                // Check if proposal has estimation
+                if (!proposal.estimation) {
+                    alert('Please complete estimation before adding pricing');
+                    hideLoading();
+                    return;
+                }
+           // ====================== MODIFICATION START ======================
+          // Logic to prepare display values
+          const estimation = proposal.estimation || {};
+          const totalHours = estimation.manhours || estimation.totalHours || 0;
+          const tonnage = estimation.tonnage || 0;
+
+         // Prepare HTML for Hours
+        // If hours are 0 but tonnage exists, display N/A for hours
+         const displayHours = (totalHours == 0 && tonnage > 0) ? 'N/A' : totalHours;
+        const hoursHtml = `<div><strong>Total Hours:</strong> ${displayHours}</div>`;
+
+         // Prepare HTML for Tonnage
+       // Only show tonnage if it's greater than 0
+       const tonnageHtml = tonnage > 0 
+    ? `<div><strong>Tonnage:</strong> ${tonnage}</div>` 
+    : '';
+// ======================= MODIFICATION END =======================
+                        
+                const modalHtml = `
+                    <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                        <div class="modal-content" style="max-width: 800px;">
+                            <div class="modal-header">
+                                <div>
+                                    <h2>COO Pricing Form</h2>
+                                    <div class="subtitle">${proposal.projectName} - ${proposal.clientCompany}</div>
+                                </div>
+                                <span class="close-modal" onclick="closeModal()">&times;</span>
+                            </div>
+                                                
+                            <div class="modal-body">
+                                <div class="form-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                                    <h4>Estimation Summary</h4>
+                                    
+                                  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                                  ${hoursHtml}
+                                  ${tonnageHtml}  
+                                  <div><strong>Estimated By:</strong> ${estimation.estimatorName || estimation.estimatedBy || 'N/A'}</div>
+                                  <div><strong>Services:</strong> ${estimation.services?.join(', ') || 'N/A'}</div>
+                                 </div>
+                                    
+                                </div>
+                                                        
+                                <form id="cooPricingForm">
+                                    <div class="form-section">
+                                        <h4>Project Number</h4>
+                                        <div class="form-group">
+                                            <label>Project Number <span class="required">*</span></label>
+                                            <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+                                                <input type="text" id="projectNumber" class="form-control"
+                                                       placeholder="Enter manually or click Generate" 
+                                                       value="${proposal.pricing?.projectNumber || ''}"
+                                                       required>
+                                                <button type="button" onclick="generateProjectNumber('${proposal.clientCompany}')"
+                                                        class="btn btn-outline" style="width: auto; white-space: nowrap;">
+                                                    🔢 Auto Generate
+                                                </button>
+                                            </div>
+                                            <small class="form-text">You can enter a project number manually or auto-generate one based on client name and year</small>
+                                        </div>
+                                    </div>
+                                                                
+                                    <div class="form-section">
+                                        <h4>Pricing Information</h4>
+                                                                        
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Quote Value <span class="required">*</span></label>
+                                                <input type="number" id="quoteValue" class="form-control"
+                                                     placeholder="Enter quote value" step="0.01" 
+                                                     value="${proposal.pricing?.quoteValue || ''}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Currency <span class="required">*</span></label>
+                                                <select id="currency" class="form-control" required>
+                                                    <option value="USD" ${proposal.pricing?.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                                                    <option value="AUD" ${proposal.pricing?.currency === 'AUD' ? 'selected' : ''}>AUD (A$)</option>
+                                                    <option value="CAD" ${proposal.pricing?.currency === 'CAD' ? 'selected' : ''}>CAD (C$)</option>
+                                                    <option value="GBP" ${proposal.pricing?.currency === 'GBP' ? 'selected' : ''}>GBP (£)</option>
+                                                    <option value="EUR" ${proposal.pricing?.currency === 'EUR' ? 'selected' : ''}>EUR (€)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                                                        
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Hourly Rate</label>
+                                                <input type="number" id="hourlyRate" class="form-control"
+                                                     placeholder="Enter hourly rate" step="0.01"
+                                                     value="${proposal.pricing?.hourlyRate || ''}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Profit Margin (%)</label>
+                                                <input type="number" id="profitMargin" class="form-control"
+                                                     placeholder="Enter profit margin" step="0.01" min="0" max="100"
+                                                     value="${proposal.pricing?.profitMargin || ''}">
+                                            </div>
+                                        </div>
+                                                                        
+                                        <div class="form-group">
+                                            <label>Pricing Notes</label>
+                                            <textarea id="pricingNotes" class="form-control" rows="3"
+                                                 placeholder="Add any pricing notes or special conditions...">${proposal.pricing?.notes || ''}</textarea>
+                                        </div>
+                                    </div>
+                                                                
+                                    <div class="form-section">
+                                        <h4>Cost Breakdown (Optional)</h4>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Material Costs</label>
+                                                <input type="number" id="materialCosts" class="form-control"
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.material || ''}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Labor Costs</label>
+                                                <input type="number" id="laborCosts" class="form-control"
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.labor || ''}">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Overhead Costs</label>
+                                                <input type="number" id="overheadCosts" class="form-control"
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.overhead || ''}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Other Costs</label>
+                                                <input type="number" id="otherCosts" class="form-control"
+                                                     placeholder="0.00" step="0.01"
+                                                     value="${proposal.pricing?.costBreakdown?.other || ''}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                                                
+                            <div class="modal-footer">
+                                <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                                <button type="button" onclick="submitCOOPricing('${proposalId}')" class="btn btn-primary">
+                                    Save Pricing
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                        
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                hideLoading();
+            
+            } catch (error) {
+                console.error('Error loading pricing form:', error);
+                alert('Error loading pricing form: ' + error.message);
+                hideLoading();
+            }
+        }
+
+        // Generate Project Number
+        async function generateProjectNumber(clientCompany) {
+            try {
+                showLoading();
+                        
+                // Call backend to generate project number
+                const response = await apiCall('projects/generate-number', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientCompany })
+                });
+                        
+                if (response.success && response.data.projectNumber) {
+                    document.getElementById('projectNumber').value = response.data.projectNumber;
+                    showNotification('Project number generated successfully!', 'success');
+                } else {
+                    throw new Error(response.error || 'Failed to generate project number');
+                }
+                    
+            } catch (error) {
+                console.error('Error generating project number:', error);
+                        
+                // Fallback: Generate locally if backend fails
+                const year = new Date().getFullYear().toString().slice(-2);
+                const clientPrefix = (clientCompany || 'GEN').substring(0, 3).toUpperCase();
+                const random = Math.floor(Math.random() * 900) + 100;
+                const projectNumber = `${clientPrefix}${year}-${random}`;
+                        
+                document.getElementById('projectNumber').value = projectNumber;
+                showNotification('Project number generated (local)', 'warning');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Submit COO Pricing
+        async function submitCOOPricing(proposalId) {
+            const projectNumber = document.getElementById('projectNumber').value;
+            const quoteValue = document.getElementById('quoteValue').value;
+            const currency = document.getElementById('currency').value;
+            const hourlyRate = document.getElementById('hourlyRate').value;
+            const profitMargin = document.getElementById('profitMargin').value;
+            const pricingNotes = document.getElementById('pricingNotes').value;
+                
+            // Optional cost breakdown
+            const materialCosts = document.getElementById('materialCosts').value || 0;
+            const laborCosts = document.getElementById('laborCosts').value || 0;
+            const overheadCosts = document.getElementById('overheadCosts').value || 0;
+            const otherCosts = document.getElementById('otherCosts').value || 0;
+                
+            // Validation
+            if (!projectNumber) {
+                alert('Please generate a project number');
+                return;
+            }
+                
+            if (!quoteValue || parseFloat(quoteValue) <= 0) {
+                alert('Please enter a valid quote value');
+                return;
+            }
+                
+            try {
+                showLoading();
+                        
+                const pricingData = {
+                    projectNumber: projectNumber,
+                    quoteValue: parseFloat(quoteValue),
+                    currency: currency,
+                    hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+                    profitMargin: profitMargin ? parseFloat(profitMargin) : null,
+                    notes: pricingNotes,
+                    costBreakdown: {
+                        material: parseFloat(materialCosts),
+                        labor: parseFloat(laborCosts),
+                        overhead: parseFloat(overheadCosts),
+                        other: parseFloat(otherCosts),
+                        total: parseFloat(materialCosts) + parseFloat(laborCosts) +
+                                parseFloat(overheadCosts) + parseFloat(otherCosts)
+                    }
+                };
+                        
+                const response = await apiCall(`proposals?id=${proposalId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'add_pricing',
+                        data: pricingData
+                    })
+                });
+                        
+                if (response.success) {
+                    closeModal();
+                    showNotification('Pricing added successfully!', 'success');
+                    // --- ADD THIS LINE ---
+                    triggerEmailNotification('pricing.complete', { 
+                     proposalId: proposalId,
+                     // You might need to fetch these values from the DOM if not already available
+                     quoteValue: document.getElementById('currency').value + ' ' + document.getElementById('quoteValue').value,
+                    projectName: document.querySelector('.modal.show .subtitle')?.textContent || 'Project'
+                    });
+                                
+                    // Refresh proposals list or show allocation option
+                    showProposals();
+                } else {
+                    throw new Error(response.error || 'Failed to add pricing');
+                }
+                    
+            } catch (error) {
+                console.error('Error submitting pricing:', error);
+                alert('Error submitting pricing: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+    /**
+ * Shows modal to edit existing pricing information (COO/Director only)
+ */
+async function showEditPricingModal(proposalId) {
+    try {
+        showLoading();
+        const response = await apiCall(`proposals?id=${proposalId}`);
+        
+        if (!response.success || !response.data) {
+            throw new Error('Failed to load proposal');
+        }
+        
+        const proposal = response.data;
+        
+        // Check if proposal has pricing
+        if (!proposal.pricing) {
+            alert('No pricing information found for this proposal');
+            hideLoading();
+            return;
+        }
+        
+        // Get existing pricing data
+        const pricing = proposal.pricing;
+        const estimation = proposal.estimation || {};
+        const totalHours = estimation.manhours || estimation.totalHours || 0;
+        const tonnage = estimation.tonnage || 0;
+        
+        // Prepare HTML for Hours
+        const displayHours = (totalHours == 0 && tonnage > 0) ? 'N/A' : totalHours;
+        const hoursHtml = `<div><strong>Total Hours:</strong> ${displayHours}</div>`;
+        
+        // Prepare HTML for Tonnage
+        const tonnageHtml = tonnage > 0 
+            ? `<div><strong>Tonnage:</strong> ${tonnage}</div>` 
+            : '';
+        
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <div>
+                            <h2>Edit Pricing Information</h2>
+                            <div class="subtitle">${proposal.projectName} - ${proposal.clientCompany}</div>
+                        </div>
+                        <span class="close-modal" onclick="closeModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="form-section" style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <p style="margin: 0; color: #856404;">
+                                ⚠️ <strong>Warning:</strong> Editing pricing information will update the proposal. 
+                                Make sure to review all changes carefully before saving.
+                            </p>
+                        </div>
+                        
+                        <div class="form-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h4>Estimation Summary</h4>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                                ${hoursHtml}
+                                ${tonnageHtml}  
+                                <div><strong>Estimated By:</strong> ${estimation.estimatorName || estimation.estimatedBy || 'N/A'}</div>
+                                <div><strong>Services:</strong> ${estimation.services?.join(', ') || 'N/A'}</div>
+                            </div>
+                        </div>
+                        
+                        <form id="editPricingForm">
+                            <input type="hidden" id="editProposalId" value="${proposalId}">
+                            
+                            <div class="form-section">
+                                <h4>Project Number</h4>
+                                <div class="form-group">
+                                    <label>Project Number <span class="required">*</span></label>
+                                    <input type="text" id="editProjectNumber" class="form-control"
+                                           placeholder="Project number" 
+                                           value="${pricing.projectNumber || ''}"
+                                           required>
+                                    <small class="form-text">Changing the project number may affect project tracking</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <h4>Pricing Information</h4>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Quote Value <span class="required">*</span></label>
+                                        <input type="number" id="editQuoteValue" class="form-control"
+                                             placeholder="Enter quote value" step="0.01" 
+                                             value="${pricing.quoteValue || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Currency <span class="required">*</span></label>
+                                        <select id="editCurrency" class="form-control" required>
+                                            <option value="USD" ${pricing.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                                            <option value="AUD" ${pricing.currency === 'AUD' ? 'selected' : ''}>AUD (A$)</option>
+                                            <option value="CAD" ${pricing.currency === 'CAD' ? 'selected' : ''}>CAD (C$)</option>
+                                            <option value="GBP" ${pricing.currency === 'GBP' ? 'selected' : ''}>GBP (£)</option>
+                                            <option value="EUR" ${pricing.currency === 'EUR' ? 'selected' : ''}>EUR (€)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Hourly Rate</label>
+                                        <input type="number" id="editHourlyRate" class="form-control"
+                                             placeholder="Enter hourly rate" step="0.01"
+                                             value="${pricing.hourlyRate || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Profit Margin (%)</label>
+                                        <input type="number" id="editProfitMargin" class="form-control"
+                                             placeholder="Enter profit margin" step="0.01" min="0" max="100"
+                                             value="${pricing.profitMargin || ''}">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Pricing Notes</label>
+                                    <textarea id="editPricingNotes" class="form-control" rows="3"
+                                         placeholder="Add any pricing notes or special conditions...">${pricing.notes || ''}</textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <h4>Cost Breakdown (Optional)</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Material Costs</label>
+                                        <input type="number" id="editMaterialCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.material || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Labor Costs</label>
+                                        <input type="number" id="editLaborCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.labor || ''}">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Overhead Costs</label>
+                                        <input type="number" id="editOverheadCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.overhead || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Other Costs</label>
+                                        <input type="number" id="editOtherCosts" class="form-control"
+                                             placeholder="0.00" step="0.01"
+                                             value="${pricing.costBreakdown?.other || ''}">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                        <button type="button" onclick="submitEditedPricing()" class="btn btn-warning">
+                            💾 Update Pricing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        hideLoading();
+        
+    } catch (error) {
+        console.error('Error loading edit pricing form:', error);
+        alert('Error loading pricing form: ' + error.message);
+        hideLoading();
+    }
+}
+    /**
+ * Submits the edited pricing information to the backend
+ */
+async function submitEditedPricing() {
+    const proposalId = document.getElementById('editProposalId').value;
+    const projectNumber = document.getElementById('editProjectNumber').value;
+    const quoteValue = document.getElementById('editQuoteValue').value;
+    const currency = document.getElementById('editCurrency').value;
+    const hourlyRate = document.getElementById('editHourlyRate').value;
+    const profitMargin = document.getElementById('editProfitMargin').value;
+    const pricingNotes = document.getElementById('editPricingNotes').value;
+    
+    // Optional cost breakdown
+    const materialCosts = document.getElementById('editMaterialCosts').value || 0;
+    const laborCosts = document.getElementById('editLaborCosts').value || 0;
+    const overheadCosts = document.getElementById('editOverheadCosts').value || 0;
+    const otherCosts = document.getElementById('editOtherCosts').value || 0;
+    
+    // Validation
+    if (!projectNumber) {
+        alert('Project number is required');
+        document.getElementById('editProjectNumber').focus();
+        return;
+    }
+    
+    if (!quoteValue || parseFloat(quoteValue) <= 0) {
+        alert('Please enter a valid quote value');
+        document.getElementById('editQuoteValue').focus();
+        return;
+    }
+    
+    // Confirmation dialog
+    if (!confirm('Are you sure you want to update the pricing information? This action will modify the existing pricing data.')) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const pricingData = {
+            projectNumber: projectNumber,
+            quoteValue: parseFloat(quoteValue),
+            currency: currency,
+            hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+            profitMargin: profitMargin ? parseFloat(profitMargin) : null,
+            notes: pricingNotes,
+            costBreakdown: {
+                material: parseFloat(materialCosts),
+                labor: parseFloat(laborCosts),
+                overhead: parseFloat(overheadCosts),
+                other: parseFloat(otherCosts),
+                total: parseFloat(materialCosts) + parseFloat(laborCosts) +
+                       parseFloat(overheadCosts) + parseFloat(otherCosts)
+            },
+            lastEditedBy: currentUser.name,
+            lastEditedAt: new Date().toISOString()
+        };
+        
+        const response = await apiCall(`proposals?id=${proposalId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_pricing',
+                data: pricingData
+            })
+        });
+        
+        if (response.success) {
+            closeModal();
+            showSuccessModal('Pricing Updated!', 'The pricing information has been successfully updated.');
+            
+            // Trigger email notification
+            await triggerEmailNotification('pricing.updated', { 
+                proposalId: proposalId,
+                quoteValue: currency + ' ' + quoteValue,
+                projectNumber: projectNumber
+            });
+            
+            // Refresh the proposals view
+            setTimeout(() => {
+                showProposals();
+            }, 1500);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update pricing');
+        }
+        
+    } catch (error) {
+        console.error('Error updating pricing:', error);
+        alert('Error updating pricing: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+        // ============================================
+        // PROJECT ALLOCATION TO DESIGN MANAGER
+        // ============================================
+        async function showProjectAllocationModal(proposalId) {
+            try {
+                showLoading();
+                        
+                // Load proposal details
+                const proposalResponse = await apiCall(`proposals?id=${proposalId}`);
+                if (!proposalResponse.success || !proposalResponse.data) {
+                    throw new Error('Failed to load proposal');
+                }
+                const proposal = proposalResponse.data;
+                console.log('📋 Proposal loaded:', proposal);
+                        
+                // Check if proposal is WON
+                if (proposal.status !== 'won') {
+                    alert('Only WON proposals can be allocated to designers');
+                    hideLoading();
+                    return;
+                }
+                
+                // Check if project already exists in proposal
+                if (proposal.projectId) {
+                    console.log('✅ Project already exists:', proposal.projectId);
+                    hideLoading();
+                    await showCooMultiDesignerAllocationModal(proposal.projectId);
+                    return;
+                }
+                
+                // Create the project if not already created
+                console.log('🔨 Creating project from proposal:', proposalId);
+                const createProjectResponse = await apiCall('projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'create_from_proposal',
+                        proposalId: proposalId
+                    })
+                });
+                
+                console.log('📦 Create project response:', createProjectResponse);
+                
+                let projectId;
+                
+                // Backend returns projectId directly in response (not nested in data)
+                if (createProjectResponse.success && createProjectResponse.projectId) {
+                    projectId = createProjectResponse.projectId;
+                    console.log('✅ Got project ID from response.projectId:', projectId);
+                }
+                // Fallback: Check if it's in data object
+                else if (createProjectResponse.success && createProjectResponse.data) {
+                    if (createProjectResponse.data.id) {
+                        projectId = createProjectResponse.data.id;
+                        console.log('✅ Got project ID from response.data.id:', projectId);
+                    }
+                    else if (typeof createProjectResponse.data === 'string') {
+                        projectId = createProjectResponse.data;
+                        console.log('✅ Got project ID from response.data (string):', projectId);
+                    }
+                    else if (createProjectResponse.data.projectId) {
+                        projectId = createProjectResponse.data.projectId;
+                        console.log('✅ Got project ID from response.data.projectId:', projectId);
+                    }
+                }
+                
+                // If still no project ID, try to fetch updated proposal
+                if (!projectId) {
+                    console.log('⚠️ Project ID not in response, fetching updated proposal...');
+                    const proposalRefresh = await apiCall(`proposals?id=${proposalId}`);
+                    if (proposalRefresh.success && proposalRefresh.data && proposalRefresh.data.projectId) {
+                        projectId = proposalRefresh.data.projectId;
+                        console.log('✅ Got project ID from refreshed proposal:', projectId);
+                    }
+                }
+                
+                // Final check
+                if (!projectId) {
+                    console.error('❌ Could not find project ID anywhere');
+                    console.error('Create response:', createProjectResponse);
+                    throw new Error('Project created but ID not found in response. Please refresh the page and try again.');
+                }
+                
+                console.log('🎯 Opening allocation modal for project:', projectId);
+                hideLoading();
+                
+                // Now open the multi-designer allocation modal
+                await showCooMultiDesignerAllocationModal(projectId);
+                
+            } catch (error) {
+                console.error('❌ Error opening allocation modal:', error);
+                alert('Error: ' + error.message);
+                hideLoading();
+            }
+        }
+
+        // ============================================
+        // HELPER: Update Proposal View to Show Allocation Button
+        // ============================================
+        // Add this to your viewProposal function or proposals rendering
+        // Insert this button for WON proposals when COO is viewing
+        function getProposalAllocationButton(proposal) {
+            if (currentUserRole !== 'coo' && currentUserRole !== 'director') {
+                return '';
+            }
+
+            // For won proposals - show allocation button or allocated project link
+            if (proposal.status === 'won') {
+                const bStatus = proposal.allocationStatus || '';
+                const mHrs = parseFloat(proposal.maxAllocatedHours) || 0;
+                const tAlloc = parseFloat(proposal.totalAllocatedHours) || 0;
+                const isFull = bStatus === 'completed' || (proposal.projectCreated && mHrs > 0 && (mHrs - tAlloc) <= 0.1);
+
+                if (isFull && proposal.projectId) {
+                    return `
+                        <button onclick="viewProject('${proposal.projectId}')" class="btn btn-outline btn-sm" style="border-color: #059669; color: #059669;">
+                            View Project
+                        </button>
+                    `;
+                } else if (proposal.projectCreated && proposal.projectId) {
+                    return `
+                        <button onclick="showProjectAllocationModal('${proposal.id}')" class="btn btn-sm" style="background: #d97706; color: white; border: none; font-weight: 600;">
+                            Continue Allocation
+                        </button>
+                    `;
+                } else if (proposal.pricing && proposal.pricing.projectNumber) {
+                    return `
+                        <button onclick="showProjectAllocationModal('${proposal.id}')" class="btn btn-primary btn-sm" style="font-weight: 600;">
+                            Allocate Project
+                        </button>
+                    `;
+                }
+                return '';
+            }
+
+            // Show pricing button for COO only (not Director)
+            if (currentUserRole === 'coo') {
+                if ((proposal.status === 'estimated' || proposal.status === 'pricing_complete') &&
+                    (!proposal.pricing || !proposal.pricing.projectNumber)) {
+                    return `
+                        <button onclick="showCOOPricingForm('${proposal.id}')" class="btn btn-primary btn-sm">
+                            Add Pricing & Project Number
+                        </button>
+                    `;
+                }
+            }
+
+            return '';
+        }
+        
+        // ============================================
+        // FILE MANAGER
+        // ============================================
+
+        // REPLACED IMPLEMENTATION
+        function showFileUpload() {
+            setActiveNav('nav-files');
+            const main = document.getElementById('mainContent');
+            main.innerHTML = `
+                <div class="page-header">
+                    <h2>File Manager</h2>
+                    <div class="subtitle">Upload, view, and manage all project files.</div>
+                </div>
+
+                <div class="auth-tabs" style="margin-bottom: 2rem;">
+                    <button class="auth-tab active" onclick="showFileUploadTab('upload')">Upload Files</button>
+                    <button class="auth-tab" onclick="showFileUploadTab('links')">Add Links</button>
+                </div>
+
+                <div id="uploadContent" class="auth-content active">
+                    <div class="action-section">
+                        <h3>Upload New Files</h3>
+                        <form id="fileManagerUploadForm">
+                            <div class="form-group">
+                                <label>File(s)</label>
+                                <div class="upload-area" id="fileMgrUploadArea" onclick="document.getElementById('fileMgrFileInput').click()">
+                                    <div class="upload-icon">📁</div>
+                                    <p>Click to upload or drag and drop</p>
+                                    <input type="file" id="fileMgrFileInput" multiple style="display: none;">
+                                </div>
+                                <div id="fileMgrFilePreview" style="margin-top: 1rem;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>File Type (Optional)</label>
+                                <input type="text" id="fileMgrFileType" class="form-control" placeholder="e.g., 'general', 'drawing', 'report'">
+                                <small class="form-text">Helps categorize the file. Leave blank if unsure.</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: auto;">Upload Files</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="linksContent" class="auth-content">
+                    <div class="action-section">
+                        <h3>Add New Links</h3>
+                        <form id="fileManagerLinkForm">
+                            <div id="fileMgrLinksContainer">
+                                <div class="link-input-group" style="margin-bottom: 1rem;">
+                                    <input type="url" class="form-control" placeholder="Enter URL" style="margin-bottom: 0.5rem;" required>
+                                    <input type="text" class="form-control" placeholder="Link title/description (optional)">
+                                </div>
+                            </div>
+                            <button type="button" onclick="addUploadLinkField()" class="btn btn-outline btn-sm" style="width: auto;">+ Add Another Link</button>
+                            <button type="submit" class="btn btn-primary" style="width: auto; margin-left: 1rem;">Save Links</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="action-section" style="margin-top: 2rem;">
+                    <h3>All Uploaded Files</h3>
+                    <div id="allFilesListContainer">Loading files...</div>
+                </div>
+            `;
+
+            // Add event listeners for new forms
+            document.getElementById('fileManagerUploadForm').addEventListener('submit', handleFileUpload);
+            document.getElementById('fileManagerLinkForm').addEventListener('submit', handleLinkUpload);
+            document.getElementById('fileMgrFileInput').addEventListener('change', function() {
+                const files = this.files;
+                if (files.length > 0) {
+                    document.getElementById('fileMgrFilePreview').innerHTML =
+                        '<h5>Files to Upload:</h5>' +
+                        Array.from(files).map(f => `<p>📄 ${f.name}</p>`).join('');
+                }
+            });
+
+            // Load all files
+            showFiles();
+        }
+
+        // REPLACED IMPLEMENTATION
+        async function handleFileUpload(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileMgrFileInput');
+            const fileType = document.getElementById('fileMgrFileType').value || 'general';
+            
+            if (fileInput.files.length === 0) {
+                showNotification('Please select at least one file to upload.', 'warning');
+                return;
+            }
+
+            try {
+                showLoading();
+                
+                // Upload each file individually using the correct endpoint
+                const files = Array.from(fileInput.files);
+                let successCount = 0;
+                
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);  // Single 'file' not 'files'
+                    formData.append('proposalId', '');  // Empty = general files
+                    formData.append('fileType', fileType);
+                    
+                    console.log(`📤 Uploading: ${file.name}`);
+                    
+                    const response = await apiCall('files/upload-file', { 
+                        method: 'POST', 
+                        body: formData 
+                    });
+
+                    if (response.success) {
+                        successCount++;
+                        console.log(`✅ Uploaded: ${file.name}`);
+                    } else {
+                        console.error(`❌ Failed: ${file.name}`, response.error);
+                    }
+                }
+                
+                if (successCount === files.length) {
+                    showNotification(`${successCount} file(s) uploaded successfully!`, 'success');
+                } else {
+                    showNotification(`${successCount} of ${files.length} files uploaded.`, 'warning');
+                }
+                
+                document.getElementById('fileManagerUploadForm').reset();
+                document.getElementById('fileMgrFilePreview').innerHTML = '';
+                showFiles(); // Refresh file list
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showNotification(`Upload Error: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // REPLACED IMPLEMENTATION
+        async function showFiles() {
+            try {
+                // Fetch all files. This might need backend pagination eventually.
+                const response = await apiCall('files');
+                if (response.success && response.data) {
+                    renderFiles(response.data);
+                } else {
+                    throw new Error(response.error || 'Failed to fetch files');
+                }
+            } catch (error) {
+                document.getElementById('allFilesListContainer').innerHTML = 
+                    `<div class="error-message">${error.message}</div>`;
+            }
+        }
+
+        // REPLACED IMPLEMENTATION
+        function showFileUploadTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="showFileUploadTab('${tab}')"]`).classList.add('active');
+            
+            if (tab === 'upload') {
+                document.getElementById('uploadContent').classList.add('active');
+                document.getElementById('linksContent').classList.remove('active');
+            } else {
+                document.getElementById('uploadContent').classList.remove('active');
+                document.getElementById('linksContent').classList.add('active');
+            }
+        }
+
+        // REPLACED IMPLEMENTATION
+        function addUploadLinkField() {
+            const container = document.getElementById('fileMgrLinksContainer');
+            const newLinkGroup = document.createElement('div');
+            newLinkGroup.className = 'link-input-group';
+            newLinkGroup.style.marginBottom = '1rem';
+            newLinkGroup.innerHTML = `
+                <input type="url" class="form-control" placeholder="Enter URL" style="margin-bottom: 0.5rem;" required>
+                <input type="text" class="form-control" placeholder="Link title/description (optional)">
+            `;
+            container.appendChild(newLinkGroup);
+        }
+
+        // REPLACED IMPLEMENTATION
+        async function handleLinkUpload(e) {
+            e.preventDefault();
+            const linkInputs = document.querySelectorAll('#fileMgrLinksContainer .link-input-group');
+            const links = [];
+            linkInputs.forEach(group => {
+                const url = group.querySelector('input[type="url"]').value;
+                const title = group.querySelector('input[type="text"]').value;
+                if (url) { 
+                    links.push({ url, title: title || url, description: title }); 
+                }
+            });
+
+            if (links.length === 0) {
+                showNotification('Please enter at least one valid URL.', 'warning');
+                return;
+            }
+
+            try {
+                showLoading();
+                const response = await apiCall('files', {
+                    method: 'POST',
+                    body: JSON.stringify({ links: links, fileType: 'link' })
+                });
+
+                if (response.success) {
+                    showNotification('Links saved successfully!', 'success');
+                    document.getElementById('fileManagerLinkForm').reset();
+                    // Reset to one field
+                    document.getElementById('fileMgrLinksContainer').innerHTML = `
+                        <div class="link-input-group" style="margin-bottom: 1rem;">
+                            <input type="url" class="form-control" placeholder="Enter URL" style="margin-bottom: 0.5rem;" required>
+                            <input type="text" class="form-control" placeholder="Link title/description (optional)">
+                        </div>
+                    `;
+                    showFiles(); // Refresh file list
+                } else {
+                    throw new Error(response.error || 'Failed to save links');
+                }
+            } catch (error) {
+                showNotification(`Error saving links: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // REPLACED IMPLEMENTATION
+        function renderFiles(files) {
+            const container = document.getElementById('allFilesListContainer');
+            if (!files || files.length === 0) {
+                container.innerHTML = '<p>No files found.</p>';
+                return;
+            }
+
+            const filesHtml = files.map(file => {
+                const fileUrl = file.url || file.fileUrl || file.downloadUrl || '#';
+                const fileName = file.originalName || file.fileName || fileUrl;
+                return `
+                <div class="action-item" style="padding: 1rem;">
+                    <div class="action-content">
+                        <strong>
+                            ${file.fileType === 'link' ? '🔗' : '📄'} 
+                            ${fileName}
+                        </strong>
+                        <div class="action-meta">
+                            Type: ${file.fileType || 'file'} | 
+                            Size: ${formatFileSize(file.fileSize)} | 
+                            Uploaded: ${formatDate(file.uploadedAt)}
+                            ${file.proposalId ? `| Proposal: ${file.proposalId}` : ''}
+                            ${file.projectId ? `| Project: ${file.projectId}` : ''}
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-outline btn-sm" onclick="window.open('${fileUrl}', '_blank')">View</button>
+                        ${file.canDelete ? `<button class="btn btn-danger btn-sm" onclick="deleteFile('${file.id}')">Delete</button>` : ''}
+                    </div>
+                </div>
+            `}).join('');
+            
+            container.innerHTML = filesHtml;
+        }
+
+        // REPLACED IMPLEMENTATION
+        async function deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                showLoading();
+                const response = await apiCall(`files?id=${fileId}`, { 
+                    method: 'DELETE' 
+                });
+                
+                if (response.success) {
+                    showNotification('File deleted successfully!', 'success');
+                    showFiles(); // Refresh file list
+                } else {
+                    throw new Error(response.error || 'Failed to delete file');
+                }
+            } catch (error) {
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+function createProjectCard(project) {
+    const allocDate = project.allocationDate ? formatDate(project.allocationDate) : 'Not set';
+    const targetDate = project.targetCompletionDate ? formatDate(project.targetCompletionDate) : 'Not set';
+    
+    // Calculate allocation status
+    const maxHours = parseFloat(project.maxAllocatedHours) || 0;
+    const totalAllocated = parseFloat(project.totalAllocatedHours) || 0;
+    const hoursLogged = parseFloat(project.hoursLogged) || 0;
+    const remainingBudget = maxHours - hoursLogged;
+    const remainingToAllocate = maxHours - totalAllocated;
+    
+    const isFullyAllocated = maxHours > 0 && totalAllocated >= maxHours;
+    const isPartiallyAllocated = maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+    const needsDesigners = !project.assignedDesignerUids || project.assignedDesignerUids.length === 0;
+    
+    // Allocation status badge
+    let allocationBadge = '';
+    if (isFullyAllocated) {
+        allocationBadge = `<span class="badge" style="background: #10b981; color: white; font-size: 0.75rem;">✅ Fully Allocated (${totalAllocated}h)</span>`;
+    } else if (isPartiallyAllocated) {
+        allocationBadge = `<span class="badge" style="background: #f59e0b; color: white; font-size: 0.75rem;">⏳ Partial: ${totalAllocated}/${maxHours}h (${remainingToAllocate.toFixed(1)}h remaining)</span>`;
+    } else if (maxHours > 0) {
+        allocationBadge = `<span class="badge" style="background: #3b82f6; color: white; font-size: 0.75rem;">🎯 Budget: ${maxHours}h - Not Allocated</span>`;
+    }
+
+    return `
+        <div class="project-card">
+            <div class="project-header">
+                <h3>${project.projectName}</h3>
+                <span class="project-status ${project.status.replace(/_/g, '-')}">${project.status.replace(/_/g, ' ')}</span>
+            </div>
+            <div class="project-details">
+                <p><strong>Client:</strong> ${project.clientCompany || 'N/A'}</p>
+                <p><strong>Code:</strong> ${project.projectCode || 'N/A'}</p>
+                ${project.projectSection ? `<p><strong>Section:</strong> <span style="background: #6366f1; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem;">${project.projectSection}</span></p>` : ''}
+                <p><strong>Allocated:</strong> ${allocDate}</p>
+                <p><strong>Target:</strong> ${targetDate}</p>
+                <p><strong>Status:</strong> ${project.designStatus || 'N/A'}</p>
+                <p><strong>Designers:</strong> ${project.assignedDesignerNames?.join(', ') || 'None assigned'}</p>
+                ${maxHours > 0 ? `
+                    <p><strong>Hours Budget:</strong> ${maxHours}h | <strong>Logged:</strong> ${hoursLogged.toFixed(1)}h | <strong>Remaining:</strong> ${remainingBudget.toFixed(1)}h</p>
+                ` : ''}
+                ${allocationBadge ? `<p>${allocationBadge}</p>` : ''}
+            </div>
+            <div class="project-actions">
+                <button onclick="viewProject('${project.id}')">View Details</button>
+                
+                ${(() => {
+                    // Only Design Lead can assign designers (not COO/Director)
+                    if (currentUserRole !== 'design_lead') {
+                        if (isFullyAllocated) {
+                            return `<span style="color: #10b981; font-weight: 600; font-size: 0.85rem;">✅ Fully Allocated</span>`;
+                        } else if (isPartiallyAllocated) {
+                            return `<span style="color: #f59e0b; font-weight: 600; font-size: 0.85rem;">⏳ Partial (${totalAllocated}/${maxHours}h)</span>`;
+                        } else if (needsDesigners) {
+                            return `<span style="color: #6b7280; font-weight: 600; font-size: 0.85rem;">Awaiting Designer Assignment</span>`;
+                        }
+                        return '';
+                    }
+                    // Design Lead sees action buttons
+                    if (isFullyAllocated) {
+                        return `<button disabled style="background-color: #9ca3af; color: white; cursor: not-allowed;" title="Project fully allocated">
+                            ✅ Fully Allocated
+                        </button>`;
+                    } else if (isPartiallyAllocated) {
+                        return `<button onclick="assignDesigners('${project.id}')" style="background-color: #f59e0b; color: white;">
+                            ⏳ Allocate Remaining ${remainingToAllocate.toFixed(1)}h
+                        </button>`;
+                    } else if (needsDesigners) {
+                        return `<button onclick="assignDesigners('${project.id}')" style="background-color: var(--primary-blue); color: white;">
+                            ➕ Assign Designers
+                        </button>`;
+                    } else {
+                        return `<button onclick="assignDesigners('${project.id}')" style="background-color: var(--primary-blue); color: white;">
+                            ✏️ Manage Allocation
+                        </button>`;
+                    }
+                })()}
+                
+                <button onclick="viewBDMFiles('${project.id}', '${project.proposalId}')">View BDM Files</button>
+                
+                ${(currentUserRole === 'design_lead' || currentUserRole === 'coo' || currentUserRole === 'director') ? `
+                    <button onclick="showAddVariationModal('${project.id}', '${project.projectCode}', '${project.projectName}')" 
+                            style="background-color: var(--warning); color: white; border-color: var(--warning);">
+                        ➕ Add Variation
+                    </button>
+                ` : ''}
+
+                ${((currentUserRole === 'design_lead' || currentUserRole === 'coo' || currentUserRole === 'director') && project.status !== 'completed') ? `
+                    <button onclick="markProjectComplete('${project.id}')" 
+                            style="background-color: var(--success); color: white; border-color: var(--success);">
+                        ✅ Mark Complete
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+        // ============================================
+        // PROJECTS (COO, Design Lead, Designer)
+        // ============================================
+
+        // REPLACED IMPLEMENTATION
+        async function showProjects() {
+            setActiveNav('nav-projects');
+            const main = document.getElementById('mainContent');
+            showLoading();
+            main.innerHTML = '';
+
+            try {
+                console.log('🔄 Fetching all projects...');
+                const response = await apiCall('projects');
+                console.log('🏗️ Projects response:', response);
+                console.log('🏗️ Projects data:', response.data);
+                console.log('🏗️ Number of projects:', response.data?.length);
+                
+                if (response.success && response.data) {
+                    renderProjectsList(response.data);
+                } else {
+                    throw new Error(response.error || 'Invalid projects response');
+                }
+            } catch (error) {
+                console.error('❌ Error fetching projects:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading Projects</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // REPLACED IMPLEMENTATION WITH FILTER BUTTONS
+        function renderProjectsList(projects) {
+            const main = document.getElementById('mainContent');
+            
+            // Logic for COO to create projects from WON proposals
+            let createProjectBtn = '';
+            if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                createProjectBtn = `
+                    <button onclick="showCreateProjectFromWonProposal()" class="btn btn-success" style="margin-bottom: 1rem; width: auto;">
+                        ➕ Create Project from WON Proposal
+                    </button>
+                `;
+            }
+
+            // Filter projects based on role
+            let allProjects = projects;
+            if (currentUserRole === 'design_lead') {
+                allProjects = projects.filter(p => p.designLeadUid === currentUser.uid ||
+                    (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid)));
+           } else if (currentUserRole === 'designer') {
+              // FIX: Check both assignedDesigners AND assignedDesignerUids
+              allProjects = projects.filter(p => 
+                  (p.assignedDesigners && p.assignedDesigners.includes(currentUser.uid)) ||
+                  (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid))
+              );
+            }
+            
+            // Count projects by status for filter buttons (for COO/Director)
+            let filterButtons = '';
+            if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                const statusCounts = {
+                    all: allProjects.length,
+                    active: allProjects.filter(p => 
+                        p.status !== 'completed' && 
+                        p.status !== 'on_hold' && 
+                        p.status !== 'cancelled'
+                    ).length,
+                    // Pending Allocation = projects that need designers assigned
+                    pending: allProjects.filter(p => {
+                        // No designers assigned yet
+                        if (!p.assignedDesignerUids || p.assignedDesignerUids.length === 0) {
+                            return p.status !== 'completed';
+                        }
+                        return false;
+                    }).length,
+                    // Partially Allocated = has some allocation but not fully allocated
+                    partial: allProjects.filter(p => {
+                        const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                        const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                        return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+                    }).length,
+                    completed: allProjects.filter(p => 
+                        p.status === 'completed'
+                    ).length
+                };
+                
+                filterButtons = `
+                    <div class="filter-buttons-container" style="margin-bottom: 1.5rem;">
+                        <button class="filter-btn filter-btn-all ${currentProjectFilter === 'all' ? 'active' : ''}" 
+                                onclick="filterProjects('all')">
+                            📊 All Projects
+                            <span class="filter-count">${statusCounts.all}</span>
+                        </button>
+                        
+                        <button class="filter-btn filter-btn-estimation ${currentProjectFilter === 'active' ? 'active' : ''}" 
+                                onclick="filterProjects('active')">
+                            ✅ Active Projects
+                            <span class="filter-count">${statusCounts.active}</span>
+                        </button>
+                        
+                        <button class="filter-btn filter-btn-pending ${currentProjectFilter === 'pending' ? 'active' : ''}" 
+                                onclick="filterProjects('pending')">
+                            🎯 Needs Designers
+                            <span class="filter-count">${statusCounts.pending}</span>
+                        </button>
+                        
+                        ${statusCounts.partial > 0 ? `
+                        <button class="filter-btn ${currentProjectFilter === 'partial' ? 'active' : ''}" 
+                                onclick="filterProjects('partial')"
+                                style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                            ⏳ Partially Allocated
+                            <span class="filter-count">${statusCounts.partial}</span>
+                        </button>
+                        ` : ''}
+                        
+                        <button class="filter-btn filter-btn-pricing ${currentProjectFilter === 'completed' ? 'active' : ''}" 
+                                onclick="filterProjects('completed')">
+                            🎉 Completed
+                            <span class="filter-count">${statusCounts.completed}</span>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Apply current filter
+            let filteredProjects = allProjects;
+            if (currentUserRole === 'coo' || currentUserRole === 'director') {
+                if (currentProjectFilter === 'active') {
+                    filteredProjects = allProjects.filter(p => 
+                        p.status !== 'completed' && 
+                        p.status !== 'on_hold' && 
+                        p.status !== 'cancelled'
+                    );
+                } else if (currentProjectFilter === 'pending') {
+                    // Projects that need designers assigned
+                    filteredProjects = allProjects.filter(p => {
+                        if (!p.assignedDesignerUids || p.assignedDesignerUids.length === 0) {
+                            return p.status !== 'completed';
+                        }
+                        return false;
+                    });
+                } else if (currentProjectFilter === 'partial') {
+                    // Partially allocated projects
+                    filteredProjects = allProjects.filter(p => {
+                        const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+                        const totalAllocated = parseFloat(p.totalAllocatedHours) || 0;
+                        return maxHours > 0 && totalAllocated > 0 && totalAllocated < maxHours;
+                    });
+                } else if (currentProjectFilter === 'completed') {
+                    filteredProjects = allProjects.filter(p => 
+                        p.status === 'completed'
+                    );
+                }
+            }
+
+            const projectsHtml = filteredProjects.length ? filteredProjects.map(p => 
+                createProjectCard(p)
+            ).join('') : '<p>No projects found matching your criteria.</p>';
+
+            main.innerHTML = `
+                <div class="page-header">
+                    <h2>All Projects</h2>
+                    <div class="subtitle">Manage all active and pending projects.</div>
+                </div>
+                ${createProjectBtn}
+                ${filterButtons}
+                <div class="action-section">
+                    <h3>Project List (${filteredProjects.length})</h3>
+                    ${projectsHtml}
+                </div>
+            `;
+        }
+        
+        // Filter function for All Projects menu
+        function filterProjects(filterType) {
+            currentProjectFilter = filterType;
+            showProjects(); // Reload projects with new filter
+        }
+
+        // REPLACED IMPLEMENTATION
+        async function showCreateProjectFromWonProposal() {
+            try {
+                showLoading();
+                // Fetch proposals that are 'won' but not yet 'projectCreated'
+                const response = await apiCall('proposals?status=won&projectCreated=false');
+                if (!response.success || !response.data) {
+                    throw new Error(response.error || 'Failed to fetch WON proposals');
+                }
+                const proposals = response.data;
+                
+                if (proposals.length === 0) {
+                    hideLoading();
+                    alert('No proposals are marked as "WON" and awaiting project creation.');
+                    return;
+                }
+
+                const optionsHtml = proposals.map(p => 
+                    `<option value="${p.id}" data-name="${p.projectName}" data-client="${p.clientCompany}">
+                        ${p.projectName} (${p.clientCompany}) - ${p.pricing?.quoteValue || 'N/A'} ${p.pricing?.currency || ''}
+                    </option>`
+                ).join('');
+
+                const modalHtml = `
+                    <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                        <div class="modal-content" style="max-width: 800px;">
+                            <div class="modal-header"><h2>Create Project from Proposal</h2></div>
+                            <form id="createProjectForm" class="modal-form">
+                                <div class="form-section">
+                                    <h4>Select WON Proposal</h4>
+                                    <div class="form-group">
+                                        <label>Proposal *</label>
+                                        <select id="wonProposalSelect" class="form-control" required>
+                                            <option value="">Select a proposal...</option>
+                                            ${optionsHtml}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Project Code *</label>
+                                        <input type="text" id="projectCode" class="form-control" placeholder="e.g., EB-2025-001" required>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                                    <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Create Project</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                hideLoading();
+
+                document.getElementById('createProjectForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const proposalSelect = document.getElementById('wonProposalSelect');
+                    const proposalId = proposalSelect.value;
+                    const projectCode = document.getElementById('projectCode').value;
+                    if (!proposalId || !projectCode) {
+                        alert('Please select a proposal and enter a project code.');
+                        return;
+                    }
+                    
+                    // MODIFIED: Call function with no parameters
+                    createProjectFromProposal();
+                });
+
+            } catch (error) {
+                hideLoading();
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // REPLACED IMPLEMENTATION (FIXED AS PER YOUR REQUEST)
+        async function createProjectFromProposal() {
+            // Get values from the form, as per the new 0-argument function structure
+            const proposalSelect = document.getElementById('wonProposalSelect');
+            const proposalId = proposalSelect.value;
+            const projectCode = document.getElementById('projectCode').value;
+
+            if (!proposalId) {
+                alert('Please select a proposal');
+                return;
+            }
+            if (!projectCode) {
+                alert('Please enter a project code');
+                return;
+            }
+            
+            // Get other data from the selected option
+            const selectedOption = proposalSelect.options[proposalSelect.selectedIndex];
+            const proposalName = selectedOption.dataset.name;
+            const clientName = selectedOption.dataset.client;
+
+            try {
+                showLoading();
+                
+                // FIXED: Send action in the request body, as per user's instruction
+                const response = await apiCall('projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'create_from_proposal', // User's key change
+                        proposalId: proposalId,
+                        projectCode: projectCode,       // Retained from old logic
+                        projectName: proposalName,    // Retained from old logic
+                        clientCompany: clientName     // Retained from old logic
+                    })
+                });
+
+                if (response.success) {
+                    closeModal();
+                    showNotification('Project created successfully!', 'success');
+                    showProjects();
+                } else {
+                    throw new Error(response.error || 'Failed to create project');
+                }
+            } catch (error) {
+                console.error('Create project error:', error);
+                alert('Error creating project: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+       // ============================================
+// DESIGNER ALLOCATIONS VIEW (Fixed Filtering)
+// ============================================
+async function showDesignerAllocations() {
+    setActiveNav('nav-designer-alloc');
+    const main = document.getElementById('mainContent');
+    main.style.display = 'block';
+    showLoading();
+
+    try {
+        // 1. Fetch projects and timesheets in parallel
+        const [response, timesheetRes] = await Promise.all([
+            apiCall('projects'),
+            apiCall('timesheets')
+        ]);
+
+        if (!response.success) {
+            throw new Error('Failed to load projects');
+        }
+
+        const allProjects = response.data || [];
+
+        // Build per-project hours logged by current designer from timesheets
+        const myTimesheets = (timesheetRes.success ? timesheetRes.data : []);
+        const myHoursPerProject = {};
+        myTimesheets.forEach(t => {
+            if (t.projectId && t.designerUid === currentUser.uid) {
+                myHoursPerProject[t.projectId] = (myHoursPerProject[t.projectId] || 0) + (parseFloat(t.hours) || 0);
+            }
+        });
+
+        console.log("All Projects fetched:", allProjects.length);
+        console.log("Current User ID:", currentUser.uid);
+
+        // 2. Filter: Check BOTH 'assignedDesignerUids' (New) and 'assignedDesigners' (Legacy)
+        const myProjects = allProjects.filter(p => {
+            // Note: If p.assignedDesigners contains the designer's NAME instead of UID, 
+            // you must adjust the `hasLegacy` check to compare names.
+            const hasNew = p.assignedDesignerUids && Array.isArray(p.assignedDesignerUids) && p.assignedDesignerUids.includes(currentUser.uid);
+            const hasLegacy = p.assignedDesigners && Array.isArray(p.assignedDesigners) && p.assignedDesigners.includes(currentUser.uid);
+
+            // Debug log to help identify why a project matches or fails
+            // console.log(`Project ${p.projectCode}: New=${hasNew}, Legacy=${hasLegacy}`);
+
+            return hasNew || hasLegacy;
+        });
+
+        console.log("My Projects found:", myProjects.length);
+
+        if (myProjects.length === 0) {
+            main.innerHTML = `
+                <div class="page-header">
+                    <h2>⏳ Project Allocations</h2>
+                    <p class="subtitle">Time budget details for your assigned projects.</p>
+                </div>
+                <div class="empty-state">
+                    <h3>No Projects Allocated</h3>
+                    <p>You have not been assigned to any active projects with time allocations yet.</p>
+                </div>
+            `;
+            hideLoading();
+            return;
+        }
+
+        // 3. Build the Table
+        const rows = myProjects.map(p => {
+            // Handle numeric conversions safely
+            const maxHours = parseFloat(p.maxAllocatedHours) || 0;
+            const addHours = parseFloat(p.additionalHours) || 0;
+            const totalProjectBudget = maxHours + addHours;
+
+            // Get designer-specific allocated hours
+            // Check assignedDesignerHours (from Design Lead assignment) first, then designerHours (from COO allocation)
+            let myAllocatedHours = 0;
+            let hasPersonalAllocation = false;
+            if (p.assignedDesignerHours && parseFloat(p.assignedDesignerHours[currentUser.uid]) > 0) {
+                myAllocatedHours = parseFloat(p.assignedDesignerHours[currentUser.uid]);
+                hasPersonalAllocation = true;
+            } else if (p.designerHours && parseFloat(p.designerHours[currentUser.uid]) > 0) {
+                myAllocatedHours = parseFloat(p.designerHours[currentUser.uid]);
+                hasPersonalAllocation = true;
+            }
+
+            // If no personal hours allocated, use the total project budget (shared pool)
+            if (!hasPersonalAllocation) {
+                myAllocatedHours = totalProjectBudget;
+            }
+
+            // Use designer's own logged hours for personal allocation, or total project hours for shared pool
+            const myLogged = parseFloat(myHoursPerProject[p.id]) || 0;
+            const usedHours = hasPersonalAllocation ? myLogged : (parseFloat(p.hoursLogged) || 0);
+
+            // Calculate remaining
+            const myRemaining = myAllocatedHours - usedHours;
+
+            // Calculate percentage for progress bar
+            const percentUsed = myAllocatedHours > 0 ? (usedHours / myAllocatedHours) * 100 : 0;
+
+            // Status Logic
+            let statusColor = 'var(--success)'; // Green
+            let statusText = 'On Track';
+
+            if (myRemaining < 0) {
+                statusColor = 'var(--danger)'; // Red
+                statusText = 'Over Budget';
+            } else if (myAllocatedHours > 0 && myRemaining < (myAllocatedHours * 0.2)) {
+                statusColor = 'var(--warning)'; // Orange
+                statusText = 'Low Budget';
+            }
+
+            // Date formatting helper (assumes formatDate is available)
+            const targetDate = p.targetCompletionDate ? formatDate(p.targetCompletionDate) : 'N/A';
+
+            return `
+                <tr>
+                    <td>
+                        <span style="font-weight: 700; color: var(--primary-blue);">${p.projectNumber || p.projectCode || 'N/A'}</span>
+                    </td>
+                    <td>
+                        <strong>${p.projectName || 'Unknown Project'}</strong><br>
+                        <small style="color: var(--text-light);">${p.projectCode || 'No Code'}</small>
+                    </td>
+                    <td>${p.clientCompany || 'N/A'}</td>
+                    <td>${targetDate}</td>
+
+                    <td style="text-align: center;">
+                        <span style="font-weight: bold; font-size: 1.1em; color: var(--primary-blue);">${myAllocatedHours.toFixed(1)}h</span>
+                        <br><small class="text-muted" style="font-size:0.75em;">${hasPersonalAllocation ? 'Your Allocation' : 'Project Budget'}</small>
+                        ${hasPersonalAllocation && totalProjectBudget !== myAllocatedHours ? `<br><small style="font-size:0.7em; color: #888;">(Project: ${totalProjectBudget.toFixed(1)}h)</small>` : ''}
+                        ${addHours > 0 ? `<br><small class="text-muted" style="font-size:0.7em;">(+${addHours}h buffer)</small>` : ''}
+                    </td>
+                    <td style="text-align: center;">
+                         <div>${usedHours.toFixed(1)}h${!hasPersonalAllocation ? ' (all designers)' : ''}</div>
+                         <div style="width: 100%; background: #eee; height: 6px; border-radius: 3px; margin-top: 5px;">
+                            <div style="width: ${Math.min(percentUsed, 100)}%; background: ${statusColor}; height: 100%; border-radius: 3px;"></div>
+                         </div>
+                         <small style="font-size: 0.7em; color: #888;">${percentUsed.toFixed(0)}% used</small>
+                    </td>
+                    <td style="text-align: center;">
+                        <span style="font-weight: bold; color: ${statusColor}; font-size: 1.1em;">${myRemaining.toFixed(1)}h</span>
+                        <br><small style="font-size: 0.75rem; color: ${statusColor}">${statusText}</small>
+                        ${myRemaining <= 0 ? `<br><small style="color: var(--danger); font-size: 0.7em;">Request more time</small>` : ''}
+                    </td>
+
+                    <td class="action-column">
+                        <button class="btn btn-secondary btn-sm"
+                                onclick="showProjectFilesModal('${p.id}', '${p.projectName.replace(/'/g, "\\'")}')">
+                            📂 View Files
+                        </button>
+                        <button class="btn btn-info btn-sm"
+                                onclick="openDesignUploadModal('${p.id}', '${p.projectName.replace(/'/g, "\\'")}')">
+                            📐 Upload Design
+                        </button>
+                        <button class="btn btn-primary btn-sm"
+                                onclick="showTimesheetModal('${p.id}')"
+                                data-allocated="${myAllocatedHours}"
+                                data-remaining="${myRemaining}">
+                            ⏱️ Log Time
+                        </button>
+                        ${myRemaining <= 5 && myAllocatedHours > 0 ? `
+                            <button class="btn btn-warning btn-sm"
+                                    onclick="showRequestTimeModalDirect('${p.id}', '${p.projectName.replace(/'/g, "\\'")}', ${myAllocatedHours}, ${usedHours})">
+                                ⏰ Request Time
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // Fetch training and sample designing hours for current user
+        let trainingHours = 0;
+        let sampleDesigningHours = 0;
+        let trainingEntries = [];
+        let sampleEntries = [];
+        
+        try {
+            const timesheetsResponse = await apiCall(`timesheets?designerUid=${currentUser.uid}`);
+            if (timesheetsResponse.success && timesheetsResponse.data) {
+                timesheetsResponse.data.forEach(entry => {
+                    if (entry.workType === 'training' || entry.projectId === 'TRAINING') {
+                        trainingHours += parseFloat(entry.hours) || 0;
+                        trainingEntries.push(entry);
+                    } else if (entry.workType === 'sample_designing' || entry.projectId === 'SAMPLE_DESIGNING') {
+                        sampleDesigningHours += parseFloat(entry.hours) || 0;
+                        sampleEntries.push(entry);
+                    }
+                });
+            }
+        } catch (e) {
+            console.log('Could not fetch non-project hours:', e);
+        }
+
+        // Build non-project hours section
+        const hasNonProjectHours = trainingHours > 0 || sampleDesigningHours > 0;
+        const nonProjectHoursSection = `
+            <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; color: #1f2937;">📊 Non-Project Hours</h3>
+                    <button onclick="showNonProjectHoursDetails()" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        View Details
+                    </button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <!-- Training Hours Card -->
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.25rem; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 2rem;">📚</span>
+                            <div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Training</div>
+                                <div style="font-size: 1.75rem; font-weight: 700;">${trainingHours.toFixed(1)}h</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">${trainingEntries.length} session(s) logged</div>
+                    </div>
+                    
+                    <!-- Sample Designing Hours Card -->
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1.25rem; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 2rem;">🎨</span>
+                            <div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Sample Designing</div>
+                                <div style="font-size: 1.75rem; font-weight: 700;">${sampleDesigningHours.toFixed(1)}h</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">${sampleEntries.length} session(s) logged</div>
+                    </div>
+                    
+                    <!-- Total Non-Project Hours -->
+                    <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 1.25rem; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span style="font-size: 2rem;">⏱️</span>
+                            <div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Total Non-Project</div>
+                                <div style="font-size: 1.75rem; font-weight: 700;">${(trainingHours + sampleDesigningHours).toFixed(1)}h</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Combined hours this period</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Fetch designer's design files for tracking
+        let designFilesHtml = '';
+        try {
+            console.log('📐 Fetching design files...');
+            const designFilesResponse = await apiCall('projects?action=get_design_files');
+            console.log('📐 Design files response:', designFilesResponse);
+            
+            if (designFilesResponse.success && designFilesResponse.data && designFilesResponse.data.length > 0) {
+                const designFiles = designFilesResponse.data;
+                
+                const getStatusBadge = (status) => {
+                    const badges = {
+                        'uploaded': '<span class="design-file-status status-uploaded">📤 Uploaded</span>',
+                        'pending_approval': '<span class="design-file-status status-pending_approval">⏳ Pending Approval</span>',
+                        'approved': '<span class="design-file-status status-approved">✅ Approved</span>',
+                        'rejected': '<span class="design-file-status status-rejected">❌ Rejected</span>',
+                        'sent': '<span class="design-file-status status-sent">📧 Sent to Client</span>'
+                    };
+                    return badges[status] || '<span class="design-file-status">Unknown</span>';
+                };
+                
+                const getActionButton = (file) => {
+                    let btns = '';
+                    const safeName = (file.projectName || '').replace(/'/g, '');
+                    const safeFileName = (file.fileName || '').replace(/'/g, '');
+
+                    // Edit/Delete for files not yet approved or sent
+                    if (['uploaded', 'pending_approval'].includes(file.status)) {
+                        btns += `<button class="btn btn-secondary btn-sm" onclick="showDesignerUploadModal('${file.projectId}')" title="Replace with new file" style="font-size:11px;padding:4px 8px;">🔄 Replace</button> `;
+                        btns += `<button class="btn btn-sm" onclick="deleteDesignFile('${file.id}', '${file.projectId}', '${safeFileName}')" title="Delete this file" style="font-size:11px;padding:4px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">🗑️ Delete</button> `;
+                    }
+
+                    if (file.status === 'uploaded') {
+                        btns += `<button class="btn btn-primary btn-sm" onclick="submitDesignForApproval('${file.id}', '${file.projectId}')">📤 Submit</button>`;
+                    } else if (file.status === 'pending_approval') {
+                        btns += `<span class="badge" style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:6px;font-size:12px;">⏳ Pending COO</span>`;
+                    } else if (file.status === 'approved') {
+                        btns += `<span class="badge" style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:6px;font-size:12px;">✅ Awaiting DC</span>`;
+                    } else if (file.status === 'rejected') {
+                        btns += `<button class="btn btn-warning btn-sm" onclick="showDesignerUploadModal('${file.projectId}')">🔄 Upload Revised</button> `;
+                        btns += `<button class="btn btn-sm" onclick="deleteDesignFile('${file.id}', '${file.projectId}', '${safeFileName}')" title="Delete" style="font-size:11px;padding:4px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">🗑️</button>`;
+                    } else if (file.status === 'sent') {
+                        btns += `<span class="badge" style="background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;font-size:12px;">📧 Sent</span>`;
+                    }
+                    return btns;
+                };
+                
+                const fileRows = designFiles.map(file => {
+                    const uploadDate = file.uploadedAt ? new Date(file.uploadedAt.seconds ? file.uploadedAt.seconds * 1000 : file.uploadedAt).toLocaleDateString() : 'N/A';
+                    const isLink = file.isExternalLink || file.uploadType === 'link';
+                    const fileIcon = isLink ? '🔗' : '📄';
+                    const stage = file.submissionStage || '-';
+                    const rev = file.revisionNumber || '-';
+                    const stageBadgeColors = { IFA: '#3b82f6', IFC: '#10b981', Preliminary: '#f59e0b', Draft: '#6b7280', Final: '#8b5cf6' };
+                    const stageColor = stageBadgeColors[stage] || '#6b7280';
+                    return `
+                        <tr>
+                            <td><strong>${file.projectName || 'Unknown'}</strong></td>
+                            <td>
+                                <a href="${file.fileUrl}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">
+                                    ${fileIcon} ${file.fileName}
+                                </a>
+                            </td>
+                            <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${stageColor}15;color:${stageColor};border:1px solid ${stageColor}40;">${stage}</span></td>
+                            <td><span style="font-weight:600;font-size:12px;color:#475569;">${rev}</span></td>
+                            <td>${uploadDate}</td>
+                            <td>${getStatusBadge(file.status)}</td>
+                            <td style="white-space:nowrap;">
+                                <a href="${file.fileUrl}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;">👁️</a>
+                                ${getActionButton(file)}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                designFilesHtml = `
+                    <div class="card" style="margin-bottom: 1.5rem; border: 2px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; color: #1e3a5f;">📐 My Design Files</h3>
+                            <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">${designFiles.length} file(s)</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>File</th>
+                                        <th>Stage</th>
+                                        <th>Rev</th>
+                                        <th>Uploaded</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${fileRows}
+                                </tbody>
+                            </table>
+                        </div>
+                        ${designFiles.some(f => f.status === 'rejected') ? `
+                            <div style="margin-top: 1rem; padding: 12px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #ef4444;">
+                                <strong style="color: #991b1b;">⚠️ Rejected Files:</strong>
+                                <span style="color: #7f1d1d;"> Please review COO feedback and upload revised versions.</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                // Show empty state
+                designFilesHtml = `
+                    <div class="card" style="margin-bottom: 1.5rem; border: 2px dashed #cbd5e1; background: #f8fafc;">
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📐</div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: #1e3a5f;">My Design Files</h3>
+                            <p style="color: #64748b; margin-bottom: 1rem;">No design files uploaded yet.</p>
+                            <p style="color: #94a3b8; font-size: 0.9rem;">Use the "📐 Upload Design" button on your projects below to upload design files for client approval.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('❌ Could not fetch design files:', e);
+            designFilesHtml = `
+                <div class="card" style="margin-bottom: 1.5rem; border: 2px dashed #fca5a5; background: #fef2f2;">
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: #991b1b;">Could not load design files</h3>
+                        <p style="color: #7f1d1d; margin-bottom: 1rem;">${e.message || 'Unknown error'}</p>
+                        <button class="btn btn-secondary btn-sm" onclick="showDesignerAllocations()">🔄 Retry</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>⏳ Project Allocations</h2>
+                <p class="subtitle">Monitor time budgets for your assigned projects. Hours shown are your personal allocation.</p>
+            </div>
+            
+            ${renderDashboardAnnouncements()}
+            
+            <!-- My Design Files Section -->
+            ${designFilesHtml}
+            
+            <!-- Non-Project Hours Section -->
+            ${nonProjectHoursSection}
+
+            <div class="card">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Project #</th>
+                            <th>Project</th>
+                            <th>Client</th>
+                            <th>Target Date</th>
+                            <th style="text-align: center;">My Allocated Hours</th>
+                            <th style="text-align: center;">Hours Used</th>
+                            <th style="text-align: center;">Remaining</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error(error);
+        main.innerHTML = `<div class="error-message">Error loading allocations: ${error.message}</div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+// ✅ Make showDesignerAllocations globally accessible
+window.showDesignerAllocations = showDesignerAllocations;
+
+// ============================================
+// ✅ Show Non-Project Hours Details Modal
+// ============================================
+window.showNonProjectHoursDetails = async function() {
+    showLoading();
+    
+    try {
+        const response = await apiCall(`timesheets?designerUid=${currentUser.uid}`);
+        
+        let trainingEntries = [];
+        let sampleEntries = [];
+        
+        if (response.success && response.data) {
+            response.data.forEach(entry => {
+                if (entry.workType === 'training' || entry.projectId === 'TRAINING') {
+                    trainingEntries.push(entry);
+                } else if (entry.workType === 'sample_designing' || entry.projectId === 'SAMPLE_DESIGNING') {
+                    sampleEntries.push(entry);
+                }
+            });
+        }
+        
+        // Sort by date descending
+        trainingEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+        sampleEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        const totalTraining = trainingEntries.reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+        const totalSample = sampleEntries.reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+        
+        const formatDate = (dateStr) => {
+            if (!dateStr) return 'N/A';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        };
+        
+        const buildEntriesTable = (entries, type) => {
+            if (entries.length === 0) {
+                return `<p style="text-align: center; color: #666; padding: 1rem;">No ${type} hours logged yet.</p>`;
+            }
+            
+            return `
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="background: #f3f4f6;">
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e5e7eb;">Date</th>
+                            <th style="padding: 0.75rem; text-align: center; border-bottom: 2px solid #e5e7eb;">Hours</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e5e7eb;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${entries.map(e => `
+                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                <td style="padding: 0.75rem;">${formatDate(e.date)}</td>
+                                <td style="padding: 0.75rem; text-align: center; font-weight: 600; color: var(--primary-blue);">${parseFloat(e.hours).toFixed(1)}h</td>
+                                <td style="padding: 0.75rem; color: #666;">${e.description || 'No description'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        };
+        
+        const modalHtml = `
+            <div class="modal-overlay" id="nonProjectHoursModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;" onclick="if(event.target.id === 'nonProjectHoursModal') this.remove();">
+                <div class="modal-content" style="max-width: 800px; width: 95%; background: white; border-radius: 12px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div class="modal-header" style="padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0;">📊 Non-Project Hours Details</h2>
+                        <span onclick="document.getElementById('nonProjectHoursModal').remove();" style="cursor: pointer; font-size: 2rem; opacity: 0.8;">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+                        <!-- Summary Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                                <div style="font-size: 1.5rem;">📚</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${totalTraining.toFixed(1)}h</div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Training</div>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                                <div style="font-size: 1.5rem;">🎨</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${totalSample.toFixed(1)}h</div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Sample Designing</div>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                                <div style="font-size: 1.5rem;">⏱️</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${(totalTraining + totalSample).toFixed(1)}h</div>
+                                <div style="font-size: 0.85rem; opacity: 0.9;">Total</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Training Hours Section -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="margin: 0 0 1rem 0; color: #667eea; display: flex; align-items: center; gap: 0.5rem;">
+                                📚 Training Hours (${trainingEntries.length} entries)
+                            </h3>
+                            <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                ${buildEntriesTable(trainingEntries, 'training')}
+                            </div>
+                        </div>
+                        
+                        <!-- Sample Designing Hours Section -->
+                        <div>
+                            <h3 style="margin: 0 0 1rem 0; color: #f5576c; display: flex; align-items: center; gap: 0.5rem;">
+                                🎨 Sample Designing Hours (${sampleEntries.length} entries)
+                            </h3>
+                            <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                ${buildEntriesTable(sampleEntries, 'sample designing')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+                        <button onclick="document.getElementById('nonProjectHoursModal').remove();" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        console.error('Error loading non-project hours:', error);
+        alert('Error loading details: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+};
+
+     async function showProjectFilesModal(projectId, projectName) {
+    console.log('📂 Opening files for project:', projectId, projectName);
+
+    // -----------------------------------------------------------------------------------
+    // --- FIX: Dynamically create the modal structure if it doesn't exist.
+    // --- This prevents the "TypeError: Cannot set properties of null" error
+    // --- because the elements like 'projectFilesModalTitle' are guaranteed to be in the DOM.
+    // -----------------------------------------------------------------------------------
+    // FIXED: Remove existing modal first to prevent stale data
+    let existingModal = document.getElementById('projectFilesModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Define the full HTML structure for the project files modal
+    const modalHtml = `
+        <div class="modal-overlay" id="projectFilesModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;" onclick="handleModalOverlayClick(event, 'projectFilesModal')">
+            <div class="modal-content" style="max-width: 900px; background: white; border-radius: 12px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <h2 id="projectFilesModalTitle" style="margin: 0;"></h2>
+                    <span class="close-modal" onclick="closeProjectFilesModal()" style="cursor: pointer; font-size: 2rem; color: #666; line-height: 1;">&times;</span>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding: 1.5rem;">
+                    <p id="projectFilesModalSubtitle" style="color: var(--text-light); margin-bottom: 1.5rem;"></p>
+                    <div id="projectFilesContent">
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+                    <button class="btn btn-outline" onclick="closeProjectFilesModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.classList.add('modal-open');
+    // -----------------------------------------------------------------------------------
+
+    // 1. Get DOM elements (These are now guaranteed to exist)
+    const title = document.getElementById('projectFilesModalTitle');
+    const subtitle = document.getElementById('projectFilesModalSubtitle');
+    const content = document.getElementById('projectFilesContent');
+
+    // 2. Set initial state (Title and Loading spinner)
+    title.textContent = `📂 Project Files: ${projectName}`;
+    subtitle.textContent = `Loading files for project...`;
+    content.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 2rem;"><div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-light);">Loading files...</p></div>';
+
+    // 3. Modal is already visible (display: flex set inline) 
+
+    try {
+        // 4. First, get the project details to find the proposalId
+        const projectResponse = await apiCall(`projects?id=${projectId}`);
+        
+        if (!projectResponse.success) {
+            throw new Error(projectResponse.error || 'Failed to fetch project details.');
+        }
+        
+        const project = projectResponse.data;
+        console.log('📦 Project details:', project);
+        
+        // 5. Fetch files using BOTH projectId AND proposalId
+        let files = [];
+        
+        // Approach 1: Try fetching by projectId
+        try {
+            const response1 = await apiCall(`files?projectId=${projectId}`);
+            if (response1.success && response1.data && response1.data.length > 0) {
+                files = response1.data;
+                console.log('✅ Files found using projectId:', files.length);
+            }
+        } catch (err) {
+            console.log('⚠️ Could not fetch files by projectId:', err.message);
+        }
+        
+        // Approach 2: If no files found and we have a proposalId, try that
+        if (files.length === 0 && project.proposalId) {
+            try {
+                const response2 = await apiCall(`files/list?proposalId=${project.proposalId}`);
+                if (response2.success && response2.data && response2.data.length > 0) {
+                    files = response2.data;
+                    console.log('✅ Files found using proposalId:', files.length);
+                }
+            } catch (err) {
+                console.log('⚠️ Could not fetch files by proposalId:', err.message);
+            }
+        }
+        
+        // Approach 3: Try the legacy endpoint as a fallback
+        if (files.length === 0 && project.proposalId) {
+            try {
+                const response3 = await apiCall(`files?proposalId=${project.proposalId}`);
+                if (response3.success && response3.data && response3.data.length > 0) {
+                    files = response3.data;
+                    console.log('✅ Files found using legacy endpoint:', files.length);
+                }
+            } catch (err) {
+                console.log('⚠️ Could not fetch files using legacy endpoint:', err.message);
+            }
+        }
+        
+        console.log('📊 Total files retrieved:', files.length);
+        
+        if (files.length === 0) {
+            content.innerHTML = `
+                <div class="empty-state" style="text-align: center; padding: 3rem;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                    <h3>No Files Available</h3>
+                    <p style="color: var(--text-light); margin-top: 0.5rem;">
+                        No files have been uploaded for this project yet.
+                    </p>
+                    ${project.proposalId ? `<small style="color: var(--text-light);">Project Code: ${project.projectCode || 'N/A'} | Proposal ID: ${project.proposalId}</small>` : ''}
+                </div>
+            `;
+            return;
+        }
+
+        // 6. Log files for debugging
+        console.log('📂 Files to display:', files);
+        files.forEach((f, i) => console.log(`  File ${i}:`, f));
+
+        // 6. Group files by type for better organization
+        const filesByType = {
+            drawing: [],
+            specification: [],
+            estimate: [],
+            project: [],
+            other: []
+        };
+        
+        files.forEach(file => {
+            // Skip null/undefined files
+            if (!file) return;
+            
+            const type = file.fileType || 'other';
+            if (filesByType[type]) {
+                filesByType[type].push(file);
+            } else {
+                filesByType.other.push(file);
+            }
+        });
+
+        // 7. Build the file list HTML with grouping
+        let fileListHtml = '';
+        
+        const typeLabels = {
+            drawing: { icon: '📐', label: 'Drawings & Plans', color: '#3b82f6' },
+            specification: { icon: '📋', label: 'Specifications', color: '#10b981' },
+            estimate: { icon: '💰', label: 'Estimates', color: '#f59e0b' },
+            project: { icon: '📁', label: 'Project Documents', color: '#8b5cf6' },
+            other: { icon: '📄', label: 'Other Files', color: '#6b7280' }
+        };
+        
+        Object.keys(filesByType).forEach(type => {
+            const typeFiles = filesByType[type];
+            if (typeFiles.length === 0) return;
+            
+            const typeInfo = typeLabels[type];
+            
+            fileListHtml += `
+                <div class="file-type-section" style="margin-bottom: 2rem;">
+                    <h3 style="color: ${typeInfo.color}; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">${typeInfo.icon}</span>
+                        ${typeInfo.label} (${typeFiles.length})
+                    </h3>
+                    <div class="files-grid">
+                        ${typeFiles.map(file => {
+                            // Defensive checks for file properties
+                            if (!file) return '';
+                            
+                            const uploadDate = file.uploadedAt ? formatDate(file.uploadedAt) : 'N/A';
+                            const uploadedBy = file.uploadedByName || file.uploadedBy || 'Unknown User';
+                            const fileSize = file.fileSize ? formatFileSize(file.fileSize) : '';
+                            const fileName = file.fileName || file.originalName || file.name || 'Unknown File';
+                            const fileUrl = file.fileUrl || file.url || file.downloadUrl || '';
+                            
+                            // Skip files without URL
+                            if (!fileUrl) {
+                                console.warn('File without URL:', file);
+                                return '';
+                            }
+                            
+                            // Safely escape filename for onclick
+                            const safeFileName = (fileName || 'download').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                            const safeUrl = (fileUrl || '').replace(/'/g, "\\'");
+                            
+                            return `
+                                <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; margin-bottom: 0.75rem; transition: all 0.3s ease;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-dark); margin-bottom: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            📄 ${fileName}
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: var(--text-light);">
+                                            Uploaded by <strong>${uploadedBy}</strong> on ${uploadDate}
+                                            ${fileSize ? ` • ${fileSize}` : ''}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0; margin-left: 1rem;">
+                                        <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" 
+                                           style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #ddd; background: white; color: #333; cursor: pointer; font-size: 0.9rem;">
+                                            👁️ View
+                                        </a>
+                                        <button onclick="downloadFile('${safeUrl}', '${safeFileName}')" 
+                                           style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #1e40af; color: white; cursor: pointer; font-size: 0.9rem;">
+                                            ⬇️ Download
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).filter(html => html).join('')}
+                    </div>
+                </div>
+            `;
+        });
+
+        // 8. Inject the list with enhanced styling
+        content.innerHTML = `
+            <style>
+                .file-type-section { }
+                .files-grid { }
+                .file-item:hover {
+                    background: white !important;
+                    border-color: var(--primary-blue) !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    transform: translateY(-2px);
+                }
+            </style>
+            ${fileListHtml}
+        `;
+
+    } catch (error) {
+        console.error("❌ Error loading project files:", error);
+        content.innerHTML = `
+            <div class="error-message" style="text-align: center; padding: 2rem; color: var(--danger);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                <h3>Error Loading Files</h3>
+                <p style="margin-top: 0.5rem;">${error.message}</p>
+                <button onclick="showProjectFilesModal('${projectId}', '${projectName}')" class="btn btn-primary" style="margin-top: 1rem;">
+                    🔄 Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// ✅ FIXED: Dedicated close function for project files modal
+function closeProjectFilesModal() {
+    const modal = document.getElementById('projectFilesModal');
+    if (modal) {
+        modal.remove();
+    }
+    document.body.classList.remove('modal-open');
+}
+
+// Make it globally accessible
+window.closeProjectFilesModal = closeProjectFilesModal;
+window.showProjectFilesModal = showProjectFilesModal;
+                                
+// Helper function to format file size
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '';
+    
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+}
+        // ============================================
+        // TASKS (Designer)
+        // ============================================
+
+        // showTasks is defined later in the file (line ~14580)
+        // showDesignerDashboard calls showDesignerAllocations
+        function renderTasksList(tasks) { /* ... (Unchanged) ... */ }
+
+        // ============================================
+        // DELIVERABLES (Designer)
+        // ============================================
+
+        async function showDesignerDashboard() {
+            // Designer dashboard shows the Project Allocations view
+            await showDesignerAllocations();
+        }
+                async function viewDesignerProject(projectId) {
+            console.log('👀 Opening project:', projectId);
+            setActiveNav('');
+            
+            try {
+                showLoading();
+                
+                // Fetch project details
+                const projectResponse = await apiCall(`projects?id=${projectId}`);
+                if (!projectResponse.success) {
+                    throw new Error(projectResponse.error || 'Failed to fetch project');
+                }
+                
+                const project = projectResponse.data;
+                console.log('📦 Project data:', project);
+                
+                // Fetch proposal to get project files
+                const proposalResponse = await apiCall(`proposals?id=${project.proposalId}`);
+                const proposal = proposalResponse.success ? proposalResponse.data : null;
+                
+                // Fetch files for this project/proposal
+                const filesResponse = await apiCall(`files/list?proposalId=${project.proposalId || project.id}`);
+                const files = filesResponse.success ? filesResponse.data : [];
+                
+                console.log('📁 Files found:', files);
+                
+                // Separate files by type
+                const drawings = files.filter(f => 
+                    f.fileType === 'drawing' || 
+                    f.fileType === 'project' || 
+                    f.fileName.match(/\.(dwg|dxf|pdf)$/i)
+                );
+                const specifications = files.filter(f => 
+                    f.fileType === 'specification' || 
+                    f.fileName.match(/\.(doc|docx|pdf|txt)$/i)
+                );
+                
+                const drawingsHtml = drawings.length > 0 
+                    ? drawings.map(file => {
+                        const fileUrl = file.fileUrl || file.url || file.downloadUrl || '';
+                        if (!fileUrl) {
+                            console.warn('Drawing file without URL:', file);
+                            return '';
+                        }
+                        return `
+                        <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px;">
+                            <div>
+                                <span style="font-weight: 500;">📄 ${file.fileName || file.originalName || 'Unknown File'}</span>
+                                <br>
+                                <small style="color: #6b7280;">Uploaded: ${file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}</small>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${fileUrl}" target="_blank" class="btn btn-primary btn-sm" 
+                                   style="text-decoration: none; display: inline-block;">
+                                    👁️ View
+                                </a>
+                                <a href="${fileUrl}" download="${file.fileName || file.originalName || 'download'}" class="btn btn-success btn-sm"
+                                   style="text-decoration: none; display: inline-block;">
+                                    ⬇️ Download
+                                </a>
+                            </div>
+                        </div>
+                    `}).filter(html => html).join('')
+                    : '<p style="color: #6b7280; text-align: center; padding: 20px;">No drawings available for this project</p>';
+                
+                const specsHtml = specifications.length > 0
+                    ? specifications.map(file => {
+                        const fileUrl = file.fileUrl || file.url || file.downloadUrl || '';
+                        if (!fileUrl) {
+                            console.warn('Specification file without URL:', file);
+                            return '';
+                        }
+                        return `
+                        <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px;">
+                            <div>
+                                <span style="font-weight: 500;">📄 ${file.fileName || file.originalName || 'Unknown File'}</span>
+                                <br>
+                                <small style="color: #6b7280;">Uploaded: ${file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'N/A'}</small>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${fileUrl}" target="_blank" class="btn btn-primary btn-sm"
+                                   style="text-decoration: none; display: inline-block;">
+                                    👁️ View
+                                </a>
+                                <a href="${fileUrl}" download="${file.fileName || file.originalName || 'download'}" class="btn btn-success btn-sm"
+                                   style="text-decoration: none; display: inline-block;">
+                                    ⬇️ Download
+                                </a>
+                            </div>
+                        </div>
+                    `}).filter(html => html).join('')
+                    : '<p style="color: #6b7280; text-align: center; padding: 20px;">No specifications available for this project</p>';
+                
+                // Display the project details modal
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="page-header">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h1 class="page-title">${project.projectName}</h1>
+                                <p class="page-subtitle">Project Number: ${project.projectNumber || 'N/A'}</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="showDesignerDashboard()">
+                                ← Back to Projects
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="content-section" style="margin-bottom: 20px;">
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">Project Information</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Client Name</div>
+                                <div class="info-value">${project.clientName || 'N/A'}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Allocated Hours</div>
+                                <div class="info-value">${project.allocatedHours || 0}h</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Designer</div>
+                                <div class="info-value">${project.assignedDesignerName || 'Not assigned'}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">
+                                    <span class="status-badge ${getStatusBadgeClass(project.status)}">${getStatusText(project.status)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="content-section">
+                        <div class="document-tabs">
+                            <button class="doc-tab active" onclick="switchDesignerTab('drawings')">
+                                📐 Drawings (${drawings.length})
+                            </button>
+                            <button class="doc-tab" onclick="switchDesignerTab('specifications')">
+                                📋 Specifications (${specifications.length})
+                            </button>
+                        </div>
+                        
+                        <div id="designer-drawings-content" class="doc-content active" style="margin-top: 20px;">
+                            ${drawingsHtml}
+                        </div>
+                        
+                        <div id="designer-specs-content" class="doc-content" style="margin-top: 20px; display: none;">
+                            ${specsHtml}
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Error loading project:', error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+        function showUploadDeliverablesModal(projectId) { /* ... (Unchanged) ... */ }
+        function switchUploadTab(tab) { /* ... (Unchanged) ... */ }
+        function addDeliverableLinkField() { /* ... (Unchanged) ... */ }
+        async function uploadDeliverables(projectId) { /* ... (Unchanged) ... */ }
+        async function deleteDeliverable(deliverableId) { /* ... (Unchanged) ... */ }
+         // ============================================
+// PAYMENTS (Accounts, BDM, COO, Director)
+// ============================================
+
+/**
+ * Main entry point for the "Accounts" page.
+ * Fetches all payments and routes to the correct view based on user role.
+ */
+async function showPayments() {
+    setActiveNav('nav-payments');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    main.innerHTML = '';
+
+    try {
+        // All roles need to fetch payments/invoices
+        const response = await apiCall('payments');
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to load payments/invoices');
+        }
+        const allInvoices = response.data || [];
+
+        if (currentUserRole === 'accounts') {
+            // ACCOUNTS VIEW: Full invoice management portal
+
+            // 1. Fetch all projects (not just completed) so accounts can create invoices for any
+            const [projectsResponse, variationsResponse] = await Promise.all([
+                apiCall('projects'),
+                apiCall('variations?status=approved')
+            ]);
+            const projects = projectsResponse.success ? projectsResponse.data : [];
+            const approvedVariations = variationsResponse.success ? variationsResponse.data : [];
+
+            // 2. Get projects that don't have invoices yet
+            const invoicedProjectIds = new Set(allInvoices.filter(inv => !inv.variationId).map(inv => inv.projectId));
+            const projectsToInvoice = projects.filter(p => !invoicedProjectIds.has(p.id));
+
+            // 3. Get approved variations that don't have invoices yet
+            const invoicedVariationIds = new Set(allInvoices.filter(inv => inv.variationId).map(inv => inv.variationId));
+            const variationsToInvoice = approvedVariations.filter(v => !invoicedVariationIds.has(v.id));
+
+            renderAccountsPortal(allInvoices, projectsToInvoice, projects, variationsToInvoice);
+        } else if (currentUserRole === 'bdm') {
+            // BDM VIEW: Show only invoices related to their projects
+            const invoicesToShow = allInvoices.filter(inv =>
+                inv.bdmUid === currentUser.uid
+            );
+            // If no bdmUid match, fall back to project-based filtering
+            if (invoicesToShow.length === 0 && allInvoices.length > 0) {
+                const proposalsResponse = await apiCall('proposals');
+                if (proposalsResponse.success) {
+                    const myProjectIds = new Set();
+                    proposalsResponse.data.forEach(p => {
+                        if (p.createdByUid === currentUser.uid && p.projectId) {
+                            myProjectIds.add(p.projectId);
+                        }
+                    });
+                    const filtered = allInvoices.filter(inv => myProjectIds.has(inv.projectId));
+                    renderBDMInvoiceView(filtered);
+                } else {
+                    renderBDMInvoiceView(invoicesToShow);
+                }
+            } else {
+                renderBDMInvoiceView(invoicesToShow);
+            }
+        } else {
+            // COO/Director see all
+            renderAccountsOverview(allInvoices);
+        }
+
+    } catch (error) {
+        console.error('Error in showPayments:', error);
+        main.innerHTML = `<div class="error-message"><h3>Error Loading Payments</h3><p>${error.message}</p></div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Renders the full Accounts Portal for accountants.
+ * Shows stats, create invoice button, projects to invoice, variations to invoice, and existing invoices.
+ */
+function renderAccountsPortal(invoices, projectsToInvoice, allProjects, variationsToInvoice) {
+    const main = document.getElementById('mainContent');
+
+    // Calculate stats
+    const totalInvoices = invoices.length;
+    const pendingInvoices = invoices.filter(i => i.paymentStatus === 'pending').length;
+    const paidInvoices = invoices.filter(i => i.paymentStatus === 'fully_paid').length;
+    const overdueInvoices = invoices.filter(i => {
+        if (i.paymentStatus === 'fully_paid') return false;
+        if (!i.paymentDueDate) return false;
+        const due = i.paymentDueDate?.toDate ? i.paymentDueDate.toDate() : new Date(i.paymentDueDate);
+        return due < new Date();
+    }).length;
+    const totalAmount = invoices.reduce((sum, i) => sum + (parseFloat(i.invoiceAmount) || 0), 0);
+    const paidAmount = invoices.filter(i => i.paymentStatus === 'fully_paid').reduce((sum, i) => sum + (parseFloat(i.invoiceAmount) || 0), 0);
+
+    // Projects to invoice HTML
+    const projectsToInvoiceHtml = projectsToInvoice.length > 0 ? projectsToInvoice.map(p => `
+        <tr>
+            <td><strong>${p.projectName || 'N/A'}</strong></td>
+            <td>${p.clientCompany || 'N/A'}</td>
+            <td>${p.projectCode || 'N/A'}</td>
+            <td><span class="proposal-status status-${(p.status || 'active').toLowerCase()}">${p.status || 'active'}</span></td>
+            <td>
+                <button class="btn btn-success btn-sm" onclick="showCreateInvoiceModalNew('${p.id}')">
+                    Create Invoice
+                </button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="5" class="text-center">No projects pending invoicing.</td></tr>';
+
+    // Variations to invoice HTML
+    const variationsHtml = variationsToInvoice.length > 0 ? variationsToInvoice.map(v => {
+        const hasAccountsUpdate = !!v.accountsUpdatedAt;
+        const amt = v.amount ? `${v.currency || ''} ${Number(v.amount).toLocaleString('en-AU', {minimumFractionDigits:2})}` : '<span style="color:#94a3b8;">Not set</span>';
+        return `
+        <tr>
+            <td>
+                <strong>${v.variationCode || 'N/A'}</strong>
+                ${hasAccountsUpdate ? `<br><small style="color:#10b981;">✓ Updated by Accounts</small>` : ''}
+            </td>
+            <td>${v.parentProjectName || 'N/A'}</td>
+            <td>${v.clientCompany || 'N/A'}${v.clientName ? `<br><small>${v.clientName}</small>` : ''}</td>
+            <td>${v.estimatedHours || 0} hrs</td>
+            <td>${amt}</td>
+            <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="showAccountsUpdateVariationModal('${v.id}')">
+                        ✏️ Update Details
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="showCreateVariationInvoiceModal('${v.id}', '${v.parentProjectId}')">
+                        Create Invoice
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-center">No approved variations pending invoicing.</td></tr>';
+
+    // Existing invoices HTML
+    const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
+        const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
+        const dueDateStr = inv.paymentDueDate ? formatDate(inv.paymentDueDate) : 'N/A';
+        const isPaid = inv.paymentStatus === 'fully_paid';
+        return `
+        <tr>
+            <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
+            <td>${inv.projectName || 'N/A'}</td>
+            <td>${inv.clientCompany || 'N/A'}</td>
+            <td>${inv.bdmName || 'N/A'}</td>
+            <td>${inv.currency || 'USD'} ${parseFloat(inv.invoiceAmount || 0).toLocaleString()}</td>
+            <td>${dueDateStr}</td>
+            <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
+            <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View</button>
+                    <button class="btn btn-primary btn-sm" onclick="showEditInvoiceModal('${inv.id}')">Edit</button>
+                    <button class="btn btn-sm" onclick="showUpdatePaymentModal('${inv.id}')" style="background:#7c3aed;color:#fff;border:none;">Status</button>
+                    ${!isPaid ? `<button class="btn btn-sm" onclick="confirmDeleteInvoice('${inv.id}', '${(inv.invoiceNo || '').replace(/'/g, "\\'")}')" style="background:#ef4444;color:#fff;border:none;">Delete</button>` : ''}
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('') : '<tr><td colspan="8" class="text-center">No invoices created yet.</td></tr>';
+
+    main.innerHTML = `
+        <div class="page-header">
+            <h2>Accounts Portal</h2>
+            <div class="subtitle">Manage invoices, payments, and variations for all projects.</div>
+            <button class="btn btn-success" onclick="showCreateInvoiceModalNew()" style="margin-top:1rem;">
+                + Create New Invoice
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#2563eb;">${totalInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoices</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#f59e0b;">${pendingInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Pending</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#10b981;">${paidInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Paid</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#ef4444;">${overdueInvoices}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Overdue</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">USD ${totalAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoiced</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#10b981;">USD ${paidAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Collected</div>
+            </div>
+        </div>
+
+        <!-- Projects Ready for Invoicing -->
+        <div class="card" style="margin-bottom:2rem;">
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0;">Projects Ready for Invoicing</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Client</th>
+                            <th>Project Code</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${projectsToInvoiceHtml}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Approved Variations Ready for Invoicing -->
+        <div class="card" style="margin-bottom:2rem;">
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0;">Approved Variations - Ready for Invoicing</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Variation Code</th>
+                            <th>Parent Project</th>
+                            <th>Client</th>
+                            <th>Est. Hours</th>
+                            <th>Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${variationsHtml}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- All Invoices -->
+        <div class="card">
+            <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0;">All Invoices</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Project</th>
+                            <th>Client</th>
+                            <th>BDM</th>
+                            <th>Amount</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${invoicesHtml}</tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Renders the overview table for COO and DIRECTOR roles.
+ */
+function renderAccountsOverview(invoices) {
+    const main = document.getElementById('mainContent');
+
+    // Stats
+    const totalAmount = invoices.reduce((s, i) => s + (parseFloat(i.invoiceAmount) || 0), 0);
+    const paidCount = invoices.filter(i => i.paymentStatus === 'fully_paid').length;
+    const pendingCount = invoices.filter(i => i.paymentStatus === 'pending').length;
+
+    const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
+        const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
+        return `
+        <tr>
+            <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
+            <td>${inv.projectName || 'N/A'}</td>
+            <td>${inv.clientCompany || 'N/A'}</td>
+            <td>${inv.bdmName || 'N/A'}</td>
+            <td>${formatDate(inv.createdAt)}</td>
+            <td>${formatDate(inv.paymentDueDate)}</td>
+            <td>${inv.currency || 'USD'} ${parseFloat(inv.invoiceAmount || 0).toLocaleString()}</td>
+            <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View</button></td>
+        </tr>
+        `;
+    }).join('') : '<tr><td colspan="9" class="text-center">No invoices found.</td></tr>';
+
+    main.innerHTML = `
+        <div class="page-header">
+            <h2>Invoice Overview</h2>
+            <div class="subtitle">View all created project and variation invoices.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#2563eb;">${invoices.length}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoices</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#f59e0b;">${pendingCount}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Pending</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#10b981;">${paidCount}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Paid</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">USD ${totalAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoiced</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Project</th>
+                        <th>Client</th>
+                        <th>BDM</th>
+                        <th>Created</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>${invoicesHtml}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * Renders the BDM invoice view - shows invoices assigned to this BDM.
+ */
+function renderBDMInvoiceView(invoices) {
+    const main = document.getElementById('mainContent');
+
+    const totalAmount = invoices.reduce((s, i) => s + (parseFloat(i.invoiceAmount) || 0), 0);
+    const paidCount = invoices.filter(i => i.paymentStatus === 'fully_paid').length;
+
+    const invoicesHtml = invoices.length > 0 ? invoices.map(inv => {
+        const statusClass = (inv.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = inv.variationId ? '<span class="proposal-status status-pending" style="margin-left:6px;font-size:0.7rem;">VAR</span>' : '';
+        return `
+        <tr>
+            <td><strong>${inv.invoiceNo || 'N/A'}</strong>${isVariation}</td>
+            <td>${inv.projectName || 'N/A'}</td>
+            <td>${inv.clientCompany || 'N/A'}</td>
+            <td>${inv.currency || 'USD'} ${parseFloat(inv.invoiceAmount || 0).toLocaleString()}</td>
+            <td>${formatDate(inv.paymentDueDate)}</td>
+            <td><span class="proposal-status status-${statusClass}">${inv.paymentStatus || 'pending'}</span></td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewPayment('${inv.id}')">View Details</button></td>
+        </tr>
+        `;
+    }).join('') : '<tr><td colspan="7" class="text-center">No invoices found for your projects.</td></tr>';
+
+    main.innerHTML = `
+        <div class="page-header">
+            <h2>My Invoices</h2>
+            <div class="subtitle">Invoice details for your projects, updated by the accounts team.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#2563eb;">${invoices.length}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Invoices</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:2rem;font-weight:700;color:#10b981;">${paidCount}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Paid</div>
+            </div>
+            <div class="card" style="padding:1.2rem;text-align:center;">
+                <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">USD ${totalAmount.toLocaleString()}</div>
+                <div style="color:#64748b;font-size:0.85rem;">Total Value</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Project</th>
+                        <th>Client</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>${invoicesHtml}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * New Create Invoice Modal - supports project selection, BDM assignment, and variations.
+ * @param {string} preselectedProjectId - Optional project ID to preselect
+ */
+async function showCreateInvoiceModalNew(preselectedProjectId) {
+    try {
+        showLoading();
+
+        // Fetch projects and BDM users in parallel
+        const [projectsResp, bdmUsersResp] = await Promise.all([
+            apiCall('projects'),
+            apiCall('users?role=bdm')
+        ]);
+
+        const projects = projectsResp.success ? projectsResp.data : [];
+        const bdmUsers = bdmUsersResp.success ? bdmUsersResp.data : [];
+
+        hideLoading();
+
+        // Build project options
+        const projectOptions = projects.map(p =>
+            `<option value="${p.id}" ${p.id === preselectedProjectId ? 'selected' : ''}>${p.projectName} - ${p.clientCompany || 'N/A'} (${p.projectCode || 'N/A'})</option>`
+        ).join('');
+
+        // Build BDM options
+        const bdmOptions = bdmUsers.map(b =>
+            `<option value="${b.uid}" data-name="${b.name}" data-email="${b.email}">${b.name} (${b.email})</option>`
+        ).join('');
+
+        // Get preselected project details
+        const preProject = preselectedProjectId ? projects.find(p => p.id === preselectedProjectId) : null;
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 780px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">📄</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Create New Invoice</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Fill in the details below to generate a new invoice</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <form id="createInvoiceFormNew" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+
+                        <!-- Section: Project & Assignment -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Project & Assignment</div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Select Project <span style="color:#ef4444;">*</span></label>
+                                <select id="inv_projectId_new" class="form-control" required onchange="onProjectSelectChange()" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;transition:border-color 0.2s;">
+                                    <option value="">-- Select a Project --</option>
+                                    ${projectOptions}
+                                </select>
+                            </div>
+
+                            <div id="inv_projectInfo" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);padding:0.85rem 1rem;border-radius:10px;margin-bottom:1rem;border-left:4px solid #2563eb;${preProject ? '' : 'display:none;'}">
+                                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                    <span style="font-size:0.75rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;">Project Details</span>
+                                </div>
+                                <div id="inv_projectInfoContent" style="font-size:0.85rem;color:#334155;">
+                                    ${preProject ? `<div style="display:flex;flex-wrap:wrap;gap:1rem;"><span><strong>Client:</strong> ${preProject.clientCompany || 'N/A'}</span><span><strong>Code:</strong> ${preProject.projectCode || 'N/A'}</span><span><strong>Value:</strong> ${preProject.currency || 'USD'} ${preProject.quoteValue || 'N/A'}</span></div>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Assign BDM <span style="color:#ef4444;">*</span></label>
+                                <select id="inv_bdmUid" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
+                                    <option value="">-- Select BDM --</option>
+                                    ${bdmOptions}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Invoice Details -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Invoice Details</div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Number <span style="color:#ef4444;">*</span></label>
+                                    <input type="text" id="inv_invoiceNo_new" class="form-control" placeholder="e.g., INV-2026-001" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (USD) <span style="color:#ef4444;">*</span></label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <input type="number" id="inv_amount_new" class="form-control" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="inv_invoiceDate_new" class="form-control" value="${new Date().toISOString().split('T')[0]}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Due Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="inv_paymentDueDate_new" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Terms</label>
+                                <input type="text" id="inv_paymentTerms_new" class="form-control" placeholder="e.g., Net 30, 50% advance" value="Net 30" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                            </div>
+                        </div>
+
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Additional Information -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Additional Information</div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Milestone / Description</label>
+                                <textarea id="inv_milestoneDescription_new" class="form-control" rows="3" placeholder="e.g., Phase 1 completion, Final delivery" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Create Invoice</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Store projects data for dynamic use
+        window._invoiceProjects = projects;
+
+        // Auto-populate if preselected
+        if (preProject) {
+            onProjectSelectChange();
+            // Auto-select BDM if project has one
+            if (preProject.bdmUid) {
+                document.getElementById('inv_bdmUid').value = preProject.bdmUid;
+            }
+        }
+
+        document.getElementById('createInvoiceFormNew').addEventListener('submit', createInvoiceActionNew);
+    } catch (error) {
+        hideLoading();
+        alert(`Error loading invoice form: ${error.message}`);
+    }
+}
+
+/**
+ * Handles project selection change in the invoice modal - auto-populates info.
+ */
+function onProjectSelectChange() {
+    const projectId = document.getElementById('inv_projectId_new').value;
+    const infoDiv = document.getElementById('inv_projectInfo');
+    const infoContent = document.getElementById('inv_projectInfoContent');
+
+    if (!projectId || !window._invoiceProjects) {
+        infoDiv.style.display = 'none';
+        return;
+    }
+
+    const project = window._invoiceProjects.find(p => p.id === projectId);
+    if (project) {
+        infoDiv.style.display = 'block';
+        infoContent.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:1rem;"><span><strong>Client:</strong> ${project.clientCompany || 'N/A'}</span><span><strong>Code:</strong> ${project.projectCode || 'N/A'}</span><span><strong>Value:</strong> ${project.currency || 'USD'} ${project.quoteValue || 'N/A'}</span></div>`;
+        // Auto-select BDM if the project has one
+        if (project.bdmUid) {
+            const bdmSelect = document.getElementById('inv_bdmUid');
+            if (bdmSelect) bdmSelect.value = project.bdmUid;
+        }
+        // Auto-fill amount with quote value if available
+        const amountField = document.getElementById('inv_amount_new');
+        if (amountField && project.quoteValue && !amountField.value) {
+            amountField.value = project.quoteValue;
+        }
+    }
+}
+
+/**
+ * Creates a new invoice from the new modal form.
+ */
+async function createInvoiceActionNew(event) {
+    event.preventDefault();
+    showLoading();
+
+    const projectId = document.getElementById('inv_projectId_new').value;
+    const bdmSelect = document.getElementById('inv_bdmUid');
+    const selectedBdm = bdmSelect.options[bdmSelect.selectedIndex];
+    const bdmUid = bdmSelect.value;
+    const bdmName = selectedBdm ? selectedBdm.getAttribute('data-name') || '' : '';
+    const bdmEmail = selectedBdm ? selectedBdm.getAttribute('data-email') || '' : '';
+
+    const invoiceNo = document.getElementById('inv_invoiceNo_new').value;
+    const amount = parseFloat(document.getElementById('inv_amount_new').value);
+    const invoiceDate = document.getElementById('inv_invoiceDate_new').value;
+    const paymentDueDate = document.getElementById('inv_paymentDueDate_new').value;
+    const paymentTerms = document.getElementById('inv_paymentTerms_new').value;
+    const milestoneDescription = document.getElementById('inv_milestoneDescription_new').value;
+
+    if (!projectId || !invoiceNo || !amount || !invoiceDate || !paymentDueDate || !bdmUid) {
+        alert('Please fill out all required fields (*)');
+        hideLoading();
+        return;
+    }
+
+    try {
+        const response = await apiCall('payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                projectId,
+                invoiceNo,
+                invoiceDate,
+                amount,
+                paymentDueDate,
+                paymentTerms,
+                milestoneDescription,
+                bdmUid,
+                bdmName,
+                bdmEmail,
+                invoiceType: 'project'
+            })
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to create invoice');
+        }
+
+        // Send email notification
+        try {
+            const project = window._invoiceProjects ? window._invoiceProjects.find(p => p.id === projectId) : null;
+            await triggerEmailNotification('invoice.saved', {
+                projectId,
+                invoiceNumber: invoiceNo,
+                amount: 'USD ' + amount,
+                projectName: project ? project.projectName : '',
+                clientCompany: project ? project.clientCompany : '',
+                bdmEmail,
+                invoiceId: response.data?.id || ''
+            });
+        } catch (emailErr) {
+            console.warn('Email notification failed (non-blocking):', emailErr);
+        }
+
+        showNotification('Invoice created successfully! BDM has been notified.', 'success');
+        closeModal();
+        showPayments();
+    } catch (error) {
+        alert(`Error creating invoice: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Shows modal for Accounts to update financial & billing details on a variation.
+ */
+async function showAccountsUpdateVariationModal(variationId) {
+    try {
+        showLoading();
+        const response = await apiCall(`variations?id=${variationId}`);
+        if (!response.success || !response.data) throw new Error(response.error || 'Failed to load variation.');
+        const v = response.data;
+
+        // Populate modal
+        document.getElementById('acctVarId').value = variationId;
+        document.getElementById('acctVarInfo').innerHTML =
+            `<strong>${v.variationCode}</strong> — ${v.parentProjectName} (${v.clientCompany || ''})`;
+        document.getElementById('acctVarClientName').value = v.clientName || '';
+        document.getElementById('acctVarClientEmail').value = v.clientEmail || '';
+        document.getElementById('acctVarAmount').value = v.amount || '';
+        document.getElementById('acctVarCurrency').value = v.currency || '';
+        document.getElementById('acctVarAccountsDetails').value = v.accountsDetails || '';
+        document.getElementById('acctVarInvoiceRef').value = v.invoiceReference || '';
+        document.getElementById('acctVarPaymentTerms').value = v.paymentTerms || '';
+
+        document.getElementById('accountsUpdateVariationModal').style.display = 'flex';
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function submitAccountsVariationUpdate() {
+    const variationId = document.getElementById('acctVarId').value;
+    const data = {
+        clientName:      document.getElementById('acctVarClientName').value.trim(),
+        clientEmail:     document.getElementById('acctVarClientEmail').value.trim(),
+        amount:          document.getElementById('acctVarAmount').value,
+        currency:        document.getElementById('acctVarCurrency').value,
+        accountsDetails: document.getElementById('acctVarAccountsDetails').value.trim(),
+        invoiceReference:document.getElementById('acctVarInvoiceRef').value.trim(),
+        paymentTerms:    document.getElementById('acctVarPaymentTerms').value.trim()
+    };
+
+    try {
+        showLoading();
+        const response = await apiCall(`variations?id=${variationId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update_accounts_details', data })
+        });
+        if (!response.success) throw new Error(response.error || 'Update failed.');
+        document.getElementById('accountsUpdateVariationModal').style.display = 'none';
+        showSuccessModal('Details Updated', 'Variation accounts details have been saved. COO has been notified.');
+        await showPayments(); // refresh accounts portal
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Shows modal to create a variation invoice.
+ */
+async function showCreateVariationInvoiceModal(variationId, parentProjectId) {
+    try {
+        showLoading();
+
+        // Fetch variation details, project details, and BDM users
+        const [variationResp, projectResp, bdmUsersResp] = await Promise.all([
+            apiCall(`variations?id=${variationId}`),
+            apiCall(`projects?id=${parentProjectId}`),
+            apiCall('users?role=bdm')
+        ]);
+
+        hideLoading();
+
+        const variation = variationResp.success ? variationResp.data : null;
+        const project = projectResp.success ? projectResp.data : null;
+        const bdmUsers = bdmUsersResp.success ? bdmUsersResp.data : [];
+
+        if (!variation || !project) {
+            alert('Failed to load variation or project details.');
+            return;
+        }
+
+        // Build BDM options
+        const bdmOptions = bdmUsers.map(b =>
+            `<option value="${b.uid}" data-name="${b.name}" data-email="${b.email}" ${b.uid === project.bdmUid ? 'selected' : ''}>${b.name} (${b.email})</option>`
+        ).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 780px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">📋</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Create Variation Invoice</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Invoice for approved project variation</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <form id="createVariationInvoiceForm" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+                        <input type="hidden" id="var_inv_variationId" value="${variationId}">
+                        <input type="hidden" id="var_inv_projectId" value="${parentProjectId}">
+                        <input type="hidden" id="var_inv_variationCode" value="${variation.variationCode || ''}">
+
+                        <!-- Section: Variation Details -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Variation Details</div>
+                            <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);padding:0.85rem 1rem;border-radius:10px;border-left:4px solid #2563eb;">
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;font-size:0.85rem;color:#334155;">
+                                    <span><strong>Code:</strong> ${variation.variationCode || 'N/A'}</span>
+                                    <span><strong>Project:</strong> ${variation.parentProjectName || project.projectName || 'N/A'}</span>
+                                    <span><strong>Client:</strong> ${variation.clientCompany || project.clientCompany || 'N/A'}</span>
+                                    <span><strong>Est. Hours:</strong> ${variation.estimatedHours || 0}</span>
+                                </div>
+                                <div style="font-size:0.85rem;color:#334155;margin-top:0.5rem;"><strong>Scope:</strong> ${variation.scopeDescription || 'N/A'}</div>
+                            </div>
+                        </div>
+
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Assignment & Invoice -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Invoice Details</div>
+
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Assign BDM <span style="color:#ef4444;">*</span></label>
+                                <select id="var_inv_bdmUid" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
+                                    <option value="">-- Select BDM --</option>
+                                    ${bdmOptions}
+                                </select>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Number <span style="color:#ef4444;">*</span></label>
+                                    <input type="text" id="var_inv_invoiceNo" class="form-control" placeholder="e.g., VAR-INV-001" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (USD) <span style="color:#ef4444;">*</span></label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <input type="number" id="var_inv_amount" class="form-control" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="var_inv_invoiceDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Due Date <span style="color:#ef4444;">*</span></label>
+                                    <input type="date" id="var_inv_paymentDueDate" class="form-control" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Terms</label>
+                                <input type="text" id="var_inv_paymentTerms" class="form-control" placeholder="e.g., Net 30" value="Net 30" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                            </div>
+                        </div>
+
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Notes -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Additional Information</div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Description / Notes</label>
+                                <textarea id="var_inv_description" class="form-control" rows="3" placeholder="Variation invoice notes..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Create Variation Invoice</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('createVariationInvoiceForm').addEventListener('submit', createVariationInvoiceAction);
+
+    } catch (error) {
+        hideLoading();
+        alert(`Error: ${error.message}`);
+    }
+}
+
+/**
+ * Creates a variation invoice.
+ */
+async function createVariationInvoiceAction(event) {
+    event.preventDefault();
+    showLoading();
+
+    const variationId = document.getElementById('var_inv_variationId').value;
+    const projectId = document.getElementById('var_inv_projectId').value;
+    const variationCode = document.getElementById('var_inv_variationCode').value;
+    const bdmSelect = document.getElementById('var_inv_bdmUid');
+    const selectedBdm = bdmSelect.options[bdmSelect.selectedIndex];
+    const bdmUid = bdmSelect.value;
+    const bdmName = selectedBdm ? selectedBdm.getAttribute('data-name') || '' : '';
+    const bdmEmail = selectedBdm ? selectedBdm.getAttribute('data-email') || '' : '';
+
+    const invoiceNo = document.getElementById('var_inv_invoiceNo').value;
+    const amount = parseFloat(document.getElementById('var_inv_amount').value);
+    const invoiceDate = document.getElementById('var_inv_invoiceDate').value;
+    const paymentDueDate = document.getElementById('var_inv_paymentDueDate').value;
+    const paymentTerms = document.getElementById('var_inv_paymentTerms').value;
+    const milestoneDescription = document.getElementById('var_inv_description').value;
+
+    if (!projectId || !invoiceNo || !amount || !invoiceDate || !paymentDueDate || !bdmUid) {
+        alert('Please fill out all required fields (*)');
+        hideLoading();
+        return;
+    }
+
+    try {
+        const response = await apiCall('payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                projectId,
+                invoiceNo,
+                invoiceDate,
+                amount,
+                paymentDueDate,
+                paymentTerms,
+                milestoneDescription,
+                bdmUid,
+                bdmName,
+                bdmEmail,
+                invoiceType: 'variation',
+                variationId,
+                variationCode
+            })
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to create variation invoice');
+        }
+
+        showNotification('Variation invoice created! BDM has been notified.', 'success');
+        closeModal();
+        showPayments();
+    } catch (error) {
+        alert(`Error creating variation invoice: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Legacy create invoice modal - redirects to new modal.
+ */
+async function showCreateInvoiceModal(projectId, proposalId) {
+    showCreateInvoiceModalNew(projectId);
+}
+
+/**
+ * Legacy create invoice action - handled by new flow.
+ */
+async function createInvoiceAction(event) {
+    event.preventDefault();
+    // Redirect to new flow
+    alert('Please use the new invoice creation form.');
+}
+
+/**
+ * Shows a read-only modal with invoice details.
+ */
+async function viewPayment(paymentId) {
+    try {
+        showLoading();
+        const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`);
+        if (!success || !invoice) {
+            throw new Error('Failed to load invoice details');
+        }
+        hideLoading();
+
+        const statusClass = (invoice.paymentStatus || 'pending').toLowerCase().replace(/ /g, '-');
+        const isVariation = invoice.variationId ? `<span class="proposal-status status-pending" style="margin-left:8px;">VARIATION: ${invoice.variationCode || 'N/A'}</span>` : '';
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 800px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">📄</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Invoice #${invoice.invoiceNo || 'N/A'} ${isVariation}</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Project: ${invoice.projectName || 'N/A'}</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <div class="modal-body" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+                        <div style="margin-bottom: 1.5rem;">
+                            <strong>Status:</strong>
+                            <span class="proposal-status status-${statusClass}" style="margin-left:4px;">
+                                ${invoice.paymentStatus || 'pending'}
+                            </span>
+                        </div>
+
+                        <div class="allocation-details-section">
+                            <h3>Invoice Details</h3>
+                            <div class="details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                                <div class="detail-item">
+                                    <label>Client:</label>
+                                    <span class="detail-value">${invoice.clientCompany || 'N/A'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Project Code:</label>
+                                    <span class="detail-value">${invoice.projectCode || 'N/A'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Invoice Amount:</label>
+                                    <span class="detail-value">${invoice.currency || 'USD'} ${parseFloat(invoice.invoiceAmount || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Quote Value:</label>
+                                    <span class="detail-value">${invoice.currency || 'USD'} ${parseFloat(invoice.quoteValue || 0).toLocaleString()}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Invoice Date:</label>
+                                    <span class="detail-value">${formatDate(invoice.invoiceDate)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Due Date:</label>
+                                    <span class="detail-value">${formatDate(invoice.paymentDueDate)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Payment Terms:</label>
+                                    <span class="detail-value">${invoice.paymentTerms || 'N/A'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Balance Outstanding:</label>
+                                    <span class="detail-value">${invoice.currency || 'USD'} ${parseFloat(invoice.balanceOutstanding || 0).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BDM Info Section -->
+                        <div class="allocation-details-section" style="margin-top:1.5rem;">
+                            <h3>BDM Information</h3>
+                            <div class="details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                                <div class="detail-item">
+                                    <label>BDM Name:</label>
+                                    <span class="detail-value">${invoice.bdmName || 'Not Assigned'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <label>BDM Email:</label>
+                                    <span class="detail-value">${invoice.bdmEmail || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${invoice.milestoneDescription ? `
+                        <div class="allocation-details-section" style="margin-top:1.5rem;">
+                            <h3>Description / Notes</h3>
+                            <p style="white-space:pre-wrap;">${invoice.milestoneDescription}</p>
+                        </div>
+                        ` : ''}
+
+                        ${invoice.remarks ? `
+                        <div class="allocation-details-section" style="margin-top:1.5rem;">
+                            <h3>Remarks</h3>
+                            <p style="white-space:pre-wrap;">${invoice.remarks}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" onclick="closeModal()" class="btn btn-outline">Close</button>
+                        ${currentUserRole === 'accounts' ? `
+                            <button type="button" onclick="closeModal(); showUpdatePaymentModal('${invoice.id}');" class="btn btn-primary">Update Status</button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    } catch (error) {
+        hideLoading();
+        alert(`Error viewing invoice: ${error.message}`);
+    }
+}
+
+/**
+ * Shows the modal for an Accountant to update the status of an existing invoice.
+ */
+async function showUpdatePaymentModal(paymentId) {
+    try {
+        showLoading();
+        const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`);
+        if (!success || !invoice) throw new Error('Failed to load invoice');
+        hideLoading();
+
+        closeModal();
+
+        const currentStatus = invoice.paymentStatus || 'pending';
+        const modalHtml = `
+           <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 580px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">🔄</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Update Payment Status</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Invoice #${invoice.invoiceNo || 'N/A'} &bull; ${invoice.projectName || ''}</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <form id="updatePaymentForm" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+
+                        <!-- Current Info Card -->
+                        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);padding:0.85rem 1rem;border-radius:10px;margin-bottom:1.5rem;border-left:4px solid #2563eb;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.5rem;font-size:0.85rem;color:#334155;">
+                                <span><strong>Current Status:</strong> <span class="proposal-status status-${currentStatus}" style="margin-left:4px;">${currentStatus}</span></span>
+                                <span><strong>BDM:</strong> ${invoice.bdmName || 'N/A'}</span>
+                                <span style="grid-column:span 2;"><strong>Amount:</strong> ${invoice.currency || 'USD'} ${parseFloat(invoice.invoiceAmount || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <!-- Status Update -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Update Status</div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">New Status</label>
+                                <select id="paymentStatus" class="form-control" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;background:#fff;">
+                                    <option value="Pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="Submitted" ${currentStatus === 'submitted' ? 'selected' : ''}>Submitted</option>
+                                    <option value="Paid" ${currentStatus === 'fully_paid' ? 'selected' : ''}>Paid</option>
+                                    <option value="Partially Paid" ${currentStatus === 'partially_paid' ? 'selected' : ''}>Partially Paid</option>
+                                    <option value="Overdue" ${currentStatus === 'delayed' ? 'selected' : ''}>Overdue</option>
+                                    <option value="Cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Update Notes</label>
+                                <textarea id="paymentNotes" class="form-control" rows="3" placeholder="Add a note about this update..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Save Update</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        document.getElementById('updatePaymentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            updatePaymentAction(paymentId);
+        });
+
+    } catch (error) {
+        hideLoading();
+        alert(`Error: ${error.message}`);
+    }
+}
+
+/**
+ * Handles the submission of the payment status update.
+ */
+async function updatePaymentAction(paymentId) {
+    const newStatus = document.getElementById('paymentStatus').value;
+    const notes = document.getElementById('paymentNotes').value;
+
+    try {
+        showLoading();
+        const response = await apiCall(`payments?id=${paymentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                status: newStatus,
+                notes: notes
+            })
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to update payment status');
+        }
+
+        showNotification('Payment status updated! BDM has been notified.', 'success');
+        closeModal();
+        showPayments();
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+/**
+ * Shows the Edit Invoice modal with pre-filled data.
+ */
+async function showEditInvoiceModal(paymentId) {
+    try {
+        showLoading();
+        const { success, data: invoice } = await apiCall(`payments?id=${paymentId}`);
+        if (!success || !invoice) throw new Error('Failed to load invoice');
+        hideLoading();
+
+        closeModal();
+
+        const invoiceDateVal = invoice.invoiceDate ? (typeof invoice.invoiceDate === 'string' ? invoice.invoiceDate : (invoice.invoiceDate.toDate ? invoice.invoiceDate.toDate().toISOString().split('T')[0] : new Date(invoice.invoiceDate).toISOString().split('T')[0])) : '';
+        const dueDateVal = invoice.paymentDueDate ? (typeof invoice.paymentDueDate === 'string' ? invoice.paymentDueDate : (invoice.paymentDueDate.toDate ? invoice.paymentDueDate.toDate().toISOString().split('T')[0] : new Date(invoice.paymentDueDate).toISOString().split('T')[0])) : '';
+
+        const modalHtml = `
+           <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+                <div class="modal-content" style="max-width: 780px; border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); padding: 1.5rem 2rem; border-radius: 16px 16px 0 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">✏️</div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-0.01em;">Edit Invoice</h2>
+                                <p style="margin:0;font-size:0.8rem;opacity:0.8;font-weight:400;">Invoice #${invoice.invoiceNo || 'N/A'} &bull; ${invoice.projectName || ''}</p>
+                            </div>
+                        </div>
+                        <span class="close" onclick="closeModal()" style="margin:0;">&times;</span>
+                    </div>
+                    <form id="editInvoiceForm" style="padding: 1.75rem 2rem; overflow-y: auto; max-height: calc(85vh - 80px);">
+
+                        <!-- Section: Invoice Details -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Invoice Details</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Number <span style="color:#ef4444;">*</span></label>
+                                    <input type="text" id="edit_invoiceNo" class="form-control" value="${invoice.invoiceNo || ''}" required style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Amount (${invoice.currency || 'USD'}) <span style="color:#ef4444;">*</span></label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;font-size:0.9rem;">$</span>
+                                        <input type="number" id="edit_invoiceAmount" class="form-control" value="${invoice.invoiceAmount || 0}" step="0.01" min="0" required style="padding:0.7rem 1rem 0.7rem 1.75rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Invoice Date</label>
+                                    <input type="date" id="edit_invoiceDate" class="form-control" value="${invoiceDateVal}" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Due Date</label>
+                                    <input type="date" id="edit_paymentDueDate" class="form-control" value="${dueDateVal}" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Payment Terms</label>
+                                <input type="text" id="edit_paymentTerms" class="form-control" value="${invoice.paymentTerms || ''}" placeholder="e.g., Net 30" style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;">
+                            </div>
+                        </div>
+
+                        <div style="height:1px;background:#e2e8f0;margin-bottom:1.5rem;"></div>
+
+                        <!-- Section: Additional Information -->
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">Additional Information</div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Milestone / Description</label>
+                                <textarea id="edit_milestoneDescription" class="form-control" rows="2" placeholder="Invoice description..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;">${invoice.milestoneDescription || ''}</textarea>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:6px;display:block;">Remarks</label>
+                                <textarea id="edit_remarks" class="form-control" rows="2" placeholder="Additional remarks..." style="padding:0.7rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;resize:vertical;">${invoice.remarks || ''}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:1px solid #e2e8f0;">
+                            <button type="button" onclick="closeModal()" class="btn" style="padding:0.7rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;">Cancel</button>
+                            <button type="submit" class="btn" style="padding:0.7rem 1.75rem;border:none;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                                <span>Save Changes</span>
+                                <span style="font-size:1rem;">→</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        document.getElementById('editInvoiceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveEditedInvoice(paymentId);
+        });
+
+    } catch (error) {
+        hideLoading();
+        alert(`Error: ${error.message}`);
+    }
+}
+
+/**
+ * Saves the edited invoice data.
+ */
+async function saveEditedInvoice(paymentId) {
+    const invoiceNo = document.getElementById('edit_invoiceNo').value;
+    const invoiceAmount = document.getElementById('edit_invoiceAmount').value;
+    const invoiceDate = document.getElementById('edit_invoiceDate').value;
+    const paymentDueDate = document.getElementById('edit_paymentDueDate').value;
+    const paymentTerms = document.getElementById('edit_paymentTerms').value;
+    const milestoneDescription = document.getElementById('edit_milestoneDescription').value;
+    const remarks = document.getElementById('edit_remarks').value;
+
+    if (!invoiceNo || !invoiceAmount) {
+        alert('Invoice number and amount are required.');
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`payments?id=${paymentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'edit_invoice',
+                data: {
+                    invoiceNo,
+                    invoiceAmount: parseFloat(invoiceAmount),
+                    invoiceDate,
+                    paymentDueDate,
+                    paymentTerms,
+                    milestoneDescription,
+                    remarks
+                }
+            })
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to update invoice');
+        }
+
+        showNotification('Invoice updated successfully!', 'success');
+        closeModal();
+        showPayments();
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Confirms and deletes an invoice.
+ */
+async function confirmDeleteInvoice(paymentId, invoiceNo) {
+    if (!confirm(`Are you sure you want to delete Invoice #${invoiceNo}?\n\nThis action cannot be undone. Paid invoices cannot be deleted.`)) {
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`payments?id=${paymentId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to delete invoice');
+        }
+
+        showNotification('Invoice deleted successfully.', 'success');
+        showPayments();
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============================================
+// SUBVENTORS MODULE
+// ============================================
+
+async function showSubventors() {
+    setActiveNav('nav-subventors');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const res = await apiCall('subventors');
+        const subs = res.success ? res.data : [];
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
+
+        const pending = subs.filter(s => s.paymentStatus === 'pending').length;
+        const partial = subs.filter(s => s.paymentStatus === 'partial').length;
+        const paid = subs.filter(s => s.paymentStatus === 'paid').length;
+        const totalPO = subs.reduce((s,v) => s + (parseFloat(v.poAmount)||0), 0);
+        const totalPaid = subs.reduce((s,v) => s + (parseFloat(v.totalPaid)||0), 0);
+
+        const rows = subs.length > 0 ? subs.map(s => `
+            <tr>
+                <td><strong>${s.vendorCompany||'N/A'}</strong><br><span style="font-size:0.75rem;color:#64748b">${s.vendorName||''}</span></td>
+                <td>${s.projectName||'N/A'}</td>
+                <td>${s.poNumber||'N/A'}</td>
+                <td>${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</td>
+                <td>${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</td>
+                <td>${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</td>
+                <td><span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></td>
+                <td>${s.poFileUrl ? '<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm">View P.O.</a>' : '<span style="color:#94a3b8;font-size:0.8rem">No P.O.</span>'}</td>
+                <td>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button class="btn btn-outline btn-sm" onclick="viewSubventor('${s.id}')">View</button>
+                        ${isAcct ? `<button class="btn btn-primary btn-sm" onclick="showRecordSubventorPaymentModal('${s.id}')">Pay</button>
+                        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;" onclick="showUploadPOModal('${s.id}')">P.O.</button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="9" class="text-center">No subvendors added yet.</td></tr>';
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Subvendor Management</h2>
+                <div class="subtitle">Manage sub-contractors, purchase orders, and payment tracking.</div>
+                ${isAcct ? '<button class="btn btn-success" onclick="showAddSubventorModal()" style="margin-top:1rem;">+ Add Subvendor</button>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#2563eb;">${subs.length}</div><div style="color:#64748b;font-size:0.8rem;">Total</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#f59e0b;">${pending}</div><div style="color:#64748b;font-size:0.8rem;">Pending</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#8b5cf6;">${partial}</div><div style="color:#64748b;font-size:0.8rem;">Partial</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#10b981;">${paid}</div><div style="color:#64748b;font-size:0.8rem;">Paid</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.1rem;font-weight:700;color:#2563eb;">INR ${totalPO.toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total P.O. Value</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.1rem;font-weight:700;color:#10b981;">INR ${totalPaid.toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total Paid</div></div>
+            </div>
+            <div class="card"><div style="overflow-x:auto;">
+                <table class="data-table"><thead><tr>
+                    <th>Vendor</th><th>Project</th><th>P.O. #</th><th>P.O. Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th>P.O. File</th><th>Actions</th>
+                </tr></thead><tbody>${rows}</tbody></table>
+            </div></div>`;
+    } catch(e) {
+        main.innerHTML = '<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>';
+    } finally { hideLoading(); }
+}
+
+async function showAddSubventorModal() {
+    let projectOptions = '<option value="">-- None --</option>';
+    try {
+        const pr = await apiCall('projects');
+        if(pr.success) projectOptions += pr.data.map(p=>'<option value="'+p.id+'" data-name="'+p.projectName+'" data-code="'+(p.projectCode||'')+'">'+p.projectName+' ('+( p.projectCode||'N/A')+')</option>').join('');
+    } catch(e){}
+
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:700px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">Add New Subvendor</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter vendor details and purchase order info</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitAddSubventor(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Vendor Information</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Vendor Name *</label><input id="sv_name" class="form-control" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Company *</label><input id="sv_company" class="form-control" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Email</label><input id="sv_email" class="form-control" type="email"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Phone</label><input id="sv_phone" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Number</label><input id="sv_gst" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">PAN</label><input id="sv_pan" class="form-control"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Address</label><textarea id="sv_address" class="form-control" rows="2"></textarea></div>
+                    <div style="height:1px;background:#e2e8f0;margin-bottom:1rem;"></div>
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.5rem;">Purchase Order Details</div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Link to Project</label><select id="sv_project" class="form-control">${projectOptions}</select></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="sv_poNum" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Date</label><input id="sv_poDate" class="form-control" type="date"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">P.O. Amount</label><input id="sv_poAmt" class="form-control" type="number" step="0.01"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Currency</label><select id="sv_poCur" class="form-control"><option value="INR">INR</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="GBP">GBP</option></select></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Scope of Work</label><textarea id="sv_scope" class="form-control" rows="2"></textarea></div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload P.O. Document (PDF)</label><input id="sv_poFile" type="file" accept=".pdf" class="form-control"></div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="sv_remarks" class="form-control"></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Subvendor</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitAddSubventor(e) {
+    e.preventDefault();
+    showLoading();
+    try {
+        const projSel = document.getElementById('sv_project');
+        const selOpt = projSel.selectedOptions[0];
+        let poFileBase64='', poFileName='';
+        const fileInput = document.getElementById('sv_poFile');
+        if(fileInput.files.length>0){
+            const file = fileInput.files[0];
+            poFileName = file.name;
+            poFileBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        }
+        const body = {
+            vendorName: document.getElementById('sv_name').value,
+            vendorCompany: document.getElementById('sv_company').value,
+            vendorEmail: document.getElementById('sv_email').value,
+            vendorPhone: document.getElementById('sv_phone').value,
+            vendorGST: document.getElementById('sv_gst').value,
+            vendorPAN: document.getElementById('sv_pan').value,
+            vendorAddress: document.getElementById('sv_address').value,
+            projectId: projSel.value,
+            projectName: selOpt?.dataset?.name||'',
+            projectCode: selOpt?.dataset?.code||'',
+            poNumber: document.getElementById('sv_poNum').value,
+            poDate: document.getElementById('sv_poDate').value,
+            poAmount: document.getElementById('sv_poAmt').value,
+            poCurrency: document.getElementById('sv_poCur').value,
+            scopeOfWork: document.getElementById('sv_scope').value,
+            remarks: document.getElementById('sv_remarks').value,
+            poFileBase64, poFileName
+        };
+        const resp = await apiCall('subventors',{method:'POST',body:JSON.stringify(body)});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal();
+        showNotification('Subvendor added successfully!','success');
+        showSubventors();
+    } catch(err){ alert('Error: '+err.message); }
+    finally{ hideLoading(); }
+}
+
+async function viewSubventor(id) {
+    showLoading();
+    try {
+        const res = await apiCall('subventors/'+id);
+        if(!res.success) throw new Error(res.error);
+        const s = res.data;
+        const history = (s.paymentHistory||[]).map(p=>`
+            <tr><td>${p.paymentDate||'N/A'}</td><td>${s.poCurrency||'INR'} ${parseFloat(p.amount).toLocaleString()}</td><td>${p.paymentMethod||'N/A'}</td><td>${p.referenceNo||'-'}</td><td>${p.recordedBy||'N/A'}</td></tr>
+        `).join('')||'<tr><td colspan="5" class="text-center">No payments recorded yet.</td></tr>';
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+                <div class="modal-content" style="max-width:750px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                        <div><h2 style="margin:0;font-size:1.2rem;">Subvendor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
+                        <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                    </div>
+                    <div style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+                            <div><strong>Vendor:</strong> ${s.vendorName}</div>
+                            <div><strong>Company:</strong> ${s.vendorCompany}</div>
+                            <div><strong>Email:</strong> ${s.vendorEmail||'N/A'}</div>
+                            <div><strong>Phone:</strong> ${s.vendorPhone||'N/A'}</div>
+                            <div><strong>GST:</strong> ${s.vendorGST||'N/A'}</div>
+                            <div><strong>PAN:</strong> ${s.vendorPAN||'N/A'}</div>
+                            <div><strong>Project:</strong> ${s.projectName||'N/A'}</div>
+                            <div><strong>P.O. #:</strong> ${s.poNumber||'N/A'}</div>
+                            <div><strong>P.O. Amount:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</div>
+                            <div><strong>Total Paid:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</div>
+                            <div><strong>Balance:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</div>
+                            <div><strong>Status:</strong> <span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></div>
+                        </div>
+                        ${s.poFileUrl?'<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm" style="margin-bottom:1rem;">Download P.O. Document</a>':''}
+                        <h4 style="margin:1rem 0 0.5rem;">Payment History</h4>
+                        <table class="data-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Ref #</th><th>Recorded By</th></tr></thead><tbody>${history}</tbody></table>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch(err){ alert('Error: '+err.message); }
+    finally{ hideLoading(); }
+}
+
+function showRecordSubventorPaymentModal(id) {
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:550px;width:95%;border-radius:16px;overflow:hidden;background:#fff;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#059669,#10b981);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">Record Payment</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Enter payment details for this subvendor</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitSubventorPayment(event,'${id}')" style="padding:1.5rem 2rem;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="sp_amount" class="form-control" type="number" step="0.01" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Date *</label><input id="sp_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label><select id="sp_method" class="form-control"><option value="bank_transfer">Bank Transfer</option><option value="cheque">Cheque</option><option value="upi">UPI</option><option value="cash">Cash</option></select></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="sp_ref" class="form-control"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Notes</label><input id="sp_notes" class="form-control"></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Record Payment</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitSubventorPayment(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const resp = await apiCall('subventors/'+id,{method:'PUT',body:JSON.stringify({
+            action:'record_payment', data:{
+                amount: document.getElementById('sp_amount').value,
+                paymentDate: document.getElementById('sp_date').value,
+                paymentMethod: document.getElementById('sp_method').value,
+                referenceNo: document.getElementById('sp_ref').value,
+                notes: document.getElementById('sp_notes').value
+            }
+        })});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Payment recorded!','success'); showSubventors();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+function showUploadPOModal(id) {
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:500px;width:95%;border-radius:16px;overflow:hidden;background:#fff;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">Upload Purchase Order</h2></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitUploadPO(event,'${id}')" style="padding:1.5rem 2rem;">
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. Number</label><input id="po_num" class="form-control"></div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">P.O. File (PDF) *</label><input id="po_file" type="file" accept=".pdf" class="form-control" required></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Upload P.O.</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitUploadPO(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const file = document.getElementById('po_file').files[0];
+        const poFileBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        const resp = await apiCall('subventors/'+id,{method:'PUT',body:JSON.stringify({
+            action:'upload_po', data:{ poFileBase64, poFileName:file.name, poNumber:document.getElementById('po_num').value }
+        })});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('P.O. uploaded!','success'); showSubventors();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+// ============================================
+// DAILY EXPENSES MODULE
+// ============================================
+
+async function showDailyExpenses() {
+    setActiveNav('nav-daily-expenses');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const now = new Date();
+        const res = await apiCall('daily-expenses?month='+(now.getMonth()+1)+'&year='+now.getFullYear());
+        const expenses = res.success ? res.data : [];
+        const summary = res.summary || {};
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
+
+        const catBreakdown = summary.categoryBreakdown || {};
+        const catHtml = Object.keys(catBreakdown).map(c=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #f1f5f9;"><span>${c}</span><strong>INR ${catBreakdown[c].toLocaleString()}</strong></div>`).join('')||'<div style="color:#94a3b8;">No expenses this month</div>';
+
+        const rows = expenses.length > 0 ? expenses.map(ex=>`
+            <tr>
+                <td>${ex.expenseDate||'N/A'}</td>
+                <td><span class="proposal-status status-${ex.category?.toLowerCase().replace(/\s/g,'-')||'other'}" style="font-size:0.75rem;">${ex.category||'N/A'}</span></td>
+                <td>${ex.description||'N/A'}</td>
+                <td>${ex.paidTo||'N/A'}</td>
+                <td><strong>${ex.currency||'INR'} ${(parseFloat(ex.amount)||0).toLocaleString()}</strong></td>
+                <td>${ex.paymentMethod||'N/A'}</td>
+                <td><span class="proposal-status status-${ex.status||'recorded'}">${ex.status||'recorded'}</span></td>
+                <td>
+                    ${['coo','director'].includes(currentUserRole) && ex.status==='recorded' ? `<button class="btn btn-sm btn-success" onclick="approveExpense('${ex.id}')">Approve</button>` : ''}
+                    ${isAcct && ex.status!=='approved' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;" onclick="deleteExpense('${ex.id}')">Del</button>` : ''}
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="8" class="text-center">No expenses recorded this month.</td></tr>';
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Daily Expenses</h2>
+                <div class="subtitle">Track and manage daily business expenses for ${now.toLocaleString('default',{month:'long'})} ${now.getFullYear()}</div>
+                ${isAcct ? '<button class="btn btn-success" onclick="showAddExpenseModal()" style="margin-top:1rem;">+ Add Expense</button>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#2563eb;">${expenses.length}</div><div style="color:#64748b;font-size:0.8rem;">Entries</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#ef4444;">INR ${(summary.totalAmount||0).toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total This Month</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.8rem;font-weight:700;color:#10b981;">${expenses.filter(e=>e.status==='approved').length}</div><div style="color:#64748b;font-size:0.8rem;">Approved</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;">
+                <div class="card" style="padding:1.2rem;"><h4 style="margin:0 0 0.75rem;">Category Breakdown</h4>${catHtml}</div>
+                <div class="card"><div style="overflow-x:auto;">
+                    <table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Method</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${rows}</tbody></table>
+                </div></div>
+            </div>`;
+    } catch(e) { main.innerHTML='<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    finally { hideLoading(); }
+}
+
+function showAddExpenseModal() {
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:600px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">Add Daily Expense</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">Record a new business expense</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitAddExpense(event)" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="ex_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category *</label>
+                            <select id="ex_cat" class="form-control" required>
+                                <option value="">-- Select --</option>
+                                <option value="Office Supplies">Office Supplies</option>
+                                <option value="Travel">Travel</option>
+                                <option value="Food & Beverages">Food & Beverages</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Software & Subscriptions">Software & Subscriptions</option>
+                                <option value="Internet & Phone">Internet & Phone</option>
+                                <option value="Printing">Printing</option>
+                                <option value="Courier & Postage">Courier & Postage</option>
+                                <option value="Miscellaneous">Miscellaneous</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="ex_amt" class="form-control" type="number" step="0.01" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="ex_paidTo" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label>
+                            <select id="ex_method" class="form-control"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="upi">UPI</option><option value="card">Card</option><option value="cheque">Cheque</option></select>
+                        </div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="ex_ref" class="form-control"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="ex_desc" class="form-control"></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Applicable?</label><select id="ex_gst" class="form-control"><option value="false">No</option><option value="true">Yes</option></select></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">GST Amount</label><input id="ex_gstAmt" class="form-control" type="number" step="0.01" value="0"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="ex_remarks" class="form-control"></div>
+                    <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Add Expense</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitAddExpense(e) {
+    e.preventDefault(); showLoading();
+    try {
+        const resp = await apiCall('daily-expenses',{method:'POST',body:JSON.stringify({
+            expenseDate: document.getElementById('ex_date').value,
+            category: document.getElementById('ex_cat').value,
+            amount: document.getElementById('ex_amt').value,
+            paidTo: document.getElementById('ex_paidTo').value,
+            paymentMethod: document.getElementById('ex_method').value,
+            referenceNo: document.getElementById('ex_ref').value,
+            description: document.getElementById('ex_desc').value,
+            gstApplicable: document.getElementById('ex_gst').value==='true',
+            gstAmount: document.getElementById('ex_gstAmt').value,
+            remarks: document.getElementById('ex_remarks').value
+        })});
+        if(!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Expense added!','success'); showDailyExpenses();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+async function approveExpense(id) {
+    if(!confirm('Approve this expense?')) return;
+    showLoading();
+    try {
+        const resp = await apiCall('daily-expenses/'+id,{method:'PUT',body:JSON.stringify({action:'approve'})});
+        if(!resp.success) throw new Error(resp.error);
+        showNotification('Expense approved!','success'); showDailyExpenses();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+async function deleteExpense(id) {
+    if(!confirm('Delete this expense?')) return;
+    showLoading();
+    try {
+        const resp = await apiCall('daily-expenses/'+id,{method:'DELETE'});
+        if(!resp.success) throw new Error(resp.error);
+        showNotification('Expense deleted!','success'); showDailyExpenses();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+// ============================================
+// P.O. TRACKER MODULE - View P.O.s uploaded by BDM (HR & Accounts)
+// =====================================================================
+async function showPOTracker() {
+    setActiveNav('nav-po-tracker');
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div style="text-align:center;padding:3rem;"><div class="spinner"></div><p>Loading P.O. Tracker...</p></div>';
+    try {
+        const res = await apiCall('proposals');
+        if (!res.success) throw new Error(res.error || 'Failed to load proposals');
+        const wonWithPo = (res.data || []).filter(p => p.status === 'won' && (p.poNumber || p.poValue || p.poFileUrl));
+        const totalValue = wonWithPo.reduce((s, p) => s + (parseFloat(p.poValue) || 0), 0);
+        const rows = wonWithPo.length ? wonWithPo.map(p => `
+            <tr>
+                <td>${p.poNumber || '-'}</td>
+                <td>${p.projectName || p.title || '-'}</td>
+                <td>${p.clientName || p.client || '-'}</td>
+                <td>${p.createdByName || p.bdmName || '-'}</td>
+                <td>${(p.poCurrency || 'USD')} ${(parseFloat(p.poValue) || 0).toLocaleString()}</td>
+                <td>${p.wonDate ? new Date(p.wonDate).toLocaleDateString() : '-'}</td>
+                <td>${p.poFileUrl ? '<a href="'+p.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm">View P.O.</a>' : '<span style="color:#94a3b8;font-size:0.8rem;">No file</span>'}</td>
+            </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#64748b;">No P.O.s uploaded yet.</td></tr>';
+        mainContent.innerHTML = `
+            <div class="card">
+                <h2>P.O. Tracker</h2>
+                <div class="subtitle">Purchase Orders uploaded by BDM (read-only)</div>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin:1rem 0;">
+                    <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:#2563eb;">${wonWithPo.length}</div><div style="color:#64748b;font-size:0.8rem;">Total P.O.s</div></div>
+                    <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:#16a34a;">${totalValue.toLocaleString()}</div><div style="color:#64748b;font-size:0.8rem;">Total P.O. Value</div></div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>P.O. #</th><th>Project</th><th>Client</th><th>BDM</th><th>Value</th><th>Won Date</th><th>Document</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    } catch (err) {
+        mainContent.innerHTML = `<div class="card"><h2 style="color:#ef4444;">Error</h2><p>${err.message}</p></div>`;
+    }
+}
+
+// PETTY CASH MODULE
+// ============================================
+
+async function showPettyCash() {
+    setActiveNav('nav-petty-cash');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const now = new Date();
+        const res = await apiCall('petty-cash?month='+(now.getMonth()+1)+'&year='+now.getFullYear());
+        const entries = res.success ? res.data : [];
+        const fund = res.fund || { totalFund:0, currentBalance:0, totalSpent:0 };
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
+
+        const expenses = entries.filter(e=>e.entryType==='expense');
+        const replenishments = entries.filter(e=>e.entryType==='replenish');
+        const monthTotal = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+        const monthReplenish = replenishments.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+
+        const balPct = fund.totalFund > 0 ? Math.max(0,Math.min(100, (fund.currentBalance/fund.totalFund)*100)) : 0;
+        const balColor = balPct > 50 ? '#10b981' : balPct > 20 ? '#f59e0b' : '#ef4444';
+
+        const rows = entries.length > 0 ? entries.map(e => {
+            const isExp = e.entryType === 'expense';
+            return `<tr>
+                <td>${e.entryDate||'N/A'}</td>
+                <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;background:${isExp?'#fef2f2':'#f0fdf4'};color:${isExp?'#dc2626':'#16a34a'};">${isExp?'Expense':'Replenish'}</span></td>
+                <td>${e.voucherNo||'-'}</td>
+                <td>${e.category||'-'}</td>
+                <td>${e.description||'-'}</td>
+                <td>${e.paidTo||'-'}</td>
+                <td style="font-weight:700;color:${isExp?'#dc2626':'#16a34a'};">${isExp?'-':'+'} INR ${(parseFloat(e.amount)||0).toLocaleString()}</td>
+                <td>${e.createdBy||'N/A'}</td>
+                <td style="white-space:nowrap;">
+                    ${e.receiptUrl ? '<a href="'+e.receiptUrl+'" target="_blank" class="btn btn-outline btn-sm">Receipt</a> ' : ''}
+                    ${isAcct ? '<button class="btn btn-primary btn-sm" onclick="showEditPettyCashModal(\''+e.id+'\')">Edit</button> <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;font-size:0.7rem;" onclick="deletePettyCash(\''+e.id+'\')">Del</button>':''}
+                </td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="9" class="text-center">No entries this month.</td></tr>';
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>Petty Cash Management</h2>
+                <div class="subtitle">Track petty cash fund, expenses, and replenishments for ${now.toLocaleString('default',{month:'long'})} ${now.getFullYear()}</div>
+                ${isAcct ? `<div style="display:flex;gap:0.75rem;margin-top:1rem;">
+                    <button class="btn btn-success" onclick="showAddPettyCashModal('expense')">+ Record Expense</button>
+                    <button class="btn btn-primary" onclick="showAddPettyCashModal('replenish')">+ Replenish Fund</button>
+                </div>` : ''}
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #2563eb;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#2563eb;">INR ${(fund.totalFund||0).toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Total Fund Allocated</div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid ${balColor};">
+                    <div style="font-size:1.4rem;font-weight:700;color:${balColor};">INR ${(fund.currentBalance||0).toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Current Balance</div>
+                    <div style="margin-top:0.5rem;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${balPct}%;background:${balColor};border-radius:3px;"></div>
+                    </div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #ef4444;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#ef4444;">INR ${monthTotal.toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Spent This Month</div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #10b981;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#10b981;">INR ${monthReplenish.toLocaleString()}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Replenished This Month</div>
+                </div>
+                <div class="card" style="padding:1.2rem;text-align:center;border-top:4px solid #8b5cf6;">
+                    <div style="font-size:1.4rem;font-weight:700;color:#8b5cf6;">${entries.length}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">Entries This Month</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="padding:1rem 1.5rem;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;">Petty Cash Ledger</h3>
+                    <span style="font-size:0.8rem;color:#64748b;">${now.toLocaleString('default',{month:'long'})} ${now.getFullYear()}</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table"><thead><tr>
+                        <th>Date</th><th>Type</th><th>Voucher #</th><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Recorded By</th><th>Actions</th>
+                    </tr></thead><tbody>${rows}</tbody></table>
+                </div>
+            </div>`;
+    } catch(e) { main.innerHTML='<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    finally { hideLoading(); }
+}
+
+function showAddPettyCashModal(type) {
+    const isExpense = type === 'expense';
+    const headerBg = isExpense ? 'linear-gradient(135deg,#dc2626,#ef4444)' : 'linear-gradient(135deg,#059669,#10b981)';
+    const title = isExpense ? 'Record Petty Cash Expense' : 'Replenish Petty Cash Fund';
+    const subtitle = isExpense ? 'Enter expense details with voucher info' : 'Add funds to the petty cash box';
+
+    const categorySection = isExpense ? `
+        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category *</label>
+            <select id="pc_cat" class="form-control" required>
+                <option value="">-- Select --</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Travel & Conveyance">Travel & Conveyance</option>
+                <option value="Tea & Refreshments">Tea & Refreshments</option>
+                <option value="Stationery">Stationery</option>
+                <option value="Courier & Postage">Courier & Postage</option>
+                <option value="Printing & Xerox">Printing & Xerox</option>
+                <option value="Maintenance & Repairs">Maintenance & Repairs</option>
+                <option value="Cleaning & Housekeeping">Cleaning & Housekeeping</option>
+                <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+        </div>` : '<input type="hidden" id="pc_cat" value="Fund Replenishment">';
+
+    const modalHtml = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:600px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:${headerBg};padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;">${title}</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${subtitle}</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                <form onsubmit="submitPettyCash(event,'${type}')" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="pc_date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}" required></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount (INR) *</label><input id="pc_amt" class="form-control" type="number" step="0.01" required></div>
+                        ${categorySection}
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Voucher No.</label><input id="pc_voucher" class="form-control"></div>
+                    </div>
+                    ${isExpense ? `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="pc_paidTo" class="form-control"></div>
+                        <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Approved By</label><input id="pc_approvedBy" class="form-control"></div>
+                    </div>` : '<input type="hidden" id="pc_paidTo" value=""><input type="hidden" id="pc_approvedBy" value="">'}
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="pc_desc" class="form-control" placeholder="${isExpense ? 'What was purchased/paid for?' : 'Source of funds'}"></div>
+                    <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload Receipt (Image/PDF)</label><input id="pc_receipt" type="file" accept="image/*,.pdf" class="form-control"></div>
+                    <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="pc_remarks" class="form-control"></div>
+                    <button type="submit" class="btn ${isExpense ? 'btn-danger' : 'btn-success'}" style="width:100%;padding:0.75rem;font-size:1rem;${isExpense?'background:#dc2626;border-color:#dc2626;':''}">${isExpense ? 'Record Expense' : 'Replenish Fund'}</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function submitPettyCash(e, type) {
+    e.preventDefault(); showLoading();
+    try {
+        const body = {
+            entryType: type,
+            entryDate: document.getElementById('pc_date').value,
+            amount: document.getElementById('pc_amt').value,
+            category: document.getElementById('pc_cat').value,
+            voucherNo: document.getElementById('pc_voucher').value,
+            paidTo: document.getElementById('pc_paidTo').value,
+            approvedBy: document.getElementById('pc_approvedBy').value,
+            description: document.getElementById('pc_desc').value,
+            remarks: document.getElementById('pc_remarks').value
+        };
+        const fileInput = document.getElementById('pc_receipt');
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            body.receiptFileName = file.name;
+            body.receiptBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        }
+        const resp = await apiCall('petty-cash', { method: 'POST', body: JSON.stringify(body) });
+        if (!resp.success) throw new Error(resp.error);
+        closeModal();
+        showNotification(type === 'expense' ? 'Expense recorded!' : 'Fund replenished!', 'success');
+        showPettyCash();
+    } catch(err) { alert('Error: ' + err.message); }
+    finally { hideLoading(); }
+}
+
+async function showEditPettyCashModal(id) {
+    showLoading();
+    try {
+        const res = await apiCall('petty-cash');
+        if (!res.success) throw new Error(res.error);
+        const entry = (res.data||[]).find(e=>e.id===id);
+        if (!entry) throw new Error('Entry not found');
+        hideLoading();
+
+        const isExp = entry.entryType === 'expense';
+        const catOptions = ['Office Supplies','Travel & Conveyance','Tea & Refreshments','Stationery','Courier & Postage','Printing & Xerox','Maintenance & Repairs','Cleaning & Housekeeping','Miscellaneous']
+            .map(c=>`<option value="${c}" ${entry.category===c?'selected':''}>${c}</option>`).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+                <div class="modal-content" style="max-width:600px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                        <div><h2 style="margin:0;font-size:1.2rem;">Edit Petty Cash Entry</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${isExp?'Expense':'Replenishment'} - ${entry.entryDate||''}</p></div>
+                        <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                    </div>
+                    <form onsubmit="submitEditPettyCash(event,'${id}')" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Date *</label><input id="pce_date" class="form-control" type="date" value="${entry.entryDate||''}" required></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount (INR) *</label><input id="pce_amt" class="form-control" type="number" step="0.01" value="${entry.amount||''}" required></div>
+                            ${isExp ? `<div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Category</label><select id="pce_cat" class="form-control"><option value="">-- Select --</option>${catOptions}</select></div>` : `<input type="hidden" id="pce_cat" value="${entry.category||'Fund Replenishment'}">`}
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Voucher No.</label><input id="pce_voucher" class="form-control" value="${entry.voucherNo||''}"></div>
+                        </div>
+                        ${isExp ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Paid To</label><input id="pce_paidTo" class="form-control" value="${entry.paidTo||''}"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Approved By</label><input id="pce_approvedBy" class="form-control" value="${entry.approvedBy||''}"></div>
+                        </div>` : '<input type="hidden" id="pce_paidTo" value=""><input type="hidden" id="pce_approvedBy" value="">'}
+                        <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Description</label><input id="pce_desc" class="form-control" value="${entry.description||''}"></div>
+                        ${entry.receiptUrl ? `<div style="margin-bottom:0.75rem;padding:0.5rem;background:#f0f9ff;border-radius:8px;font-size:0.85rem;">Current receipt: <a href="${entry.receiptUrl}" target="_blank">${entry.receiptFileName||'View'}</a></div>` : ''}
+                        <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Upload New Receipt (Image/PDF)</label><input id="pce_receipt" type="file" accept="image/*,.pdf" class="form-control"></div>
+                        <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Remarks</label><input id="pce_remarks" class="form-control" value="${entry.remarks||''}"></div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;padding:0.75rem;font-size:1rem;">Save Changes</button>
+                    </form>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch(err) { hideLoading(); alert('Error: '+err.message); }
+}
+
+async function submitEditPettyCash(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const body = {
+            entryDate: document.getElementById('pce_date').value,
+            amount: document.getElementById('pce_amt').value,
+            category: document.getElementById('pce_cat').value,
+            voucherNo: document.getElementById('pce_voucher').value,
+            paidTo: document.getElementById('pce_paidTo').value,
+            approvedBy: document.getElementById('pce_approvedBy').value,
+            description: document.getElementById('pce_desc').value,
+            remarks: document.getElementById('pce_remarks').value
+        };
+        const fileInput = document.getElementById('pce_receipt');
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            body.receiptFileName = file.name;
+            body.receiptBase64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+        }
+        const resp = await apiCall('petty-cash/'+id, { method: 'PUT', body: JSON.stringify(body) });
+        if (!resp.success) throw new Error(resp.error);
+        closeModal();
+        showNotification('Entry updated!', 'success');
+        showPettyCash();
+    } catch(err) { alert('Error: '+err.message); }
+    finally { hideLoading(); }
+}
+
+async function deletePettyCash(id) {
+    if (!confirm('Delete this petty cash entry? The balance will be reversed.')) return;
+    showLoading();
+    try {
+        const resp = await apiCall('petty-cash/' + id, { method: 'DELETE' });
+        if (!resp.success) throw new Error(resp.error);
+        showNotification('Entry deleted!', 'success');
+        showPettyCash();
+    } catch(err) { alert('Error: ' + err.message); }
+    finally { hideLoading(); }
+}
+
+// ============================================
+// GST FILING STATUS MODULE (Simple Monthly Checkboxes)
+// ============================================
+
+async function showGSTFiling() {
+    setActiveNav('nav-gst-filing');
+    const main = document.getElementById('mainContent');
+    showLoading();
+    try {
+        const yr = new Date().getFullYear();
+        const res = await apiCall('gst-filing?year='+yr);
+        const records = res.success ? res.data : [];
+        const isAcct = currentUserRole === 'accounts' || currentUserRole === 'it';
+
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const filedMap = {};
+        records.forEach(r => { filedMap[r.month] = r; });
+
+        const filed = records.filter(r=>r.filingStatus==='filed').length;
+
+        const monthCards = months.map((m,i) => {
+            const mn = i+1;
+            const rec = filedMap[mn];
+            const isFiled = rec && rec.filingStatus === 'filed';
+            const isPast = new Date(yr, i+1, 0) < new Date();
+            const borderColor = isFiled ? '#10b981' : (isPast ? '#ef4444' : '#e2e8f0');
+            const bgColor = isFiled ? '#f0fdf4' : (isPast ? '#fef2f2' : '#fff');
+            const icon = isFiled ? 'white-check-mark' : (isPast ? 'warning' : 'hourglass-not-done');
+            const statusText = isFiled ? 'Filed' : (isPast ? 'Not Filed' : 'Upcoming');
+            const statusColor = isFiled ? '#10b981' : (isPast ? '#ef4444' : '#94a3b8');
+
+            return `
+                <div class="card" style="padding:1rem;border:2px solid ${borderColor};background:${bgColor};text-align:center;position:relative;cursor:${isAcct?'pointer':'default'};" ${isAcct ? `onclick="toggleGSTFiling(${mn},'${m}',${yr},${isFiled})"` : ''}>
+                    <div style="font-size:0.9rem;font-weight:700;color:#1e293b;margin-bottom:0.3rem;">${m}</div>
+                    <div style="font-size:2rem;">${isFiled ? '&#9989;' : (isPast ? '&#9888;&#65039;' : '&#9203;')}</div>
+                    <div style="font-size:0.75rem;font-weight:600;color:${statusColor};margin-top:0.3rem;">${statusText}</div>
+                    ${isFiled && rec.filingDate ? `<div style="font-size:0.7rem;color:#64748b;margin-top:0.2rem;">Filed: ${rec.filingDate}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h2>GST Filing Status - ${yr}</h2>
+                <div class="subtitle">Monthly GST filing tracker. ${isAcct ? 'Click a month to mark as filed/unfiled.' : 'View-only for your role.'}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:2rem;">
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:2rem;font-weight:700;color:#10b981;">${filed}</div><div style="color:#64748b;font-size:0.8rem;">Months Filed</div></div>
+                <div class="card" style="padding:1rem;text-align:center;"><div style="font-size:2rem;font-weight:700;color:#ef4444;">${12-filed}</div><div style="color:#64748b;font-size:0.8rem;">Remaining</div></div>
+                <div class="card" style="padding:1rem;text-align:center;">
+                    <div style="width:60px;height:60px;border-radius:50%;background:conic-gradient(#10b981 ${(filed/12)*360}deg, #e2e8f0 0deg);margin:0 auto;display:flex;align-items:center;justify-content:center;">
+                        <div style="width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;">${Math.round((filed/12)*100)}%</div>
+                    </div>
+                    <div style="color:#64748b;font-size:0.8rem;margin-top:0.3rem;">Compliance</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;">
+                ${monthCards}
+            </div>`;
+    } catch(e) { main.innerHTML='<div class="error-message"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    finally { hideLoading(); }
+}
+
+async function toggleGSTFiling(month, monthName, year, currentlyFiled) {
+    const newStatus = currentlyFiled ? 'not_filed' : 'filed';
+    const msg = currentlyFiled ? `Mark GST for ${monthName} ${year} as NOT filed?` : `Mark GST for ${monthName} ${year} as FILED?`;
+    if(!confirm(msg)) return;
+    showLoading();
+    try {
+        const body = { month, year, filingStatus: newStatus };
+        if(newStatus === 'filed') body.filingDate = new Date().toISOString().split('T')[0];
+        const resp = await apiCall('gst-filing',{method:'POST',body:JSON.stringify(body)});
+        if(!resp.success) throw new Error(resp.error);
+        showNotification(`GST for ${monthName} marked as ${newStatus==='filed'?'Filed':'Not Filed'}!`, 'success');
+        showGSTFiling();
+    } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+/**
+ * Called by Design Manager to mark a project as completed.
+ */
+async function markProjectComplete(projectId) {
+    if (!confirm('Are you sure you want to mark this project as complete? This will notify the accounts team to begin invoicing.')) {
+        return;
+    }
+
+    try {
+        showLoading();
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                action: 'mark_complete'
+            })
+        });
+
+        if (response.success) {
+            showSuccessModal('Project Marked Complete!', 'The accounts team has been notified and will prepare the invoice.');
+            // Refresh the view
+            if (typeof showDesignLeadDashboard === 'function') {
+                showDesignLeadDashboard();
+            } else if (typeof showProjects === 'function') {
+                showProjects();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to mark project complete');
+        }
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+                         
+
+        // ============================================
+        // OTHER PAGES (Activities, Settings, etc.)
+        // ============================================
+
+        function showWorkflow() { /* ... (Unchanged) ... */ }
+        function showReports() { /* ... (Unchanged) ... */ }
+        function showSettings() {
+            setActiveNav('nav-settings');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            main.innerHTML = `
+                <div class="page-header">
+                    <h2>Admin Settings</h2>
+                    <div class="subtitle">Director-only tools and configuration.</div>
+                </div>
+
+                <!-- UID Migration Tool -->
+                <div class="card" style="margin-bottom:2rem;">
+                    <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                        <h3 style="margin:0;">Fix Re-registered User (Migrate Data)</h3>
+                        <p style="margin:0.5rem 0 0;color:#64748b;font-size:0.85rem;">
+                            If a user was deleted and re-registered, their old proposals/projects won't show. Enter their email to fix it.
+                        </p>
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <form id="uidMigrationForm" onsubmit="runUidMigration(event)">
+                            <div class="form-group">
+                                <label>User Email</label>
+                                <input type="email" id="migrate_email" class="form-control" placeholder="e.g., sabin@edanbrook.com" required>
+                            </div>
+                            <div style="display:flex;gap:1rem;">
+                                <button type="button" class="btn btn-outline" id="migrateScanBtn" onclick="scanUser()">Step 1: Scan</button>
+                                <button type="submit" class="btn btn-primary" id="migrateBtnSubmit">Step 2: Migrate All</button>
+                            </div>
+                        </form>
+                        <div id="migrationResult" style="margin-top:1rem;"></div>
+                    </div>
+                </div>
+
+                <!-- User Management Section -->
+                <div class="card">
+                    <div style="padding:1.2rem 1.5rem;border-bottom:1px solid #e2e8f0;">
+                        <h3 style="margin:0;">User Management</h3>
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <button class="btn btn-outline" onclick="loadUsersList()">Load All Users</button>
+                        <div id="usersListContainer" style="margin-top:1rem;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function scanUser() {
+            const email = document.getElementById('migrate_email').value.trim();
+            const resultDiv = document.getElementById('migrationResult');
+            const btn = document.getElementById('migrateScanBtn');
+            if (!email) { resultDiv.innerHTML = '<div style="color:#ef4444;">Enter an email first.</div>'; return; }
+
+            btn.disabled = true; btn.textContent = 'Scanning...';
+            resultDiv.innerHTML = '<div style="color:#2563eb;">Scanning Firestore for this user...</div>';
+
+            try {
+                const response = await apiCall(`migrate-user?email=${encodeURIComponent(email)}`);
+                if (!response.success) throw new Error(response.error);
+
+                const oldUidsHtml = (response.oldUids || []).map(o => `
+                    <tr>
+                        <td style="font-family:monospace;font-size:0.8rem;word-break:break-all;">${o.uid}</td>
+                        <td>${o.proposalCount}</td>
+                        <td>${o.projectCount}</td>
+                        <td>${o.paymentCount}</td>
+                        <td>${o.existsInUsers ? 'Yes' : 'No (deleted)'}</td>
+                    </tr>
+                `).join('');
+
+                resultDiv.innerHTML = `
+                    <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:1rem;">
+                        <strong>Scan Results for ${response.email}:</strong><br>
+                        <div style="margin:0.5rem 0;">
+                            Current Auth UID: <code>${response.currentAuthUid}</code><br>
+                            Firestore User Docs: <code>${(response.firestoreUserDocs || []).join(', ') || 'none'}</code><br>
+                            Proposals found by email: <strong>${response.proposalsFoundByEmail}</strong><br>
+                            Projects found by email: <strong>${response.projectsFoundByEmail}</strong>
+                        </div>
+                        ${(response.oldUids || []).length > 0 ? `
+                            <strong>Old UIDs that need migration:</strong>
+                            <table class="data-table" style="margin-top:0.5rem;font-size:0.85rem;">
+                                <thead><tr><th>Old UID</th><th>Proposals</th><th>Projects</th><th>Payments</th><th>In Users?</th></tr></thead>
+                                <tbody>${oldUidsHtml}</tbody>
+                            </table>
+                            <p style="margin-top:0.5rem;color:#059669;font-weight:600;">Click "Step 2: Migrate All" to fix these.</p>
+                        ` : '<p style="color:#059669;font-weight:600;">No migration needed - all data already uses the current UID.</p>'}
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:1rem;"><strong style="color:#dc2626;">Scan Error:</strong> ${error.message}</div>`;
+            } finally {
+                btn.disabled = false; btn.textContent = 'Step 1: Scan';
+            }
+        }
+
+        async function runUidMigration(event) {
+            event.preventDefault();
+            const email = document.getElementById('migrate_email').value.trim();
+            const resultDiv = document.getElementById('migrationResult');
+            const submitBtn = document.getElementById('migrateBtnSubmit');
+
+            if (!email) {
+                resultDiv.innerHTML = '<div style="color:#ef4444;">Please enter the user email.</div>';
+                return;
+            }
+
+            if (!confirm(`Migrate ALL documents for ${email}? This will transfer all proposals, projects, payments, etc. to the current account.`)) {
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Migrating...';
+            resultDiv.innerHTML = '<div style="color:#2563eb;">Migrating all documents, please wait...</div>';
+
+            try {
+                const response = await apiCall('migrate-user', {
+                    method: 'POST',
+                    body: JSON.stringify({ email })
+                });
+
+                if (!response.success) throw new Error(response.error || 'Migration failed');
+
+                resultDiv.innerHTML = `
+                    <div style="background:#d1fae5;border:1px solid #10b981;border-radius:8px;padding:1rem;">
+                        <strong style="color:#059669;">Migration Successful!</strong><br>
+                        <span><strong>${response.migratedCount}</strong> documents were updated.</span><br>
+                        <span style="font-size:0.8rem;">Old UIDs: <code>${(response.oldUids || []).join(', ')}</code></span><br>
+                        <span style="font-size:0.8rem;">New UID: <code>${response.newUid}</code></span><br>
+                        <br><strong>Migrated:</strong>
+                        <ul style="margin:0.5rem 0;padding-left:1.5rem;max-height:300px;overflow-y:auto;font-size:0.85rem;">
+                            ${(response.details || []).map(d => '<li>' + d + '</li>').join('')}
+                        </ul>
+                        <p style="margin-top:0.5rem;color:#064e3b;font-weight:600;">Done! Log out and log back in to see all old proposals.</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:1rem;">
+                        <strong style="color:#dc2626;">Migration Failed:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Step 2: Migrate All';
+            }
+        }
+
+        async function loadUsersList() {
+            const container = document.getElementById('usersListContainer');
+            container.innerHTML = '<p>Loading users...</p>';
+            try {
+                const response = await apiCall('users?includeInactive=true');
+                if (!response.success) throw new Error(response.error);
+                const users = response.data || [];
+                if (users.length === 0) {
+                    container.innerHTML = '<p>No users found.</p>';
+                    return;
+                }
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>UID</th></tr>
+                        </thead>
+                        <tbody>
+                            ${users.map(u => `
+                                <tr>
+                                    <td>${u.name || 'N/A'}</td>
+                                    <td>${u.email || 'N/A'}</td>
+                                    <td>${u.role || 'N/A'}</td>
+                                    <td><span class="proposal-status status-${u.status || 'active'}">${u.status || 'active'}</span></td>
+                                    <td style="font-size:0.75rem;font-family:monospace;word-break:break-all;">${u.uid || 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                container.innerHTML = `<p style="color:#ef4444;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // REPLACED IMPLEMENTATION
+        async function showActivities() {
+            setActiveNav('nav-activities');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block'; // Ensure main content is visible
+            showLoading();
+
+            try {
+                const response = await apiCall('activities');
+                if (!response.success || !response.data) {
+                    throw new Error(response.error || 'Failed to load activities');
+                }
+                
+                const activities = response.data;
+                const activitiesHtml = activities.length ? activities.map(act => `
+                    <div class="action-item">
+                        <div class="action-content">
+                            <strong>${act.details}</strong>
+                            <div class="action-meta">
+                                By ${act.performedByName || 'System'} (${act.performedByRole || 'N/A'}) - ${formatDate(act.timestamp)}
+                                ${act.proposalId ? ` | Proposal: ${act.proposalId}` : ''}
+                                ${act.projectId ? ` | Project: ${act.projectId}` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : '<p>No recent activities found.</p>';
+
+                main.innerHTML = `
+                    <div class="page-header">
+                        <h2>📝 All Activities</h2>
+                        <div class="subtitle">A log of all actions taken in the system.</div>
+                    </div>
+                    <div class="action-section">
+                        <h3>Activity Log</h3>
+                        ${activitiesHtml}
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('❌ Error fetching activities:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading Activities</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // ✅ Make showActivities globally accessible
+        window.showActivities = showActivities;
+
+        // ============================================
+        // HR ANNOUNCEMENTS SYSTEM
+        // ============================================
+        
+        let hrAnnouncements = [];
+        let announcementsLoaded = false;
+        
+        // Synchronous load from localStorage (for immediate use)
+        function loadAnnouncementsSync() {
+            try {
+                const stored = localStorage.getItem('hrAnnouncements');
+                if (stored) {
+                    hrAnnouncements = JSON.parse(stored);
+                }
+            } catch (e) {
+                console.log('localStorage load failed');
+                hrAnnouncements = [];
+            }
+            return hrAnnouncements;
+        }
+        
+        // Async load from Firebase Firestore (shared across all devices)
+        async function loadAnnouncements() {
+            // First load from localStorage for immediate data
+            loadAnnouncementsSync();
+            console.log('📢 After localStorage load:', hrAnnouncements.length, 'announcements');
+            
+            // Then try to sync from Firestore
+            try {
+                if (typeof db !== 'undefined' && db.collection) {
+                    console.log('📢 Syncing announcements from Firestore...');
+                    const snapshot = await db.collection('hrAnnouncements').get();
+                    console.log('📢 Firestore snapshot empty:', snapshot.empty, 'size:', snapshot.size);
+                    
+                    if (!snapshot.empty) {
+                        hrAnnouncements = [];
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            console.log('📢 Loading announcement:', doc.id, data.type, data.title || data.name);
+                            hrAnnouncements.push({
+                                id: doc.id,
+                                ...data
+                            });
+                        });
+                        console.log('✅ Synced', hrAnnouncements.length, 'announcements from Firestore');
+                        announcementsLoaded = true;
+                        
+                        // Update localStorage cache
+                        try {
+                            localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+                            console.log('💾 Cached to localStorage');
+                        } catch (e) {
+                            console.log('Could not cache to localStorage');
+                        }
+                    } else {
+                        console.log('📢 No announcements in Firestore, using localStorage data');
+                    }
+                } else {
+                    console.log('⚠️ Firestore db not available');
+                }
+            } catch (error) {
+                console.log('Firestore sync failed:', error.message);
+            }
+            
+            return hrAnnouncements;
+        }
+        
+        // Save announcements to both localStorage and Firebase Firestore
+        async function saveAnnouncements() {
+            // Always save to localStorage first (instant)
+            try {
+                localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+                console.log('💾 Saved to localStorage');
+            } catch (e) {
+                console.log('localStorage save failed');
+            }
+            
+            // Then save to Firestore for cross-device sync
+            try {
+                if (typeof db !== 'undefined' && db.collection) {
+                    console.log('📢 Saving announcements to Firestore...');
+                    
+                    // Get existing docs to handle deletions
+                    const existingDocs = await db.collection('hrAnnouncements').get();
+                    const existingIds = new Set();
+                    existingDocs.forEach(doc => existingIds.add(doc.id));
+                    
+                    // Save/update each announcement
+                    const currentIds = new Set();
+                    for (const announcement of hrAnnouncements) {
+                        const docId = announcement.id ? announcement.id.toString() : Date.now().toString();
+                        currentIds.add(docId);
+                        await db.collection('hrAnnouncements').doc(docId).set({
+                            ...announcement,
+                            id: docId,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
+                    
+                    // Delete removed announcements
+                    for (const existingId of existingIds) {
+                        if (!currentIds.has(existingId)) {
+                            await db.collection('hrAnnouncements').doc(existingId).delete();
+                            console.log('🗑️ Deleted announcement:', existingId);
+                        }
+                    }
+                    
+                    console.log('✅ Synced', hrAnnouncements.length, 'announcements to Firestore');
+                }
+            } catch (error) {
+                console.error('Firestore save failed:', error.message);
+            }
+        }
+        
+        // Preload announcements when app starts
+        async function preloadAnnouncements() {
+            console.log('📢 Preloading announcements...');
+            await loadAnnouncements();
+            console.log('📢 Announcements preloaded:', hrAnnouncements.length);
+        }
+        
+        // Show HR Dashboard
+        async function showHRDashboard() {
+            setActiveNav('nav-hr-announcements');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            
+            try {
+                await loadAnnouncements();
+                
+                // Get today's date for active/expired calculation
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                // Calculate active vs expired counts
+                const activeAnnouncements = getActiveAnnouncements();
+                const expiredCount = hrAnnouncements.length - activeAnnouncements.length;
+                
+                const newJoineesCount = hrAnnouncements.filter(a => a.type === 'new-joinee').length;
+                const birthdaysCount = hrAnnouncements.filter(a => a.type === 'birthday').length;
+                const companyNewsCount = hrAnnouncements.filter(a => a.type === 'company-news').length;
+                
+                // Count active only
+                const activeNewJoinees = activeAnnouncements.filter(a => a.type === 'new-joinee').length;
+                const activeBirthdays = activeAnnouncements.filter(a => a.type === 'birthday').length;
+                const activeCompanyNews = activeAnnouncements.filter(a => a.type === 'company-news').length;
+                
+                main.innerHTML = `
+                    <div class="page-header">
+                        <h2>📢 HR Announcements Dashboard</h2>
+                        <div class="subtitle">Manage and broadcast company announcements to all employees</div>
+                    </div>
+                    
+                    <div class="hr-management-section">
+                        <h3 style="margin-bottom: 1.5rem; color: #1f2937;">📝 Create New Announcement</h3>
+                        <div class="hr-cards-container">
+                            <div class="hr-card new-joinee" onclick="showNewJoineeModal()">
+                                <div class="hr-card-icon new-joinee">👋</div>
+                                <h3>New Joinee Announcement</h3>
+                                <p>Welcome a new team member. <strong>Auto-expires after 7 days</strong> from joining date.</p>
+                                <button class="btn btn-success">+ Add New Joinee</button>
+                            </div>
+                            
+                            <div class="hr-card birthday" onclick="showBirthdayModal()">
+                                <div class="hr-card-icon birthday">🎂</div>
+                                <h3>Birthday Announcement</h3>
+                                <p>Celebrate birthdays. <strong>Shows 5 days before</strong>, expires day after.</p>
+                                <button class="btn btn-warning">+ Add Birthday</button>
+                            </div>
+                            
+                            <div class="hr-card company-news" onclick="showCompanyNewsModal()">
+                                <div class="hr-card-icon company-news">📰</div>
+                                <h3>Company News Update</h3>
+                                <p>Share updates with <strong>event images</strong>. Set custom dates or default 30 days.</p>
+                                <button class="btn btn-primary">+ Add Company News</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-stats" style="margin: 2rem 0;">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe);">
+                            <div class="stat-number">${activeAnnouncements.length}</div>
+                            <div class="stat-label">Active (Visible)</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                            <div class="stat-number">${activeNewJoinees}</div>
+                            <div class="stat-label">New Joinees (7d)</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                            <div class="stat-number">${activeBirthdays}</div>
+                            <div class="stat-label">Birthdays</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
+                            <div class="stat-number">${activeCompanyNews}</div>
+                            <div class="stat-label">Company News</div>
+                        </div>
+                        ${expiredCount > 0 ? `
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); cursor: pointer;" onclick="cleanupExpiredAnnouncements()">
+                            <div class="stat-number">${expiredCount}</div>
+                            <div class="stat-label">🗑️ Expired (Click to Clean)</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="announcements-list">
+                        <h3 style="margin-bottom: 1rem; color: #1f2937; display: flex; justify-content: space-between; align-items: center;">
+                            📋 All Announcements
+                            ${expiredCount > 0 ? `<button class="btn btn-danger btn-sm" onclick="cleanupExpiredAnnouncements()">🗑️ Remove ${expiredCount} Expired</button>` : ''}
+                        </h3>
+                        ${renderAnnouncementsList()}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading HR Dashboard:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading HR Dashboard</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render announcements list for HR dashboard
+        function renderAnnouncementsList() {
+            if (hrAnnouncements.length === 0) {
+                return `
+                    <div style="text-align: center; padding: 3rem; background: white; border-radius: 12px; color: #6b7280;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                        <h4>No Announcements Yet</h4>
+                        <p>Create your first announcement using the cards above!</p>
+                    </div>
+                `;
+            }
+            
+            // Get today's date for status calculation
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Sort by date (newest first)
+            const sortedAnnouncements = [...hrAnnouncements].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            return sortedAnnouncements.map((announcement, index) => {
+                let icon = '👋';
+                let subtitle = '';
+                let statusBadge = '';
+                let isExpired = false;
+                
+                if (announcement.type === 'new-joinee') {
+                    icon = '👋';
+                    const joiningDate = new Date(announcement.joiningDate);
+                    joiningDate.setHours(0, 0, 0, 0);
+                    const daysSinceJoining = Math.floor((today - joiningDate) / (24 * 60 * 60 * 1000));
+                    const daysRemaining = 7 - daysSinceJoining;
+                    
+                    if (daysSinceJoining > 7) {
+                        isExpired = true;
+                        statusBadge = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Expired</span>';
+                    } else if (daysRemaining <= 2) {
+                        statusBadge = `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">${daysRemaining}d left</span>`;
+                    } else {
+                        statusBadge = `<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Active (${daysRemaining}d)</span>`;
+                    }
+                    subtitle = `Joined: ${announcement.department} • ${formatDate(announcement.joiningDate)}`;
+                    
+                } else if (announcement.type === 'birthday') {
+                    icon = '🎂';
+                    const birthdayDate = new Date(announcement.birthdayDate);
+                    birthdayDate.setHours(0, 0, 0, 0);
+                    const daysUntilBirthday = Math.floor((birthdayDate - today) / (24 * 60 * 60 * 1000));
+                    
+                    if (today > birthdayDate) {
+                        isExpired = true;
+                        statusBadge = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Expired</span>';
+                    } else if (daysUntilBirthday === 0) {
+                        statusBadge = '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">🎉 TODAY!</span>';
+                    } else if (daysUntilBirthday <= 5) {
+                        statusBadge = `<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">🎂 In ${daysUntilBirthday}d (Visible)</span>`;
+                    } else {
+                        // More than 5 days away - scheduled but not yet visible to employees
+                        statusBadge = `<span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">📅 Scheduled (${daysUntilBirthday}d)</span>`;
+                    }
+                    subtitle = `Birthday: ${formatDate(announcement.birthdayDate)}`;
+                    
+                } else if (announcement.type === 'company-news') {
+                    icon = '📰';
+                    const todayStr = getLocalDateStr(today);
+                    
+                    // Check if start date is in the future (scheduled)
+                    if (announcement.startDate && announcement.startDate > todayStr) {
+                        const startDate = new Date(announcement.startDate);
+                        const daysUntilStart = Math.floor((startDate - today) / (24 * 60 * 60 * 1000));
+                        statusBadge = `<span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">📅 Starts in ${daysUntilStart}d</span>`;
+                    } else if (announcement.endDate && announcement.endDate < todayStr) {
+                        isExpired = true;
+                        statusBadge = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Expired</span>';
+                    } else if (announcement.endDate) {
+                        const endDate = new Date(announcement.endDate);
+                        const daysRemaining = Math.floor((endDate - today) / (24 * 60 * 60 * 1000));
+                        if (daysRemaining <= 3) {
+                            statusBadge = `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">${daysRemaining}d left</span>`;
+                        } else {
+                            statusBadge = `<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Active (${daysRemaining}d)</span>`;
+                        }
+                    } else {
+                        // No end date - show as active with 30-day default info
+                        const createdDate = new Date(announcement.createdAt);
+                        const daysSinceCreated = Math.floor((today - createdDate) / (24 * 60 * 60 * 1000));
+                        const daysRemaining = 30 - daysSinceCreated;
+                        if (daysRemaining > 0) {
+                            statusBadge = `<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Active (${daysRemaining}d auto)</span>`;
+                        } else {
+                            isExpired = true;
+                            statusBadge = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-left: 8px;">Expired (30d)</span>';
+                        }
+                    }
+                    subtitle = `${announcement.category || 'General'} • ${formatDate(announcement.createdAt)}`;
+                }
+                
+                const rowStyle = isExpired ? 'opacity: 0.6; background: #f9fafb;' : '';
+                
+                return `
+                    <div class="announcement-list-item ${announcement.type === 'company-news' ? 'news-priority-' + (announcement.priority || 'low') : ''}" style="${rowStyle}">
+                        <div class="announcement-list-avatar ${announcement.type}">
+                            ${icon}
+                        </div>
+                        <div class="announcement-list-info">
+                            <h4>${announcement.type === 'company-news' ? announcement.title : announcement.name} ${statusBadge}</h4>
+                            <p>${subtitle}</p>
+                        </div>
+                        <div class="announcement-list-actions">
+                            <button class="btn btn-outline btn-sm" onclick="viewAnnouncementPreview(${hrAnnouncements.indexOf(announcement)})">👁️ Preview</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${hrAnnouncements.indexOf(announcement)})">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Show New Joinee Modal
+        function showNewJoineeModal() {
+            const modalHtml = `
+                <div id="newJoineeModal" class="modal" style="display: flex;">
+                    <div class="modal-content large">
+                        <span class="close-button" onclick="closeModal('newJoineeModal')">&times;</span>
+                        <h2 style="margin-bottom: 1.5rem;">👋 Add New Joinee Announcement</h2>
+                        
+                        <form id="newJoineeForm" onsubmit="submitNewJoinee(event)">
+                            <div class="hr-form-section">
+                                <h4>👤 Employee Details</h4>
+                                <div class="form-group">
+                                    <label for="joineeName">Full Name *</label>
+                                    <input type="text" id="joineeName" class="form-control" required placeholder="Enter employee's full name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="joineeEmail">Email Address</label>
+                                    <input type="email" id="joineeEmail" class="form-control" placeholder="employee@edanbrook.com">
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>🏢 Work Information</h4>
+                                <div class="form-group">
+                                    <label for="joineeDepartment">Department *</label>
+                                    <select id="joineeDepartment" class="form-control" required>
+                                        <option value="">Select Department</option>
+                                        <option value="Engineering">Engineering</option>
+                                        <option value="Design">Design</option>
+                                        <option value="Estimation">Estimation</option>
+                                        <option value="Business Development">Business Development</option>
+                                        <option value="Accounts">Accounts</option>
+                                        <option value="Human Resources">Human Resources</option>
+                                        <option value="Operations">Operations</option>
+                                        <option value="Management">Management</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="joineeDesignation">Designation *</label>
+                                    <input type="text" id="joineeDesignation" class="form-control" required placeholder="e.g., Senior Designer, Project Manager">
+                                </div>
+                                <div class="form-group">
+                                    <label for="joineeDate">Joining Date *</label>
+                                    <input type="date" id="joineeDate" class="form-control" required>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>📷 Profile Photo (Optional)</h4>
+                                <div class="photo-upload-container">
+                                    <div class="photo-preview" id="joineePhotoPreview">👤</div>
+                                    <div class="photo-upload-btn">
+                                        <input type="file" id="joineePhoto" accept="image/*" style="display: none;" onchange="previewJoineePhoto(event)">
+                                        <button type="button" class="btn btn-outline" onclick="document.getElementById('joineePhoto').click()">📤 Upload Photo</button>
+                                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">JPG, PNG up to 2MB</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>💬 Welcome Message</h4>
+                                <div class="form-group">
+                                    <label for="joineeMessage">Personal Welcome Message (Optional)</label>
+                                    <textarea id="joineeMessage" class="form-control" rows="3" placeholder="Add a warm welcome message for the new team member..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="modal-actions" style="margin-top: 1.5rem;">
+                                <button type="button" class="btn btn-outline" onclick="closeModal('newJoineeModal')">Cancel</button>
+                                <button type="submit" class="btn btn-success">✨ Create Announcement</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('joineeDate').valueAsDate = new Date();
+        }
+        
+        // Preview joinee photo
+        async function previewJoineePhoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                try {
+                    // Compress image before preview
+                    const compressedImage = await compressImage(file, 400, 0.7);
+                    document.getElementById('joineePhotoPreview').innerHTML = `<img src="${compressedImage}" alt="Preview">`;
+                } catch (error) {
+                    console.error('Error compressing image:', error);
+                    // Fallback to original if compression fails
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('joineePhotoPreview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+        
+        // Submit new joinee
+        async function submitNewJoinee(event) {
+            event.preventDefault();
+            
+            const photoPreview = document.getElementById('joineePhotoPreview');
+            const photoImg = photoPreview.querySelector('img');
+            
+            const announcement = {
+                id: Date.now().toString(),
+                type: 'new-joinee',
+                name: document.getElementById('joineeName').value,
+                email: document.getElementById('joineeEmail').value,
+                department: document.getElementById('joineeDepartment').value,
+                designation: document.getElementById('joineeDesignation').value,
+                joiningDate: document.getElementById('joineeDate').value,
+                photo: photoImg ? photoImg.src : null,
+                message: document.getElementById('joineeMessage').value || 'Welcome to the EDANBROOK family! We are excited to have you on board.',
+                createdAt: new Date().toISOString(),
+                createdBy: currentUser ? currentUser.email : 'HR'
+            };
+            
+            // Add to local array
+            hrAnnouncements.push(announcement);
+            
+            // Save to Firestore directly
+            try {
+                if (typeof db !== 'undefined' && db.collection) {
+                    await db.collection('hrAnnouncements').doc(announcement.id).set(announcement);
+                    console.log('✅ New joinee saved to Firestore');
+                }
+                // Also save to localStorage
+                localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+            } catch (error) {
+                console.error('Error saving new joinee:', error);
+            }
+            
+            closeModal('newJoineeModal');
+            await showHRDashboard();
+            
+            alert('✅ New joinee announcement created successfully!');
+        }
+        
+        // Show Birthday Modal with employee dropdown
+        async function showBirthdayModal() {
+            showLoading();
+            
+            // Fetch all users from the system
+            let employeeOptions = '<option value="">Select Employee</option>';
+            let allUsers = [];
+            
+            try {
+                // Method 1: Try fetching from Firestore directly (if available)
+                if (typeof db !== 'undefined' && db.collection) {
+                    try {
+                        const usersSnapshot = await db.collection('users').get();
+                        usersSnapshot.forEach(doc => {
+                            const userData = doc.data();
+                            if (userData.name || userData.email) {
+                                allUsers.push({
+                                    uid: doc.id,
+                                    name: userData.name || userData.displayName || '',
+                                    email: userData.email || '',
+                                    role: userData.role || 'employee',
+                                    department: userData.department || ''
+                                });
+                            }
+                        });
+                        console.log('✅ Fetched users from Firestore:', allUsers.length);
+                    } catch (firestoreError) {
+                        console.log('Firestore fetch failed, trying API:', firestoreError.message);
+                    }
+                }
+                
+                // Method 2: If Firestore didn't work, try API
+                if (allUsers.length === 0) {
+                    const roles = ['bdm', 'estimator', 'coo', 'director', 'designer', 'accounts', 'hr'];
+                    
+                    for (const role of roles) {
+                        try {
+                            const response = await apiCall(`users?role=${role}`);
+                            if (response.success && response.data) {
+                                const users = Array.isArray(response.data) ? response.data : [response.data];
+                                allUsers.push(...users.map(u => ({
+                                    ...u,
+                                    role: role
+                                })));
+                            }
+                        } catch (e) {
+                            console.log(`Could not fetch ${role} users:`, e.message);
+                        }
+                    }
+                    console.log('✅ Fetched users from API:', allUsers.length);
+                }
+                
+                // Method 3: If still no users, add a manual entry option
+                if (allUsers.length === 0) {
+                    console.log('⚠️ No users found, enabling manual entry');
+                    employeeOptions = '<option value="">-- Enter Manually Below --</option>';
+                } else {
+                    // Sort by name
+                    allUsers.sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+                    
+                    // Build options
+                    employeeOptions += allUsers.map(user => {
+                        const displayName = user.name || user.displayName || user.email || 'Unknown';
+                        const roleLabel = (user.role || 'Employee').toUpperCase();
+                        return `<option value="${displayName}" data-email="${user.email || ''}" data-role="${user.role || ''}" data-department="${user.department || ''}">${displayName} (${roleLabel})</option>`;
+                    }).join('');
+                }
+                
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                employeeOptions = '<option value="">-- Enter Manually Below --</option>';
+            }
+            
+            hideLoading();
+            
+            const modalHtml = `
+                <div id="birthdayModal" class="modal" style="display: flex;">
+                    <div class="modal-content large">
+                        <span class="close-button" onclick="closeModal('birthdayModal')">&times;</span>
+                        <h2 style="margin-bottom: 1.5rem;">🎂 Add Birthday Announcement</h2>
+                        
+                        <form id="birthdayForm" onsubmit="submitBirthday(event)">
+                            <div class="hr-form-section">
+                                <h4>👤 Select Employee</h4>
+                                <div class="form-group">
+                                    <label for="birthdayEmployee">Select from Employees</label>
+                                    <select id="birthdayEmployee" class="form-control" onchange="onBirthdayEmployeeSelect()">
+                                        ${employeeOptions}
+                                    </select>
+                                    <small style="color: #6b7280; margin-top: 0.25rem; display: block;">Select an employee or enter details manually below</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="birthdayName">Full Name *</label>
+                                    <input type="text" id="birthdayName" class="form-control" required placeholder="Enter employee's full name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="birthdayDepartment">Department</label>
+                                    <select id="birthdayDepartment" class="form-control">
+                                        <option value="">Select Department</option>
+                                        <option value="Engineering">Engineering</option>
+                                        <option value="Design">Design</option>
+                                        <option value="Estimation">Estimation</option>
+                                        <option value="Business Development">Business Development</option>
+                                        <option value="Accounts">Accounts</option>
+                                        <option value="Human Resources">Human Resources</option>
+                                        <option value="Operations">Operations</option>
+                                        <option value="Management">Management</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>🎉 Birthday Details</h4>
+                                <div class="form-group">
+                                    <label for="birthdayDate">Birthday Date *</label>
+                                    <input type="date" id="birthdayDate" class="form-control" required>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>📷 Profile Photo (Optional)</h4>
+                                <div class="photo-upload-container">
+                                    <div class="photo-preview" id="birthdayPhotoPreview">🎂</div>
+                                    <div class="photo-upload-btn">
+                                        <input type="file" id="birthdayPhoto" accept="image/*" style="display: none;" onchange="previewBirthdayPhoto(event)">
+                                        <button type="button" class="btn btn-outline" onclick="document.getElementById('birthdayPhoto').click()">📤 Upload Photo</button>
+                                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">JPG, PNG up to 2MB</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>💬 Birthday Wishes</h4>
+                                <div class="form-group">
+                                    <label for="birthdayWishes">Birthday Message *</label>
+                                    <textarea id="birthdayWishes" class="form-control" rows="3" required placeholder="Write a heartfelt birthday message...">Wishing you a very Happy Birthday! May this special day bring you lots of joy, happiness, and wonderful memories. 🎉🎈</textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="modal-actions" style="margin-top: 1.5rem;">
+                                <button type="button" class="btn btn-outline" onclick="closeModal('birthdayModal')">Cancel</button>
+                                <button type="submit" class="btn btn-warning">🎉 Create Announcement</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('birthdayDate').valueAsDate = new Date();
+        }
+        
+        // Handle employee selection in birthday form
+        function onBirthdayEmployeeSelect() {
+            const select = document.getElementById('birthdayEmployee');
+            const selectedOption = select.options[select.selectedIndex];
+            const name = select.value;
+            const role = selectedOption.dataset.role || '';
+            const department = selectedOption.dataset.department || '';
+            
+            // Auto-fill the name field
+            if (name && name !== '') {
+                document.getElementById('birthdayName').value = name;
+            }
+            
+            // Auto-select department based on data attribute first, then role
+            const deptMap = {
+                'designer': 'Design',
+                'estimator': 'Estimation',
+                'bdm': 'Business Development',
+                'accounts': 'Accounts',
+                'hr': 'Human Resources',
+                'coo': 'Management',
+                'director': 'Management'
+            };
+            
+            // Use stored department if available, otherwise map from role
+            const mappedDept = department || deptMap[role] || '';
+            if (mappedDept) {
+                document.getElementById('birthdayDepartment').value = mappedDept;
+            }
+        }
+        
+        // Preview birthday photo
+        // Compress image to reduce size for Firestore (max 1MB limit)
+        function compressImage(file, maxWidth = 400, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // Scale down if larger than maxWidth
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convert to compressed JPEG
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                        console.log(`📷 Image compressed: ${Math.round(compressedDataUrl.length / 1024)}KB`);
+                        resolve(compressedDataUrl);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        async function previewBirthdayPhoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                try {
+                    // Compress image before preview
+                    const compressedImage = await compressImage(file, 400, 0.7);
+                    document.getElementById('birthdayPhotoPreview').innerHTML = `<img src="${compressedImage}" alt="Preview">`;
+                } catch (error) {
+                    console.error('Error compressing image:', error);
+                    // Fallback to original if compression fails
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('birthdayPhotoPreview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+        
+        // Submit birthday
+        async function submitBirthday(event) {
+            event.preventDefault();
+            
+            const photoPreview = document.getElementById('birthdayPhotoPreview');
+            const photoImg = photoPreview.querySelector('img');
+            
+            const announcement = {
+                id: Date.now().toString(),
+                type: 'birthday',
+                name: document.getElementById('birthdayName').value,
+                department: document.getElementById('birthdayDepartment').value,
+                birthdayDate: document.getElementById('birthdayDate').value,
+                photo: photoImg ? photoImg.src : null,
+                message: document.getElementById('birthdayWishes').value,
+                createdAt: new Date().toISOString(),
+                createdBy: currentUser ? currentUser.email : 'HR'
+            };
+            
+            // Add to local array
+            hrAnnouncements.push(announcement);
+            
+            // Save to Firestore directly (simpler approach)
+            try {
+                if (typeof db !== 'undefined' && db.collection) {
+                    await db.collection('hrAnnouncements').doc(announcement.id).set(announcement);
+                    console.log('✅ Birthday saved to Firestore');
+                }
+                // Also save to localStorage
+                localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+            } catch (error) {
+                console.error('Error saving birthday:', error);
+            }
+            
+            closeModal('birthdayModal');
+            await showHRDashboard();
+            
+            alert('✅ Birthday announcement created successfully!');
+        }
+        
+        // Show Company News Modal
+        function showCompanyNewsModal() {
+            const modalHtml = `
+                <div id="companyNewsModal" class="modal" style="display: flex;">
+                    <div class="modal-content large" style="max-height: 90vh; overflow-y: auto;">
+                        <span class="close-button" onclick="closeModal('companyNewsModal')">&times;</span>
+                        <h2 style="margin-bottom: 1.5rem;">📰 Add Company News Update</h2>
+                        
+                        <form id="companyNewsForm" onsubmit="submitCompanyNews(event)">
+                            <div class="hr-form-section">
+                                <h4>📋 News Details</h4>
+                                <div class="form-group">
+                                    <label for="newsTitle">News Title *</label>
+                                    <input type="text" id="newsTitle" class="form-control" required placeholder="Enter a compelling news title">
+                                </div>
+                                <div class="form-group">
+                                    <label for="newsCategory">Category *</label>
+                                    <select id="newsCategory" class="form-control" required>
+                                        <option value="">Select Category</option>
+                                        <option value="Company Update">Company Update</option>
+                                        <option value="Policy Change">Policy Change</option>
+                                        <option value="Event">Event</option>
+                                        <option value="Achievement">Achievement</option>
+                                        <option value="Holiday Notice">Holiday Notice</option>
+                                        <option value="Training">Training</option>
+                                        <option value="Health & Safety">Health & Safety</option>
+                                        <option value="General">General</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newsPriority">Priority Level *</label>
+                                    <select id="newsPriority" class="form-control" required>
+                                        <option value="low">🟢 Low - General Information</option>
+                                        <option value="medium">🟡 Medium - Important Update</option>
+                                        <option value="high">🔴 High - Urgent / Action Required</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>🖼️ Event Image (Optional)</h4>
+                                <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 1rem;">Upload a large banner image for events, announcements, or promotions. Recommended size: 1200x600px</p>
+                                <div class="form-group">
+                                    <label for="newsImage" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 1rem; border: 2px dashed #d1d5db; border-radius: 12px; text-align: center; justify-content: center; background: #f9fafb; transition: all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';">
+                                        <span style="font-size: 2rem;">📷</span>
+                                        <span>Click to upload event banner image</span>
+                                    </label>
+                                    <input type="file" id="newsImage" accept="image/*" style="display: none;" onchange="previewNewsImage(event)">
+                                </div>
+                                <div id="newsImagePreview" style="margin-top: 1rem; text-align: center; display: none;">
+                                    <img id="newsImagePreviewImg" style="max-width: 100%; max-height: 300px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                                    <button type="button" onclick="removeNewsImage()" class="btn btn-danger btn-sm" style="margin-top: 0.5rem;">🗑️ Remove Image</button>
+                                </div>
+                                <div id="newsImageUploadProgress" style="display: none; margin-top: 0.5rem;">
+                                    <div style="background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
+                                        <div id="newsImageProgressBar" style="background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                    </div>
+                                    <span id="newsImageProgressText" style="font-size: 0.8rem; color: #6b7280;">Uploading...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>📝 News Content</h4>
+                                <div class="form-group">
+                                    <label for="newsSummary">Brief Summary *</label>
+                                    <input type="text" id="newsSummary" class="form-control" required placeholder="A one-line summary of the news" maxlength="150">
+                                </div>
+                                <div class="form-group">
+                                    <label for="newsContent">Full Content *</label>
+                                    <textarea id="newsContent" class="form-control" rows="6" required placeholder="Write the complete news content here..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>📅 Validity (Optional)</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="newsStartDate">Show From</label>
+                                        <input type="date" id="newsStartDate" class="form-control">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newsEndDate">Show Until</label>
+                                        <input type="date" id="newsEndDate" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section">
+                                <h4>🔗 Additional Link (Optional)</h4>
+                                <div class="form-group">
+                                    <label for="newsLink">External Link URL</label>
+                                    <input type="url" id="newsLink" class="form-control" placeholder="https://example.com/more-info">
+                                </div>
+                                <div class="form-group">
+                                    <label for="newsLinkText">Link Text</label>
+                                    <input type="text" id="newsLinkText" class="form-control" placeholder="Click here for more details">
+                                </div>
+                            </div>
+                            
+                            <div class="modal-actions" style="margin-top: 1.5rem;">
+                                <button type="button" class="btn btn-outline" onclick="closeModal('companyNewsModal')">Cancel</button>
+                                <button type="submit" class="btn btn-primary" id="publishNewsBtn">📢 Publish News</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('newsStartDate').valueAsDate = new Date();
+        }
+        
+        // Store the uploaded image URL and upload state
+        let newsImageUrl = null;
+        let isImageUploading = false;
+        
+        // Preview news image
+        async function previewNewsImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const preview = document.getElementById('newsImagePreview');
+            const previewImg = document.getElementById('newsImagePreviewImg');
+            const progressDiv = document.getElementById('newsImageUploadProgress');
+            const progressBar = document.getElementById('newsImageProgressBar');
+            const progressText = document.getElementById('newsImageProgressText');
+            const publishBtn = document.getElementById('publishNewsBtn');
+            
+            // Disable publish button while uploading
+            isImageUploading = true;
+            publishBtn.disabled = true;
+            publishBtn.textContent = '⏳ Uploading image...';
+            
+            // Show preview immediately (local)
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            
+            // Upload to Firebase Storage
+            try {
+                progressDiv.style.display = 'block';
+                progressBar.style.width = '10%';
+                progressText.textContent = 'Uploading to cloud...';
+                
+                // Check if Firebase Storage is available
+                const storageInstance = window.storage || (typeof firebase !== 'undefined' && firebase.storage ? firebase.storage() : null);
+                if (storageInstance) {
+                    const storageRef = storageInstance.ref();
+                    const fileName = `news-images/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+                    const uploadTask = storageRef.child(fileName).put(file);
+                    
+                    uploadTask.on('state_changed', 
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            progressBar.style.width = progress + '%';
+                            progressText.textContent = `Uploading: ${Math.round(progress)}%`;
+                        },
+                        (error) => {
+                            console.error('Upload error:', error);
+                            progressText.textContent = '❌ Upload failed - image will be embedded';
+                            progressDiv.style.display = 'none';
+                            // Fall back to embedded base64
+                            newsImageUrl = previewImg.src;
+                            // Re-enable publish button
+                            isImageUploading = false;
+                            publishBtn.disabled = false;
+                            publishBtn.textContent = '📢 Publish News';
+                        },
+                        async () => {
+                            // Upload complete
+                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                            newsImageUrl = downloadURL;
+                            progressBar.style.width = '100%';
+                            progressText.textContent = '✅ Uploaded successfully!';
+                            // Re-enable publish button
+                            isImageUploading = false;
+                            publishBtn.disabled = false;
+                            publishBtn.textContent = '📢 Publish News';
+                            setTimeout(() => {
+                                progressDiv.style.display = 'none';
+                            }, 1500);
+                            console.log('✅ Image uploaded to Firebase Storage:', downloadURL);
+                        }
+                    );
+                } else {
+                    // Firebase Storage not available, compress and use base64
+                    progressText.textContent = 'Processing image...';
+                    const compressedImage = await compressImage(file, 800, 0.8);
+                    newsImageUrl = compressedImage;
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '✅ Image ready!';
+                    // Re-enable publish button
+                    isImageUploading = false;
+                    publishBtn.disabled = false;
+                    publishBtn.textContent = '📢 Publish News';
+                    setTimeout(() => {
+                        progressDiv.style.display = 'none';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Image processing error:', error);
+                progressDiv.style.display = 'none';
+                // Re-enable publish button on error
+                isImageUploading = false;
+                publishBtn.disabled = false;
+                publishBtn.textContent = '📢 Publish News';
+            }
+        }
+        
+        // Remove news image
+        function removeNewsImage() {
+            newsImageUrl = null;
+            isImageUploading = false;
+            document.getElementById('newsImagePreview').style.display = 'none';
+            document.getElementById('newsImage').value = '';
+            // Re-enable publish button
+            const publishBtn = document.getElementById('publishNewsBtn');
+            if (publishBtn) {
+                publishBtn.disabled = false;
+                publishBtn.textContent = '📢 Publish News';
+            }
+        }
+        
+        // Make functions globally accessible
+        window.previewNewsImage = previewNewsImage;
+        window.removeNewsImage = removeNewsImage;
+        
+        // Submit company news
+        async function submitCompanyNews(event) {
+            event.preventDefault();
+            
+            // Check if image is still uploading
+            if (isImageUploading) {
+                alert('⏳ Please wait for image upload to complete!');
+                return;
+            }
+            
+            const publishBtn = document.getElementById('publishNewsBtn');
+            publishBtn.disabled = true;
+            publishBtn.textContent = '⏳ Publishing...';
+            
+            // Log image URL for debugging
+            console.log('📷 News image URL:', newsImageUrl ? 'Set (' + newsImageUrl.substring(0, 50) + '...)' : 'None');
+            
+            const announcement = {
+                id: Date.now().toString(),
+                type: 'company-news',
+                title: document.getElementById('newsTitle').value,
+                category: document.getElementById('newsCategory').value,
+                priority: document.getElementById('newsPriority').value,
+                summary: document.getElementById('newsSummary').value,
+                content: document.getElementById('newsContent').value,
+                image: newsImageUrl || null,  // Include uploaded image URL
+                startDate: document.getElementById('newsStartDate').value || null,
+                endDate: document.getElementById('newsEndDate').value || null,
+                link: document.getElementById('newsLink').value || null,
+                linkText: document.getElementById('newsLinkText').value || 'Read More',
+                createdAt: new Date().toISOString(),
+                createdBy: currentUser ? currentUser.email : 'HR'
+            };
+            
+            console.log('📰 Saving announcement with image:', announcement.image ? 'Yes' : 'No');
+            
+            // Add to local array
+            hrAnnouncements.push(announcement);
+            
+            // Save to Firestore directly
+            try {
+                if (typeof db !== 'undefined' && db.collection) {
+                    await db.collection('hrAnnouncements').doc(announcement.id).set(announcement);
+                    console.log('✅ Company news saved to Firestore');
+                }
+                // Also save to localStorage
+                localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+            } catch (error) {
+                console.error('Error saving company news:', error);
+                publishBtn.disabled = false;
+                publishBtn.textContent = '📢 Publish News';
+                alert('❌ Error saving: ' + error.message);
+                return;
+            }
+            
+            // Reset the image URL for next use
+            newsImageUrl = null;
+            
+            closeModal('companyNewsModal');
+            await showHRDashboard();
+            
+            alert('✅ Company news published successfully!');
+        }
+        
+        // View announcement preview
+        function viewAnnouncementPreview(index) {
+            loadAnnouncementsSync();
+            const announcement = hrAnnouncements[index];
+            if (!announcement) return;
+            
+            let previewTitle = '👋 New Joinee';
+            if (announcement.type === 'birthday') previewTitle = '🎂 Birthday';
+            if (announcement.type === 'company-news') previewTitle = '📰 Company News';
+            
+            const previewHtml = `
+                <div id="previewModal" class="modal" style="display: flex;">
+                    <div class="modal-content" style="max-width: 500px;">
+                        <span class="close-button" onclick="closeModal('previewModal')">&times;</span>
+                        <h3 style="margin-bottom: 1rem;">Preview: ${previewTitle}</h3>
+                        ${renderAnnouncementCard(announcement)}
+                        <div class="modal-actions" style="margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="closeModal('previewModal')">Close Preview</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', previewHtml);
+        }
+        
+        // Delete announcement
+        async function deleteAnnouncement(index) {
+            if (!confirm('Are you sure you want to delete this announcement?')) return;
+            
+            loadAnnouncementsSync();
+            const announcement = hrAnnouncements[index];
+            const announcementId = announcement ? announcement.id : null;
+            
+            hrAnnouncements.splice(index, 1);
+            
+            // Delete from Firestore
+            try {
+                if (announcementId && typeof db !== 'undefined' && db.collection) {
+                    await db.collection('hrAnnouncements').doc(announcementId.toString()).delete();
+                    console.log('🗑️ Deleted from Firestore:', announcementId);
+                }
+                // Update localStorage
+                localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+            } catch (error) {
+                console.error('Error deleting announcement:', error);
+            }
+            
+            await showHRDashboard();
+            alert('✅ Announcement deleted successfully!');
+        }
+        
+        // Cleanup all expired announcements
+        async function cleanupExpiredAnnouncements() {
+            const activeAnnouncements = getActiveAnnouncements();
+            const expiredCount = hrAnnouncements.length - activeAnnouncements.length;
+            
+            if (expiredCount === 0) {
+                alert('✅ No expired announcements to clean up!');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete ${expiredCount} expired announcement(s)?\n\nThis will permanently remove:\n- Birthdays that have passed\n- New joinees older than 7 days\n- Company news past end date`)) {
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                // Get IDs of expired announcements
+                const activeIds = new Set(activeAnnouncements.map(a => a.id?.toString()));
+                const expiredAnnouncements = hrAnnouncements.filter(a => !activeIds.has(a.id?.toString()));
+                
+                // Delete from Firestore
+                if (typeof db !== 'undefined' && db.collection) {
+                    for (const expired of expiredAnnouncements) {
+                        if (expired.id) {
+                            await db.collection('hrAnnouncements').doc(expired.id.toString()).delete();
+                            console.log('🗑️ Deleted expired:', expired.id);
+                        }
+                    }
+                }
+                
+                // Update local array to only active announcements
+                hrAnnouncements = [...activeAnnouncements];
+                
+                // Update localStorage
+                localStorage.setItem('hrAnnouncements', JSON.stringify(hrAnnouncements));
+                
+                console.log(`✅ Cleaned up ${expiredCount} expired announcements`);
+                await showHRDashboard();
+                alert(`✅ Successfully removed ${expiredCount} expired announcement(s)!`);
+                
+            } catch (error) {
+                console.error('Error cleaning up announcements:', error);
+                alert('❌ Error cleaning up announcements: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Make cleanup function globally accessible
+        window.cleanupExpiredAnnouncements = cleanupExpiredAnnouncements;
+        
+        // Render a single announcement card
+        function renderAnnouncementCard(announcement) {
+            const isNewJoinee = announcement.type === 'new-joinee';
+            const isBirthday = announcement.type === 'birthday';
+            const isCompanyNews = announcement.type === 'company-news';
+            
+            // Base card styles for mobile visibility
+            const cardBaseStyle = "display: block; visibility: visible; opacity: 1; width: 100%; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 1rem;";
+            
+            // Company News Card
+            if (isCompanyNews) {
+                const priorityColors = {
+                    high: { bg: '#fee2e2', text: '#991b1b', label: '🔴 Urgent' },
+                    medium: { bg: '#fef3c7', text: '#92400e', label: '🟡 Important' },
+                    low: { bg: '#d1fae5', text: '#065f46', label: '🟢 Info' }
+                };
+                const priority = priorityColors[announcement.priority] || priorityColors.low;
+                
+                // Image section (if image exists)
+                const imageHtml = announcement.image ? `
+                    <div class="announcement-image" style="width: 100%; max-height: 300px; overflow: hidden;">
+                        <img src="${announcement.image}" alt="${announcement.title}" style="width: 100%; height: auto; object-fit: cover; display: block;" onerror="this.parentElement.style.display='none';">
+                    </div>
+                ` : '';
+                
+                return `
+                    <div class="announcement-card company-news news-priority-${announcement.priority || 'low'}" style="${cardBaseStyle} border-top: 5px solid #3b82f6;">
+                        <span class="announcement-badge company-news" style="position: absolute; top: 0.75rem; right: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; background: #3b82f6; color: white; z-index: 10;">${announcement.category || 'Company Update'}</span>
+                        
+                        ${imageHtml}
+                        
+                        <div class="announcement-header company-news" style="padding: 1rem; display: flex; align-items: center; gap: 0.75rem; background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
+                            <div class="announcement-avatar" style="width: 50px; height: 50px; min-width: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white;">📰</div>
+                            <div class="announcement-info" style="flex: 1; min-width: 0;">
+                                <h3 style="margin: 0; font-size: 1rem; color: #1f2937; word-break: break-word;">${announcement.title}</h3>
+                                <p style="margin: 0.25rem 0 0 0; display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="priority-badge ${announcement.priority || 'low'}" style="padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.65rem; font-weight: 600; background: ${priority.bg}; color: ${priority.text};">${priority.label}</span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="announcement-body" style="padding: 0.75rem 1rem;">
+                            <div class="announcement-detail" style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.75rem;">
+                                <div class="announcement-detail-icon company-news" style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">📋</div>
+                                <div class="announcement-detail-text" style="flex: 1; min-width: 0;">
+                                    <div class="announcement-detail-label" style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Summary</div>
+                                    <div class="announcement-detail-value" style="font-size: 0.85rem; color: #374151; word-break: break-word;">${announcement.summary || ''}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="announcement-message" style="padding: 0.75rem; background: #f0f9ff; border-radius: 8px; border-left: 3px solid #3b82f6; font-size: 0.85rem; color: #374151; line-height: 1.5; word-break: break-word;">
+                                ${announcement.content || ''}
+                            </div>
+                            
+                            ${announcement.link ? `
+                                <div style="margin-top: 0.75rem; text-align: center;">
+                                    <a href="${announcement.link}" target="_blank" class="btn btn-outline btn-sm" style="text-decoration: none; display: inline-block; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                                        🔗 ${announcement.linkText || 'Read More'}
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem;">
+                            <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
+                            <span style="color: #667eea; font-weight: 600;">EDANBROOK HR</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // New Joinee and Birthday Cards
+            const headerBg = isNewJoinee ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fef3c7, #fde68a)';
+            const borderColor = isNewJoinee ? '#10b981' : '#f59e0b';
+            const badgeBg = isNewJoinee ? '#10b981' : '#f59e0b';
+            const detailIconBg = isNewJoinee ? '#d1fae5' : '#fef3c7';
+            
+            return `
+                <div class="announcement-card ${announcement.type}" style="${cardBaseStyle} border-top: 5px solid ${borderColor};">
+                    <span class="announcement-badge ${announcement.type}" style="position: absolute; top: 0.75rem; right: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; background: ${badgeBg}; color: white;">${isNewJoinee ? 'New Team Member' : 'Happy Birthday!'}</span>
+                    
+                    <div class="announcement-header ${announcement.type}" style="padding: 1rem; display: flex; align-items: center; gap: 0.75rem; background: ${headerBg};">
+                        <div class="announcement-avatar" style="width: 50px; height: 50px; min-width: 50px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.15); background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; overflow: hidden;">
+                            ${announcement.photo 
+                                ? `<img src="${announcement.photo}" alt="${announcement.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+                                : (isNewJoinee ? '👋' : '🎂')
+                            }
+                        </div>
+                        <div class="announcement-info" style="flex: 1; min-width: 0;">
+                            <h3 style="margin: 0; font-size: 1rem; color: #1f2937; word-break: break-word;">${announcement.name}</h3>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #4b5563;">${announcement.department || 'EDANBROOK Team'}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="announcement-body" style="padding: 0.75rem 1rem;">
+                        ${isNewJoinee ? `
+                            <div class="announcement-detail" style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.5rem;">
+                                <div class="announcement-detail-icon new-joinee" style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: ${detailIconBg}; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">💼</div>
+                                <div class="announcement-detail-text" style="flex: 1; min-width: 0;">
+                                    <div class="announcement-detail-label" style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Designation</div>
+                                    <div class="announcement-detail-value" style="font-size: 0.85rem; color: #374151;">${announcement.designation || 'Team Member'}</div>
+                                </div>
+                            </div>
+                            <div class="announcement-detail" style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.5rem;">
+                                <div class="announcement-detail-icon new-joinee" style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: ${detailIconBg}; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">📅</div>
+                                <div class="announcement-detail-text" style="flex: 1; min-width: 0;">
+                                    <div class="announcement-detail-label" style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Joining Date</div>
+                                    <div class="announcement-detail-value" style="font-size: 0.85rem; color: #374151;">${formatDate(announcement.joiningDate)}</div>
+                                </div>
+                            </div>
+                            ${announcement.email ? `
+                                <div class="announcement-detail" style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.5rem;">
+                                    <div class="announcement-detail-icon new-joinee" style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: ${detailIconBg}; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">📧</div>
+                                    <div class="announcement-detail-text" style="flex: 1; min-width: 0;">
+                                        <div class="announcement-detail-label" style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Email</div>
+                                        <div class="announcement-detail-value" style="font-size: 0.85rem; color: #374151; word-break: break-all;">${announcement.email}</div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <div class="announcement-detail" style="display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 8px; margin-bottom: 0.5rem;">
+                                <div class="announcement-detail-icon birthday" style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: ${detailIconBg}; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">🎂</div>
+                                <div class="announcement-detail-text" style="flex: 1; min-width: 0;">
+                                    <div class="announcement-detail-label" style="font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Birthday</div>
+                                    <div class="announcement-detail-value" style="font-size: 0.85rem; color: #374151;">${formatDate(announcement.birthdayDate)}</div>
+                                </div>
+                            </div>
+                        `}
+                        
+                        <div class="announcement-message" style="padding: 0.75rem; margin-top: 0.5rem; background: linear-gradient(135deg, #f8f9fa, #f1f3f4); border-radius: 8px; border-left: 3px solid ${borderColor}; font-style: italic; color: #4b5563; font-size: 0.85rem; line-height: 1.5; word-break: break-word;">
+                            "${announcement.message}"
+                        </div>
+                    </div>
+                    
+                    <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; flex-wrap: wrap; gap: 0.25rem;">
+                        <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
+                        <span style="color: #667eea; font-weight: 600;">EDANBROOK HR</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Get announcements for all users (called from dashboard)
+        function getActiveAnnouncements() {
+            loadAnnouncementsSync();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+            const todayStr = getLocalDateStr(today);  // Use local date, not UTC
+            const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const fiveDaysFromNow = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
+            
+            // Debug: Log today's date for verification
+            console.log('📅 Today (local):', todayStr);
+            console.log('📢 All announcements:', hrAnnouncements.length, hrAnnouncements.map(a => ({type: a.type, title: a.title || a.name, startDate: a.startDate, endDate: a.endDate})));
+            
+            return hrAnnouncements.filter(a => {
+                const createdAt = new Date(a.createdAt);
+                
+                // BIRTHDAY: Show 5 days BEFORE birthday until the end of birthday day
+                if (a.type === 'birthday') {
+                    if (a.birthdayDate) {
+                        const birthdayDate = new Date(a.birthdayDate);
+                        birthdayDate.setHours(0, 0, 0, 0);
+                        
+                        // Calculate days until birthday
+                        const daysUntilBirthday = Math.floor((birthdayDate - today) / (24 * 60 * 60 * 1000));
+                        
+                        // Hide if birthday has passed (today > birthdayDate)
+                        if (today > birthdayDate) {
+                            console.log(`🎂 Birthday expired for ${a.name}: ${a.birthdayDate}`);
+                            return false; // Birthday has passed, hide it
+                        }
+                        
+                        // Show only if birthday is within next 5 days (or today)
+                        if (daysUntilBirthday > 5) {
+                            console.log(`🎂 Birthday too far for ${a.name}: ${daysUntilBirthday} days away`);
+                            return false; // More than 5 days away, don't show yet
+                        }
+                        
+                        return true; // Show birthday (within 5 days)
+                    }
+                    return false; // No birthday date set
+                }
+                
+                // NEW JOINEE: Show for 7 days from joining date, then auto-remove
+                if (a.type === 'new-joinee') {
+                    if (a.joiningDate) {
+                        const joiningDate = new Date(a.joiningDate);
+                        joiningDate.setHours(0, 0, 0, 0);
+                        
+                        // Calculate days since joining
+                        const daysSinceJoining = Math.floor((today - joiningDate) / (24 * 60 * 60 * 1000));
+                        
+                        if (daysSinceJoining > 7) {
+                            console.log(`👋 New joinee expired for ${a.name}: joined ${daysSinceJoining} days ago`);
+                            return false; // More than 7 days since joining, hide it
+                        }
+                    }
+                    return true; // Show new joinees within 7 days
+                }
+                
+                // COMPANY NEWS: Check validity dates
+                if (a.type === 'company-news') {
+                    console.log(`📰 Checking company news: "${a.title}", startDate: ${a.startDate}, endDate: ${a.endDate}, today: ${todayStr}`);
+                    
+                    // Check start date - if set and in future, don't show yet
+                    if (a.startDate && a.startDate > todayStr) {
+                        console.log(`📰 Not yet active: startDate ${a.startDate} > today ${todayStr}`);
+                        return false; // Not yet active
+                    }
+                    
+                    // Check end date - if set and in past, expired
+                    if (a.endDate && a.endDate < todayStr) {
+                        console.log(`📰 Expired: endDate ${a.endDate} < today ${todayStr}`);
+                        return false; // Expired
+                    }
+                    
+                    // If endDate is set and valid (in future or today), ALWAYS show it
+                    if (a.endDate && a.endDate >= todayStr) {
+                        console.log(`📰 Company news "${a.title}" is ACTIVE (endDate: ${a.endDate})`);
+                        return true; // Valid end date in future, show it
+                    }
+                    
+                    // If no endDate set, use 30-day default from creation
+                    const isRecent = createdAt >= thirtyDaysAgo;
+                    console.log(`📰 Company news "${a.title}" no endDate, using 30-day rule: ${isRecent}`);
+                    return isRecent;
+                }
+                
+                // Default: show announcements from last 30 days
+                return createdAt >= thirtyDaysAgo;
+            }).sort((a, b) => {
+                // Sort by priority for company news (high first), then by date
+                if (a.type === 'company-news' && b.type === 'company-news') {
+                    const priorityOrder = { high: 0, medium: 1, low: 2 };
+                    const priorityDiff = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+                    if (priorityDiff !== 0) return priorityDiff;
+                }
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+        }
+        
+        // Get only company news for the ticker
+        function getActiveCompanyNews() {
+            return getActiveAnnouncements().filter(a => a.type === 'company-news');
+        }
+        
+        // Get birthdays and new joinees (non-news announcements)
+        function getActivePeopleAnnouncements() {
+            return getActiveAnnouncements().filter(a => a.type === 'birthday' || a.type === 'new-joinee');
+        }
+        
+        // Store expanded news ID
+        let expandedNewsId = null;
+        
+        // Render beautiful scrolling news ticker for Company News
+        function renderNewsTicker() {
+            const companyNews = getActiveCompanyNews();
+            
+            if (companyNews.length === 0) {
+                return '';
+            }
+            
+            // Get category icon
+            const getCategoryIcon = (category) => {
+                const icons = {
+                    'Company Update': '🏢',
+                    'Policy Change': '📜',
+                    'Event': '🎉',
+                    'Achievement': '🏆',
+                    'Holiday Notice': '🎄',
+                    'Training': '📚',
+                    'Health & Safety': '🏥',
+                    'General': '📰'
+                };
+                return icons[category] || '📰';
+            };
+            
+            // Create beautiful event cards (duplicate for seamless infinite scroll)
+            const createEventCard = (news) => `
+                <div class="news-event-card priority-${news.priority || 'low'}" onclick="expandNewsItem('${news.id}')">
+                    ${news.image ? 
+                        `<img src="${news.image}" alt="${news.title}" class="news-event-image" onerror="this.outerHTML='<div class=\\'news-event-image-placeholder\\'>${getCategoryIcon(news.category)}</div>'">` : 
+                        `<div class="news-event-image-placeholder">${getCategoryIcon(news.category)}</div>`
+                    }
+                    <div class="news-event-content">
+                        <div class="news-event-badges">
+                            <span class="news-event-category">${news.category || 'Update'}</span>
+                            <span class="news-event-priority ${news.priority || 'low'}">${news.priority === 'high' ? '🔴 Urgent' : news.priority === 'medium' ? '🟡 Important' : '🟢 Info'}</span>
+                        </div>
+                        <div class="news-event-title">${news.title}</div>
+                        <div class="news-event-summary">${news.summary || 'Click to read more details...'}</div>
+                        <div class="news-event-footer">
+                            <span class="news-event-date">📅 ${formatDate(news.createdAt)}</span>
+                            <span class="news-event-action">Read More →</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Create cards array (duplicate for seamless scroll)
+            const newsCards = [...companyNews, ...companyNews].map(news => createEventCard(news)).join('');
+            
+            return `
+                <div class="news-ticker-container" id="newsTickerContainer">
+                    <div class="news-ticker-header">
+                        <div class="news-ticker-title">
+                            <div class="news-ticker-title-icon">📰</div>
+                            <span>EDANBROOK NEWS & EVENTS</span>
+                        </div>
+                        <div class="news-ticker-badge">
+                            <span class="news-ticker-count">${companyNews.length} Update${companyNews.length > 1 ? 's' : ''}</span>
+                            <span class="news-ticker-live">LIVE</span>
+                        </div>
+                    </div>
+                    <div class="news-ticker-track-wrapper">
+                        <div class="news-ticker-track">
+                            ${newsCards}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Expand news item when clicked - opens as fullscreen modal
+        function expandNewsItem(newsId) {
+            const companyNews = getActiveCompanyNews();
+            const news = companyNews.find(n => n.id == newsId);
+            
+            if (!news) return;
+            
+            expandedNewsId = newsId;
+            
+            const priorityColors = {
+                high: { bg: '#fee2e2', text: '#991b1b', label: '🔴 Urgent' },
+                medium: { bg: '#fef3c7', text: '#92400e', label: '🟡 Important' },
+                low: { bg: '#d1fae5', text: '#065f46', label: '🟢 Info' }
+            };
+            const priority = priorityColors[news.priority] || priorityColors.low;
+            
+            // Create overlay modal
+            const overlay = document.createElement('div');
+            overlay.id = 'newsModalOverlay';
+            overlay.className = 'news-modal-overlay';
+            overlay.onclick = function(e) {
+                if (e.target === overlay) closeExpandedNews();
+            };
+            
+            overlay.innerHTML = `
+                <div class="news-modal-card">
+                    <div class="news-modal-header">
+                        <div class="news-modal-badges">
+                            <span class="news-modal-badge" style="background: ${priority.bg}; color: ${priority.text};">${priority.label}</span>
+                            <span class="news-modal-badge" style="background: #dbeafe; color: #1e40af;">${news.category || 'Update'}</span>
+                        </div>
+                        <button class="news-modal-close" onclick="closeExpandedNews()">✕</button>
+                    </div>
+                    ${news.image ? `<img src="${news.image}" alt="${news.title}" class="news-modal-image" onerror="this.style.display='none'">` : ''}
+                    <div class="news-modal-body">
+                        <h2 class="news-modal-title">${news.title}</h2>
+                        ${news.summary ? `<p class="news-modal-summary">${news.summary}</p>` : ''}
+                        <div class="news-modal-content">${news.content || ''}</div>
+                        ${news.link ? `
+                            <a href="${news.link}" target="_blank" class="news-modal-link">
+                                🔗 ${news.linkText || 'Read More'}
+                            </a>
+                        ` : ''}
+                    </div>
+                    <div class="news-modal-footer">
+                        <span>📅 Posted: ${formatDate(news.createdAt)}</span>
+                        <span class="news-modal-brand">EDANBROOK HR</span>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        }
+        
+        // Close expanded news modal
+        function closeExpandedNews() {
+            const overlay = document.getElementById('newsModalOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+            document.body.style.overflow = ''; // Restore scroll
+            expandedNewsId = null;
+        }
+        
+        // Make functions global
+        window.expandNewsItem = expandNewsItem;
+        window.closeExpandedNews = closeExpandedNews;
+        
+        // Render announcements section for dashboard (visible to all users)
+        function renderDashboardAnnouncements() {
+            const companyNews = getActiveCompanyNews();
+            const peopleAnnouncements = getActivePeopleAnnouncements();
+            
+            // Return empty if no announcements at all
+            if (companyNews.length === 0 && peopleAnnouncements.length === 0) {
+                return '';
+            }
+            
+            // News ticker for company news
+            const newsTickerHtml = renderNewsTicker();
+            
+            // Cards for birthdays and new joinees
+            const containerStyle = "display: flex; flex-direction: column; gap: 1rem; width: 100%;";
+            const peopleCardsHtml = peopleAnnouncements.length > 0 ? `
+                <div class="announcements-section" style="display: block !important; visibility: visible !important; width: 100% !important; margin-bottom: 2rem; overflow: visible !important; padding: 0 !important;">
+                    <div style="margin-bottom: 1rem; padding: 0;">
+                        <h3 style="color: #1f2937; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 1.1rem; margin: 0;">
+                            🎉 Team Celebrations
+                            <span style="background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;">${peopleAnnouncements.length}</span>
+                        </h3>
+                    </div>
+                    <div style="${containerStyle}">
+                        ${peopleAnnouncements.slice(0, 4).map(a => renderAnnouncementCard(a)).join('')}
+                    </div>
+                </div>
+            ` : '';
+            
+            return newsTickerHtml + peopleCardsHtml;
+        }
+        
+        // Show all announcements page
+        function showAllAnnouncements() {
+            const main = document.getElementById('mainContent');
+            const announcements = getActiveAnnouncements();
+            
+            main.innerHTML = `
+                <div class="page-header">
+                    <h2>📢 All Company Announcements</h2>
+                    <div class="subtitle">Stay updated with the latest news from HR</div>
+                </div>
+                <div class="announcements-container">
+                    ${announcements.map(a => renderAnnouncementCard(a)).join('')}
+                </div>
+                ${announcements.length === 0 ? `
+                    <div style="text-align: center; padding: 3rem; background: white; border-radius: 12px; color: #6b7280;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                        <h4>No Announcements</h4>
+                        <p>There are no active announcements at the moment.</p>
+                    </div>
+                ` : ''}
+            `;
+        }
+        
+        // Make HR functions globally accessible
+        window.showHRDashboard = showHRDashboard;
+        window.showNewJoineeModal = showNewJoineeModal;
+        window.showBirthdayModal = showBirthdayModal;
+        window.showCompanyNewsModal = showCompanyNewsModal;
+        window.previewJoineePhoto = previewJoineePhoto;
+        window.previewBirthdayPhoto = previewBirthdayPhoto;
+        window.submitNewJoinee = submitNewJoinee;
+        window.submitBirthday = submitBirthday;
+        window.submitCompanyNews = submitCompanyNews;
+        window.viewAnnouncementPreview = viewAnnouncementPreview;
+        window.deleteAnnouncement = deleteAnnouncement;
+        window.showAllAnnouncements = showAllAnnouncements;
+        window.onBirthdayEmployeeSelect = onBirthdayEmployeeSelect;
+
+
+        // ============================================
+        // HR LEAVE APPROVAL SYSTEM - MULTI-LEVEL WORKFLOW
+        // Version 5.0.0
+        // ============================================
+        
+        // DESIGNER TEAM LEADS - These emails can approve designer leave requests (5 Team Leads)
+        const DESIGNER_TEAM_LEADS = [
+            { email: 'kathar.tech@edanbrook.in', name: 'Kathar', namePrefix: 'kathar' },
+            { email: 'muruganantham.tech@edanbrook.in', name: 'Muruganantham', namePrefix: 'muruganantham' },
+            { email: 'aravindhan.tech@edanbrook.in', name: 'Aravindhan', namePrefix: 'aravindhan' },
+            { email: 'sathish.tech@edanbrook.in', name: 'Sathish', namePrefix: 'sathish' },
+            { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj', namePrefix: 'meeraj' }
+        ];
+        
+        // All possible team lead email formats
+        const TEAM_LEAD_EMAIL_PATTERNS = [
+            'kathar.tech@edanbrook.in', 'kathar.p@edanbrook.in', 'kathar@edanbrook.in',
+            'muruganantham.tech@edanbrook.in', 'muruganantham.p@edanbrook.in', 'muruganantham@edanbrook.in',
+            'aravindhan.tech@edanbrook.in', 'aravindhan.p@edanbrook.in', 'aravindhan@edanbrook.in',
+            'sathish.tech@edanbrook.in', 'sathish.p@edanbrook.in', 'sathish@edanbrook.in',
+            'meeraj.tech@edanbrook.in', 'meeraj.p@edanbrook.in', 'meeraj@edanbrook.in'
+        ];
+        
+        const TEAM_LEAD_NAME_PREFIXES = ['kathar', 'muruganantham', 'aravindhan', 'sathish', 'meeraj'];
+        
+        // Helper function to check if an email belongs to a team lead
+        function isEmailTeamLead(email) {
+            if (!email) {
+                console.log('❌ isEmailTeamLead: No email provided');
+                return false;
+            }
+            const emailLower = email.toLowerCase().trim();
+            
+            // Direct check against the 5 team lead emails
+            const TEAM_LEAD_EMAILS_CHECK = [
+                'kathar.tech@edanbrook.in',
+                'muruganantham.tech@edanbrook.in',
+                'aravindhan.tech@edanbrook.in',
+                'sathish.tech@edanbrook.in',
+                'meeraj.tech@edanbrook.in'
+            ];
+            
+            const isMatch = TEAM_LEAD_EMAILS_CHECK.includes(emailLower);
+            console.log('🔍 isEmailTeamLead:', emailLower, '→', isMatch ? '✅ YES' : '❌ NO');
+            return isMatch;
+        }
+        
+        // Helper function to check if two emails belong to the same team lead person
+        function isSameTeamLead(loggedInEmail, assignedEmail) {
+            if (!loggedInEmail || !assignedEmail) {
+                console.log('❌ isSameTeamLead: Missing email - loggedIn:', loggedInEmail, 'assigned:', assignedEmail);
+                return false;
+            }
+            
+            const email1 = loggedInEmail.toLowerCase().trim();
+            const email2 = assignedEmail.toLowerCase().trim();
+            
+            // Direct match
+            if (email1 === email2) {
+                console.log('✅ isSameTeamLead: Direct match!', email1);
+                return true;
+            }
+            
+            // Extract first name (before . or @)
+            const getName = (email) => email.split('@')[0].split('.')[0];
+            const name1 = getName(email1);
+            const name2 = getName(email2);
+            
+            const isMatch = name1 === name2;
+            console.log('🔍 isSameTeamLead:', email1, 'vs', email2, '→ names:', name1, 'vs', name2, '→', isMatch ? '✅ MATCH' : '❌ NO MATCH');
+            return isMatch;
+        }
+        
+        // Get user role with email fallback detection
+        // PRIORITY: Email patterns first for key roles, then Firestore
+        function getUserRoleWithFallback() {
+            const email = (currentUser?.email || '').toLowerCase();
+            
+            console.log('🔍 getUserRoleWithFallback checking email:', email);
+            
+            // PRIORITY 1: Detect COO by email (most important - coo@ prefix)
+            if (email.startsWith('coo@') || email === 'coo@edanbrook.com' || email === 'coo@edanbrook.in') {
+                console.log('🎯 Role = COO (from email pattern)');
+                return 'coo';
+            }
+            
+            // PRIORITY 2: Detect Director by email
+            if (email.startsWith('director@') || email === 'director@edanbrook.com' || email === 'director@edanbrook.in') {
+                console.log('🎯 Role = DIRECTOR (from email pattern)');
+                return 'director';
+            }
+            
+            // PRIORITY 3: Detect HR by email
+            if (email.startsWith('hr@') || email === 'hr@edanbrook.com' || email === 'hr@edanbrook.in' || email === 'paul.a@edanbrook.com') {
+                console.log('🎯 Role = HR (from email pattern)');
+                return 'hr';
+            }
+            
+            // PRIORITY 4: Check if Team Lead email (before general designer check)
+            if (isEmailTeamLead(email)) {
+                console.log('🎯 Role = DESIGNER/TEAM_LEAD (from team lead check)');
+                return 'designer';
+            }
+            
+            // PRIORITY 5: Check Firestore role (if valid and specific)
+            let firestoreRole = '';
+            if (typeof currentUserRole !== 'undefined' && currentUserRole) {
+                firestoreRole = currentUserRole.trim().toLowerCase();
+            } else if (currentUser?.role) {
+                firestoreRole = currentUser.role.trim().toLowerCase();
+            }
+            
+            if (firestoreRole && firestoreRole !== '' && firestoreRole !== 'employee') {
+                console.log('🎯 Role =', firestoreRole.toUpperCase(), '(from Firestore)');
+                return firestoreRole;
+            }
+            
+            // PRIORITY 6: Additional email pattern checks
+            if (email.includes('bdm') || email.startsWith('bdm@')) {
+                console.log('🎯 Role = BDM (from email pattern)');
+                return 'bdm';
+            }
+            if (email.includes('estimator') || email.startsWith('estimator@')) {
+                console.log('🎯 Role = ESTIMATOR (from email pattern)');
+                return 'estimator';
+            }
+            if (email.includes('accounts') || email.startsWith('accounts@')) {
+                console.log('🎯 Role = ACCOUNTS (from email pattern)');
+                return 'accounts';
+            }
+            
+            // PRIORITY 7: Check for designer pattern (.tech@)
+            if (email.includes('.tech@')) {
+                console.log('🎯 Role = DESIGNER (from .tech@ email pattern)');
+                return 'designer';
+            }
+            
+            // DEFAULT: Return whatever Firestore has, even if 'employee'
+            console.log('⚠️ Role = EMPLOYEE (default/Firestore)');
+            return firestoreRole || 'employee';
+        }
+        
+        let leaveRequests = [];
+        
+        // Load leave requests from Firestore
+        async function loadLeaveRequests() {
+            try {
+                console.log('📂 Loading leave requests from Firestore...');
+                const snapshot = await db.collection('leaveRequests').orderBy('submittedAt', 'desc').get();
+                leaveRequests = [];
+                snapshot.forEach(doc => {
+                    leaveRequests.push({ ...doc.data(), docId: doc.id });
+                });
+                console.log('✅ Loaded', leaveRequests.length, 'leave requests from Firestore');
+                return leaveRequests;
+            } catch (error) {
+                console.error('❌ Error loading leave requests:', error);
+                leaveRequests = [];
+                return leaveRequests;
+            }
+        }
+        
+        // Save a single leave request to Firestore
+        async function saveLeaveRequest(request) {
+            try {
+                if (request.docId) {
+                    // Update existing document
+                    await db.collection('leaveRequests').doc(request.docId).update(request);
+                    console.log('💾 Updated leave request:', request.docId);
+                } else {
+                    // Add new document
+                    const docRef = await db.collection('leaveRequests').add(request);
+                    request.docId = docRef.id;
+                    console.log('💾 Created new leave request:', docRef.id);
+                }
+                return true;
+            } catch (error) {
+                console.error('❌ Error saving leave request:', error);
+                return false;
+            }
+        }
+        
+        // Update a leave request in Firestore by docId
+        async function updateLeaveRequest(docId, updateData) {
+            try {
+                await db.collection('leaveRequests').doc(docId).update(updateData);
+                console.log('💾 Updated leave request:', docId);
+                return true;
+            } catch (error) {
+                console.error('❌ Error updating leave request:', error);
+                return false;
+            }
+        }
+        
+        // DEBUG: View all leave requests in console
+        async function debugLeaveRequests() {
+            await loadLeaveRequests();
+            console.log('==========================================');
+            console.log('🔍 DEBUG: All Leave Requests in Firestore');
+            console.log('==========================================');
+            if (leaveRequests.length === 0) {
+                console.log('⚠️ No leave requests found in Firestore');
+            } else {
+                leaveRequests.forEach((req, idx) => {
+                    console.log(`\n📝 Request #${idx + 1}:`);
+                    console.log('   Doc ID:', req.docId);
+                    console.log('   ID:', req.id);
+                    console.log('   Employee:', req.employeeName);
+                    console.log('   Status:', req.status);
+                    console.log('   Current Stage:', req.currentStage);
+                    console.log('   Flow Type:', req.approvalFlow?.flowType);
+                    console.log('   Selected Team Lead:', req.selectedTeamLead);
+                    console.log('   Submitted By:', req.submittedBy);
+                });
+            }
+            console.log('==========================================');
+            return leaveRequests;
+        }
+        window.debugLeaveRequests = debugLeaveRequests;
+        
+        // Check if current user is a Team Lead
+        function isCurrentUserTeamLead() {
+            if (!currentUser || !currentUser.email) return false;
+            return isEmailTeamLead(currentUser.email);
+        }
+        
+        // Get approval flow info based on role and email
+        function getApprovalFlowInfo(userRole, userEmail) {
+            const emailLower = (userEmail || '').toLowerCase();
+            const role = (userRole || '').toLowerCase();
+            
+            // Check if user is a team lead using flexible matching
+            const isTeamLeadEmail = isEmailTeamLead(emailLower);
+            
+            switch (role) {
+                case 'bdm':
+                case 'estimator':
+                case 'accounts':
+                    return {
+                        flowType: 'standard_flow',
+                        flowDescription: 'Your Leave → COO → HR → Director',
+                        stages: ['COO Approval', 'HR Approval', 'Director Approval'],
+                        totalStages: 3,
+                        requiresTeamLeadSelection: false
+                    };
+                case 'designer':
+                    // Check if this designer is a team lead
+                    if (isTeamLeadEmail) {
+                        // Team leads don't select another team lead - they go direct to COO → HR
+                        return {
+                            flowType: 'teamlead_flow',
+                            flowDescription: 'Your Leave → COO → HR',
+                            stages: ['COO Approval', 'HR Approval'],
+                            totalStages: 2,
+                            requiresTeamLeadSelection: false
+                        };
+                    } else {
+                        // Regular designers select a team lead first
+                        return {
+                            flowType: 'designer_flow',
+                            flowDescription: 'Your Leave → Team Lead → HR → COO',
+                            stages: ['Team Lead Approval', 'HR Approval', 'COO Approval'],
+                            totalStages: 3,
+                            requiresTeamLeadSelection: true
+                        };
+                    }
+                case 'hr':
+                    return {
+                        flowType: 'hr_flow',
+                        flowDescription: 'Your Leave → Director',
+                        stages: ['Director Approval'],
+                        totalStages: 1,
+                        requiresTeamLeadSelection: false
+                    };
+                case 'coo':
+                    return {
+                        flowType: 'coo_flow',
+                        flowDescription: 'Your Leave → Director',
+                        stages: ['Director Approval'],
+                        totalStages: 1,
+                        requiresTeamLeadSelection: false
+                    };
+                case 'director':
+                    return {
+                        flowType: 'director_flow',
+                        flowDescription: 'Self-Approved',
+                        stages: [],
+                        totalStages: 0,
+                        requiresTeamLeadSelection: false
+                    };
+                default:
+                    return {
+                        flowType: 'default_flow',
+                        flowDescription: 'Your Leave → COO → HR → Director',
+                        stages: ['COO Approval', 'HR Approval', 'Director Approval'],
+                        totalStages: 3,
+                        requiresTeamLeadSelection: false
+                    };
+            }
+        }
+        
+        // Get pending count for current user's approval role
+        async function getPendingCountForUser() {
+            await loadLeaveRequests();
+            const userRole = getUserRoleWithFallback();
+            const userEmail = (currentUser?.email || '').toLowerCase();
+            const isTeamLead = isEmailTeamLead(userEmail);
+            
+            console.log('🔍 getPendingCountForUser - Role:', userRole, 'Email:', userEmail, 'IsTeamLead:', isTeamLead);
+            console.log('📋 Total leave requests in Firestore:', leaveRequests.length);
+            
+            let count = 0;
+            
+            leaveRequests.forEach(req => {
+                if (req.status !== 'pending') return;
+                const flow = req.approvalFlow?.flowType || 'standard_flow';
+                const stage = req.currentStage || 1;
+                const assignedTeamLead = (req.selectedTeamLead || '').toLowerCase();
+                
+                // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
+                if (isTeamLead && flow === 'designer_flow' && stage === 1) {
+                    // Check if this request is assigned to THIS team lead using flexible matching
+                    if (isSameTeamLead(userEmail, assignedTeamLead)) {
+                        console.log('✅ Badge count: Team Lead match for request', req.id);
+                        count++;
+                    }
+                }
+                
+                // COO approvals
+                if (userRole === 'coo') {
+                    // Stage 1 for standard_flow, teamlead_flow, default_flow
+                    if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
+                        count++;
+                    }
+                    // Stage 3 for designer_flow (final approval for designers)
+                    if (flow === 'designer_flow' && stage === 3) {
+                        count++;
+                    }
+                }
+                
+                // HR approvals - Stage 2 for all multi-stage flows
+                if (userRole === 'hr') {
+                    if ((flow === 'standard_flow' || flow === 'designer_flow' || flow === 'default_flow' || flow === 'teamlead_flow') && stage === 2) {
+                        count++;
+                    }
+                }
+                
+                // Director approvals - Stage 3 for standard/default, Stage 1 for HR/COO leaves
+                if (userRole === 'director') {
+                    if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) count++;
+                    if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) count++;
+                }
+            });
+            
+            console.log('📊 Pending count for this user:', count);
+            return count;
+        }
+        
+        // Update HR leave requests badge
+        async function updateHRLeaveRequestsBadge() {
+            const badge = document.getElementById('hrLeaveRequestsBadge');
+            if (badge) {
+                const count = await getPendingCountForUser();
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline' : 'none';
+            }
+        }
+        
+        // Update leave navigation visibility
+        function updateLeaveNavigation() {
+            const userRole = getUserRoleWithFallback();
+            const userEmail = (currentUser?.email || '').toLowerCase();
+            const isTeamLead = isEmailTeamLead(userEmail);
+            
+            console.log('🔍 updateLeaveNavigation - Email:', userEmail, 'Role:', userRole, 'IsTeamLead:', isTeamLead);
+            
+            // HR, COO, Director, AND Team Leads can approve leaves
+            const canApproveLeave = ['hr', 'coo', 'director'].includes(userRole) || isTeamLead;
+            const approvalNav = document.getElementById('hrLeaveApprovalNavItem');
+            if (approvalNav) {
+                approvalNav.style.display = canApproveLeave ? 'block' : 'none';
+                console.log('🔍 Leave Approval Nav visibility:', canApproveLeave ? 'VISIBLE' : 'HIDDEN');
+            }
+            
+            // Everyone except HR, COO, Director can submit leave requests
+            // Note: Team Leads CAN submit their own leave requests
+            const showLeaveRequest = !['hr', 'coo', 'director'].includes(userRole);
+            const requestNav = document.getElementById('employeeLeaveRequestNavItem');
+            if (requestNav) {
+                requestNav.style.display = showLeaveRequest ? 'block' : 'none';
+            }
+            
+            updateHRLeaveRequestsBadge();
+        }
+        
+        // ============================================
+        // LEAVE APPROVAL DASHBOARD
+        // ============================================
+        async function showHRLeaveApproval() {
+            setActiveNav('nav-hr-leave');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            
+            try {
+                await loadLeaveRequests();
+                
+                const userRole = getUserRoleWithFallback();
+                const userEmail = (currentUser?.email || '').toLowerCase();
+                const isTeamLead = isEmailTeamLead(userEmail);
+                
+                console.log('==========================================');
+                console.log('🔍 showHRLeaveApproval DEBUG');
+                console.log('==========================================');
+                console.log('👤 Current User Email:', userEmail);
+                console.log('👤 Current User Role:', userRole);
+                console.log('👤 Is Team Lead:', isTeamLead);
+                console.log('📋 Total Leave requests:', leaveRequests.length);
+                console.log('📋 Leave requests:', JSON.stringify(leaveRequests, null, 2));
+                
+                let pendingRequests = [];
+                let approvalTitle = '📋 Leave Approval Dashboard';
+                let approvalSubtitle = 'Manage employee leave requests';
+                
+                leaveRequests.forEach(req => {
+                    if (req.status !== 'pending') return;
+                    const flow = req.approvalFlow?.flowType || 'standard_flow';
+                    const stage = req.currentStage || 1;
+                    const assignedTeamLead = (req.selectedTeamLead || '').toLowerCase();
+                    
+                    console.log('📝 Checking request:', req.id, '| Flow:', flow, '| Stage:', stage, '| Assigned TL:', assignedTeamLead);
+                    
+                    // TEAM LEAD approvals - Stage 1 for designer_flow ONLY
+                    if (isTeamLead && flow === 'designer_flow' && stage === 1) {
+                        // Check if this request is assigned to THIS team lead using flexible matching
+                        if (isSameTeamLead(userEmail, assignedTeamLead)) {
+                            console.log('✅ Matched for Team Lead approval (designer flow stage 1)');
+                            pendingRequests.push({...req, myApprovalStage: 1, myRole: 'teamlead'});
+                        }
+                    }
+                    
+                    // COO approvals
+                    if (userRole === 'coo') {
+                        console.log('🔍 COO check - Flow:', flow, 'Stage:', stage);
+                        // Stage 1 for standard_flow, teamlead_flow, default_flow
+                        if ((flow === 'standard_flow' || flow === 'teamlead_flow' || flow === 'default_flow') && stage === 1) {
+                            console.log('✅ Matched for COO approval (standard/teamlead/default flow stage 1)');
+                            pendingRequests.push({...req, myApprovalStage: 1, myRole: 'coo'});
+                        }
+                        // Stage 3 for designer_flow (final approval for designers)
+                        if (flow === 'designer_flow' && stage === 3) {
+                            console.log('✅ Matched for COO approval (designer flow stage 3 - final)');
+                            pendingRequests.push({...req, myApprovalStage: 3, myRole: 'coo'});
+                        }
+                    }
+                    
+                    // HR approvals - Stage 2 for all multi-stage flows
+                    if (userRole === 'hr') {
+                        if ((flow === 'standard_flow' || flow === 'designer_flow' || flow === 'default_flow' || flow === 'teamlead_flow') && stage === 2) {
+                            console.log('✅ Matched for HR approval (stage 2)');
+                            pendingRequests.push({...req, myApprovalStage: 2, myRole: 'hr'});
+                        }
+                    }
+                    
+                    // Director approvals - Stage 3 for standard/default, Stage 1 for HR/COO leaves
+                    if (userRole === 'director') {
+                        if ((flow === 'standard_flow' || flow === 'default_flow') && stage === 3) {
+                            console.log('✅ Matched for Director approval (stage 3)');
+                            pendingRequests.push({...req, myApprovalStage: 3, myRole: 'director'});
+                        }
+                        if ((flow === 'hr_flow' || flow === 'coo_flow') && stage === 1) {
+                            console.log('✅ Matched for Director approval (hr/coo flow stage 1)');
+                            pendingRequests.push({...req, myApprovalStage: 1, myRole: 'director'});
+                        }
+                    }
+                });
+                
+                // Set title based on role
+                if (isTeamLead && userRole !== 'coo' && userRole !== 'hr' && userRole !== 'director') {
+                    approvalTitle = '👥 Team Lead - Leave Approval';
+                    approvalSubtitle = 'Approve leave requests from your team members (Stage 1)';
+                } else if (userRole === 'coo') {
+                    approvalTitle = '📋 COO Leave Approval';
+                    approvalSubtitle = 'Review and approve leave requests';
+                } else if (userRole === 'hr') {
+                    approvalTitle = '📋 HR Leave Approval';
+                    approvalSubtitle = 'Review and approve leave requests (Stage 2)';
+                } else if (userRole === 'director') {
+                    approvalTitle = '📋 Director Leave Approval';
+                    approvalSubtitle = 'Final approval for leave requests';
+                }
+                
+                // Get proper role display name
+                const roleDisplayMap = {
+                    'hr': 'HR Manager',
+                    'coo': 'COO',
+                    'director': 'Director',
+                    'bdm': 'Business Development',
+                    'estimator': 'Estimator',
+                    'designer': 'Designer',
+                    'accounts': 'Accounts'
+                };
+                let roleDisplay = roleDisplayMap[userRole] || userRole.toUpperCase();
+                if (isTeamLead) {
+                    roleDisplay = '🏷️ Team Lead | ' + roleDisplay;
+                }
+                
+                const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
+                const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
+                
+                console.log('📊 Dashboard stats - Pending:', pendingRequests.length, 'Approved:', approvedRequests.length, 'Rejected:', rejectedRequests.length);
+                
+                main.innerHTML = `
+                    ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
+                    
+                    <div class="page-header">
+                        <h2>${approvalTitle}</h2>
+                        <div class="subtitle">${approvalSubtitle}</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="font-size: 2rem;">👤</div>
+                            <div>
+                                <div style="font-weight: 600;">${currentUser?.name || currentUser?.displayName || currentUser?.email || 'User'}</div>
+                                <div style="opacity: 0.9; font-size: 0.9rem;">
+                                    ${roleDisplay}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                            <div class="stat-number">${pendingRequests.length}</div>
+                            <div class="stat-label">Pending My Approval</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                            <div class="stat-number">${approvedRequests.length}</div>
+                            <div class="stat-label">Total Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca);">
+                            <div class="stat-number">${rejectedRequests.length}</div>
+                            <div class="stat-label">Total Rejected</div>
+                        </div>
+                    </div>
+                    
+                    ${pendingRequests.length > 0 ? `
+                        <div class="action-section" style="margin-bottom: 2rem; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 0 12px 12px 0;">
+                            <h3 style="color: #b45309; margin-bottom: 1rem;">⏳ Pending Leave Requests (${pendingRequests.length})</h3>
+                            ${pendingRequests.map((req) => renderLeaveApprovalCard(req)).join('')}
+                        </div>
+                    ` : `
+                        <div class="info-message" style="margin-bottom: 2rem; text-align: center; padding: 3rem; background: #f0fdf4; border-radius: 12px;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                            <h4 style="color: #166534;">No Pending Requests</h4>
+                            <p style="color: #166534;">All leave requests have been processed. Great job!</p>
+                        </div>
+                    `}
+                    
+                    ${approvedRequests.length > 0 ? `
+                        <div class="action-section" style="margin-bottom: 2rem; background: #ecfdf5; border-left: 4px solid #10b981; padding: 1.5rem; border-radius: 0 12px 12px 0;">
+                            <h3 style="color: #065f46; margin-bottom: 1rem;">✅ Recently Approved (${Math.min(approvedRequests.length, 5)})</h3>
+                            ${approvedRequests.slice(0, 5).map((req) => renderLeaveHistoryCard(req, 'approved')).join('')}
+                            ${approvedRequests.length > 5 ? `<p style="text-align: center; color: #6b7280; margin-top: 1rem;">...and ${approvedRequests.length - 5} more</p>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${rejectedRequests.length > 0 ? `
+                        <div class="action-section" style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 1.5rem; border-radius: 0 12px 12px 0;">
+                            <h3 style="color: #991b1b; margin-bottom: 1rem;">❌ Recently Rejected (${Math.min(rejectedRequests.length, 5)})</h3>
+                            ${rejectedRequests.slice(0, 5).map((req) => renderLeaveHistoryCard(req, 'rejected')).join('')}
+                        </div>
+                    ` : ''}
+                `;
+                
+            } catch (error) {
+                console.error('Error loading leave approval:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading Leave Approval</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render leave approval card (with approve/reject buttons)
+        function renderLeaveApprovalCard(request) {
+            const flowInfo = request.approvalFlow || {};
+            const currentStage = request.currentStage || 1;
+            const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
+            const docId = request.docId; // Use Firestore document ID
+            
+            // Check if current user is HR
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
+            let progressHtml = '';
+            if (flowInfo.stages && flowInfo.stages.length > 0) {
+                progressHtml = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">';
+                flowInfo.stages.forEach((stage, idx) => {
+                    const stageNum = idx + 1;
+                    let bgColor = '#f3f4f6';
+                    let textColor = '#6b7280';
+                    let icon = '⏳';
+                    
+                    if (stageNum < currentStage) {
+                        bgColor = '#d1fae5';
+                        textColor = '#065f46';
+                        icon = '✅';
+                    } else if (stageNum === currentStage) {
+                        bgColor = '#dbeafe';
+                        textColor = '#1e40af';
+                        icon = '🔄';
+                    }
+                    
+                    progressHtml += '<span style="background: ' + bgColor + '; color: ' + textColor + '; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500;">' + icon + ' ' + stage + '</span>';
+                });
+                progressHtml += '</div>';
+            }
+            
+            // Leave type display - HR gets dropdown, others see static text
+            const leaveTypeHtml = isHRUser ? `
+                <div style="padding: 0.5rem; background: #fef3c7; border-radius: 8px; border: 2px solid #f59e0b;">
+                    <div style="font-size: 0.7rem; color: #92400e; text-transform: uppercase;">Leave Type (HR Assign) *</div>
+                    <select id="leaveType_${docId}" class="form-control" style="margin-top: 0.25rem; font-size: 0.85rem; padding: 0.4rem;" required>
+                        <option value="">-- Select Leave Type --</option>
+                        <option value="Annual Leave" ${request.leaveType === 'Annual Leave' ? 'selected' : ''}>Annual Leave</option>
+                        <option value="Sick Leave" ${request.leaveType === 'Sick Leave' ? 'selected' : ''}>Sick Leave</option>
+                        <option value="Casual Leave" ${request.leaveType === 'Casual Leave' ? 'selected' : ''}>Casual Leave</option>
+                        <option value="Maternity Leave" ${request.leaveType === 'Maternity Leave' ? 'selected' : ''}>Maternity Leave</option>
+                        <option value="Paternity Leave" ${request.leaveType === 'Paternity Leave' ? 'selected' : ''}>Paternity Leave</option>
+                        <option value="Emergency Leave" ${request.leaveType === 'Emergency Leave' ? 'selected' : ''}>Emergency Leave</option>
+                        <option value="Compensatory Off" ${request.leaveType === 'Compensatory Off' ? 'selected' : ''}>Compensatory Off</option>
+                        <option value="Unpaid Leave" ${request.leaveType === 'Unpaid Leave' ? 'selected' : ''}>Unpaid Leave</option>
+                        <option value="Other" ${request.leaveType === 'Other' ? 'selected' : ''}>Other</option>
+                    </select>
+                </div>
+            ` : `
+                <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
+                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Leave Type</div>
+                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.leaveType || 'Pending HR Assignment'}</div>
+                </div>
+            `;
+            
+            // HR Comment input - only for HR
+            const hrCommentHtml = isHRUser ? `
+                <div style="margin-top: 0.75rem; padding: 0.75rem; background: #fef3c7; border-radius: 8px; border: 2px solid #f59e0b;">
+                    <div style="font-size: 0.7rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.5rem;">HR Comments</div>
+                    <textarea id="hrComment_${docId}" class="form-control" rows="2" style="font-size: 0.85rem;" placeholder="Add your comments (optional)...">${request.hrComment || ''}</textarea>
+                </div>
+            ` : '';
+            
+            return `
+                <div style="background: white; margin-bottom: 1rem; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                        <div style="flex: 1; min-width: 280px;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">
+                                    ${(request.employeeName || 'E')[0].toUpperCase()}
+                                </div>
+                                <div>
+                                    <h4 style="margin: 0; color: #1f2937;">${request.employeeName || 'Employee'}</h4>
+                                    <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">${request.department || request.submittedBy?.split('@')[0] || ''}</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem;">
+                                ${leaveTypeHtml}
+                                <div style="padding: 0.5rem; background: ${request.isHalfDay ? '#fef3c7' : '#f3f4f6'}; border-radius: 8px;">
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Duration</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${request.isHalfDay ? 'Half Day' : (request.totalDays || 1) + ' Day' + ((request.totalDays || 1) > 1 ? 's' : '')}</div>
+                                    ${request.isHalfDay ? '<div style="font-size: 0.7rem; color: #b45309; font-weight: 500;">' + (request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') + '</div>' : ''}
+                                </div>
+                                <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">From</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${formatDate(request.fromDate)}</div>
+                                </div>
+                                <div style="padding: 0.5rem; background: #f3f4f6; border-radius: 8px;">
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">To</div>
+                                    <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">${formatDate(request.toDate)}</div>
+                                </div>
+                            </div>
+                            
+                            ${request.selectedTeamLead ? `
+                                <div style="margin-top: 0.75rem; padding: 0.5rem; background: #ede9fe; border-radius: 8px;">
+                                    <span style="font-size: 0.75rem; color: #5b21b6;">👤 Assigned Team Lead: <strong>${request.selectedTeamLead}</strong></span>
+                                </div>
+                            ` : ''}
+                            
+                            ${request.reason ? `
+                                <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
+                                    <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.25rem;">Reason for Leave</div>
+                                    <p style="margin: 0; color: #4b5563; font-size: 0.9rem;">${request.reason}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${hrCommentHtml}
+                            
+                            <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-radius: 8px;">
+                                <div style="font-size: 0.75rem; color: #0369a1; margin-bottom: 0.25rem;">
+                                    <strong>Approval Flow:</strong> ${flowInfo.flowDescription || 'Standard Approval'}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #0369a1;">
+                                    <strong>Current Stage:</strong> ${currentStage} of ${totalStages}
+                                </div>
+                                ${progressHtml}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 130px;">
+                            <button class="btn btn-success" onclick="approveLeaveRequest('${docId}')" style="padding: 0.75rem 1.5rem;">
+                                ✅ Approve
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectLeaveRequest('${docId}')" style="padding: 0.75rem 1.5rem;">
+                                ❌ Reject
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 0.8rem; color: #9ca3af;">
+                        Submitted: ${formatDate(request.submittedAt)} by ${request.submittedBy || 'Unknown'}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Render leave history card (approved/rejected - no buttons)
+        function renderLeaveHistoryCard(request, status) {
+            const statusStyles = {
+                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved' },
+                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected' }
+            };
+            const style = statusStyles[status] || statusStyles.approved;
+            
+            return `
+                <div style="background: white; margin-bottom: 0.75rem; border-radius: 10px; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                ${(request.employeeName || 'E')[0].toUpperCase()}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937;">${request.employeeName || 'Employee'}</div>
+                                <div style="font-size: 0.8rem; color: #6b7280;">${request.leaveType} • ${request.isHalfDay ? 'Half Day (' + (request.halfDayPeriod === 'first_half' ? '1st Half' : '2nd Half') + ')' : request.totalDays + ' day' + (request.totalDays > 1 ? 's' : '')}</div>
+                            </div>
+                        </div>
+                        <span style="padding: 0.35rem 0.75rem; background: ${style.bg}; color: ${style.text}; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                            ${style.label}
+                        </span>
+                    </div>
+                    ${request.hrComment ? `
+                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: ${style.bg}40; border-radius: 6px; font-size: 0.85rem; color: #4b5563;">
+                            💬 ${request.hrComment}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // Approve leave request (using Firestore docId)
+        async function approveLeaveRequest(docId) {
+            // Check if current user is HR - need to get leave type and comments from form
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
+            let leaveTypeFromForm = null;
+            let hrCommentFromForm = '';
+            
+            // If HR, get values from form fields
+            if (isHRUser) {
+                const leaveTypeSelect = document.getElementById('leaveType_' + docId);
+                const hrCommentTextarea = document.getElementById('hrComment_' + docId);
+                
+                if (leaveTypeSelect) {
+                    leaveTypeFromForm = leaveTypeSelect.value;
+                    if (!leaveTypeFromForm) {
+                        alert('⚠️ Please select a Leave Type before approving');
+                        return;
+                    }
+                }
+                
+                if (hrCommentTextarea) {
+                    hrCommentFromForm = hrCommentTextarea.value || '';
+                }
+            }
+            
+            // Only prompt for comment if NOT HR (HR has textarea in form)
+            const comment = isHRUser ? hrCommentFromForm : prompt('Add an approval comment (optional):');
+            
+            try {
+                showLoading();
+                
+                // Get the request from Firestore
+                const docRef = db.collection('leaveRequests').doc(docId);
+                const doc = await docRef.get();
+                
+                if (!doc.exists) {
+                    alert('❌ Leave request not found');
+                    hideLoading();
+                    return;
+                }
+                
+                const request = doc.data();
+                const flowInfo = request.approvalFlow || {};
+                const currentStage = request.currentStage || 1;
+                const totalStages = flowInfo.totalStages || flowInfo.stages?.length || 1;
+                
+                // Prepare update data
+                const updateData = {};
+                updateData['stage' + currentStage + 'Status'] = 'approved';
+                updateData['stage' + currentStage + 'ApprovedAt'] = new Date().toISOString();
+                updateData['stage' + currentStage + 'ApprovedBy'] = currentUser?.email || 'Approver';
+                updateData['stage' + currentStage + 'ApprovedByName'] = currentUser?.name || currentUser?.email || 'Approver';
+                if (comment) {
+                    updateData['stage' + currentStage + 'Comments'] = comment;
+                }
+                
+                // If HR and leave type selected, update leave type
+                if (isHRUser && leaveTypeFromForm) {
+                    updateData.leaveType = leaveTypeFromForm;
+                    updateData.leaveTypeAssignedBy = currentUser?.email || 'HR';
+                    updateData.leaveTypeAssignedAt = new Date().toISOString();
+                }
+                
+                // If HR, save HR comments
+                if (isHRUser && hrCommentFromForm) {
+                    updateData.hrComment = hrCommentFromForm;
+                }
+                
+                if (currentStage >= totalStages) {
+                    updateData.status = 'approved';
+                    updateData.currentStage = totalStages + 1;
+                    if (!updateData.hrComment) {
+                        updateData.hrComment = comment || (request.hrComment || 'Approved');
+                    }
+                } else {
+                    updateData.currentStage = currentStage + 1;
+                }
+                
+                updateData.processedAt = new Date().toISOString();
+                updateData.processedBy = currentUser?.email || 'Approver';
+                
+                // Update in Firestore
+                await docRef.update(updateData);
+                console.log('✅ Leave request approved in Firestore:', docId);
+                
+                hideLoading();
+                showHRLeaveApproval();
+                updateHRLeaveRequestsBadge();
+                
+                if (currentStage >= totalStages) {
+                    alert('✅ Leave request FULLY APPROVED!');
+                } else {
+                    alert('✅ Approved! Forwarded to Stage ' + (currentStage + 1));
+                }
+            } catch (error) {
+                console.error('❌ Error approving leave request:', error);
+                hideLoading();
+                alert('❌ Error approving request: ' + error.message);
+            }
+        }
+        
+        // Reject leave request (using Firestore docId)
+        async function rejectLeaveRequest(docId) {
+            // Check if current user is HR - get comments from form field
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
+            let comment = '';
+            
+            // If HR, try to get comment from form field first
+            if (isHRUser) {
+                const hrCommentTextarea = document.getElementById('hrComment_' + docId);
+                if (hrCommentTextarea && hrCommentTextarea.value) {
+                    comment = hrCommentTextarea.value;
+                }
+            }
+            
+            // If no comment from form, prompt for one
+            if (!comment) {
+                comment = prompt('Please provide a reason for rejection:');
+            }
+            
+            if (!comment) {
+                alert('⚠️ A rejection reason is required.');
+                return;
+            }
+            
+            try {
+                showLoading();
+                
+                // Get the request from Firestore
+                const docRef = db.collection('leaveRequests').doc(docId);
+                const doc = await docRef.get();
+                
+                if (!doc.exists) {
+                    alert('❌ Leave request not found');
+                    hideLoading();
+                    return;
+                }
+                
+                const request = doc.data();
+                const currentStage = request.currentStage || 1;
+                
+                // Prepare update data
+                const updateData = {};
+                updateData['stage' + currentStage + 'Status'] = 'rejected';
+                updateData['stage' + currentStage + 'Comments'] = comment;
+                updateData['stage' + currentStage + 'RejectedAt'] = new Date().toISOString();
+                updateData['stage' + currentStage + 'RejectedBy'] = currentUser?.email || 'Approver';
+                
+                updateData.status = 'rejected';
+                updateData.hrComment = comment;
+                updateData.processedAt = new Date().toISOString();
+                updateData.processedBy = currentUser?.email || 'Approver';
+                updateData.currentStage = 0;
+                
+                // Update in Firestore
+                await docRef.update(updateData);
+                console.log('✅ Leave request rejected in Firestore:', docId);
+                
+                hideLoading();
+                showHRLeaveApproval();
+                updateHRLeaveRequestsBadge();
+                
+                alert('❌ Leave request rejected.');
+            } catch (error) {
+                console.error('❌ Error rejecting leave request:', error);
+                hideLoading();
+                alert('❌ Error rejecting request: ' + error.message);
+            }
+        }
+        
+        // ============================================
+        // EMPLOYEE LEAVE REQUEST PAGE
+        // ============================================
+        async function showEmployeeLeaveRequest() {
+            setActiveNav('nav-employee-leave');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            
+            try {
+                await loadLeaveRequests();
+                
+                const myEmail = currentUser ? currentUser.email : '';
+                const myRequests = leaveRequests.filter(r => r.submittedBy === myEmail);
+                const pendingCount = myRequests.filter(r => r.status === 'pending').length;
+                const approvedCount = myRequests.filter(r => r.status === 'approved').length;
+                const rejectedCount = myRequests.filter(r => r.status === 'rejected').length;
+                
+                const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
+                const flowInfo = getApprovalFlowInfo(userRole, myEmail);
+                
+                let userName = currentUser ? (currentUser.displayName || currentUser.name || currentUser.email.split('@')[0]) : 'Employee';
+                let userDept = '';
+                
+                if (currentUser && typeof db !== 'undefined') {
+                    try {
+                        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            userName = userData.name || userName;
+                            userDept = userData.department || '';
+                            if (!userDept && userData.role) {
+                                const deptMap = {
+                                    'designer': 'Design',
+                                    'estimator': 'Estimation',
+                                    'bdm': 'Business Development',
+                                    'accounts': 'Accounts',
+                                    'hr': 'Human Resources',
+                                    'coo': 'Management',
+                                    'director': 'Management'
+                                };
+                                userDept = deptMap[userData.role] || '';
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Could not fetch user details:', e.message);
+                    }
+                }
+                
+                const myRequestsHtml = myRequests.length > 0 
+                    ? myRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+                        .map(req => renderMyLeaveRequestCard(req)).join('')
+                    : `
+                        <div style="text-align: center; padding: 3rem; background: white; border-radius: 12px; color: #6b7280;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
+                            <h4>No Leave Requests Yet</h4>
+                            <p>You haven't submitted any leave requests. Click the button above to submit one.</p>
+                        </div>
+                    `;
+                
+                main.innerHTML = `
+                    ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
+                    
+                    <div class="page-header">
+                        <h2>🏖️ My Leave Requests</h2>
+                        <div class="subtitle">Submit and track your leave requests</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <h3 style="margin: 0;">Hello, ${userName}! 👋</h3>
+                                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Need time off? Submit your leave request below.</p>
+                                <p style="margin: 0.25rem 0 0 0; opacity: 0.8; font-size: 0.85rem;">
+                                    <strong>Your Approval Flow:</strong> ${flowInfo.flowDescription}
+                                </p>
+                            </div>
+                            <button class="btn" style="background: white; color: #667eea; font-weight: 600;" onclick="showEmployeeLeaveModal('${userName}', '${userDept}')">
+                                + Submit Leave Request
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                            <div class="stat-number">${pendingCount}</div>
+                            <div class="stat-label">Pending</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                            <div class="stat-number">${approvedCount}</div>
+                            <div class="stat-label">Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca);">
+                            <div class="stat-number">${rejectedCount}</div>
+                            <div class="stat-label">Rejected</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 1rem; color: #1f2937;">📋 My Request History</h3>
+                        ${myRequestsHtml}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading employee leave page:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading Page</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render my leave request card
+        function renderMyLeaveRequestCard(request) {
+            const statusColors = {
+                pending: { bg: '#fef3c7', text: '#b45309', label: '⏳ Pending', border: '#f59e0b' },
+                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved', border: '#10b981' },
+                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected', border: '#ef4444' }
+            };
+            const status = statusColors[request.status] || statusColors.pending;
+            const flowInfo = request.approvalFlow || {};
+            const currentStage = request.currentStage || 1;
+            
+            let progressHtml = '';
+            if (flowInfo.stages && flowInfo.stages.length > 0 && request.status === 'pending') {
+                progressHtml = '<div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.75rem;">';
+                flowInfo.stages.forEach((stage, idx) => {
+                    const stageNum = idx + 1;
+                    let bgColor = '#f3f4f6';
+                    let icon = '⏳';
+                    
+                    if (stageNum < currentStage) {
+                        bgColor = '#d1fae5';
+                        icon = '✅';
+                    } else if (stageNum === currentStage) {
+                        bgColor = '#dbeafe';
+                        icon = '🔄';
+                    }
+                    
+                    progressHtml += '<span style="background: ' + bgColor + '; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem;">' + icon + ' ' + stage + '</span>';
+                });
+                progressHtml += '</div>';
+            }
+            
+            return `
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid ${status.border};">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">${request.leaveType || 'Leave'}</h4>
+                            <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
+                                📅 ${formatDate(request.fromDate)}${request.isHalfDay ? '' : ' - ' + formatDate(request.toDate)} (${request.isHalfDay ? 'Half Day - ' + (request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') : request.totalDays + ' day' + (request.totalDays > 1 ? 's' : '')})
+                            </p>
+                            ${request.selectedTeamLead ? `
+                                <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.85rem;">
+                                    👤 Reporting to: <strong>${request.selectedTeamLead.split('@')[0]}</strong>
+                                </p>
+                            ` : ''}
+                            ${request.reason ? `<p style="margin: 0.5rem 0 0 0; color: #4b5563; font-size: 0.9rem;">💬 ${request.reason}</p>` : ''}
+                            ${progressHtml}
+                        </div>
+                        <span style="padding: 0.4rem 1rem; background: ${status.bg}; color: ${status.text}; border-radius: 20px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;">
+                            ${status.label}
+                        </span>
+                    </div>
+                    ${request.hrComment ? `
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: ${request.status === 'approved' ? '#ecfdf5' : '#fef2f2'}; border-radius: 8px;">
+                            <small style="color: #6b7280;">Comment:</small>
+                            <p style="margin: 0.25rem 0 0 0; color: #374151;">${request.hrComment}</p>
+                        </div>
+                    ` : ''}
+                    <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #9ca3af;">
+                        Submitted: ${formatDate(request.submittedAt)} ${request.processedAt ? '• Processed: ' + formatDate(request.processedAt) : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Show Employee Leave Modal
+        function showEmployeeLeaveModal(userName, userDept) {
+            const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
+            const userEmail = currentUser?.email || '';
+            const flowInfo = getApprovalFlowInfo(userRole, userEmail);
+            
+            let teamLeadDropdown = '';
+            if (flowInfo.requiresTeamLeadSelection) {
+                teamLeadDropdown = `
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="empLeaveTeamLead" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Select Reporting Team Lead <span style="color: #ef4444;">*</span>
+                        </label>
+                        <select id="empLeaveTeamLead" class="form-control" required>
+                            <option value="">-- Select Your Team Lead --</option>
+                            ${DESIGNER_TEAM_LEADS.map(tl => '<option value="' + tl.email + '">' + tl.name + ' (' + tl.email + ')</option>').join('')}
+                        </select>
+                        <small style="color: #6b7280; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                            Your leave request will be sent to this team lead for approval
+                        </small>
+                    </div>
+                `;
+            }
+            
+            const modalHtml = `
+                <div id="employeeLeaveModal" class="modal" style="display: flex;">
+                    <div class="modal-content large">
+                        <span class="close-button" onclick="closeModal('employeeLeaveModal')">&times;</span>
+                        <h2 style="margin-bottom: 0.5rem;">🏖️ Submit Leave Request</h2>
+                        <p style="color: #6b7280; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                            <strong>Approval Flow:</strong> ${flowInfo.flowDescription}
+                        </p>
+                        
+                        <form id="employeeLeaveForm" onsubmit="submitEmployeeLeave(event)">
+                            <input type="hidden" id="empLeaveName" value="${userName || ''}">
+                            <input type="hidden" id="empLeaveDept" value="${userDept || ''}">
+                            
+                            ${teamLeadDropdown}
+                            
+                            <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0;">📅 Leave Details</h4>
+                                <div style="padding: 0.75rem; background: #e0e7ff; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: #4338ca;">
+                                    ℹ️ <strong>Note:</strong> Leave type will be assigned by HR during approval process.
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 8px; transition: all 0.2s;">
+                                        <input type="checkbox" id="empLeaveHalfDay" onchange="toggleHalfDayLeave()" style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span style="font-weight: 600; color: #166534;">Half Day Leave</span>
+                                        <span style="font-size: 0.8rem; color: #6b7280; margin-left: auto;">Select for half-day leave</span>
+                                    </label>
+                                </div>
+                                <div id="halfDayPeriodContainer" style="display: none; margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Half Day Period <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <div style="display: flex; gap: 1rem;">
+                                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;" id="firstHalfLabel">
+                                            <input type="radio" name="halfDayPeriod" value="first_half" checked style="width: 16px; height: 16px; cursor: pointer;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #374151;">First Half</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">Morning session</div>
+                                            </div>
+                                        </label>
+                                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;" id="secondHalfLabel">
+                                            <input type="radio" name="halfDayPeriod" value="second_half" style="width: 16px; height: 16px; cursor: pointer;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #374151;">Second Half</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">Afternoon session</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="empLeaveFromDate">From Date <span style="color: #ef4444;">*</span></label>
+                                        <input type="date" id="empLeaveFromDate" class="form-control" required onchange="calculateEmpLeaveDays()">
+                                    </div>
+                                    <div class="form-group" id="empLeaveToDateGroup">
+                                        <label for="empLeaveToDate">To Date <span style="color: #ef4444;">*</span></label>
+                                        <input type="date" id="empLeaveToDate" class="form-control" required onchange="calculateEmpLeaveDays()">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="empLeaveTotalDays">Total Days</label>
+                                    <input type="text" id="empLeaveTotalDays" class="form-control" readonly value="1" style="background: #e5e7eb;">
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0;">💬 Reason & Contact</h4>
+                                <div class="form-group">
+                                    <label for="empLeaveReason">Reason for Leave <span style="color: #ef4444;">*</span></label>
+                                    <textarea id="empLeaveReason" class="form-control" rows="3" required placeholder="Please provide a reason for your leave request..."></textarea>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="empEmergencyContact">Emergency Contact Name</label>
+                                        <input type="text" id="empEmergencyContact" class="form-control" placeholder="Contact person name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="empEmergencyPhone">Emergency Phone</label>
+                                        <input type="tel" id="empEmergencyPhone" class="form-control" placeholder="Phone number">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="modal-actions" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                                <button type="button" class="btn btn-outline" onclick="closeModal('employeeLeaveModal')">Cancel</button>
+                                <button type="submit" class="btn btn-primary">📤 Submit Request</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            const today = new Date();
+            document.getElementById('empLeaveFromDate').valueAsDate = today;
+            document.getElementById('empLeaveToDate').valueAsDate = today;
+        }
+        
+        // Toggle half-day leave option
+        function toggleHalfDayLeave() {
+            const isHalfDay = document.getElementById('empLeaveHalfDay').checked;
+            const halfDayContainer = document.getElementById('halfDayPeriodContainer');
+            const toDateGroup = document.getElementById('empLeaveToDateGroup');
+
+            if (isHalfDay) {
+                halfDayContainer.style.display = 'block';
+                toDateGroup.style.display = 'none';
+                // Set toDate = fromDate for half-day
+                const fromDate = document.getElementById('empLeaveFromDate').value;
+                if (fromDate) {
+                    document.getElementById('empLeaveToDate').value = fromDate;
+                }
+                document.getElementById('empLeaveTotalDays').value = '0.5';
+            } else {
+                halfDayContainer.style.display = 'none';
+                toDateGroup.style.display = 'block';
+                calculateEmpLeaveDays();
+            }
+        }
+
+        // Calculate employee leave days
+        function calculateEmpLeaveDays() {
+            const isHalfDay = document.getElementById('empLeaveHalfDay')?.checked;
+
+            if (isHalfDay) {
+                // For half-day, sync toDate with fromDate and set 0.5
+                const fromDate = document.getElementById('empLeaveFromDate').value;
+                if (fromDate) {
+                    document.getElementById('empLeaveToDate').value = fromDate;
+                }
+                document.getElementById('empLeaveTotalDays').value = '0.5';
+                return;
+            }
+
+            const fromDate = document.getElementById('empLeaveFromDate').value;
+            const toDate = document.getElementById('empLeaveToDate').value;
+
+            if (fromDate && toDate) {
+                const from = new Date(fromDate);
+                const to = new Date(toDate);
+                const diffTime = Math.abs(to - from);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                document.getElementById('empLeaveTotalDays').value = diffDays > 0 ? diffDays : 1;
+            }
+        }
+        
+        // Submit employee leave request (to Firestore)
+        async function submitEmployeeLeave(event) {
+            event.preventDefault();
+            
+            const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
+            const userEmail = currentUser?.email || '';
+            const flowInfo = getApprovalFlowInfo(userRole, userEmail);
+            
+            let selectedTeamLead = null;
+            if (flowInfo.requiresTeamLeadSelection) {
+                const teamLeadSelect = document.getElementById('empLeaveTeamLead');
+                if (teamLeadSelect) {
+                    selectedTeamLead = teamLeadSelect.value;
+                    if (!selectedTeamLead) {
+                        alert('⚠️ Please select your reporting Team Lead');
+                        return;
+                    }
+                }
+            }
+            
+            const isHalfDay = document.getElementById('empLeaveHalfDay')?.checked || false;
+            const halfDayPeriod = isHalfDay ? (document.querySelector('input[name="halfDayPeriod"]:checked')?.value || 'first_half') : null;
+            const totalDaysVal = isHalfDay ? 0.5 : (parseInt(document.getElementById('empLeaveTotalDays').value) || 1);
+
+            const request = {
+                id: 'leave_' + Date.now(),
+                employeeName: document.getElementById('empLeaveName').value || (currentUser ? currentUser.email.split('@')[0] : 'Employee'),
+                department: document.getElementById('empLeaveDept').value || '',
+                leaveType: 'Pending HR Assignment', // HR will assign leave type during approval
+                fromDate: document.getElementById('empLeaveFromDate').value,
+                toDate: isHalfDay ? document.getElementById('empLeaveFromDate').value : document.getElementById('empLeaveToDate').value,
+                totalDays: totalDaysVal,
+                isHalfDay: isHalfDay,
+                halfDayPeriod: halfDayPeriod,
+                reason: document.getElementById('empLeaveReason').value,
+                emergencyContact: document.getElementById('empEmergencyContact')?.value || '',
+                emergencyPhone: document.getElementById('empEmergencyPhone')?.value || '',
+                selectedTeamLead: selectedTeamLead,
+                status: 'pending',
+                currentStage: 1,
+                submittedAt: new Date().toISOString(),
+                submittedBy: currentUser ? currentUser.email : 'Anonymous',
+                submittedByUid: currentUser ? currentUser.uid : null,
+                approvalFlow: flowInfo,
+                stage1Status: 'pending',
+                stage2Status: flowInfo.totalStages >= 2 ? 'pending' : 'not_required',
+                stage3Status: flowInfo.totalStages >= 3 ? 'pending' : 'not_required'
+            };
+            
+            try {
+                showLoading();
+                
+                // Save to Firestore
+                const docRef = await db.collection('leaveRequests').add(request);
+                console.log('✅ Leave request saved to Firestore with ID:', docRef.id);
+                
+                // ============================================
+                // SEND EMAIL NOTIFICATIONS
+                // ============================================
+                try {
+                    await triggerEmailNotification('leave.submitted', {
+                        employeeName: request.employeeName,
+                        department: request.department,
+                        fromDate: request.fromDate,
+                        toDate: request.toDate,
+                        totalDays: request.totalDays,
+                        isHalfDay: request.isHalfDay,
+                        halfDayPeriod: request.halfDayPeriod,
+                        reason: request.reason,
+                        emergencyContact: request.emergencyContact,
+                        selectedTeamLead: request.selectedTeamLead,
+                        submittedBy: request.submittedBy
+                    });
+                    console.log('✅ Leave request email notifications sent');
+                } catch (emailError) {
+                    console.warn('⚠️ Email notification failed (non-fatal):', emailError);
+                }
+                
+                // ============================================
+                // CREATE IN-APP NOTIFICATIONS FOR COO, DIRECTOR, HR
+                // ============================================
+                const halfDayLabel = request.isHalfDay ? ` (${request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half'})` : '';
+                const notificationMessage = `🏖️ New Leave Request: ${request.employeeName} - ${request.totalDays} day(s)${halfDayLabel} from ${request.fromDate} to ${request.toDate}`;
+                
+                // Notify COO
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'coo',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ COO notification created');
+                } catch (e) { console.warn('⚠️ COO notification failed:', e); }
+                
+                // Notify Director
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'director',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ Director notification created');
+                } catch (e) { console.warn('⚠️ Director notification failed:', e); }
+                
+                // Notify HR
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'hr',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ HR notification created');
+                } catch (e) { console.warn('⚠️ HR notification failed:', e); }
+                
+                // Notify Team Lead if selected
+                if (selectedTeamLead) {
+                    try {
+                        // Find team lead UID by email
+                        const teamLeadSnapshot = await db.collection('users').where('email', '==', selectedTeamLead).get();
+                        if (!teamLeadSnapshot.empty) {
+                            const teamLeadUid = teamLeadSnapshot.docs[0].id;
+                            await apiCall('notifications', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    type: 'leave_request',
+                                    recipientRole: 'design_lead',
+                                    recipientUid: teamLeadUid,
+                                    message: notificationMessage,
+                                    notes: `Requires your approval. Reason: ${request.reason}`,
+                                    priority: 'high'
+                                })
+                            });
+                            console.log('✅ Team Lead notification created');
+                        }
+                    } catch (e) { console.warn('⚠️ Team Lead notification failed:', e); }
+                }
+                
+                hideLoading();
+                closeModal('employeeLeaveModal');
+                showEmployeeLeaveRequest();
+                updateHRLeaveRequestsBadge();
+                
+                let confirmMsg = '✅ Leave request submitted successfully!\n\n';
+                if (selectedTeamLead) {
+                    confirmMsg += 'Your request has been sent to ' + selectedTeamLead.split('@')[0] + ' for approval.';
+                } else {
+                    confirmMsg += 'Your request is pending approval.';
+                }
+                alert(confirmMsg);
+            } catch (error) {
+                console.error('❌ Error saving leave request:', error);
+                hideLoading();
+                alert('❌ Error submitting request: ' + error.message);
+            }
+        }
+        
+        // ============================================
+        // HR LEAVE REPORTS - COMPREHENSIVE VIEW
+        // ============================================
+        
+        async function showHRLeaveReports() {
+            setActiveNav('nav-hr-leave-reports');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            
+            try {
+                await loadLeaveRequests();
+                
+                // Calculate statistics
+                const totalRequests = leaveRequests.length;
+                const pendingRequests = leaveRequests.filter(r => r.status === 'pending');
+                const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
+                const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
+                
+                // Calculate total leave days
+                const totalLeaveDays = leaveRequests.reduce((sum, r) => sum + (parseInt(r.totalDays) || 0), 0);
+                const approvedLeaveDays = approvedRequests.reduce((sum, r) => sum + (parseInt(r.totalDays) || 0), 0);
+                
+                // Get unique employees
+                const uniqueEmployees = [...new Set(leaveRequests.map(r => r.submittedBy))];
+                
+                main.innerHTML = `
+                    <div class="page-header">
+                        <h2>📊 Leave Reports - Complete Overview</h2>
+                        <p class="subtitle">Comprehensive view of all leave applications, status, and approval history</p>
+                    </div>
+                    
+                    <!-- Summary Statistics -->
+                    <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <div class="stat-number">${totalRequests}</div>
+                            <div class="stat-label">📋 Total Requests</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                            <div class="stat-number">${pendingRequests.length}</div>
+                            <div class="stat-label">⏳ Pending</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                            <div class="stat-number">${approvedRequests.length}</div>
+                            <div class="stat-label">✅ Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                            <div class="stat-number">${rejectedRequests.length}</div>
+                            <div class="stat-label">❌ Rejected</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">
+                            <div class="stat-number">${approvedLeaveDays}</div>
+                            <div class="stat-label">📅 Days Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white;">
+                            <div class="stat-number">${uniqueEmployees.length}</div>
+                            <div class="stat-label">👥 Employees</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                        <h4 style="margin: 0 0 1rem 0; color: #374151;">🔍 Filter Reports</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">Status</label>
+                                <select id="leaveReportStatusFilter" class="form-control" onchange="filterLeaveReports()">
+                                    <option value="all">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">Leave Type</label>
+                                <select id="leaveReportTypeFilter" class="form-control" onchange="filterLeaveReports()">
+                                    <option value="all">All Types</option>
+                                    <option value="Casual Leave">Casual Leave</option>
+                                    <option value="Sick Leave">Sick Leave</option>
+                                    <option value="Annual Leave">Annual Leave</option>
+                                    <option value="Emergency Leave">Emergency Leave</option>
+                                    <option value="Maternity Leave">Maternity Leave</option>
+                                    <option value="Paternity Leave">Paternity Leave</option>
+                                    <option value="Unpaid Leave">Unpaid Leave</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">From Date</label>
+                                <input type="date" id="leaveReportFromDate" class="form-control" onchange="filterLeaveReports()">
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">To Date</label>
+                                <input type="date" id="leaveReportToDate" class="form-control" onchange="filterLeaveReports()">
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">Search Employee</label>
+                                <input type="text" id="leaveReportSearchEmployee" class="form-control" placeholder="Search by name or email..." oninput="filterLeaveReports()">
+                            </div>
+                            <div>
+                                <button class="btn btn-outline" onclick="resetLeaveReportFilters()" style="padding: 0.5rem 1rem;">
+                                    🔄 Reset
+                                </button>
+                            </div>
+                            <div>
+                                <button class="btn btn-success" onclick="exportLeaveReportsToExcel()" style="padding: 0.5rem 1rem;">
+                                    📥 Export Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reports Table -->
+                    <div style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden;">
+                        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+                            <h4 style="margin: 0; color: #374151;">📋 Leave Applications (<span id="leaveReportCount">${totalRequests}</span> records)</h4>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;" id="leaveReportsTable">
+                                <thead>
+                                    <tr style="background: #f3f4f6;">
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Employee</th>
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Leave Type</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Duration</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">From</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">To</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Status</th>
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Approval Progress</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaveReportsTableBody">
+                                    ${renderLeaveReportsTableRows(leaveRequests)}
+                                </tbody>
+                            </table>
+                        </div>
+                        ${leaveRequests.length === 0 ? `
+                            <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
+                                <h4>No Leave Records Found</h4>
+                                <p>There are no leave applications in the system yet.</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Store data for filtering
+                window.allLeaveRequests = leaveRequests;
+                
+            } catch (error) {
+                console.error('❌ Error loading leave reports:', error);
+                main.innerHTML = `
+                    <div class="card" style="padding: 3rem; text-align: center;">
+                        <h3 style="color: var(--danger);">⚠️ Error Loading Reports</h3>
+                        <p style="color: var(--text-light); margin: 1rem 0;">${error.message}</p>
+                        <button onclick="showHRLeaveReports()" class="btn btn-primary">🔄 Retry</button>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render table rows for leave reports
+        function renderLeaveReportsTableRows(requests) {
+            if (!requests || requests.length === 0) return '';
+            
+            return requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)).map(req => {
+                const statusColors = {
+                    pending: { bg: '#fef3c7', text: '#92400e', label: '⏳ Pending' },
+                    approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved' },
+                    rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected' }
+                };
+                const status = statusColors[req.status] || statusColors.pending;
+                
+                // Build approval progress
+                const flowInfo = req.approvalFlow || {};
+                const stages = flowInfo.stages || [];
+                const currentStage = req.currentStage || 1;
+                
+                let progressHtml = stages.map((stage, idx) => {
+                    const stageNum = idx + 1;
+                    const stageStatus = req['stage' + stageNum + 'Status'] || 'pending';
+                    let icon = '⏳';
+                    let color = '#9ca3af';
+                    
+                    if (stageStatus === 'approved') {
+                        icon = '✅';
+                        color = '#10b981';
+                    } else if (stageStatus === 'rejected') {
+                        icon = '❌';
+                        color = '#ef4444';
+                    } else if (stageNum === currentStage && req.status === 'pending') {
+                        icon = '🔄';
+                        color = '#3b82f6';
+                    }
+                    
+                    return `<span style="font-size: 0.75rem; color: ${color};">${icon} ${stage.replace(' Approval', '')}</span>`;
+                }).join(' → ');
+                
+                if (!progressHtml) {
+                    progressHtml = '<span style="font-size: 0.75rem; color: #9ca3af;">No approval flow</span>';
+                }
+                
+                return `
+                    <tr style="border-bottom: 1px solid #e5e7eb;" data-request='${JSON.stringify(req).replace(/'/g, "&#39;")}'>
+                        <td style="padding: 1rem;">
+                            <div style="font-weight: 600; color: #1f2937;">${req.employeeName || 'N/A'}</div>
+                            <div style="font-size: 0.8rem; color: #6b7280;">${req.submittedBy || ''}</div>
+                            ${req.department ? `<div style="font-size: 0.75rem; color: #9ca3af;">${req.department}</div>` : ''}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <span style="background: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">
+                                ${req.leaveType || 'N/A'}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            ${req.isHalfDay ? '<span style="font-weight: 600; color: #b45309;">Half Day</span><br><span style="font-size: 0.75rem; color: #92400e;">' + (req.halfDayPeriod === 'first_half' ? '1st Half' : '2nd Half') + '</span>' : '<span style="font-weight: 600; color: #374151;">' + (req.totalDays || 1) + '</span><span style="font-size: 0.8rem; color: #6b7280;"> day' + ((req.totalDays || 1) > 1 ? 's' : '') + '</span>'}
+                        </td>
+                        <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #374151;">${formatDate(req.fromDate)}</td>
+                        <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #374151;">${formatDate(req.toDate)}</td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <span style="background: ${status.bg}; color: ${status.text}; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                                ${status.label}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; max-width: 200px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                                ${progressHtml}
+                            </div>
+                        </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <button class="btn btn-sm" onclick="showLeaveRequestDetails('${req.docId || req.id}')" style="background: #667eea; color: white; padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                                👁️ Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Filter leave reports
+        function filterLeaveReports() {
+            const statusFilter = document.getElementById('leaveReportStatusFilter')?.value || 'all';
+            const typeFilter = document.getElementById('leaveReportTypeFilter')?.value || 'all';
+            const fromDate = document.getElementById('leaveReportFromDate')?.value;
+            const toDate = document.getElementById('leaveReportToDate')?.value;
+            const searchTerm = (document.getElementById('leaveReportSearchEmployee')?.value || '').toLowerCase();
+            
+            let filtered = window.allLeaveRequests || [];
+            
+            // Status filter
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter(r => r.status === statusFilter);
+            }
+            
+            // Type filter
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(r => r.leaveType === typeFilter);
+            }
+            
+            // Date range filter
+            if (fromDate) {
+                filtered = filtered.filter(r => r.fromDate >= fromDate);
+            }
+            if (toDate) {
+                filtered = filtered.filter(r => r.toDate <= toDate);
+            }
+            
+            // Search filter
+            if (searchTerm) {
+                filtered = filtered.filter(r => 
+                    (r.employeeName || '').toLowerCase().includes(searchTerm) ||
+                    (r.submittedBy || '').toLowerCase().includes(searchTerm) ||
+                    (r.department || '').toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Update table
+            const tbody = document.getElementById('leaveReportsTableBody');
+            if (tbody) {
+                tbody.innerHTML = renderLeaveReportsTableRows(filtered);
+            }
+            
+            // Update count
+            const countEl = document.getElementById('leaveReportCount');
+            if (countEl) {
+                countEl.textContent = filtered.length;
+            }
+        }
+        
+        // Reset filters
+        function resetLeaveReportFilters() {
+            document.getElementById('leaveReportStatusFilter').value = 'all';
+            document.getElementById('leaveReportTypeFilter').value = 'all';
+            document.getElementById('leaveReportFromDate').value = '';
+            document.getElementById('leaveReportToDate').value = '';
+            document.getElementById('leaveReportSearchEmployee').value = '';
+            filterLeaveReports();
+        }
+        
+        // Show detailed leave request modal
+        function showLeaveRequestDetails(requestId) {
+            const requests = window.allLeaveRequests || [];
+            const req = requests.find(r => r.docId === requestId || r.id === requestId);
+            
+            if (!req) {
+                alert('Leave request not found');
+                return;
+            }
+            
+            const flowInfo = req.approvalFlow || {};
+            const stages = flowInfo.stages || [];
+            
+            // Build approval history
+            let approvalHistoryHtml = '';
+            stages.forEach((stage, idx) => {
+                const stageNum = idx + 1;
+                const stageStatus = req['stage' + stageNum + 'Status'] || 'pending';
+                const approvedBy = req['stage' + stageNum + 'ApprovedBy'] || req['stage' + stageNum + 'RejectedBy'] || '';
+                const approvedAt = req['stage' + stageNum + 'ApprovedAt'] || req['stage' + stageNum + 'RejectedAt'] || '';
+                const comments = req['stage' + stageNum + 'Comments'] || '';
+                
+                let statusIcon = '⏳';
+                let statusBg = '#f3f4f6';
+                let statusText = '#6b7280';
+                let statusLabel = 'Pending';
+                
+                if (stageStatus === 'approved') {
+                    statusIcon = '✅';
+                    statusBg = '#d1fae5';
+                    statusText = '#065f46';
+                    statusLabel = 'Approved';
+                } else if (stageStatus === 'rejected') {
+                    statusIcon = '❌';
+                    statusBg = '#fee2e2';
+                    statusText = '#991b1b';
+                    statusLabel = 'Rejected';
+                }
+                
+                approvalHistoryHtml += `
+                    <div style="padding: 1rem; background: ${statusBg}; border-radius: 8px; margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 600; color: ${statusText};">${statusIcon} Stage ${stageNum}: ${stage}</span>
+                            <span style="font-size: 0.8rem; color: ${statusText};">${statusLabel}</span>
+                        </div>
+                        ${approvedBy ? `
+                            <div style="font-size: 0.85rem; color: #4b5563;">
+                                <strong>By:</strong> ${approvedBy}
+                            </div>
+                        ` : ''}
+                        ${approvedAt ? `
+                            <div style="font-size: 0.85rem; color: #4b5563;">
+                                <strong>Date:</strong> ${formatDate(approvedAt)}
+                            </div>
+                        ` : ''}
+                        ${comments ? `
+                            <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 6px; font-size: 0.85rem; color: #374151;">
+                                💬 <strong>Comments:</strong> ${comments}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            if (!approvalHistoryHtml) {
+                approvalHistoryHtml = '<p style="color: #6b7280;">No approval stages defined</p>';
+            }
+            
+            const modalHtml = `
+                <div id="leaveDetailsModal" class="modal" style="display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 9999;">
+                    <div class="modal-content" style="background: white; border-radius: 16px; max-width: 700px; width: 95%; max-height: 90vh; overflow-y: auto; margin: 1rem;">
+                        <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 16px 16px 0 0;">
+                            <h3 style="margin: 0;">📋 Leave Request Details</h3>
+                            <button onclick="closeModal('leaveDetailsModal')" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; position: absolute; right: 1rem; top: 1rem;">&times;</button>
+                        </div>
+                        <div class="modal-body" style="padding: 1.5rem;">
+                            <!-- Employee Info -->
+                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px;">
+                                <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.5rem;">
+                                    ${(req.employeeName || 'E')[0].toUpperCase()}
+                                </div>
+                                <div>
+                                    <h4 style="margin: 0; color: #1f2937;">${req.employeeName || 'Employee'}</h4>
+                                    <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.9rem;">${req.submittedBy || ''}</p>
+                                    ${req.department ? `<p style="margin: 0.25rem 0 0 0; color: #9ca3af; font-size: 0.85rem;">${req.department}</p>` : ''}
+                                </div>
+                            </div>
+                            
+                            <!-- Leave Details Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div style="padding: 1rem; background: #e0e7ff; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #4338ca; text-transform: uppercase; margin-bottom: 0.25rem;">Leave Type</div>
+                                    <div style="font-weight: 600; color: #1e1b4b;">${req.leaveType || 'N/A'}</div>
+                                </div>
+                                <div style="padding: 1rem; background: #fef3c7; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.25rem;">Duration</div>
+                                    <div style="font-weight: 600; color: #78350f;">${req.isHalfDay ? 'Half Day' : (req.totalDays || 1) + ' Day' + ((req.totalDays || 1) > 1 ? 's' : '')}</div>
+                                    ${req.isHalfDay ? '<div style="font-size: 0.75rem; color: #b45309; margin-top: 0.25rem;">' + (req.halfDayPeriod === 'first_half' ? 'First Half (Morning)' : 'Second Half (Afternoon)') + '</div>' : ''}
+                                </div>
+                                <div style="padding: 1rem; background: #d1fae5; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #065f46; text-transform: uppercase; margin-bottom: 0.25rem;">From Date</div>
+                                    <div style="font-weight: 600; color: #064e3b;">${formatDate(req.fromDate)}</div>
+                                </div>
+                                <div style="padding: 1rem; background: #fee2e2; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #991b1b; text-transform: uppercase; margin-bottom: 0.25rem;">To Date</div>
+                                    <div style="font-weight: 600; color: #7f1d1d;">${formatDate(req.toDate)}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Team Lead -->
+                            ${req.selectedTeamLead ? `
+                                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #ede9fe; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #5b21b6; text-transform: uppercase; margin-bottom: 0.25rem;">Assigned Team Lead</div>
+                                    <div style="font-weight: 600; color: #4c1d95;">${req.selectedTeamLead}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Reason -->
+                            ${req.reason ? `
+                                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 10px; border-left: 4px solid #667eea;">
+                                    <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">Reason for Leave</div>
+                                    <div style="color: #374151;">${req.reason}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Emergency Contact -->
+                            ${req.emergencyContact || req.emergencyPhone ? `
+                                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.5rem;">Emergency Contact</div>
+                                    ${req.emergencyContact ? `<div style="color: #78350f;"><strong>Name:</strong> ${req.emergencyContact}</div>` : ''}
+                                    ${req.emergencyPhone ? `<div style="color: #78350f;"><strong>Phone:</strong> ${req.emergencyPhone}</div>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Approval Flow Info -->
+                            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f0f9ff; border-radius: 10px;">
+                                <div style="font-size: 0.75rem; color: #0369a1; text-transform: uppercase; margin-bottom: 0.25rem;">Approval Flow</div>
+                                <div style="font-weight: 600; color: #0c4a6e;">${flowInfo.flowDescription || 'Standard Approval'}</div>
+                                <div style="font-size: 0.85rem; color: #0369a1; margin-top: 0.25rem;">Current Stage: ${req.currentStage || 1} of ${flowInfo.totalStages || 1}</div>
+                            </div>
+                            
+                            <!-- Approval History -->
+                            <div style="margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0; color: #374151;">📜 Approval History & Comments</h4>
+                                ${approvalHistoryHtml}
+                            </div>
+                            
+                            <!-- Final Comments -->
+                            ${req.hrComment && req.status !== 'pending' ? `
+                                <div style="padding: 1rem; background: ${req.status === 'approved' ? '#d1fae5' : '#fee2e2'}; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: ${req.status === 'approved' ? '#065f46' : '#991b1b'}; text-transform: uppercase; margin-bottom: 0.25rem;">Final Decision Comment</div>
+                                    <div style="color: ${req.status === 'approved' ? '#064e3b' : '#7f1d1d'};">${req.hrComment}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Submission Info -->
+                            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.85rem; color: #6b7280;">
+                                <strong>Submitted:</strong> ${formatDate(req.submittedAt)} | 
+                                <strong>Request ID:</strong> ${req.id || req.docId || 'N/A'}
+                                ${req.processedAt ? `<br><strong>Last Updated:</strong> ${formatDate(req.processedAt)}` : ''}
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; text-align: right;">
+                            <button onclick="closeModal('leaveDetailsModal')" class="btn btn-outline">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('leaveDetailsModal');
+            if (existingModal) existingModal.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        // Export leave reports to Excel
+        function exportLeaveReportsToExcel() {
+            const requests = window.allLeaveRequests || [];
+            
+            if (requests.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            // Build CSV content
+            const headers = [
+                'Employee Name',
+                'Email',
+                'Department',
+                'Leave Type',
+                'From Date',
+                'To Date',
+                'Total Days',
+                'Half Day',
+                'Half Day Period',
+                'Status',
+                'Reason',
+                'Team Lead',
+                'Submitted At',
+                'Stage 1 Status',
+                'Stage 1 By',
+                'Stage 1 Comments',
+                'Stage 2 Status',
+                'Stage 2 By',
+                'Stage 2 Comments',
+                'Stage 3 Status',
+                'Stage 3 By',
+                'Stage 3 Comments',
+                'Final Comments'
+            ];
+            
+            const rows = requests.map(req => [
+                req.employeeName || '',
+                req.submittedBy || '',
+                req.department || '',
+                req.leaveType || '',
+                req.fromDate || '',
+                req.toDate || '',
+                req.totalDays || '',
+                req.isHalfDay ? 'Yes' : 'No',
+                req.isHalfDay ? (req.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') : '',
+                req.status || '',
+                (req.reason || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                req.selectedTeamLead || '',
+                req.submittedAt || '',
+                req.stage1Status || '',
+                req.stage1ApprovedBy || req.stage1RejectedBy || '',
+                (req.stage1Comments || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                req.stage2Status || '',
+                req.stage2ApprovedBy || req.stage2RejectedBy || '',
+                (req.stage2Comments || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                req.stage3Status || '',
+                req.stage3ApprovedBy || req.stage3RejectedBy || '',
+                (req.stage3Comments || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                (req.hrComment || '').replace(/,/g, ';').replace(/\n/g, ' ')
+            ]);
+            
+            let csvContent = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+            
+            // Download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Leave_Report_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert('✅ Leave report exported successfully!');
+        }
+        
+        // Make functions globally accessible
+        window.showEmployeeLeaveRequest = showEmployeeLeaveRequest;
+        window.showEmployeeLeaveModal = showEmployeeLeaveModal;
+        window.calculateEmpLeaveDays = calculateEmpLeaveDays;
+        window.submitEmployeeLeave = submitEmployeeLeave;
+        window.showHRLeaveApproval = showHRLeaveApproval;
+        window.approveLeaveRequest = approveLeaveRequest;
+        window.rejectLeaveRequest = rejectLeaveRequest;
+        window.updateHRLeaveRequestsBadge = updateHRLeaveRequestsBadge;
+        window.updateLeaveNavigation = updateLeaveNavigation;
+        window.isCurrentUserTeamLead = isCurrentUserTeamLead;
+        window.isEmailTeamLead = isEmailTeamLead;
+        window.isSameTeamLead = isSameTeamLead;
+        window.DESIGNER_TEAM_LEADS = DESIGNER_TEAM_LEADS;
+        window.showHRLeaveReports = showHRLeaveReports;
+        window.filterLeaveReports = filterLeaveReports;
+        window.resetLeaveReportFilters = resetLeaveReportFilters;
+        window.showLeaveRequestDetails = showLeaveRequestDetails;
+        window.exportLeaveReportsToExcel = exportLeaveReportsToExcel;
+
+        // ============================================
+        // DIAGNOSTICS
+        // ============================================
+
+        async function testBackendConnection() { /* ... (Unchanged) ... */ }
+        async function runDiagnostics() { /* ... (Unchanged) ... */ }
+
+let designerAllocationCounter = 0;
+let availableDesigners = [];
+
+/**
+ * Load all available designers for allocation
+ */
+async function loadAvailableDesigners() {
+    try {
+        // COO allocation modal only shows Design Leads (not designers)
+        const designLeadsResponse = await apiCall('users?role=design_lead');
+
+        availableDesigners = [];
+
+        if (designLeadsResponse.success && designLeadsResponse.data) {
+            availableDesigners.push(...designLeadsResponse.data.map(d => ({...d, roleType: 'design_lead'})));
+        }
+
+        console.log('Available design leads loaded:', availableDesigners.length);
+
+    } catch (error) {
+        console.error('Error loading design leads:', error);
+        availableDesigners = [];
+    }
+}
+
+/**
+ * ✅ FIXED: Show COO Multi-Designer Allocation Modal
+ * Handles both scenarios: Hours from Estimation OR Manual COO Entry (Tonnage case)
+ */
+async function showCooMultiDesignerAllocationModal(projectId) {
+    try {
+        showLoading();
+        
+        // 1. Load project details
+        const projectResponse = await apiCall(`projects?id=${projectId}`);
+        if (!projectResponse.success || !projectResponse.data) {
+            throw new Error('Failed to load project details');
+        }
+        
+        const project = projectResponse.data;
+        
+        // Store project data globally for edit functions
+        window.currentEditProject = project;
+        window.currentEditProjectId = projectId;
+        
+        // 2. Load available design leads
+        await loadAvailableDesigners();
+
+        if (availableDesigners.length === 0) {
+            alert('No design leads found in the system. Please create design lead accounts first.');
+            hideLoading();
+            return;
+        }
+
+        // 3. Populate project info
+        document.getElementById('cooAllocProjectId').value = projectId;
+        document.getElementById('cooAllocProjectNumber').textContent = project.projectNumber || 'N/A';
+        document.getElementById('cooAllocProjectName').textContent = project.projectName || 'N/A';
+        document.getElementById('cooAllocClientName').textContent = project.clientCompany || 'N/A';
+
+        // 3b. Populate project section if previously set
+        const sectionSelect = document.getElementById('cooProjectSection');
+        if (sectionSelect) {
+            sectionSelect.value = project.projectSection || '';
+        }
+
+        // 3c. Populate P.O. fields if previously set
+        const poNumberInput = document.getElementById('cooPoNumber');
+        if (poNumberInput && project.poNumber) poNumberInput.value = project.poNumber;
+        const poValueInput = document.getElementById('cooPoValue');
+        if (poValueInput && project.poValue) poValueInput.value = project.poValue;
+        const poCurrencySelect = document.getElementById('cooPoCurrency');
+        if (poCurrencySelect && project.poCurrency) poCurrencySelect.value = project.poCurrency;
+        // Show existing P.O. file info
+        const poPreview = document.getElementById('cooPoFilePreview');
+        if (poPreview && project.poFileName) {
+            poPreview.innerHTML = `📎 Existing: <strong>${project.poFileName}</strong> <a href="${project.poFileUrl || '#'}" target="_blank" style="color: #065f46;">(View)</a>`;
+            poPreview.style.display = 'block';
+        }
+
+        // 3d. Populate Project Contacts if previously set
+        const contacts = project.projectContacts || {};
+        const tech = contacts.technical || {};
+        const comm = contacts.commercial || {};
+        if (tech.bdmName) document.getElementById('cooTechBdmName').value = tech.bdmName;
+        if (tech.bdmEmail) document.getElementById('cooTechBdmEmail').value = tech.bdmEmail;
+        if (tech.clientPmName) document.getElementById('cooTechClientPmName').value = tech.clientPmName;
+        if (tech.clientPmEmail) document.getElementById('cooTechClientPmEmail').value = tech.clientPmEmail;
+        if (comm.accountName) document.getElementById('cooCommAccountName').value = comm.accountName;
+        if (comm.accountEmail) document.getElementById('cooCommAccountEmail').value = comm.accountEmail;
+        if (comm.bdmName) document.getElementById('cooCommBdmName').value = comm.bdmName;
+        if (comm.bdmEmail) document.getElementById('cooCommBdmEmail').value = comm.bdmEmail;
+
+        // ============================================
+        // ✅ CRITICAL FIX: TWO SCENARIOS LOGIC
+        // ============================================
+        
+        const totalHoursInput = document.getElementById('cooTotalProjectHours');
+        
+        // SCENARIO A: Estimator entered HOURS (not tonnage)
+        const estimationHours = parseFloat(project.estimation?.totalHours || 0);
+        const estimationUsedTonnage = project.estimation?.usedTonnageForDesign || false;
+        
+        // SCENARIO B: Previously saved Max Hours (from manual COO entry OR approved budget change)
+        const savedMaxHours = parseFloat(project.maxAllocatedHours || 0);
+        
+        // Already allocated hours in the system
+        const previouslyAllocated = parseFloat(project.totalAllocatedHours || 0);
+        
+        let totalBudget = 0;
+        let isLocked = false;
+        let hoursSource = '';
+        
+        // ============================================
+        // ✅ FIX: Check if budget was changed/approved by Director
+        // If maxAllocatedHours > estimationHours, Director approved a budget increase
+        // Always use the larger value as it represents the current approved budget
+        // ============================================
+        
+        // LOGIC FLOW:
+        if (savedMaxHours > 0 && savedMaxHours > estimationHours) {
+            // ✅ PRIORITY: Budget was changed/approved by Director - use maxAllocatedHours
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_approved_budget_change';
+            console.log('✅ Using approved budget change:', savedMaxHours, '(original estimation was:', estimationHours, ')');
+            
+        } else if (estimationHours > 0 && !estimationUsedTonnage) {
+            // ✅ SCENARIO A: Estimator entered HOURS directly
+            totalBudget = estimationHours;
+            isLocked = true;
+            hoursSource = 'from_estimation_hours';
+            console.log('✅ Scenario A: Using estimation hours (not tonnage)');
+            
+        } else if (estimationUsedTonnage && savedMaxHours > 0) {
+            // ✅ SCENARIO B: Estimator used TONNAGE, COO manually entered hours
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_coo_manual_tonnage';
+            console.log('✅ Scenario B: Using COO manual hours (tonnage case)');
+            
+        } else if (estimationUsedTonnage && savedMaxHours === 0) {
+            // ⚠️ SCENARIO B (Not Yet Completed): Tonnage entered, COO needs to enter hours
+            totalBudget = 0;
+            isLocked = false;
+            hoursSource = 'awaiting_coo_manual_entry';
+            console.log('⚠️ Scenario B (Incomplete): Tonnage entered, awaiting COO manual entry');
+            
+        } else if (savedMaxHours > 0) {
+            // Fallback: Previously saved hours exist
+            totalBudget = savedMaxHours;
+            isLocked = true;
+            hoursSource = 'from_previous_entry';
+            console.log('✅ Fallback: Using previously saved hours');
+        }
+        
+        // Calculate remaining budget
+        const remainingBudget = Math.max(0, totalBudget - previouslyAllocated);
+        
+        // ============================================
+        // Set UI State based on scenario
+        // ============================================
+        
+        totalHoursInput.value = totalBudget > 0 ? totalBudget : '';
+        totalHoursInput.readOnly = isLocked;
+        
+        // Show/hide Edit Budget button
+        const editBudgetBtn = document.getElementById('editBudgetBtn');
+        if (editBudgetBtn) {
+            editBudgetBtn.style.display = isLocked && totalBudget > 0 ? 'inline-block' : 'none';
+        }
+        
+        if (isLocked) {
+            // Locked state - budget is set
+            totalHoursInput.style.backgroundColor = '#e9ecef';
+            totalHoursInput.style.border = '2px solid #10b981';
+            totalHoursInput.style.fontWeight = '700';
+            
+            if (hoursSource === 'from_approved_budget_change') {
+                totalHoursInput.title = "🔒 Locked: Budget approved by Director (increased from original)";
+            } else if (hoursSource === 'from_estimation_hours') {
+                totalHoursInput.title = "🔒 Locked: Hours from Estimator (not tonnage)";
+            } else if (hoursSource === 'from_coo_manual_tonnage') {
+                totalHoursInput.title = "🔒 Locked: Hours manually entered by COO (tonnage case)";
+            } else {
+                totalHoursInput.title = "🔒 Locked: Budget previously set";
+            }
+            
+        } else {
+            // Unlocked state - COO needs to enter hours
+            totalHoursInput.style.backgroundColor = '#fff8dc';
+            totalHoursInput.style.border = '2px solid #f59e0b';
+            totalHoursInput.style.fontWeight = '600';
+            totalHoursInput.placeholder = "⚠️ Enter Total Hours (Tonnage was used in estimation)";
+            totalHoursInput.title = "Manual entry required: Estimator used tonnage";
+        }
+        
+        // Store metadata for calculations
+        totalHoursInput.dataset.alreadyAllocated = previouslyAllocated;
+        totalHoursInput.dataset.hoursSource = hoursSource;
+        
+        // ============================================
+        // ✅ NEW: RENDER EXISTING ALLOCATIONS WITH EDIT
+        // ============================================
+        
+        renderExistingAllocations(project);
+        
+        // ============================================
+        // Designer Allocation Section State
+        // ============================================
+        
+        const designerContainer = document.getElementById('designerAllocationsContainer');
+        const addDesignerBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-outline[onclick="addDesignerAllocation()"]');
+        const submitBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-success');
+        
+        // Reset form
+        designerAllocationCounter = 0;
+        designerContainer.innerHTML = '';
+        document.getElementById('cooAllocationNotes').value = '';
+        document.getElementById('cooTargetCompletionDate').value = '';
+        document.getElementById('cooProjectPriority').value = 'Normal';
+        
+        // ============================================
+        // LOGIC: When to enable/disable Designer Allocation
+        // ============================================
+        
+        if (totalBudget === 0) {
+            // ⚠️ CASE 1: No budget set yet (awaiting COO manual entry)
+            designerContainer.innerHTML = `
+                <div class="alert alert-info" style="padding: 1.5rem; background: #e3f2fd; color: #0d47a1; border: 2px solid #2196f3; border-radius: 8px; text-align: center;">
+                    <h4 style="margin: 0 0 0.5rem 0;">ℹ️ Total Hours Required</h4>
+                    <p style="margin: 0;">Please enter the <strong>Total Allocated Hours</strong> above before allocating to designers.</p>
+                </div>
+            `;
+            
+            if (addDesignerBtn) addDesignerBtn.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Enter Hours First";
+                submitBtn.style.opacity = "0.5";
+            }
+            
+            // Add event listener to enable designer section when hours are entered
+            totalHoursInput.addEventListener('input', function() {
+                const enteredHours = parseFloat(this.value) || 0;
+                if (enteredHours > 0) {
+                    // Enable designer allocation section
+                    designerContainer.innerHTML = '';
+                    addDesignerAllocation();
+                    
+                    if (addDesignerBtn) addDesignerBtn.style.display = 'inline-block';
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "Allocate Project";
+                        submitBtn.style.opacity = "1";
+                    }
+                    
+                    updateRemainingHours();
+                }
+            });
+            
+        } else if (remainingBudget <= 0.1) {
+            // CASE 2: Fully Allocated (LOCK)
+            designerContainer.innerHTML = `
+                <div style="padding: 2rem; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border: 1px solid #6ee7b7; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(16,185,129,0.1);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #059669; border-radius: 50%; color: white; font-size: 1.4rem; margin-bottom: 0.75rem; box-shadow: 0 2px 6px rgba(5,150,105,0.3);">&#10003;</div>
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #064e3b;">Allocation Complete</h4>
+                    <p style="margin: 0; color: #065f46;">
+                        All hours have been successfully allocated<br>
+                        <span style="font-size: 1.3rem; font-weight: 700; color: #047857; letter-spacing: -0.02em;">${previouslyAllocated.toFixed(1)} / ${totalBudget.toFixed(1)} hours</span>
+                    </p>
+                    <p style="margin: 0.75rem 0 0 0; font-size: 0.85rem; color: #047857; opacity: 0.75;">To modify existing allocations, use the Edit buttons above.</p>
+                </div>
+            `;
+
+            if (addDesignerBtn) addDesignerBtn.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Fully Allocated";
+                submitBtn.style.opacity = "0.6";
+            }
+            
+        } else {
+            // ✅ CASE 3: Partial or New Allocation (ENABLED)
+            if (addDesignerBtn) addDesignerBtn.style.display = 'inline-block';
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Allocate Project";
+                submitBtn.style.opacity = "1";
+            }
+            
+            addDesignerAllocation(); // Add first row
+        }
+        
+        // Show modal
+        document.getElementById('cooMultiDesignerAllocationModal').style.display = 'flex';
+        
+        // Update visual display
+        updateRemainingHours();
+        
+    } catch (error) {
+        console.error('Error showing allocation modal:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Toggle project number edit mode
+ */
+function toggleProjectNumberEdit() {
+    const container = document.getElementById('projectNumberEditContainer');
+    const input = document.getElementById('projectNumberEditInput');
+    const currentNumber = document.getElementById('cooAllocProjectNumber').textContent;
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'flex';
+        input.value = currentNumber === 'N/A' ? '' : currentNumber;
+        input.focus();
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+/**
+ * Cancel project number edit
+ */
+function cancelProjectNumberEdit() {
+    document.getElementById('projectNumberEditContainer').style.display = 'none';
+}
+
+/**
+ * Save project number
+ */
+async function saveProjectNumber() {
+    const projectId = document.getElementById('cooAllocProjectId').value;
+    const newProjectNumber = document.getElementById('projectNumberEditInput').value.trim();
+    
+    if (!newProjectNumber) {
+        alert('Please enter a project number');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_project_number',
+                data: {
+                    projectNumber: newProjectNumber
+                }
+            })
+        });
+        
+        if (response.success) {
+            // Update display
+            document.getElementById('cooAllocProjectNumber').textContent = newProjectNumber;
+            document.getElementById('projectNumberEditContainer').style.display = 'none';
+            
+            // Update global project data
+            if (window.currentEditProject) {
+                window.currentEditProject.projectNumber = newProjectNumber;
+            }
+            
+            alert('✅ Project number updated successfully!');
+        } else {
+            throw new Error(response.error || 'Failed to update project number');
+        }
+    } catch (error) {
+        console.error('Error updating project number:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * ✅ NEW: Render existing designer allocations with edit capabilities
+ */
+function renderExistingAllocations(project) {
+    const section = document.getElementById('existingAllocationsSection');
+    const list = document.getElementById('existingAllocationsList');
+    const totalSpan = document.getElementById('existingAllocTotal');
+    
+    const designerHours = project.designerHours || {};
+    const designerUids = project.assignedDesignerUids || [];
+    const designerNames = project.assignedDesignerNames || [];
+    const designerEmails = project.assignedDesignerEmails || [];
+    
+    // Check if there are existing allocations
+    if (designerUids.length === 0 || Object.keys(designerHours).length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    // Calculate total existing hours
+    let totalExisting = 0;
+    designerUids.forEach(uid => {
+        totalExisting += parseFloat(designerHours[uid]) || 0;
+    });
+    
+    // Show section
+    section.style.display = 'block';
+    totalSpan.textContent = `Total: ${totalExisting.toFixed(1)}h`;
+    
+    // Render each designer allocation
+    list.innerHTML = designerUids.map((uid, index) => {
+        const name = designerNames[index] || 'Unknown Designer';
+        const email = designerEmails[index] || '';
+        const hours = parseFloat(designerHours[uid]) || 0;
+        
+        return `
+            <div class="designer-edit-row" id="existingAlloc_${uid}" data-uid="${uid}" data-original="${hours}" 
+                 style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; border: 1px solid #e5e7eb;">
+                <div class="designer-edit-info" style="flex: 1;">
+                    <div class="name" style="font-weight: 600; color: #1f2937;">👤 ${name}</div>
+                    <div class="email" style="font-size: 0.85rem; color: #6b7280;">${email}</div>
+                </div>
+                <div class="designer-edit-hours" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="existingHours_${uid}" class="form-control existing-hours-input" 
+                           value="${hours}" min="0" step="0.5" data-original="${hours}"
+                           style="width: 100px; text-align: center; font-weight: 600;"
+                           onchange="highlightExistingHoursChange('${uid}')">
+                    <span style="color: #6b7280;">hours</span>
+                </div>
+                <div class="designer-edit-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="saveExistingDesignerHours('${uid}', '${(name || '').replace(/'/g, "\\'")}', '${(email || '').replace(/'/g, "\\'")}')"
+                            style="padding: 0.4rem 0.75rem;">
+                        💾 Save
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm"
+                            title="Delete this allocation"
+                            onclick="deleteExistingDesignerAllocation('${uid}', '${(name || '').replace(/'/g, "\\'")}', ${hours})"
+                            style="padding: 0.4rem 0.75rem;">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Delete an existing designer allocation from inside the COO multi-designer modal.
+ * Used when the wrong designer or wrong hours were entered earlier.
+ */
+async function deleteExistingDesignerAllocation(designerUid, designerName, currentHours) {
+    const projectId = window.currentEditProjectId;
+    if (!projectId) {
+        alert('⚠️ Project ID missing');
+        return;
+    }
+
+    const reason = prompt(
+        `Delete ${designerName}'s allocation (${currentHours}h)?\n\n` +
+        `This will remove the designer from this project entirely.\n\n` +
+        `Please enter a reason (required):`
+    );
+
+    if (reason === null) return;
+    if (!reason || reason.trim().length < 3) {
+        alert('⚠️ A reason (at least 3 characters) is required to delete this allocation.');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete_designer_allocation',
+                data: {
+                    designerUid: designerUid,
+                    reason: reason.trim()
+                }
+            })
+        });
+
+        if (response.success) {
+            alert(`✅ ${designerName}'s allocation has been removed.`);
+
+            // Update local cache
+            if (window.currentEditProject) {
+                const proj = window.currentEditProject;
+                proj.designerHours = proj.designerHours || {};
+                const removedHrs = parseFloat(proj.designerHours[designerUid]) || 0;
+                delete proj.designerHours[designerUid];
+
+                const idx = (proj.assignedDesignerUids || []).indexOf(designerUid);
+                if (idx !== -1) {
+                    proj.assignedDesignerUids.splice(idx, 1);
+                    if (proj.assignedDesignerNames) proj.assignedDesignerNames.splice(idx, 1);
+                    if (proj.assignedDesignerEmails) proj.assignedDesignerEmails.splice(idx, 1);
+                }
+
+                proj.totalAllocatedHours = Math.max(0, (parseFloat(proj.totalAllocatedHours) || 0) - removedHrs);
+
+                // If the deleted designer was the Design Lead, clear those fields too
+                if (proj.designLeadUid === designerUid) {
+                    proj.designLeadUid = null;
+                    proj.designLeadName = null;
+                    proj.designLeadEmail = null;
+                }
+
+                // Re-render the existing allocations list
+                if (typeof renderExistingAllocations === 'function') {
+                    renderExistingAllocations(proj);
+                }
+                if (typeof updateRemainingHoursWithExisting === 'function') {
+                    updateRemainingHoursWithExisting();
+                }
+            }
+
+            // Refresh project listings if available
+            if (typeof showAllProjects === 'function') {
+                try { await showAllProjects(); } catch (e) {}
+            }
+        } else {
+            throw new Error(response.error || 'Failed to delete allocation');
+        }
+    } catch (error) {
+        console.error('Error deleting allocation:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Highlight changed hours in existing allocations
+ */
+function highlightExistingHoursChange(designerUid) {
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const original = parseFloat(input.dataset.original) || 0;
+    const current = parseFloat(input.value) || 0;
+    
+    if (current !== original) {
+        input.style.border = '2px solid #f59e0b';
+        input.style.background = '#fef3c7';
+    } else {
+        input.style.border = '';
+        input.style.background = '';
+    }
+    
+    // Also update the remaining hours display
+    updateRemainingHoursWithExisting();
+}
+
+/**
+ * Update remaining hours considering existing allocation changes
+ */
+function updateRemainingHoursWithExisting() {
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value) || 0;
+    
+    // Calculate existing allocations (current values in inputs)
+    let existingTotal = 0;
+    document.querySelectorAll('.existing-hours-input').forEach(input => {
+        existingTotal += parseFloat(input.value) || 0;
+    });
+    
+    // Get new session allocation
+    let newSessionTotal = 0;
+    document.querySelectorAll('.hours-input').forEach(input => {
+        newSessionTotal += parseFloat(input.value) || 0;
+    });
+    
+    const totalAllocated = existingTotal + newSessionTotal;
+    const remaining = totalBudget - totalAllocated;
+    
+    // Update display
+    const remainingDisplay = document.getElementById('cooRemainingHours');
+    if (remainingDisplay) {
+        remainingDisplay.innerHTML = `
+            <div style="font-size: 1.8rem; font-weight: 700; color: ${remaining < 0 ? 'var(--danger)' : remaining === 0 ? 'var(--success)' : 'var(--warning)'}">
+                ${remaining >= 0 ? remaining.toFixed(1) : '(' + Math.abs(remaining).toFixed(1) + ')'} hrs
+            </div>
+            <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8; line-height: 1.3;">
+                <div><strong>Total Budget:</strong> ${totalBudget.toFixed(1)} hrs</div>
+                ${existingTotal > 0 ? `<div><strong>Existing Allocations:</strong> ${existingTotal.toFixed(1)} hrs</div>` : ''}
+                ${newSessionTotal > 0 ? `<div><strong>New Allocations:</strong> ${newSessionTotal.toFixed(1)} hrs</div>` : ''}
+                <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 0.3rem; padding-top: 0.3rem;">
+                    <strong>Total Allocated:</strong> ${totalAllocated.toFixed(1)} hrs
+                </div>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Save existing designer hours directly (within budget)
+ */
+async function saveExistingDesignerHours(designerUid, designerName, designerEmail) {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const input = document.getElementById(`existingHours_${designerUid}`);
+    const newHours = parseFloat(input.value) || 0;
+    const oldHours = parseFloat(input.dataset.original) || 0;
+    
+    if (newHours === oldHours) {
+        alert('No changes to save');
+        return;
+    }
+    
+    // Check if within budget
+    const maxBudget = parseFloat(project.maxAllocatedHours) || 0;
+    const currentTotal = parseFloat(project.totalAllocatedHours) || 0;
+    const hoursDiff = newHours - oldHours;
+    const newTotal = currentTotal + hoursDiff;
+    
+    if (maxBudget > 0 && newTotal > maxBudget + 0.1) {
+        const exceed = (newTotal - maxBudget).toFixed(1);
+        alert(`⚠️ Cannot save: This would exceed the budget by ${exceed} hours.\n\nUse "Request" to submit for Director approval.`);
+        return;
+    }
+    
+    const confirmMsg = `Update ${designerName}'s allocation?\n\nCurrent: ${oldHours}h\nNew: ${newHours}h\nChange: ${hoursDiff >= 0 ? '+' : ''}${hoursDiff.toFixed(1)}h`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        showLoading();
+        
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update_designer_allocation',
+                data: {
+                    designerUid,
+                    designerName,
+                    designerEmail,
+                    newAllocatedHours: newHours,
+                    reason: `Direct edit by COO: ${oldHours}h → ${newHours}h`
+                }
+            })
+        });
+        
+        if (response.success) {
+            alert(`✅ ${designerName}'s hours updated to ${newHours}h`);
+            
+            // Update local data
+            input.dataset.original = newHours;
+            input.style.border = '2px solid #10b981';
+            input.style.background = '#d1fae5';
+            
+            // Update stored project data
+            window.currentEditProject.designerHours = window.currentEditProject.designerHours || {};
+            window.currentEditProject.designerHours[designerUid] = newHours;
+            window.currentEditProject.totalAllocatedHours = newTotal;
+            
+            // Update totals display
+            const totalSpan = document.getElementById('existingAllocTotal');
+            if (totalSpan) {
+                let existingTotal = 0;
+                document.querySelectorAll('.existing-hours-input').forEach(inp => {
+                    existingTotal += parseFloat(inp.value) || 0;
+                });
+                totalSpan.textContent = `Total: ${existingTotal.toFixed(1)}h`;
+            }
+            
+            // Update remaining hours
+            document.getElementById('cooTotalProjectHours').dataset.alreadyAllocated = newTotal;
+            updateRemainingHours();
+            
+            setTimeout(() => {
+                input.style.border = '';
+                input.style.background = '';
+            }, 2000);
+            
+        } else {
+            throw new Error(response.error || 'Failed to update hours');
+        }
+    } catch (error) {
+        console.error('Error updating hours:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Request hours change that exceeds budget (opens Director approval modal)
+ */
+function requestHoursChangeFromModal(designerUid, designerName, designerEmail, currentHours) {
+    const projectId = window.currentEditProjectId;
+    
+    // Close current modal
+    closeCooMultiDesignerModal();
+    
+    // Open request modal
+    showRequestAllocationChangeModal(projectId, designerUid, designerName, designerEmail, currentHours);
+}
+
+/**
+ * Request budget change (requires Director approval) - Opens modal
+ */
+function toggleBudgetEdit() {
+    const projectId = window.currentEditProjectId;
+    const project = window.currentEditProject;
+    const currentBudget = parseFloat(project.maxAllocatedHours) || 0;
+    
+    // Show the budget change modal
+    showBudgetChangeModal(projectId, project.projectName, currentBudget);
+}
+
+/**
+ * Show Budget Change Request Modal
+ */
+function showBudgetChangeModal(projectId, projectName, currentBudget) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('budgetChangeModal');
+    if (!modal) {
+        const modalHtml = `
+            <div id="budgetChangeModal" class="modal" style="display: none;">
+                <div class="modal-content new-modal" style="max-width: 550px;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div>
+                            <h2 style="color: white;">📊 Request Budget Change</h2>
+                            <div class="subtitle" style="color: rgba(255,255,255,0.9);">Requires Director Approval</div>
+                        </div>
+                        <span class="close-modal" onclick="closeBudgetChangeModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <input type="hidden" id="budgetChangeProjectId" />
+                        
+                        <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #f59e0b;">
+                            <div style="font-weight: 600; color: #92400e;" id="budgetChangeProjectName"></div>
+                            <div style="font-size: 0.9rem; color: #b45309;">Current Budget: <strong id="budgetChangeCurrent">0</strong> hours</div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="budgetChangeNewHours" style="font-weight: 600;">New Budget Hours <span class="required">*</span></label>
+                            <input type="number" id="budgetChangeNewHours" class="form-control" 
+                                   placeholder="Enter new total budget hours" min="1" step="0.5" required
+                                   oninput="updateBudgetChangeDiff()"
+                                   style="font-size: 1.1rem; padding: 0.75rem;">
+                            <div id="budgetChangeDiff" style="margin-top: 0.5rem; font-weight: 600;"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="budgetChangeReason" style="font-weight: 600;">Reason for Change <span class="required">*</span></label>
+                            <textarea id="budgetChangeReason" class="form-control" rows="4" required
+                                      placeholder="Please explain why the budget needs to be changed...&#10;&#10;Example: Additional scope added by client, unforeseen complexity, etc."
+                                      style="resize: vertical;"></textarea>
+                            <small class="form-text" style="color: #6b7280;">This comment is mandatory and will be sent to the Director for review.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-cancel" onclick="closeBudgetChangeModal()">Cancel</button>
+                        <button type="button" class="btn btn-warning" onclick="submitBudgetChangeFromModal()" style="background: #f59e0b; border-color: #f59e0b;">
+                            📤 Submit for Approval
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('budgetChangeModal');
+    }
+    
+    // Populate modal
+    document.getElementById('budgetChangeProjectId').value = projectId;
+    document.getElementById('budgetChangeProjectName').textContent = projectName;
+    document.getElementById('budgetChangeCurrent').textContent = currentBudget.toFixed(1);
+    document.getElementById('budgetChangeNewHours').value = '';
+    document.getElementById('budgetChangeReason').value = '';
+    document.getElementById('budgetChangeDiff').innerHTML = '';
+    
+    // Store current budget for calculation
+    document.getElementById('budgetChangeNewHours').dataset.current = currentBudget;
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close budget change modal
+ */
+function closeBudgetChangeModal() {
+    const modal = document.getElementById('budgetChangeModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Update budget change difference display
+ */
+function updateBudgetChangeDiff() {
+    const input = document.getElementById('budgetChangeNewHours');
+    const current = parseFloat(input.dataset.current) || 0;
+    const newValue = parseFloat(input.value) || 0;
+    const diff = newValue - current;
+    
+    const diffDisplay = document.getElementById('budgetChangeDiff');
+    
+    if (newValue > 0) {
+        if (diff > 0) {
+            diffDisplay.innerHTML = `<span style="color: #059669;">↑ Increase by ${diff.toFixed(1)} hours</span>`;
+        } else if (diff < 0) {
+            diffDisplay.innerHTML = `<span style="color: #dc2626;">↓ Decrease by ${Math.abs(diff).toFixed(1)} hours</span>`;
+        } else {
+            diffDisplay.innerHTML = `<span style="color: #6b7280;">No change</span>`;
+        }
+    } else {
+        diffDisplay.innerHTML = '';
+    }
+}
+
+/**
+ * Submit budget change request from modal
+ */
+async function submitBudgetChangeFromModal() {
+    const projectId = document.getElementById('budgetChangeProjectId').value;
+    const currentBudget = parseFloat(document.getElementById('budgetChangeNewHours').dataset.current) || 0;
+    const newBudget = parseFloat(document.getElementById('budgetChangeNewHours').value);
+    const reason = document.getElementById('budgetChangeReason').value.trim();
+    
+    // Validation
+    if (!newBudget || newBudget <= 0) {
+        alert('Please enter a valid new budget hours');
+        return;
+    }
+    
+    if (newBudget === currentBudget) {
+        alert('New budget is the same as current budget');
+        return;
+    }
+    
+    if (!reason) {
+        alert('Please provide a reason for the budget change. This is required for Director approval.');
+        document.getElementById('budgetChangeReason').focus();
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const project = window.currentEditProject;
+        
+        const response = await apiCall('allocation-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: projectId,
+                requestType: 'budget_change',
+                currentBudget: currentBudget,
+                requestedBudget: newBudget,
+                reason: reason,
+                projectName: project.projectName,
+                projectCode: project.projectNumber || project.projectCode,
+                clientCompany: project.clientCompany
+            })
+        });
+        
+        if (response.success) {
+            closeBudgetChangeModal();
+            alert(`✅ Budget change request submitted!\n\nCurrent: ${currentBudget}h\nRequested: ${newBudget}h\n\nAwaiting Director approval.`);
+        } else {
+            throw new Error(response.error || 'Failed to submit request');
+        }
+    } catch (error) {
+        console.error('Error submitting budget change:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Add a new designer allocation row
+ */
+function addDesignerAllocation() {
+    // Enforce max 2 design leads
+    const existingRows = document.querySelectorAll('.designer-allocation-row');
+    if (existingRows.length >= 2) {
+        alert('Maximum 2 design leads can be assigned per project.');
+        return;
+    }
+
+    designerAllocationCounter++;
+    const container = document.getElementById('designerAllocationsContainer');
+
+    const rowHtml = `
+        <div class="designer-allocation-row" id="designerRow${designerAllocationCounter}">
+            <div class="designer-row-header">
+                <div class="designer-row-number">${designerAllocationCounter}</div>
+                ${existingRows.length >= 1 ? `
+                    <button type="button" class="remove-designer-btn" onclick="removeDesignerAllocation(${designerAllocationCounter})">
+                        ✕ Remove
+                    </button>
+                ` : ''}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>Select Design Lead <span class="required">*</span></label>
+                    <select class="form-control designer-select" id="designer${designerAllocationCounter}"
+                            onchange="validateDesignerSelection()" required>
+                        <option value="">-- Select Design Lead --</option>
+                        ${availableDesigners.map(d => `
+                            <option value="${d.uid}"
+                                    data-name="${d.name}"
+                                    data-email="${d.email}"
+                                    data-role="${d.roleType}">
+                                👔 ${d.name} (${d.email})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group" style="flex: 1;">
+                    <label>Allocated Hours <span class="required">*</span></label>
+                    <input type="number" class="form-control hours-input"
+                           id="hours${designerAllocationCounter}"
+                           placeholder="0" min="0.5" step="0.5"
+                           oninput="updateRemainingHours()" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Specific Instructions (Optional)</label>
+                <textarea class="form-control" id="notes${designerAllocationCounter}"
+                          rows="2" placeholder="Any specific tasks or focus areas for this design lead..."></textarea>
+            </div>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', rowHtml);
+    updateRemainingHours();
+
+    // Hide "Add Design Lead" button if already at 2
+    const updatedRows = document.querySelectorAll('.designer-allocation-row');
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn && updatedRows.length >= 2) {
+        addBtn.style.display = 'none';
+    }
+}
+
+/**
+ * Remove a designer allocation row
+ */
+function removeDesignerAllocation(rowNumber) {
+    const row = document.getElementById(`designerRow${rowNumber}`);
+    if (row) {
+        row.remove();
+        updateRemainingHours();
+        validateDesignerSelection();
+        // Re-show Add button if under limit
+        const remainingRows = document.querySelectorAll('.designer-allocation-row');
+        const addBtn = document.getElementById('addDesignLeadBtn');
+        if (addBtn && remainingRows.length < 2) {
+            addBtn.style.display = 'inline-block';
+        }
+    }
+}
+
+/**
+ * ✅ FIXED: Update Remaining Hours Display - Shows allocation budget
+ */
+function updateRemainingHours() {
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value) || 0;
+    
+    // Get previously allocated hours (from database)
+    const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
+    
+    // Get current session allocation (being typed in modal)
+    const hoursInputs = document.querySelectorAll('.hours-input');
+    let currentSessionAllocation = 0;
+    hoursInputs.forEach(input => {
+        currentSessionAllocation += parseFloat(input.value) || 0;
+    });
+    
+    // Calculate totals
+    const totalAllocated = previouslyAllocated + currentSessionAllocation;
+    const remaining = totalBudget - totalAllocated;
+    
+    const remainingDisplay = document.getElementById('cooRemainingHours');
+    
+    // Build display HTML
+    let displayHtml = '';
+    
+    if (totalBudget === 0) {
+        displayHtml = `
+            <div style="font-size: 1.2rem; font-weight: 600; color: #f59e0b;">
+                ⚠️ Enter Total Hours First
+            </div>
+        `;
+    } else {
+        displayHtml = `
+            <div style="font-size: 1.8rem; font-weight: 700; color: ${remaining < 0 ? 'var(--danger)' : remaining === 0 ? 'var(--success)' : 'var(--warning)'}">
+                ${remaining >= 0 ? remaining.toFixed(1) : '(' + Math.abs(remaining).toFixed(1) + ')'} hrs
+            </div>
+        `;
+        
+        if (previouslyAllocated > 0 || currentSessionAllocation > 0) {
+            displayHtml += `
+                <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8; line-height: 1.3;">
+                    <div><strong>Total Budget:</strong> ${totalBudget.toFixed(1)} hrs</div>
+                    ${previouslyAllocated > 0 ? `<div><strong>Previously Allocated:</strong> ${previouslyAllocated.toFixed(1)} hrs</div>` : ''}
+                    ${currentSessionAllocation > 0 ? `<div><strong>Current Session:</strong> ${currentSessionAllocation.toFixed(1)} hrs</div>` : ''}
+                    <div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 0.3rem; padding-top: 0.3rem;">
+                        <strong>Total Allocated:</strong> ${totalAllocated.toFixed(1)} hrs
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    remainingDisplay.innerHTML = displayHtml;
+    
+    // ============================================
+    // Submit Button Logic
+    // ============================================
+    
+    const submitBtn = document.querySelector('#cooMultiDesignerAllocationModal .btn-success');
+    
+    if (remaining < -0.1) {
+        // Over budget - BLOCK submission
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.5";
+            submitBtn.innerHTML = `⚠️ Reduce Hours (${Math.abs(remaining).toFixed(1)} over)`;
+        }
+    } else if (totalBudget === 0) {
+        // No budget set - BLOCK submission
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.5";
+            submitBtn.innerText = "Enter Hours First";
+        }
+    } else {
+        // Valid state - ENABLE submission
+        if (submitBtn && submitBtn.innerText !== "✅ Fully Allocated") {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.innerHTML = '<span class="btn-icon">✓</span> Allocate Project';
+        }
+    }
+}
+
+/**
+ * Validate that no designer is selected twice
+ */
+function validateDesignerSelection() {
+    const selects = document.querySelectorAll('.designer-select');
+    const selectedUids = [];
+    let hasDuplicate = false;
+    
+    selects.forEach(select => {
+        const row = select.closest('.designer-allocation-row');
+        row.classList.remove('error');
+        
+        if (select.value && selectedUids.includes(select.value)) {
+            row.classList.add('error');
+            hasDuplicate = true;
+        } else if (select.value) {
+            selectedUids.push(select.value);
+        }
+    });
+    
+    return !hasDuplicate;
+}
+
+/**
+ * Handle P.O. file selection in COO allocation modal
+ */
+function handleCooPoFileSelect(input, previewId) {
+    const preview = document.getElementById(previewId || 'cooPoFilePreview');
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type !== 'application/pdf') {
+            alert('Please upload a PDF file only.');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB.');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        preview.innerHTML = `📎 <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+/**
+ * ✅ FIXED: Submit COO Multi-Designer Allocation
+ * Handles both scenarios: estimation hours OR manual COO entry
+ */
+async function submitCooMultiDesignerAllocation() {
+    const projectId = document.getElementById('cooAllocProjectId').value;
+    const totalHoursInput = document.getElementById('cooTotalProjectHours');
+    const totalBudget = parseFloat(totalHoursInput.value);
+    const previouslyAllocated = parseFloat(totalHoursInput.dataset.alreadyAllocated) || 0;
+    const hoursSource = totalHoursInput.dataset.hoursSource || 'unknown';
+
+    // Validation: Budget must be set
+    if (!totalBudget || totalBudget <= 0) {
+        alert('⚠️ Please enter the Total Allocated Hours before proceeding.');
+        return;
+    }
+
+    // Validation: Project section must be selected
+    const projectSection = document.getElementById('cooProjectSection').value;
+    if (!projectSection) {
+        alert('⚠️ Please select a Project Section (Engineering, Rebar, or Structural).');
+        return;
+    }
+
+    // Project Details inputs
+    const targetDate = document.getElementById('cooTargetCompletionDate').value;
+    const priority = document.getElementById('cooProjectPriority').value;
+    const generalNotes = document.getElementById('cooAllocationNotes').value;
+
+    // Collect design lead allocations
+    const selects = document.querySelectorAll('.designer-select');
+    if (selects.length === 0) {
+        alert('⚠️ Please add at least one design lead allocation.');
+        return;
+    }
+
+    const designerAllocations = [];
+    let currentSessionTotal = 0;
+    
+    for (let i = 0; i < selects.length; i++) {
+        const select = selects[i];
+        const rowNum = select.id.replace('designer', '');
+        const hoursInput = document.getElementById(`hours${rowNum}`);
+        const notesTextarea = document.getElementById(`notes${rowNum}`);
+        
+        if (!select.value) {
+            alert(`⚠️ Please select a designer for allocation #${i + 1}`);
+            return;
+        }
+        
+        const hours = parseFloat(hoursInput.value);
+        if (!hours || hours <= 0) {
+            alert(`⚠️ Please enter valid hours for allocation #${i + 1}`);
+            return;
+        }
+        
+        currentSessionTotal += hours;
+        
+        const selectedOption = select.options[select.selectedIndex];
+        designerAllocations.push({
+            designerUid: select.value,
+            designerName: selectedOption.dataset.name,
+            designerEmail: selectedOption.dataset.email,
+            designerRole: selectedOption.dataset.role,
+            allocatedHours: hours,
+            specificNotes: notesTextarea.value.trim()
+        });
+    }
+    
+    // ============================================
+    // ✅ CRITICAL: STRICT VALIDATION - Prevent over-allocation
+    // ============================================
+    
+    const newTotalAllocated = previouslyAllocated + currentSessionTotal;
+    
+    if (newTotalAllocated > totalBudget + 0.1) { // Allow 0.1 float tolerance
+        const overage = (newTotalAllocated - totalBudget).toFixed(1);
+        alert(`⛔ ALLOCATION BLOCKED: Exceeding budget by ${overage} hours\n\n` +
+              `Total Budget: ${totalBudget} hrs\n` +
+              `Previously Allocated: ${previouslyAllocated} hrs\n` +
+              `Trying to Add: ${currentSessionTotal} hrs\n` +
+              `Would Result In: ${newTotalAllocated} hrs\n\n` +
+              `Please reduce the allocation to proceed.`);
+        return; // ⛔ STOP EXECUTION
+    }
+
+    // Validate no duplicate designers
+    if (!validateDesignerSelection()) {
+        alert('⚠️ You cannot assign the same designer twice. Please select different designers.');
+        return;
+    }
+    
+    // ============================================
+    // P.O. Data Collection
+    // ============================================
+    const poFile = document.getElementById('cooPoFile').files[0] || null;
+    const poNumber = (document.getElementById('cooPoNumber').value || '').trim();
+    const poValue = parseFloat(document.getElementById('cooPoValue').value) || 0;
+    const poCurrency = document.getElementById('cooPoCurrency').value || 'USD';
+
+    // P.O. fields are optional - can be added later via Edit P.O. & Contacts
+
+    // ============================================
+    // Project Contacts Data Collection
+    // ============================================
+    const projectContacts = {
+        technical: {
+            bdmName: (document.getElementById('cooTechBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('cooTechBdmEmail').value || '').trim(),
+            clientPmName: (document.getElementById('cooTechClientPmName').value || '').trim(),
+            clientPmEmail: (document.getElementById('cooTechClientPmEmail').value || '').trim()
+        },
+        commercial: {
+            accountName: (document.getElementById('cooCommAccountName').value || '').trim(),
+            accountEmail: (document.getElementById('cooCommAccountEmail').value || '').trim(),
+            bdmName: (document.getElementById('cooCommBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('cooCommBdmEmail').value || '').trim()
+        }
+    };
+
+    // Confirmation
+    const poSummary = [];
+    if (poNumber) poSummary.push(`P.O. Number: ${poNumber}`);
+    if (poValue) poSummary.push(`P.O. Value: ${poCurrency} ${poValue.toLocaleString()}`);
+    if (poFile) poSummary.push(`P.O. File: ${poFile.name}`);
+
+    const contactSummary = [];
+    if (projectContacts.technical.bdmName) contactSummary.push(`Tech BDM: ${projectContacts.technical.bdmName}`);
+    if (projectContacts.technical.clientPmName) contactSummary.push(`Client PM: ${projectContacts.technical.clientPmName}`);
+    if (projectContacts.commercial.accountName) contactSummary.push(`Comm Account: ${projectContacts.commercial.accountName}`);
+    if (projectContacts.commercial.bdmName) contactSummary.push(`Comm BDM: ${projectContacts.commercial.bdmName}`);
+
+    const confirmText = `
+📊 Allocation Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total Budget: ${totalBudget} hrs
+${previouslyAllocated > 0 ? `Previously Allocated: ${previouslyAllocated} hrs\n` : ''}Current Allocation: ${currentSessionTotal} hrs
+New Total: ${newTotalAllocated} hrs
+Remaining: ${(totalBudget - newTotalAllocated).toFixed(1)} hrs
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Designers: ${designerAllocations.length}
+${designerAllocations.map((d, i) => `\n${i+1}. ${d.designerName}: ${d.allocatedHours} hrs`).join('')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${poSummary.length > 0 ? '\n📄 Purchase Order:\n' + poSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}${contactSummary.length > 0 ? '\n📇 Contacts:\n' + contactSummary.join('\n') + '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' : ''}
+
+Proceed with allocation?`.trim();
+    
+    if (!confirm(confirmText)) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        // ============================================
+        // ✅ CRITICAL: Prepare Payload for Backend
+        // ============================================
+
+        // Read P.O. file as base64 if provided
+        let poFileBase64 = null;
+        let poFileName = null;
+        if (poFile) {
+            poFileBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(poFile);
+            });
+            poFileName = poFile.name;
+        }
+
+        const allocationData = {
+            action: 'allocate_to_multiple_designers',
+            data: {
+                projectId: projectId,
+
+                // Set the budget and source
+                maxAllocatedHours: totalBudget,
+                maxHoursSource: hoursSource,
+
+                // Total allocated after this operation
+                totalAllocatedHours: newTotalAllocated,
+
+                // Design Lead allocations
+                designerAllocations: designerAllocations,
+
+                // Project section (Engineering/Rebar/Structural)
+                projectSection: projectSection,
+
+                // Project details
+                targetCompletionDate: targetDate || null,
+                priority: priority,
+                allocationNotes: generalNotes,
+
+                // Purchase Order (P.O.) data
+                poNumber: poNumber || null,
+                poValue: poValue || null,
+                poCurrency: poCurrency,
+                poFileBase64: poFileBase64,
+                poFileName: poFileName,
+
+                // Project Contacts (Technical & Commercial)
+                projectContacts: projectContacts,
+
+                // Legacy fields for backend compatibility
+                assignedDesignerUids: designerAllocations.map(d => d.designerUid),
+                assignedDesignerNames: designerAllocations.map(d => d.designerName),
+                assignedDesignerEmails: designerAllocations.map(d => d.designerEmail),
+                designerHours: designerAllocations.reduce((acc, d) => {
+                    acc[d.designerUid] = d.allocatedHours;
+                    return acc;
+                }, {}),
+
+                // Incremental flag
+                isIncremental: true
+            }
+        };
+        
+        // Send to backend
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(allocationData)
+        });
+        
+        if (response.success) {
+            showSuccessModal(
+                '✅ Project Allocated Successfully!',
+                `Designers have been notified and can now start working on the project.`
+            );
+            closeCooMultiDesignerModal();
+            
+            // Refresh the projects view
+            if (typeof showAllProjects === 'function') {
+                await showAllProjects();
+            }
+        } else {
+            throw new Error(response.error || 'Allocation failed');
+        }
+        
+    } catch (error) {
+        console.error('Error allocating project:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Close the COO multi-designer allocation modal
+ */
+function closeCooMultiDesignerModal() {
+    document.getElementById('cooMultiDesignerAllocationModal').style.display = 'none';
+    document.getElementById('designerAllocationsContainer').innerHTML = '';
+    designerAllocationCounter = 0;
+    // Reset section and re-show add button
+    const sectionSelect = document.getElementById('cooProjectSection');
+    if (sectionSelect) sectionSelect.value = '';
+    const addBtn = document.getElementById('addDesignLeadBtn');
+    if (addBtn) addBtn.style.display = 'inline-block';
+    // Reset P.O. fields
+    const poFileInput = document.getElementById('cooPoFile');
+    if (poFileInput) poFileInput.value = '';
+    const poPreview = document.getElementById('cooPoFilePreview');
+    if (poPreview) poPreview.style.display = 'none';
+    const poNumber = document.getElementById('cooPoNumber');
+    if (poNumber) poNumber.value = '';
+    const poValueInput = document.getElementById('cooPoValue');
+    if (poValueInput) poValueInput.value = '';
+    const poCurrency = document.getElementById('cooPoCurrency');
+    if (poCurrency) poCurrency.value = 'USD';
+    // Reset contact fields
+    ['cooTechBdmName', 'cooTechBdmEmail', 'cooTechClientPmName', 'cooTechClientPmEmail',
+     'cooCommAccountName', 'cooCommAccountEmail', 'cooCommBdmName', 'cooCommBdmEmail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+}
+
+/**
+ * Show Edit P.O. & Contacts Modal
+ */
+async function showEditPoContactsModal(projectId) {
+    try {
+        showLoading();
+        const response = await apiCall(`projects?id=${projectId}`);
+        if (!response.success || !response.data) throw new Error('Failed to load project');
+
+        const project = response.data;
+
+        document.getElementById('editPocProjectId').value = projectId;
+        document.getElementById('editPocProjectNumber').textContent = project.projectNumber || 'N/A';
+        document.getElementById('editPocProjectName').textContent = project.projectName || 'N/A';
+        document.getElementById('editPocClientName').textContent = project.clientCompany || 'N/A';
+
+        // Populate P.O. fields
+        document.getElementById('editPoNumber').value = project.poNumber || '';
+        document.getElementById('editPoValue').value = project.poValue || '';
+        document.getElementById('editPoCurrency').value = project.poCurrency || 'USD';
+        const poPreview = document.getElementById('editPoFilePreview');
+        if (project.poFileName) {
+            poPreview.innerHTML = `📎 Existing: <strong>${project.poFileName}</strong> <a href="${project.poFileUrl || '#'}" target="_blank" style="color: #065f46;">(View)</a>`;
+            poPreview.style.display = 'block';
+        } else {
+            poPreview.style.display = 'none';
+        }
+        document.getElementById('editPoFile').value = '';
+
+        // Populate contact fields
+        const contacts = project.projectContacts || {};
+        const tech = contacts.technical || {};
+        const comm = contacts.commercial || {};
+        document.getElementById('editTechBdmName').value = tech.bdmName || '';
+        document.getElementById('editTechBdmEmail').value = tech.bdmEmail || '';
+        document.getElementById('editTechClientPmName').value = tech.clientPmName || '';
+        document.getElementById('editTechClientPmEmail').value = tech.clientPmEmail || '';
+        document.getElementById('editCommAccountName').value = comm.accountName || '';
+        document.getElementById('editCommAccountEmail').value = comm.accountEmail || '';
+        document.getElementById('editCommBdmName').value = comm.bdmName || '';
+        document.getElementById('editCommBdmEmail').value = comm.bdmEmail || '';
+
+        document.getElementById('editPoContactsModal').style.display = 'flex';
+    } catch (error) {
+        console.error('Error loading P.O. & Contacts:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeEditPoContactsModal() {
+    document.getElementById('editPoContactsModal').style.display = 'none';
+}
+
+async function submitEditPoContacts() {
+    const projectId = document.getElementById('editPocProjectId').value;
+    if (!projectId) return;
+
+    const poFile = document.getElementById('editPoFile').files[0] || null;
+    const poNumber = (document.getElementById('editPoNumber').value || '').trim();
+    const poValue = parseFloat(document.getElementById('editPoValue').value) || 0;
+    const poCurrency = document.getElementById('editPoCurrency').value || 'USD';
+
+    const projectContacts = {
+        technical: {
+            bdmName: (document.getElementById('editTechBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('editTechBdmEmail').value || '').trim(),
+            clientPmName: (document.getElementById('editTechClientPmName').value || '').trim(),
+            clientPmEmail: (document.getElementById('editTechClientPmEmail').value || '').trim()
+        },
+        commercial: {
+            accountName: (document.getElementById('editCommAccountName').value || '').trim(),
+            accountEmail: (document.getElementById('editCommAccountEmail').value || '').trim(),
+            bdmName: (document.getElementById('editCommBdmName').value || '').trim(),
+            bdmEmail: (document.getElementById('editCommBdmEmail').value || '').trim()
+        }
+    };
+
+    // Read P.O. file as base64 if provided
+    let poFileBase64 = null;
+    let poFileName = null;
+    if (poFile) {
+        if (poFile.type !== 'application/pdf') {
+            alert('Please upload a PDF file only.');
+            return;
+        }
+        poFileBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(poFile);
+        });
+        poFileName = poFile.name;
+    }
+
+    if (!confirm('Save P.O. and contact details for this project?')) return;
+
+    try {
+        showLoading();
+
+        const payload = {
+            action: 'update_po_contacts',
+            data: {
+                poNumber: poNumber || null,
+                poValue: poValue || null,
+                poCurrency: poCurrency,
+                poFileBase64: poFileBase64,
+                poFileName: poFileName,
+                projectContacts: projectContacts
+            }
+        };
+
+        const response = await apiCall(`projects?id=${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.success) {
+            showSuccessModal('✅ P.O. & Contacts Updated!', 'Details have been saved and notifications sent to the relevant teams.');
+            closeEditPoContactsModal();
+            if (typeof showAllProjects === 'function') await showAllProjects();
+        } else {
+            throw new Error(response.error || 'Update failed');
+        }
+    } catch (error) {
+        console.error('Error updating P.O. & Contacts:', error);
+        alert('❌ Error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}

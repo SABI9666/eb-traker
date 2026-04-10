@@ -5168,7 +5168,2285 @@ body.is-ios .nav-menu {
 
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/app1.js"></script><script src="/app2.js"></script>
+    
+    <script src="analytics.js"></script>
+    <script src="bdm-po-patch.js"></script>
+</head>
+<body>
+    <div id="loginPage" class="login-page">
+        <div class="login-container">
+            <div class="login-left">
+                <div class="logo-circle">EB</div>
+                <h1 class="company-title">EDANBROOK</h1>
+                <p class="company-subtitle">Project Management System</p>
+            </div>
+            <div class="login-right">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="showTab('login')">Login</button>
+                    <button class="auth-tab" onclick="showTab('register')">Register</button>
+                </div>
+                <div id="authMessages"></div>
+                <div id="loginContent" class="auth-content active">
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="loginEmail">Email</label>
+                            <input type="email" id="loginEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Password</label>
+                            <input type="password" id="loginPassword" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showTab('forgotPassword'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; text-decoration: none;">Forgot Password?</a>
+                        </div>
+                    </form>
+                </div>
+                <div id="forgotPasswordContent" class="auth-content">
+                    <form id="forgotPasswordForm">
+                        <p style="color: var(--text-light); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                            Enter your email address and we'll send you a link to reset your password.
+                        </p>
+                        <div class="form-group">
+                            <label for="resetEmail">Email</label>
+                            <input type="email" id="resetEmail" class="form-control" required placeholder="Enter your registered email">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showTab('login'); return false;" style="color: var(--accent-blue); font-size: 0.9rem; text-decoration: none;">Back to Login</a>
+                        </div>
+                    </form>
+                </div>
+                <div id="registerContent" class="auth-content">
+                    <form id="registerForm">
+                        <div class="role-selector">
+                            <label>Select Role:</label>
+                            <div class="role-buttons">
+                                <div class="role-btn active" data-role="bdm">BDM</div>
+                                <div class="role-btn" data-role="estimator">Estimator</div>
+                                <div class="role-btn" data-role="coo">COO</div>
+                                <div class="role-btn" data-role="director">Director</div>
+                                <div class="role-btn" data-role="design_lead">Design Lead</div>
+                                <div class="role-btn" data-role="designer">Designer</div>
+                                <div class="role-btn" data-role="document_controller">Doc Controller</div>
+                                <div class="role-btn" data-role="accounts">Accounts</div>
+                                <div class="role-btn" data-role="hr">HR</div>
+                                <div class="role-btn" data-role="it">IT Helpdesk</div>
+                            </div>
+                            <input type="hidden" id="selectedRole" value="bdm">
+                        </div>
+                        <div class="form-group">
+                            <label for="registerName">Full Name</label>
+                            <input type="text" id="registerName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">Email</label>
+                            <input type="email" id="registerEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Password</label>
+                            <input type="password" id="registerPassword" class="form-control" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-success">Register</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <div id="loadingSpinner" style="display: none;">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+</div>
+<div id="appContainer" class="app-container">
+
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-circle">EB</div>
+                    <div class="company-info">
+                        <h1>EDANBROOK</h1>
+                        <div class="subtitle">EBTrack - Enhanced Project Management</div>
+                    </div>
+                </div>
+             <div class="user-info">
+                    <div id="userWelcome"></div>
+                    <div id="userRole"></div>
+
+                    <div class="notification-bell" onclick="toggleNotificationPanel()">
+                        🔔
+                        <span class="notification-count" id="notificationCount">0</span>
+                    </div>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+
+            <div class="notification-panel" id="notificationPanel">
+                <div class="notification-header">
+                    <h3>Notifications</h3>
+                    <button class="notification-close-btn" onclick="toggleNotificationPanel()" aria-label="Close notifications">&times;</button>
+                </div>
+                <div class="notification-list" id="notificationList">
+                    <div class="notification-item">Loading...</div>
+                </div>
+            </div>
+           
+
+
+
+
+        </header>
+
+        <div class="main-layout">
+            <nav class="sidebar">
+            <ul class="nav-menu">
+
+                <!-- ========== BUSINESS DEVELOPMENT ========== -->
+                <li class="nav-department" id="deptBDM">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">💼</span>Business Development
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="newProposalNavItem" style="display: none;">
+                            <a href="#" onclick="showCreateProposalModal()">
+                            <span class="nav-icon">➕</span>New Proposal</a>
+                        </li>
+                        <li id="analyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showAnalyticsDashboard()" id="nav-analytics">
+                            <span class="nav-icon">📈</span>Analytics</a>
+                        </li>
+                        <li id="proposalsNavItem"><a href="#" onclick="showProposals()" id="nav-proposals">
+                            <span class="nav-icon">📋</span>All Proposals</a>
+                        </li>
+                        <li id="filesNavItem"><a href="#" onclick="showFileUpload()" id="nav-files">
+                            <span class="nav-icon">📁</span>File Manager</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== ESTIMATION & WORKFLOW ========== -->
+                <li class="nav-department" id="deptEstimation">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🔄</span>Estimation & Workflow
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="workflowNavItem" style="display: none;">
+                            <a href="#" onclick="showWorkflow()" id="nav-workflow">
+                            <span class="nav-icon">🔄</span>Workflow</a>
+                        </li>
+                        <li id="reportsNavItem" style="display: none;">
+                            <a href="#" onclick="showReports()" id="nav-reports">
+                            <span class="nav-icon">📊</span>Reports</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== OPERATIONS & MANAGEMENT ========== -->
+                <li class="nav-department" id="deptOperations">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🏢</span>Operations & Management
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="projectsNavItem" style="display: none;">
+                            <a href="#" onclick="showProjects()" id="nav-projects">
+                            <span class="nav-icon">🏗️</span>Projects</a>
+                        </li>
+                        <li id="executiveMonitoringNavItem" style="display: none;">
+                            <a href="#" onclick="showProjectDashboard()" id="nav-project-dashboard">
+                            <span class="nav-icon">📊</span>Project Dashboard</a>
+                        </li>
+                        <li id="timeRequestsNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOTimeRequests()" id="nav-time-requests">
+                                <span class="nav-icon">⏰</span>Time Requests
+                                <span class="notification-count" id="pendingRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="variationTrackingNavItem" style="display: none;">
+                            <a href="#" onclick="showCOOVariationTracking()" id="nav-variation-tracking">
+                                <span class="nav-icon">📑</span>Variation Tracking
+                                <span class="notification-count" id="pendingVariationsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="allocationRequestsNavItem" style="display: none;">
+                            <a href="#" onclick="showDirectorAllocationRequests()" id="nav-allocation-requests">
+                                <span class="nav-icon">📋</span>Allocation Requests
+                                <span class="notification-count" id="directorRequestsBadge" style="display: none; margin-left: 10px; background: var(--danger); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="activitiesNavItem"><a href="#" onclick="showActivities()" id="nav-activities">
+                            <span class="nav-icon">📝</span>Activities</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== FINANCE & ACCOUNTS ========== -->
+                <li class="nav-department" id="deptFinance">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">💰</span>Finance & Accounts
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="paymentsNavItem" style="display: none;">
+                            <a href="#" onclick="showPayments()" id="nav-payments">
+                            <span class="nav-icon">💰</span>Payments</a>
+                        </li>
+                        <li id="subventorsNavItem" style="display: none;">
+                            <a href="#" onclick="showSubventors()" id="nav-subventors">
+                            <span class="nav-icon">🏗️</span>Subvendors</a>
+                        </li>
+                        <li id="gstFilingNavItem" style="display: none;">
+                            <a href="#" onclick="showGSTFiling()" id="nav-gst-filing">
+                            <span class="nav-icon">📋</span>GST Filing</a>
+                        </li>
+                        <li id="pettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-petty-cash">
+                            <span class="nav-icon">💵</span>Petty Cash</a>
+                        </li>
+                        <li id="poTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showPOTracker(); return false;" id="nav-po-tracker">
+                            <span class="nav-icon">📑</span>P.O. Tracker</a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== DESIGN DEPARTMENT ========== -->
+                <li class="nav-department" id="deptDesign">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🎨</span>Design Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="designLeadPortalNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignLeadPortal()" id="nav-design-lead-portal">
+                            <span class="nav-icon">🎯</span>Design Lead Portal</a>
+                        </li>
+                        <li id="designerAllocationsNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignerAllocations()" id="nav-designer-alloc">
+                            <span class="nav-icon">⏳</span>Project Allocations</a>
+                        </li>
+                        <li id="tasksNavItem" style="display: none;">
+                            <a href="#" onclick="showTasks()" id="nav-tasks">
+                            <span class="nav-icon">✅</span>My Tasks</a>
+                        </li>
+                        <li id="timesheetNavItem" style="display: none;">
+                            <a href="#" onclick="showTimesheet()" id="nav-timesheet">
+                                <span class="nav-icon">⏱️</span>My Timesheet
+                            </a>
+                        </li>
+                        <li id="myAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showMyAnalytics()" id="nav-my-analytics">
+                                <span class="nav-icon">📊</span>My Analytics
+                            </a>
+                        </li>
+                        <li id="designerAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignerWeeklyAnalytics(); return false;" id="nav-designer-analytics">
+                                <span class="nav-icon">📊</span>Designer Hours
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== HR DEPARTMENT ========== -->
+                <li class="nav-department" id="deptHR">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">👥</span>HR Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="hrAnnouncementsNavItem" style="display: none;">
+                            <a href="#" onclick="showHRDashboard()" id="nav-hr-announcements">
+                                <span class="nav-icon">📢</span>HR Announcements
+                            </a>
+                        </li>
+                        <li id="hrLeaveApprovalNavItem" style="display: none;">
+                            <a href="#" onclick="showHRLeaveApproval()" id="nav-hr-leave">
+                                <span class="nav-icon">📋</span>Leave Approval
+                                <span class="notification-count" id="hrLeaveRequestsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: white; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="hrLeaveReportsNavItem" style="display: none;">
+                            <a href="#" onclick="showHRLeaveReports()" id="nav-hr-leave-reports">
+                                <span class="nav-icon">📊</span>Leave Reports
+                            </a>
+                        </li>
+                        <li id="hrITProcurementNavItem" style="display: none;">
+                            <a href="#" onclick="showHRITProcurement()" id="nav-hr-it-procurement">
+                                <span class="nav-icon">💰</span>IT Procurement
+                                <span class="notification-count" id="hrITPendingBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="hrScreeningNavItem" style="display: none;">
+                            <a href="#" onclick="showHRScreening()" id="nav-hr-screening">
+                                <span class="nav-icon">📝</span>Candidate Screening
+                            </a>
+                        </li>
+                        <li id="employeeLeaveRequestNavItem" style="display: none;">
+                            <a href="#" onclick="showEmployeeLeaveRequest()" id="nav-employee-leave">
+                                <span class="nav-icon">🏖️</span>Leave Request
+                            </a>
+                        </li>
+                        <li id="hrPettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-hr-petty-cash">
+                                <span class="nav-icon">💵</span>Petty Cash
+                            </a>
+                        </li>
+                        <li id="hrPoTrackerNavItem" style="display: none;">
+                            <a href="#" onclick="showPOTracker(); return false;" id="nav-hr-po-tracker">
+                                <span class="nav-icon">📑</span>P.O. Tracker
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== IT DEPARTMENT ========== -->
+                <li class="nav-department" id="deptIT">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">🖥️</span>IT Department
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="itRequestNavItem" style="display: none;">
+                            <a href="#" onclick="showITRequestForm()" id="nav-it-request">
+                                <span class="nav-icon">🖥️</span>IT Request
+                            </a>
+                        </li>
+                        <li id="itDashboardNavItem" style="display: none;">
+                            <a href="#" onclick="showITDashboard()" id="nav-it-dashboard">
+                                <span class="nav-icon">🛠️</span>IT Dashboard
+                                <span class="notification-count" id="itOpenTicketsBadge" style="display: none; margin-left: 10px; background: var(--warning); color: #856404; width: auto; height: auto; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; border: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="itDepartmentNavItem" style="display: none;">
+                            <a href="#" onclick="showITDepartmentReport()" id="nav-it-department">
+                                <span class="nav-icon">📊</span>IT Department
+                            </a>
+                        </li>
+                        <li id="itPettyCashNavItem" style="display: none;">
+                            <a href="#" onclick="showPettyCash()" id="nav-it-petty-cash">
+                                <span class="nav-icon">💵</span>Petty Cash
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== DOCUMENT CONTROL (Main Menu) ========== -->
+                <li class="nav-department" id="deptDocControl">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">📄</span>Document Control
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="documentControllerNavItem" style="display: none;">
+                            <a href="#" onclick="showDocumentControllerDashboard(); return false;" id="nav-document-controller">
+                                <span class="nav-icon">📄</span>Document Controller
+                                <span id="dcPendingBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="designApprovalNavItem" style="display: none;">
+                            <a href="#" onclick="showDesignFileApprovals(); return false;" id="nav-design-approvals">
+                                <span class="nav-icon">✅</span>Design Approvals
+                                <span id="designApprovalBadge" class="nav-badge" style="display: none;">0</span>
+                            </a>
+                        </li>
+                        <li id="dcTrackerMainNavItem" style="display: none;">
+                            <a href="#" onclick="showDCFileTracker(); return false;" id="nav-dc-tracker-main">
+                                <span class="nav-icon">📨</span>DC File Tracker
+                            </a>
+                        </li>
+                        <li id="fileAnalyticsNavItem" style="display: none;">
+                            <a href="#" onclick="showFileAnalyticsDashboard(); return false;" id="nav-file-analytics">
+                                <span class="nav-icon">📊</span>File Analytics
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <div class="nav-dept-divider"></div>
+
+                <!-- ========== ADMINISTRATION ========== -->
+                <li class="nav-department" id="deptAdmin">
+                    <div class="nav-dept-header" onclick="toggleDeptMenu(this)">
+                        <span class="dept-icon">⚙️</span>Administration
+                        <span class="dept-chevron">▼</span>
+                    </div>
+                    <ul class="nav-dept-items">
+                        <li id="settingsNavItem" style="display: none;">
+                            <a href="#" onclick="showSettings()" id="nav-settings">
+                            <span class="nav-icon">⚙️</span>Settings</a>
+                        </li>
+                    </ul>
+                </li>
+
+            </ul>
+        </nav>
+
+            <main class="main-content" id="mainContent"></main>
+        </div>
+    </div>
+    <div id="projectFilesModal" class="modal">
+    <div class="modal-content large">
+        <span class="close-button" onclick="closeModal('projectFilesModal')">&times;</span>
+        <h3 id="projectFilesModalTitle">Project Files</h3>
+        <p class="text-muted" id="projectFilesModalSubtitle">Files attached to this project.</p>
+        <hr>
+
+        <div id="projectFilesContent">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeModal('projectFilesModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
+    
+
+    <div id="cooProjectNumberSection" style="display: none;">
+        <div class="page-header">
+            <h2>Pricing & Project Number Management</h2>
+            <p class="subtitle">Review pricing and assign project numbers</p>
+        </div>
+        <div class="filters-bar">
+            <select id="projectNumberFilter" class="filter-select" onchange="filterProjectNumberProposals()">
+                <option value="all">All Proposals</option>
+                <option value="needs_number">Needs Project Number</option>
+                <option value="pending">Pending Approval</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Client</th>
+                        <th>BDM</th>
+                        <th>Quote Value</th>
+                        <th>Project Number</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="projectNumberTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="projectNumberModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal">
+            <div class="modal-header">
+                <h2>Set Project Number</h2>
+                <span class="close-modal" onclick="closeProjectNumberModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="pnProposalId" />
+                <div class="info-section">
+                    <h4 id="pnProjectName"></h4>
+                    <p><strong>Client:</strong> <span id="pnClientName"></span></p>
+                    <p><strong>BDM:</strong> <span id="pnBdmName"></span></p>
+                    <p><strong>Quote Value:</strong> <span id="pnQuoteValue"></span></p>
+                </div>
+                <div class="form-group">
+                    <label for="projectNumberInput">Project Number <span class="required">*</span></label>
+                    <input type="text" id="projectNumberInput" class="form-control" placeholder="e.g., ABC25-001"
+                        required />
+                    <small class="form-text">Enter a unique project number for tracking</small>
+                </div>
+                <div class="warning-message">
+                    <strong>Note:</strong> This project number will be sent to the Director for approval before being
+                    finalized.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeProjectNumberModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitProjectNumber()">Save & Submit for
+                    Approval</button>
+            </div>
+        </div>
+    </div>
+    <div id="directorApprovalSection" style="display: none;">
+        <div class="page-header">
+            <h2>Project Number Approvals</h2>
+            <p class="subtitle">Review and approve project numbers set by COO</p>
+        </div>
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Client</th>
+                        <th>Project Number</th>
+                        <th>Set By</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="approvalTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="rejectionReasonModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal">
+            <div class="modal-header">
+                <h2>Reject Project Number</h2>
+                <span class="close-modal" onclick="closeRejectionModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="rejectProposalId" />
+                <input type="hidden" id="rejectProjectNumber" />
+                <p>You are about to reject project number: <strong id="rejectProjectNumberDisplay"></strong></p>
+                <div class="form-group">
+                    <label for="rejectionReason">Reason for Rejection <span class="required">*</span></label>
+                    <textarea id="rejectionReason" class="form-control" rows="4"
+                        placeholder="Please provide a reason for rejection..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeRejectionModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmRejection()">Reject</button>
+            </div>
+        </div>
+    </div>
+    <div id="allocationSection" style="display: none;">
+        <div class="page-header">
+            <h2>Allocate Won Projects</h2>
+            <p class="subtitle">Assign won projects to Design Managers</p>
+        </div>
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Client</th>
+                        <th>BDM</th>
+                        <th>Value</th>
+                        <th>Project Number</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="allocationProposalsTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="allocationModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal allocation-modal-large">
+            <div class="modal-header">
+                <h2>Allocate Project to Design Manager</h2>
+                <span class="close-modal" onclick="closeAllocationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="allocationProposalId" />
+                <div class="allocation-details-section">
+                    <h3>Project Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <label>Project Name:</label>
+                            <span id="allocProjectName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Client:</label>
+                            <span id="allocClientName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>BDM:</label>
+                            <span id="allocBdmName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Quote Value:</label>
+                            <span id="allocQuoteValue" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item highlight">
+                            <label>Project Number:</label>
+                            <span id="allocProjectNumber" class="detail-value project-number-badge"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Location:</label>
+                            <span id="allocLocation" class="detail-value"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h3>Allocation Details</h3>
+                    <div class="form-group">
+                        <label for="allocDesignLead">Design Manager / Lead <span class="required">*</span></label>
+                        <select id="allocDesignLead" class="form-control" required>
+                            <option value="">-- Select Design Manager --</option>
+                        </select>
+                        <small class="form-text">Select the Design Manager who will oversee this project</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="allocationComments3">Allocation Comments</label>
+                        <textarea id="allocationComments3" class="form-control" rows="4"
+                            placeholder="Add any special instructions, priorities, or notes for the Design Manager..."></textarea>
+                        <small class="form-text">These comments will be visible to the Design Manager</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeAllocationModal()">Cancel</button>
+                <button type="button" class="btn btn-primary btn-large" onclick="submitProposalAllocation()">
+                    <span class="btn-icon">✓</span> Allocate Project
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="allocatedProjectsSection" style="display: none;">
+        <div class="page-header">
+            <h2>My Allocated Projects</h2>
+            <p class="subtitle">Projects assigned to you by management</p>
+        </div>
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Project #</th>
+                        <th>Project Name</th>
+                        <th>Client</th>
+                        <th>Allocated By</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="allocatedProjectsTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="designerAssignmentModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>👥 Assign Designers to Project</h2>
+                <span class="close-modal" onclick="closeDesignerAssignmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignProjectId" />
+                
+                <!-- Project Hours Summary -->
+                <div id="projectHoursSummary" style="background: #E8F5E9; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Max Hours</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-blue);" id="displayMaxHours">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Additional</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="displayAdditionalHours">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Total Available</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="displayTotalHours">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.3rem;">Remaining</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger);" id="displayRemainingHours">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Designer Assignment List -->
+                <div class="form-group">
+                    <label style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; display: block;">
+                        Assign Designers <span class="required">*</span>
+                        <small style="font-weight: 400; color: var(--text-light); font-size: 0.85rem;">(hours per designer are optional)</small>
+                    </label>
+                    <div id="designersList" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    <small class="form-text" style="display: block; margin-top: 0.5rem;">
+                        💡 Select designers and allocate hours to each. Total allocated hours cannot exceed available hours.
+                    </small>
+                </div>
+                
+                <!-- Allocated Hours Summary -->
+                <div style="background: #FFF3E0; padding: 1rem; border-radius: 8px; margin-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">Total Hours Allocated:</span>
+                        <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-blue);" id="totalAllocatedHours">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeDesignerAssignmentModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitDesignerAssignment()">
+                    ✅ Assign Designers
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bdmFilesModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal">
+            <div class="modal-header">
+                <h2>BDM Uploaded Files</h2>
+                <span class="close-modal" onclick="closeBDMFilesModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="bdmFilesList" class="files-list">
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeBDMFilesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal modal-success">
+            <div class="modal-body text-center">
+                <div class="success-icon">✓</div>
+                <h3 id="successMessage">Operation Successful!</h3>
+                <p id="successDetails"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeSuccessModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Accounts Update Variation Modal -->
+    <div id="accountsUpdateVariationModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal" style="max-width: 680px;">
+            <div class="modal-header">
+                <h2>✏️ Update Variation Details (Accounts)</h2>
+                <span class="close-modal" onclick="document.getElementById('accountsUpdateVariationModal').style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <input type="hidden" id="acctVarId">
+                <div class="info-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <p style="margin:0;"><strong>Variation:</strong> <span id="acctVarInfo"></span></p>
+                </div>
+
+                <!-- Client Details -->
+                <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem; padding-bottom: 1.25rem;">
+                    <h4 style="margin-bottom:1rem; color: var(--primary-blue);">Client Details</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarClientName">Client Contact Name</label>
+                            <input type="text" id="acctVarClientName" class="form-control" placeholder="e.g., John Smith">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarClientEmail">Client Email</label>
+                            <input type="email" id="acctVarClientEmail" class="form-control" placeholder="e.g., john@client.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Details -->
+                <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.25rem; padding-bottom: 1.25rem;">
+                    <h4 style="margin-bottom:1rem; color: var(--primary-blue);">Financial Details</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarAmount">Variation Amount</label>
+                            <input type="number" id="acctVarAmount" class="form-control" step="0.01" min="0" placeholder="e.g., 5000.00">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarCurrency">Currency</label>
+                            <select id="acctVarCurrency" class="form-control">
+                                <option value="">-- Select --</option>
+                                <option value="AUD">AUD</option>
+                                <option value="USD">USD</option>
+                                <option value="GBP">GBP</option>
+                                <option value="EUR">EUR</option>
+                                <option value="NZD">NZD</option>
+                                <option value="SGD">SGD</option>
+                                <option value="CAD">CAD</option>
+                                <option value="AED">AED</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarInvoiceRef">Invoice Reference / PO Number</label>
+                            <input type="text" id="acctVarInvoiceRef" class="form-control" placeholder="e.g., PO-2025-001">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="acctVarPaymentTerms">Payment Terms</label>
+                            <input type="text" id="acctVarPaymentTerms" class="form-control" placeholder="e.g., Net 30 days">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accounts / Billing Notes -->
+                <div class="form-group">
+                    <h4 style="margin-bottom:0.75rem; color: var(--primary-blue);">Accounts / Billing Notes</h4>
+                    <textarea id="acctVarAccountsDetails" class="form-control" rows="4" placeholder="Internal billing instructions, notes, special conditions..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="document.getElementById('accountsUpdateVariationModal').style.display='none'">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitAccountsVariationUpdate()">
+                    💾 Save &amp; Notify COO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addVariationModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal" style="max-width: 780px;">
+            <div class="modal-header">
+                <h2>➕ Add Variation for Approval</h2>
+                <span class="close-modal" onclick="closeAddVariationModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <input type="hidden" id="variationParentProjectId" />
+
+                <div class="info-section" style="background: var(--light-blue); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--primary-blue);">Parent Project</h4>
+                    <p style="margin: 0;"><strong>Project:</strong> <span id="variationParentProjectName"></span></p>
+                    <p style="margin: 0;"><strong>Code:</strong> <span id="variationParentProjectCode"></span></p>
+                </div>
+
+                <form id="addVariationForm">
+                    <!-- Variation Code & Hours -->
+                    <div class="form-group">
+                        <label for="variationCode">Variation Code <span class="required">*</span></label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" id="variationCode" class="form-control" placeholder="e.g., STE25-513-V1" required>
+                            <button type="button" onclick="generateVariationCode()" class="btn btn-outline" style="width: auto; white-space: nowrap;">
+                                Generate
+                            </button>
+                        </div>
+                        <small class="form-text">A unique code for this variation.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="variationHours">Variation Hours <span class="required">*</span></label>
+                        <input type="number" id="variationHours" class="form-control" step="0.5" min="0.5" placeholder="Enter estimated hours for this variation" required>
+                        <small class="form-text">Estimated hours required to complete this variation.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="variationScope">Scope of Work / Description <span class="required">*</span></label>
+                        <textarea id="variationScope" class="form-control" rows="4" placeholder="Describe the work required for this variation. This will be sent to the COO for approval." required></textarea>
+                    </div>
+
+                    <!-- CLIENT DETAILS -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Client Details</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationClientName">Client Contact Name</label>
+                                <input type="text" id="variationClientName" class="form-control" placeholder="e.g., John Smith">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationClientEmail">Client Email</label>
+                                <input type="email" id="variationClientEmail" class="form-control" placeholder="e.g., john@client.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FINANCIAL DETAILS -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Financial Details</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationAmount">Variation Amount</label>
+                                <input type="number" id="variationAmount" class="form-control" step="0.01" min="0" placeholder="e.g., 5000.00">
+                                <small class="form-text">Financial value of this variation.</small>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="variationCurrency">Currency</label>
+                                <select id="variationCurrency" class="form-control">
+                                    <option value="">-- Select Currency --</option>
+                                    <option value="AUD">AUD - Australian Dollar</option>
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="NZD">NZD - New Zealand Dollar</option>
+                                    <option value="SGD">SGD - Singapore Dollar</option>
+                                    <option value="CAD">CAD - Canadian Dollar</option>
+                                    <option value="AED">AED - UAE Dirham</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCOUNTS DETAILS -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Accounts Details</h4>
+                        <div class="form-group">
+                            <label for="variationAccountsDetails">Accounts / Billing Notes</label>
+                            <textarea id="variationAccountsDetails" class="form-control" rows="3" placeholder="e.g., Invoice reference, PO number, billing instructions, payment terms..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- VARIATION DOCUMENT UPLOAD -->
+                    <div style="border-top: 1px solid var(--border-color); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-blue);">Variation Document</h4>
+                        <div class="form-group">
+                            <label for="variationDocument">Upload Variation Document (PDF or Word)</label>
+                            <div id="variationDocDropZone" style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; background: #f8f9fa; transition: border-color 0.2s;"
+                                onclick="document.getElementById('variationDocument').click()"
+                                ondragover="event.preventDefault(); this.style.borderColor='var(--primary-blue)';"
+                                ondragleave="this.style.borderColor='var(--border-color)';"
+                                ondrop="handleVariationDocDrop(event)">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+                                <p style="margin: 0; color: var(--text-light);">Click or drag & drop your variation document here</p>
+                                <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-light);">Supported: PDF, DOC, DOCX (max 50 MB)</p>
+                            </div>
+                            <input type="file" id="variationDocument" style="display: none;" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="onVariationDocSelected(this)">
+                            <div id="variationDocPreview" style="display: none; margin-top: 0.75rem; padding: 0.75rem; background: #e8f5e9; border-radius: 6px; display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="font-size: 1.5rem;">📎</span>
+                                <div style="flex: 1;">
+                                    <strong id="variationDocFileName" style="font-size: 0.9rem;"></strong>
+                                    <div id="variationDocFileSize" style="font-size: 0.8rem; color: var(--text-light);"></div>
+                                </div>
+                                <button type="button" onclick="clearVariationDoc()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1.2rem;" title="Remove file">&times;</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeAddVariationModal()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitVariationForApproval()">
+                    Submit for COO Approval
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="variationApprovalModal" class="modal" style="display: none;">
+        <div class="modal-content new-modal" style="max-width: 860px;">
+            <div class="modal-header">
+                <h2>🔍 Review Variation Request</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <input type="hidden" id="approvalVariationId" />
+                <input type="hidden" id="approvalParentProjectId" />
+
+                <!-- VARIATION DETAILS -->
+                <div class="allocation-details-section">
+                    <h3>Variation Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <label>Parent Project:</label>
+                            <span id="app-parentProjectName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Client Company:</label>
+                            <span id="app-clientCompany" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item highlight">
+                            <label>Variation Code:</label>
+                            <span id="app-variationCode" class="detail-value project-number-badge" style="background: var(--warning); color: #856404;"></span>
+                        </div>
+                        <div class="detail-item highlight">
+                            <label>Requested Hours:</label>
+                            <span id="app-estimatedHours" class="detail-value" style="font-size: 1.5rem; color: var(--primary-blue);"></span>
+                        </div>
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <label>Submitted By:</label>
+                            <span id="app-submittedBy" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item" style="grid-column: 1 / -1; background: white; padding: 1rem; border-radius: 8px;">
+                            <label>Scope of Work:</label>
+                            <p id="app-scopeDescription" class="detail-value" style="line-height: 1.6; white-space: pre-wrap;"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLIENT DETAILS -->
+                <div id="app-clientDetailsSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Client Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item" id="app-clientNameRow" style="display: none;">
+                            <label>Client Contact:</label>
+                            <span id="app-clientName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item" id="app-clientEmailRow" style="display: none;">
+                            <label>Client Email:</label>
+                            <span id="app-clientEmail" class="detail-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FINANCIAL DETAILS -->
+                <div id="app-financialSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Financial Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item highlight">
+                            <label>Variation Amount:</label>
+                            <span id="app-amount" class="detail-value" style="font-size: 1.3rem; color: var(--success); font-weight: 700;"></span>
+                        </div>
+                        <div class="detail-item highlight">
+                            <label>Currency:</label>
+                            <span id="app-currency" class="detail-value" style="font-size: 1.1rem; font-weight: 600;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACCOUNTS DETAILS -->
+                <div id="app-accountsSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Accounts / Billing Details</h3>
+                    <div class="detail-item" style="background: white; padding: 1rem; border-radius: 8px;">
+                        <p id="app-accountsDetails" class="detail-value" style="line-height: 1.6; white-space: pre-wrap; margin: 0;"></p>
+                    </div>
+                </div>
+
+                <!-- VARIATION DOCUMENT -->
+                <div id="app-documentSection" class="allocation-details-section" style="margin-top: 1.5rem; display: none;">
+                    <h3>Variation Document</h3>
+                    <div style="background: white; padding: 1rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-size: 2rem;">📄</span>
+                        <div style="flex: 1;">
+                            <strong id="app-documentName" style="display: block;"></strong>
+                            <small style="color: var(--text-light);">Uploaded variation document</small>
+                        </div>
+                        <a id="app-documentLink" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none;">
+                            ⬇️ Download / View
+                        </a>
+                    </div>
+                </div>
+
+                <!-- APPROVAL DECISION -->
+                <div class="form-section" style="margin-top: 1.5rem;">
+                    <h3>Approval Decision</h3>
+                    <div class="form-group">
+                        <label for="approvalNotes">Notes (Required for Rejection)</label>
+                        <textarea id="approvalNotes" class="form-control" rows="4" placeholder="Add approval notes or a reason for rejection..."></textarea>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" style="margin-right: auto;" onclick="submitVariationApproval('rejected')">
+                    ❌ Reject
+                </button>
+                <button type="button" class="btn btn-success btn-large" onclick="submitVariationApproval('approved')">
+                    ✅ Approve Variation
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ADD THIS LINE BEFORE CLOSING BODY TAG -->
+
+
+
+<!-- ============================================ -->
+<!-- STEP 2: ADD THESE SECTIONS BEFORE 
+    <script src="/app1.js"></script>
+    <script src="/app2.js"></script>
+</body> -->
+<!-- Paste these complete sections -->
+<!-- ============================================ -->
+
+<!-- EXECUTIVE MONITORING SECTION -->
+<div id="executiveTimesheetMonitoring" style="display: none;">
+    <div class="page-header">
+        <h2>📊 Executive Timesheet Monitoring</h2>
+        <p class="subtitle">Advanced analytics and insights for project hours management</p>
+    </div>
+
+    <!-- Top Level Metrics -->
+    <div id="executiveMetrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- Populated by JavaScript -->
+    </div>
+
+    <!-- Date Range Selector -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-light); display: block; margin-bottom: 0.25rem;">From Date:</label>
+                    <input type="date" id="executiveFromDate" class="form-control" style="width: auto;">
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-light); display: block; margin-bottom: 0.25rem;">To Date:</label>
+                    <input type="date" id="executiveToDate" class="form-control" style="width: auto;">
+                </div>
+                <button onclick="applyExecutiveDateFilter()" class="btn btn-primary" style="margin-top: 1.5rem;">
+                    Apply Filter
+                </button>
+                <button onclick="resetExecutiveDateFilter()" class="btn btn-outline" style="margin-top: 1.5rem;">
+                    Reset
+                </button>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="exportExecutiveReport('summary')" class="btn btn-outline">
+                    📊 Export Summary
+                </button>
+                <button onclick="exportExecutiveReport('detailed')" class="btn btn-outline">
+                    📋 Export Detailed
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="stat-card">
+            <div class="stat-label">Active Projects</div>
+            <div class="stat-value" id="execActiveProjects">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Designers</div>
+            <div class="stat-value" id="execTotalDesigners">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Timesheet Entries</div>
+            <div class="stat-value" id="execTotalEntries">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Avg Hours/Project</div>
+            <div class="stat-value" id="execAvgHours">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Efficiency Rate</div>
+            <div class="stat-value" id="execEfficiency">0%</div>
+        </div>
+    </div>
+
+    <!-- Tabs for Different Views -->
+    <div class="tabs-container" style="margin-bottom: 1.5rem;">
+        <div class="tabs">
+            <div class="tab active" onclick="switchExecutiveTab('overview')">Overview</div>
+            <div class="tab" onclick="switchExecutiveTab('projects')">Projects</div>
+            <div class="tab" onclick="switchExecutiveTab('designers')">Designers</div>
+            <div class="tab" onclick="switchExecutiveTab('analytics')">Analytics</div>
+            <div class="tab" onclick="switchExecutiveTab('alerts')">Alerts</div>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="executiveTabContent">
+        <!-- Content will be loaded dynamically -->
+    </div>
+</div>
+
+<!-- TIMESHEET SECTION FOR DESIGNERS -->
+<div id="timesheetSection" style="display: none;">
+    <div class="page-header">
+        <h2>⏱️ My Timesheet</h2>
+        <p class="subtitle">Track your hours on assigned projects</p>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Log Hours</h3>
+            <button onclick="showTimesheetModal()" class="btn btn-primary">
+                <span class="btn-icon">+</span> Log Hours
+            </button>
+        </div>
+
+        <!-- Timesheet Summary -->
+        <div id="timesheetSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; padding: 1rem;">
+            <!-- Will be populated by JavaScript -->
+        </div>
+                            
+
+        <!-- Timesheet Entries Table -->
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Project</th>
+                    <th>Hours</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="timesheetTableBody">
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 2rem;">
+                        No timesheet entries yet
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- STEP 3: ADD THESE STYLES -->
+<!-- Add to your <style> section -->
+<!-- ============================================ -->
+
+<style>
+/* Executive Monitoring Styles */
+.metric-card {
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    color: white;
+}
+
+.metric-icon {
+    font-size: 2.5rem;
+}
+
+.metric-content {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.metric-subtitle {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+}
+
+.stat-card {
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+
+.tabs-container {
+    background: white;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    overflow: hidden;
+}
+
+.tabs {
+    display: flex;
+    gap: 0;
+}
+
+.tab {
+    flex: 1;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all 0.2s;
+    border-right: 1px solid var(--border);
+}
+
+.tab:last-child {
+    border-right: none;
+}
+
+.tab:hover {
+    background: var(--light-blue);
+}
+
+.tab.active {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.project-card {
+    transition: all 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-color: var(--primary-blue);
+}
+
+.hour-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+}
+
+.hour-badge .label {
+    color: var(--text-light);
+    font-size: 0.85rem;
+}
+
+.hour-badge .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-submitted {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.progress-bar-container {
+    background: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+</style>
+
+
+<!-- ============================================ -->
+<!-- STEP 4: ADD THIS COMPLETE JAVASCRIPT -->
+<!-- Add before closing </body> tag -->
+<!-- ============================================ -->
+
+
+
+<div id="cooMultiDesignerAllocationModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal allocation-modal-large" style="max-width: 900px;">
+        <div class="modal-header">
+            <div>
+                <h2>🎯 Allocate Project to Design Lead</h2>
+                <div class="subtitle">Assign project to design lead(s) with hours budget</div>
+            </div>
+            <span class="close-modal" onclick="closeCooMultiDesignerModal()">&times;</span>
+        </div>
+
+        <div class="modal-body">
+            <input type="hidden" id="cooAllocProjectId" />
+
+            <!-- Project Summary -->
+            <div class="allocation-details-section" style="margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px;">
+                <h3 style="color: white; margin-bottom: 1rem;">📋 Project Information</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project Number:</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div id="cooAllocProjectNumber" style="font-size: 1.2rem; font-weight: 700;"></div>
+                            <button type="button" onclick="toggleProjectNumberEdit()"
+                                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                ✏️ Edit
+                            </button>
+                        </div>
+                        <div id="projectNumberEditContainer" style="display: none; margin-top: 0.5rem;">
+                            <input type="text" id="projectNumberEditInput"
+                                   style="padding: 0.5rem; border-radius: 4px; border: none; width: 150px; font-weight: 600;"
+                                   placeholder="Enter project number">
+                            <button type="button" onclick="saveProjectNumber()"
+                                    style="background: #10b981; border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
+                                💾 Save
+                            </button>
+                            <button type="button" onclick="cancelProjectNumberEdit()"
+                                    style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; margin-left: 0.25rem;">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project Name:</label>
+                        <div id="cooAllocProjectName" style="font-size: 1rem; font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Client:</label>
+                        <div id="cooAllocClientName" style="font-size: 1rem; font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Section Selection -->
+            <div class="form-section" style="background: #fef3c7; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; border: 2px solid #f59e0b;">
+                <h3 style="color: #92400e; margin: 0 0 1rem 0;">🏗️ Project Section</h3>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cooProjectSection">Assign to Section <span class="required">*</span></label>
+                    <select id="cooProjectSection" class="form-control" required style="font-weight: 600; font-size: 1rem;">
+                        <option value="">-- Select Section --</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Rebar">Rebar</option>
+                        <option value="Structural">Structural</option>
+                    </select>
+                    <small class="form-text">Categorize this project under the appropriate design section</small>
+                </div>
+            </div>
+
+            <!-- Total Hours Input -->
+            <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: var(--text-dark); margin: 0;">⏱️ Total Project Hours</h3>
+                    <button type="button" id="editBudgetBtn" class="btn btn-outline btn-sm" onclick="toggleBudgetEdit()" style="display: none;">
+                        ✏️ Edit Budget
+                    </button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooTotalProjectHours">Total Allocated Hours <span class="required">*</span></label>
+                        <input type="number" id="cooTotalProjectHours" class="form-control"
+                               placeholder="e.g., 120" min="1" step="0.5"
+                               oninput="updateRemainingHours()" required>
+                        <small class="form-text">Total hours budget for this project</small>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Remaining Hours to Allocate</label>
+                        <div id="cooRemainingHours" style="font-size: 2rem; font-weight: 700; color: var(--success); padding: 0.5rem;">
+                            0 hrs
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXISTING ALLOCATIONS SECTION -->
+            <div id="existingAllocationsSection" class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #1e40af; margin: 0;">📊 Existing Design Lead Allocations</h3>
+                    <span id="existingAllocTotal" style="background: #3b82f6; color: white; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 600;"></span>
+                </div>
+                <div id="existingAllocationsList">
+                    <!-- Existing allocations will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Design Lead Allocations -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: var(--text-dark); margin: 0;">👔 Select Design Lead(s)</h3>
+                    <button type="button" class="btn btn-outline" onclick="addDesignerAllocation()" id="addDesignLeadBtn">
+                        <span style="font-size: 1.2rem;">+</span> Add Design Lead
+                    </button>
+                </div>
+                <div style="background: #e0f2fe; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #0284c7;">
+                    <small style="color: #0369a1;">You can assign up to <strong>2 design leads</strong> per project. Each lead will manage designers within their allocated hours.</small>
+                </div>
+
+                <div id="designerAllocationsContainer">
+                    <!-- Design Lead allocation rows will be added here dynamically -->
+                </div>
+            </div>
+
+            <!-- Purchase Order (P.O.) Section -->
+            <div class="form-section" style="margin-top: 2rem; background: #fef9e7; padding: 1.5rem; border-radius: 10px; border: 2px solid #f0c040;">
+                <h3 style="color: #7c6a0a; margin-bottom: 0.5rem;">📄 Purchase Order (P.O.)</h3>
+                <p style="color: #92400e; font-size: 0.85rem; margin-bottom: 1rem;">Optional: Upload a P.O. PDF and/or enter the P.O. value. Can be added later. Tracking will be sent to Accounts & HR.</p>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoFile">P.O. Document (PDF)</label>
+                        <input type="file" id="cooPoFile" class="form-control" accept=".pdf"
+                               style="padding: 0.5rem;" onchange="handleCooPoFileSelect(this)">
+                        <small class="form-text">Upload purchase order PDF</small>
+                        <div id="cooPoFilePreview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 6px; font-size: 0.85rem; color: #065f46;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoNumber">P.O. Number</label>
+                        <input type="text" id="cooPoNumber" class="form-control" placeholder="e.g., PO-2026-001">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoValue">P.O. Value / Amount</label>
+                        <input type="number" id="cooPoValue" class="form-control" placeholder="e.g., 50000" min="0" step="0.01">
+                        <small class="form-text">Enter the purchase order amount</small>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooPoCurrency">Currency <span class="required">*</span></label>
+                        <select id="cooPoCurrency" class="form-control" style="font-weight: 600;">
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                        </select>
+                        <small class="form-text">Select the P.O. currency</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technical & Commercial Contacts Section -->
+            <div class="form-section" style="margin-top: 2rem; background: #eef2ff; padding: 1.5rem; border-radius: 10px; border: 2px solid #818cf8;">
+                <h3 style="color: #3730a3; margin-bottom: 0.5rem;">📇 Project Contacts</h3>
+                <p style="color: #4338ca; font-size: 0.85rem; margin-bottom: 1.5rem;">Optional: Enter technical and commercial contact details. Can be added later. Tracking will be sent to Document Control & Accounts.</p>
+
+                <!-- Technical Contact -->
+                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; border-left: 4px solid #22c55e;">
+                    <h4 style="color: #166534; margin: 0 0 1rem 0; font-size: 1rem;">Technical Contact</h4>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechBdmName">BDM Name</label>
+                            <input type="text" id="cooTechBdmName" class="form-control" placeholder="Enter BDM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechBdmEmail">BDM Email</label>
+                            <input type="email" id="cooTechBdmEmail" class="form-control" placeholder="bdm@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechClientPmName">Client PM Name</label>
+                            <input type="text" id="cooTechClientPmName" class="form-control" placeholder="Enter Client PM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooTechClientPmEmail">Client PM Email</label>
+                            <input type="email" id="cooTechClientPmEmail" class="form-control" placeholder="clientpm@example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Commercial Contact -->
+                <div style="background: #fefce8; padding: 1.25rem; border-radius: 8px; border-left: 4px solid #eab308;">
+                    <h4 style="color: #854d0e; margin: 0 0 1rem 0; font-size: 1rem;">Commercial Contact</h4>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommAccountName">Their Account Contact Name</label>
+                            <input type="text" id="cooCommAccountName" class="form-control" placeholder="Enter account contact name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommAccountEmail">Their Account Contact Email</label>
+                            <input type="email" id="cooCommAccountEmail" class="form-control" placeholder="account@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommBdmName">BDM Name</label>
+                            <input type="text" id="cooCommBdmName" class="form-control" placeholder="Enter BDM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="cooCommBdmEmail">BDM Email</label>
+                            <input type="email" id="cooCommBdmEmail" class="form-control" placeholder="bdm@example.com">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Details -->
+            <div class="form-section" style="margin-top: 2rem;">
+                <h3 style="color: var(--text-dark); margin-bottom: 1rem;">📝 Project Details</h3>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooTargetCompletionDate">Target Completion Date</label>
+                        <input type="date" id="cooTargetCompletionDate" class="form-control">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="cooProjectPriority">Project Priority</label>
+                        <select id="cooProjectPriority" class="form-control">
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cooAllocationNotes">Allocation Notes</label>
+                    <textarea id="cooAllocationNotes" class="form-control" rows="3"
+                              placeholder="Add any special instructions or notes for the design lead..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeCooMultiDesignerModal()">Cancel</button>
+            <button type="button" class="btn btn-success btn-large" onclick="submitCooMultiDesignerAllocation()">
+                <span class="btn-icon">✓</span> Allocate Project
+            </button>
+        </div>
+    </div>
+</div>
+<!-- ============================================ -->
+<!-- Edit P.O. & Contacts Modal                  -->
+<!-- ============================================ -->
+<div id="editPoContactsModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 850px;">
+        <div class="modal-header">
+            <div>
+                <h2>📝 Edit P.O. & Project Contacts</h2>
+                <div class="subtitle">Update purchase order and contact details for this project</div>
+            </div>
+            <span class="close-modal" onclick="closeEditPoContactsModal()">&times;</span>
+        </div>
+
+        <div class="modal-body">
+            <input type="hidden" id="editPocProjectId" />
+
+            <!-- Project Info Banner -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; opacity: 0.9;">Project Number:</label>
+                        <div id="editPocProjectNumber" style="font-weight: 700;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; opacity: 0.9;">Project Name:</label>
+                        <div id="editPocProjectName" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; opacity: 0.9;">Client:</label>
+                        <div id="editPocClientName" style="font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- P.O. Section -->
+            <div class="form-section" style="background: #fef9e7; padding: 1.5rem; border-radius: 10px; border: 2px solid #f0c040; margin-bottom: 1.5rem;">
+                <h3 style="color: #7c6a0a; margin-bottom: 1rem;">📄 Purchase Order (P.O.)</h3>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="editPoFile">P.O. Document (PDF)</label>
+                        <input type="file" id="editPoFile" class="form-control" accept=".pdf"
+                               style="padding: 0.5rem;" onchange="handleCooPoFileSelect(this, 'editPoFilePreview')">
+                        <div id="editPoFilePreview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #d1fae5; border-radius: 6px; font-size: 0.85rem; color: #065f46;"></div>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="editPoNumber">P.O. Number</label>
+                        <input type="text" id="editPoNumber" class="form-control" placeholder="e.g., PO-2026-001">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="editPoValue">P.O. Value / Amount</label>
+                        <input type="number" id="editPoValue" class="form-control" placeholder="e.g., 50000" min="0" step="0.01">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="editPoCurrency">Currency</label>
+                        <select id="editPoCurrency" class="form-control" style="font-weight: 600;">
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technical Contact -->
+            <div class="form-section" style="background: #eef2ff; padding: 1.5rem; border-radius: 10px; border: 2px solid #818cf8; margin-bottom: 1.5rem;">
+                <h3 style="color: #3730a3; margin-bottom: 1rem;">📇 Project Contacts</h3>
+
+                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; border-left: 4px solid #22c55e;">
+                    <h4 style="color: #166534; margin: 0 0 1rem 0; font-size: 1rem;">Technical Contact</h4>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editTechBdmName">BDM Name</label>
+                            <input type="text" id="editTechBdmName" class="form-control" placeholder="Enter BDM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editTechBdmEmail">BDM Email</label>
+                            <input type="email" id="editTechBdmEmail" class="form-control" placeholder="bdm@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editTechClientPmName">Client PM Name</label>
+                            <input type="text" id="editTechClientPmName" class="form-control" placeholder="Enter Client PM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editTechClientPmEmail">Client PM Email</label>
+                            <input type="email" id="editTechClientPmEmail" class="form-control" placeholder="clientpm@example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Commercial Contact -->
+                <div style="background: #fefce8; padding: 1.25rem; border-radius: 8px; border-left: 4px solid #eab308;">
+                    <h4 style="color: #854d0e; margin: 0 0 1rem 0; font-size: 1rem;">Commercial Contact</h4>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editCommAccountName">Their Account Contact Name</label>
+                            <input type="text" id="editCommAccountName" class="form-control" placeholder="Enter account contact name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editCommAccountEmail">Their Account Contact Email</label>
+                            <input type="email" id="editCommAccountEmail" class="form-control" placeholder="account@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editCommBdmName">BDM Name</label>
+                            <input type="text" id="editCommBdmName" class="form-control" placeholder="Enter BDM name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editCommBdmEmail">BDM Email</label>
+                            <input type="email" id="editCommBdmEmail" class="form-control" placeholder="bdm@example.com">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeEditPoContactsModal()">Cancel</button>
+            <button type="button" class="btn btn-success btn-large" onclick="submitEditPoContacts()">
+                <span class="btn-icon">💾</span> Save P.O. & Contacts
+            </button>
+        </div>
+    </div>
+</div>
+
+ <input type="file" id="wordTemplateInput" accept=".docx" style="display: none;" />
+    <!-- LOAD THE SEPARATE QUOTATION GENERATOR FILE -->
+    <script src="quotation_generator.js"></script>
+
+<!-- ============================================ -->
+<!-- FEATURE 1: COO → Director Approval Modal    -->
+<!-- ============================================ -->
+<div id="cooRequestAllocationChangeModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <div>
+                <h2>📝 Request Allocation Change</h2>
+                <div class="subtitle">Submit change request to Director for approval</div>
+            </div>
+            <span class="close-modal" onclick="closeRequestAllocationChangeModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="changeReqProjectId" />
+            <input type="hidden" id="changeReqDesignerUid" />
+            <input type="hidden" id="changeReqDesignerEmail" />
+            
+            <!-- Project & Designer Info -->
+            <div class="form-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project:</label>
+                        <div id="changeReqProjectName" style="font-size: 1.1rem; font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Designer:</label>
+                        <div id="changeReqDesignerName" style="font-size: 1.1rem; font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hours Input -->
+            <div class="form-section">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Current Allocated Hours</label>
+                        <input type="number" id="changeReqCurrentHours" class="form-control" readonly 
+                               style="background: #f3f4f6; font-weight: 600;">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>New Requested Hours <span class="required">*</span></label>
+                        <input type="number" id="changeReqNewHours" class="form-control" 
+                               placeholder="Enter new hours" min="0" step="0.5" required
+                               oninput="calculateHoursDifference()">
+                    </div>
+                </div>
+                
+                <div id="hoursDifferenceDisplay" style="text-align: center; padding: 1rem; margin: 1rem 0; border-radius: 8px; display: none;">
+                    <!-- Will show increase/decrease amount -->
+                </div>
+            </div>
+            
+            <!-- Mandatory Reason -->
+            <div class="form-section">
+                <div class="form-group">
+                    <label>Reason for Change <span class="required">*</span></label>
+                    <textarea id="changeReqReason" class="form-control" rows="4" 
+                              placeholder="Please provide a detailed reason for this allocation change request. This is mandatory for Director review."
+                              required></textarea>
+                    <small class="form-text" style="color: var(--danger);">⚠️ This field is mandatory</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeRequestAllocationChangeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-large" onclick="submitAllocationChangeRequest()">
+                <span class="btn-icon">📤</span> Submit to Director
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- FEATURE 1: Director Approval Queue Modal    -->
+<!-- ============================================ -->
+<div id="directorAllocationRequestsModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal allocation-modal-large" style="max-width: 1000px; max-height: 90vh;">
+        <div class="modal-header">
+            <div>
+                <h2>📋 Allocation Change Requests</h2>
+                <div class="subtitle">Review and approve/reject COO allocation change requests</div>
+            </div>
+            <span class="close-modal" onclick="closeDirectorAllocationRequestsModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <div id="allocationRequestsList">
+                <!-- Requests will be loaded here -->
+                <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+                    <p>Loading requests...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeDirectorAllocationRequestsModal()">Close</button>
+            <button type="button" class="btn btn-primary" onclick="loadAllocationRequests()">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- FEATURE 1: Director Review Single Request   -->
+<!-- ============================================ -->
+<div id="directorReviewRequestModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 650px;">
+        <div class="modal-header">
+            <div>
+                <h2>🔍 Review Allocation Request</h2>
+                <div class="subtitle">Approve or reject this change request</div>
+            </div>
+            <span class="close-modal" onclick="closeDirectorReviewModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="reviewRequestId" />
+            
+            <!-- Request Details -->
+            <div class="form-section" style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">📋 Request Details</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Project:</label>
+                        <div id="reviewProjectName" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Designer:</label>
+                        <div id="reviewDesignerName" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Requested By:</label>
+                        <div id="reviewRequestedBy" style="font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-light);">Request Date:</label>
+                        <div id="reviewRequestDate" style="font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hours Change -->
+            <div class="form-section" style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: #92400e;">⏱️ Hours Change</h4>
+                <div style="display: flex; align-items: center; justify-content: space-around;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #92400e;">Current</div>
+                        <div id="reviewCurrentHours" style="font-size: 2rem; font-weight: 700; color: #b45309;"></div>
+                    </div>
+                    <div style="font-size: 2rem; color: #92400e;">→</div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #92400e;">Requested</div>
+                        <div id="reviewRequestedHours" style="font-size: 2rem; font-weight: 700; color: #b45309;"></div>
+                    </div>
+                    <div id="reviewHoursDiff" style="text-align: center; padding: 0.5rem 1rem; border-radius: 8px;"></div>
+                </div>
+            </div>
+            
+            <!-- COO Reason -->
+            <div class="form-section" style="background: #eff6ff; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 0.5rem; color: #1e40af;">💬 COO's Reason</h4>
+                <div id="reviewCooReason" style="font-style: italic; color: #1e3a8a;"></div>
+            </div>
+            
+            <!-- Director's Decision -->
+            <div class="form-section">
+                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">✍️ Your Decision</h4>
+                
+                <div class="form-group">
+                    <label>Final Approved Hours (you can adjust)</label>
+                    <input type="number" id="reviewFinalHours" class="form-control" 
+                           min="0" step="0.5" placeholder="Leave blank to use requested hours">
+                    <small class="form-text">Leave blank to approve the requested hours as-is</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Comment (optional for approval, required for rejection)</label>
+                    <textarea id="reviewDirectorComment" class="form-control" rows="3" 
+                              placeholder="Add your comments..."></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeDirectorReviewModal()">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="rejectAllocationRequest()">
+                ❌ Reject
+            </button>
+            <button type="button" class="btn btn-success btn-large" onclick="approveAllocationRequest()">
+                ✅ Approve
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- FEATURE 2: COO Direct Edit Allocation Modal -->
+<!-- ============================================ -->
+<div id="cooEditAllocationModal" class="modal" style="display: none;">
+    <div class="modal-content new-modal" style="max-width: 800px;">
+        <div class="modal-header">
+            <div>
+                <h2>✏️ Edit Designer Allocations</h2>
+                <div class="subtitle">Directly adjust hours for assigned designers</div>
+            </div>
+            <span class="close-modal" onclick="closeCooEditAllocationModal()">&times;</span>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="editAllocProjectId" />
+            
+            <!-- Project Summary -->
+            <div class="form-section" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Project:</label>
+                        <div id="editAllocProjectName" style="font-size: 1rem; font-weight: 600;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Max Budget:</label>
+                        <div id="editAllocMaxBudget" style="font-size: 1.2rem; font-weight: 700;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Currently Allocated:</label>
+                        <div id="editAllocCurrentTotal" style="font-size: 1.2rem; font-weight: 700;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; opacity: 0.9;">Remaining:</label>
+                        <div id="editAllocRemaining" style="font-size: 1.2rem; font-weight: 700;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Designer List -->
+            <div class="form-section">
+                <h4 style="margin-bottom: 1rem; color: var(--text-dark);">👥 Assigned Designers</h4>
+                <div id="editAllocDesignerList">
+                    <!-- Designer rows will be loaded here -->
+                    <div style="text-align: center; padding: 2rem; color: var(--text-light);">
+                        Loading designers...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Request Change Option -->
+            <div class="form-section" style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
+                    <strong>💡 Note:</strong> For changes beyond budget limits, use "Request Change" to submit for Director approval.
+                </p>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" class="btn btn-danger"
+                    onclick="clearProjectAllocation(document.getElementById('editAllocProjectId').value, document.getElementById('editAllocProjectName').textContent)"
+                    title="Remove the Design Lead and all designer allocations">
+                🗑️ Delete Full Allocation
+            </button>
+            <button type="button" class="btn btn-cancel" onclick="closeCooEditAllocationModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ============================================
+     DESIGN FILE UPLOAD & APPROVAL MODALS
+     ============================================ -->
+
+<!-- Design File Upload Modal -->
+<div id="designFileUploadModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+            <h3>📤 Upload Design File</h3>
+            <button class="close-btn" onclick="closeDesignUploadModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="designUploadProjectId">
+            <input type="hidden" id="designUploadProjectName">
+            
+            <!-- Project Info Display -->
+            <div class="client-preview-box" style="margin-bottom: 20px;">
+                <div class="client-preview-label">Project</div>
+                <div class="client-preview-value" id="designUploadProjectDisplay">-</div>
+            </div>
+            
+            <!-- Upload Type Toggle -->
+            <div class="form-group">
+                <label>Upload Type <span style="color: red;">*</span></label>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button type="button" id="uploadTypeFile" class="btn btn-primary" onclick="setUploadType('file')" style="flex: 1;">
+                        📄 Upload PDF File
+                    </button>
+                    <button type="button" id="uploadTypeLink" class="btn btn-secondary" onclick="setUploadType('link')" style="flex: 1;">
+                        🔗 Add External Link
+                    </button>
+                </div>
+            </div>
+            
+            <!-- File Upload Zone (shown by default) -->
+            <div id="fileUploadSection">
+                <div class="form-group">
+                    <label>Design File (PDF) <span style="color: red;">*</span></label>
+                    <div class="upload-dropzone" id="designDropzone" onclick="document.getElementById('designFileInput').click()">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Click to upload or drag and drop</div>
+                        <div class="upload-hint">PDF files only (Max 50MB)</div>
+                    </div>
+                    <input type="file" id="designFileInput" accept=".pdf" style="display: none;" onchange="handleDesignFileSelect(this)">
+                    <div id="selectedFileInfo" class="selected-file-info" style="display: none;">
+                        <span class="selected-file-icon">📄</span>
+                        <div class="selected-file-details">
+                            <div class="selected-file-name" id="selectedFileName">-</div>
+                            <div class="selected-file-size" id="selectedFileSize">-</div>
+                        </div>
+                        <button type="button" onclick="clearSelectedFile()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">✕</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Link Upload Section (hidden by default) -->
+            <div id="linkUploadSection" style="display: none;">
+                <div class="form-group">
+                    <label>External Link <span style="color: red;">*</span></label>
+                    <input type="url" id="designExternalLink" class="form-control" placeholder="https://drive.google.com/file/d/..." style="margin-bottom: 8px;">
+                    <small style="color: #64748b;">Paste link from Google Drive, Dropbox, OneDrive, or any file sharing service</small>
+                </div>
+                <div class="form-group">
+                    <label>Link Title/File Name <span style="color: red;">*</span></label>
+                    <input type="text" id="designLinkTitle" class="form-control" placeholder="Project_Design_v1.pdf">
+                    <small style="color: #64748b;">A descriptive name for the linked file</small>
+                </div>
+            </div>
+            
+            <!-- Notes -->
+            <div class="form-group">
+                <label>Notes (Optional)</label>
+                <textarea id="designNotes" class="form-control" rows="2" placeholder="Any notes for the COO reviewer..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDesignUploadModal()">Cancel</button>
+            <button class="btn btn-primary" id="designUploadBtn" onclick="uploadDesignFile()">
+                📤 Upload
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- COO Design Approval Modal -->
+<div id="designApprovalModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>📐 Review Design File</h3>
+            <button class="close-btn" onclick="closeDesignApprovalModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="approvalDesignFileId">
+            <input type="hidden" id="approvalProjectId">
+            
+            <!-- File Details -->
+            <div class="client-preview-box">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <div class="client-preview-label">Project</div>
+                        <div class="client-preview-value" id="approvalProjectName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Client</div>
+                        <div class="client-preview-value" id="approvalClientCompany">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">File Name</div>
+                        <div class="client-preview-value" id="approvalFileName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Type</div>
+                        <div class="client-preview-value" id="approvalFileType">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Submitted By</div>
+                        <div class="client-preview-value" id="approvalSubmittedBy">-</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 6px;">
+                    <small style="color: #92400e;">ℹ️ Client delivery details will be entered by Document Controller when sending.</small>
+                </div>
+            </div>
+            
+            <!-- Preview Button -->
+            <div style="text-align: center; margin: 20px 0;">
+                <a id="approvalPreviewLink" href="#" target="_blank" class="btn btn-secondary">
+                    👁️ Preview Design File
+                </a>
+            </div>
+            
+            <!-- Designer Notes -->
+            <div id="approvalDesignerNotes" style="display: none;">
+                <label style="font-weight: 600; color: #1e293b;">Designer Notes:</label>
+                <p id="approvalDesignerNotesText" style="background: #f8fafc; padding: 12px; border-radius: 8px; color: #475569; margin-top: 8px;"></p>
+            </div>
+            
+            <!-- Approval/Rejection Notes -->
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Your Notes (Optional)</label>
+                <textarea id="approvalNotes" class="form-control" rows="3" placeholder="Add any notes or feedback..."></textarea>
+            </div>
+            
+            <!-- Rejection Reason (shown when rejecting) -->
+            <div id="rejectionReasonSection" class="form-group" style="display: none;">
+                <label>Rejection Reason <span style="color: red;">*</span></label>
+                <textarea id="rejectionReason" class="form-control" rows="3" placeholder="Please explain why this design file cannot be approved..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button class="btn btn-danger" onclick="toggleRejectionMode()">
+                ❌ Reject
+            </button>
+            <div>
+                <button class="btn btn-secondary" onclick="closeDesignApprovalModal()">Cancel</button>
+                <button class="btn btn-success" id="approveDesignBtn" onclick="approveDesignFile()">
+                    ✅ Approve
+                </button>
+                <button class="btn btn-danger" id="confirmRejectBtn" onclick="rejectDesignFile()" style="display: none;">
+                    ❌ Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Send to Client Modal -->
+<div id="sendToClientModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+            <h3>📧 Send Design to Client</h3>
+            <button class="close-btn" onclick="closeSendToClientModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="sendDesignFileId">
+            <input type="hidden" id="sendProjectId">
+            
+            <!-- Success Banner -->
+            <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5rem;">✅</span>
+                    <div>
+                        <strong style="color: #166534;">Design Approved!</strong>
+                        <p style="margin: 5px 0 0 0; color: #15803d; font-size: 0.9rem;">Ready to send to the client</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Send Details -->
+            <div class="client-preview-box">
+                <div style="display: grid; gap: 12px;">
+                    <div>
+                        <div class="client-preview-label">Project</div>
+                        <div class="client-preview-value" id="sendProjectName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">File</div>
+                        <div class="client-preview-value" id="sendFileName">-</div>
+                    </div>
+                    <div>
+                        <div class="client-preview-label">Sending To</div>
+                        <div class="client-preview-value" id="sendClientEmail" style="color: #2563eb; font-size: 1.1rem;">-</div>
+                        <div id="sendClientName" style="color: #64748b; font-size: 0.9rem; margin-top: 3px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Custom Message -->
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Custom Message (Optional)</label>
+                <textarea id="sendCustomMessage" class="custom-message-input" placeholder="Add a personalized message to include in the email to the client..."></textarea>
+                <small style="color: #64748b;">This will appear in the email body sent to the client</small>
+            </div>
+            
+            <!-- Warning -->
+            <div style="background: #fef3c7; padding: 12px 15px; border-radius: 8px; margin-top: 15px;">
+                <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
+                    ⚠️ <strong>Note:</strong> Once sent, the client will receive a professional email with a download link to the design file.
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSendToClientModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="sendDesignToClient()">
+                📧 Send to Client
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Safety script to force show Design Approval menu for COO/Director -->
+
 
 
 </body>

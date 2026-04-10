@@ -1,16 +1,18 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 5.8.0 - Cache Version 48 (DC Client Details Form)
+// Version: 5.9.0 - Cache Version 49 (Restore app1.js + app2.js)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v48';
-const STATIC_CACHE = 'ebtracker-static-v48';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v48';
+const CACHE_NAME = 'ebtracker-v49';
+const STATIC_CACHE = 'ebtracker-static-v49';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v49';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/app1.js',
+  '/app2.js',
   '/candidate-screening.html',
   '/manifest.json',
   '/icons/icon-192x192.png',
@@ -39,20 +41,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v48: Installing...');
+  console.log('🔧 Service Worker v49: Installing...');
   
   event.waitUntil(
     Promise.all([
       // Cache static assets
       caches.open(STATIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v48: Caching static assets');
+          console.log('📦 Service Worker v49: Caching static assets');
           return cache.addAll(STATIC_ASSETS);
         }),
       // Cache external scripts (Firebase SDK including Storage)
       caches.open(DYNAMIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v48: Caching Firebase SDK');
+          console.log('📦 Service Worker v49: Caching Firebase SDK');
           return Promise.all(
             EXTERNAL_SCRIPTS.map(url => 
               cache.add(url).catch(err => {
@@ -63,11 +65,11 @@ self.addEventListener('install', (event) => {
         })
     ])
     .then(() => {
-      console.log('✅ Service Worker v48: All assets cached (including Firebase Storage SDK)');
+      console.log('✅ Service Worker v49: All assets cached');
       return self.skipWaiting();
     })
     .catch((error) => {
-      console.error('❌ Service Worker v48: Cache failed', error);
+      console.error('❌ Service Worker v49: Cache failed', error);
     })
   );
 });
@@ -76,7 +78,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v48: Activating...');
+  console.log('🚀 Service Worker v49: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -88,14 +90,14 @@ self.addEventListener('activate', (event) => {
           cacheNames.map((cacheName) => {
             // Delete any cache that's not in our valid list
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v48: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v49: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v48: Activated - Old caches cleared');
+        console.log('✅ Service Worker v49: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -103,12 +105,12 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v48: Notifying clients to refresh');
+        console.log('📢 Service Worker v49: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v48',
-            message: 'New version available with DC Client Details Form! Please refresh.'
+            version: 'v49',
+            message: 'New version available! app1.js + app2.js loaded. Please refresh.'
           });
         });
       })
@@ -421,7 +423,7 @@ self.addEventListener('message', (event) => {
       break;
       
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v48', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v49', cache: CACHE_NAME });
       break;
       
     case 'CLEAR_CACHE':
@@ -497,10 +499,8 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// Sync announcements when back online
 async function syncAnnouncements() {
   console.log('📢 Syncing announcements...');
-  // Notify clients to retry pending announcements
   const clients = await self.clients.matchAll();
   clients.forEach(client => {
     client.postMessage({ type: 'SYNC_ANNOUNCEMENTS', timestamp: Date.now() });
@@ -508,7 +508,6 @@ async function syncAnnouncements() {
   return Promise.resolve();
 }
 
-// Sync leave requests when back online
 async function syncLeaveRequests() {
   console.log('🏖️ Syncing leave requests...');
   const clients = await self.clients.matchAll();
@@ -518,7 +517,6 @@ async function syncLeaveRequests() {
   return Promise.resolve();
 }
 
-// Sync screening data when back online
 async function syncScreeningData() {
   console.log('📝 Syncing screening data...');
   const clients = await self.clients.matchAll();
@@ -528,7 +526,6 @@ async function syncScreeningData() {
   return Promise.resolve();
 }
 
-// Sync design files when back online
 async function syncDesignFiles() {
   console.log('📐 Syncing design files...');
   const clients = await self.clients.matchAll();
@@ -538,7 +535,6 @@ async function syncDesignFiles() {
   return Promise.resolve();
 }
 
-// Sync timesheets when back online
 async function syncTimesheets() {
   console.log('⏱️ Syncing timesheets...');
   const clients = await self.clients.matchAll();
@@ -548,9 +544,6 @@ async function syncTimesheets() {
   return Promise.resolve();
 }
 
-// ==============================
-// ERROR HANDLING
-// ==============================
 self.addEventListener('error', (event) => {
   console.error('❌ Service Worker Error:', event.error);
 });
@@ -559,4 +552,4 @@ self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
 
-console.log('✅ Service Worker v48: Loaded successfully - DC Client Details Form + Firebase Storage SDK');
+console.log('✅ Service Worker v49: Loaded successfully - app1.js + app2.js restored');

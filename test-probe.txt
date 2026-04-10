@@ -19429,4 +19429,1266 @@ async function markProjectComplete(projectId) {
             }
         }
         
-        // 
+        // Reject leave request (using Firestore docId)
+        async function rejectLeaveRequest(docId) {
+            // Check if current user is HR - get comments from form field
+            const userRole = getUserRoleWithFallback();
+            const isHRUser = userRole === 'hr';
+            
+            let comment = '';
+            
+            // If HR, try to get comment from form field first
+            if (isHRUser) {
+                const hrCommentTextarea = document.getElementById('hrComment_' + docId);
+                if (hrCommentTextarea && hrCommentTextarea.value) {
+                    comment = hrCommentTextarea.value;
+                }
+            }
+            
+            // If no comment from form, prompt for one
+            if (!comment) {
+                comment = prompt('Please provide a reason for rejection:');
+            }
+            
+            if (!comment) {
+                alert('⚠️ A rejection reason is required.');
+                return;
+            }
+            
+            try {
+                showLoading();
+                
+                // Get the request from Firestore
+                const docRef = db.collection('leaveRequests').doc(docId);
+                const doc = await docRef.get();
+                
+                if (!doc.exists) {
+                    alert('❌ Leave request not found');
+                    hideLoading();
+                    return;
+                }
+                
+                const request = doc.data();
+                const currentStage = request.currentStage || 1;
+                
+                // Prepare update data
+                const updateData = {};
+                updateData['stage' + currentStage + 'Status'] = 'rejected';
+                updateData['stage' + currentStage + 'Comments'] = comment;
+                updateData['stage' + currentStage + 'RejectedAt'] = new Date().toISOString();
+                updateData['stage' + currentStage + 'RejectedBy'] = currentUser?.email || 'Approver';
+                
+                updateData.status = 'rejected';
+                updateData.hrComment = comment;
+                updateData.processedAt = new Date().toISOString();
+                updateData.processedBy = currentUser?.email || 'Approver';
+                updateData.currentStage = 0;
+                
+                // Update in Firestore
+                await docRef.update(updateData);
+                console.log('✅ Leave request rejected in Firestore:', docId);
+                
+                hideLoading();
+                showHRLeaveApproval();
+                updateHRLeaveRequestsBadge();
+                
+                alert('❌ Leave request rejected.');
+            } catch (error) {
+                console.error('❌ Error rejecting leave request:', error);
+                hideLoading();
+                alert('❌ Error rejecting request: ' + error.message);
+            }
+        }
+        
+        // ============================================
+        // EMPLOYEE LEAVE REQUEST PAGE
+        // ============================================
+        async function showEmployeeLeaveRequest() {
+            setActiveNav('nav-employee-leave');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            
+            try {
+                await loadLeaveRequests();
+                
+                const myEmail = currentUser ? currentUser.email : '';
+                const myRequests = leaveRequests.filter(r => r.submittedBy === myEmail);
+                const pendingCount = myRequests.filter(r => r.status === 'pending').length;
+                const approvedCount = myRequests.filter(r => r.status === 'approved').length;
+                const rejectedCount = myRequests.filter(r => r.status === 'rejected').length;
+                
+                const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
+                const flowInfo = getApprovalFlowInfo(userRole, myEmail);
+                
+                let userName = currentUser ? (currentUser.displayName || currentUser.name || currentUser.email.split('@')[0]) : 'Employee';
+                let userDept = '';
+                
+                if (currentUser && typeof db !== 'undefined') {
+                    try {
+                        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            userName = userData.name || userName;
+                            userDept = userData.department || '';
+                            if (!userDept && userData.role) {
+                                const deptMap = {
+                                    'designer': 'Design',
+                                    'estimator': 'Estimation',
+                                    'bdm': 'Business Development',
+                                    'accounts': 'Accounts',
+                                    'hr': 'Human Resources',
+                                    'coo': 'Management',
+                                    'director': 'Management'
+                                };
+                                userDept = deptMap[userData.role] || '';
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Could not fetch user details:', e.message);
+                    }
+                }
+                
+                const myRequestsHtml = myRequests.length > 0 
+                    ? myRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+                        .map(req => renderMyLeaveRequestCard(req)).join('')
+                    : `
+                        <div style="text-align: center; padding: 3rem; background: white; border-radius: 12px; color: #6b7280;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
+                            <h4>No Leave Requests Yet</h4>
+                            <p>You haven't submitted any leave requests. Click the button above to submit one.</p>
+                        </div>
+                    `;
+                
+                main.innerHTML = `
+                    ${typeof renderDashboardAnnouncements === 'function' ? renderDashboardAnnouncements() : ''}
+                    
+                    <div class="page-header">
+                        <h2>🏖️ My Leave Requests</h2>
+                        <div class="subtitle">Submit and track your leave requests</div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <h3 style="margin: 0;">Hello, ${userName}! 👋</h3>
+                                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Need time off? Submit your leave request below.</p>
+                                <p style="margin: 0.25rem 0 0 0; opacity: 0.8; font-size: 0.85rem;">
+                                    <strong>Your Approval Flow:</strong> ${flowInfo.flowDescription}
+                                </p>
+                            </div>
+                            <button class="btn" style="background: white; color: #667eea; font-weight: 600;" onclick="showEmployeeLeaveModal('${userName}', '${userDept}')">
+                                + Submit Leave Request
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                            <div class="stat-number">${pendingCount}</div>
+                            <div class="stat-label">Pending</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                            <div class="stat-number">${approvedCount}</div>
+                            <div class="stat-label">Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca);">
+                            <div class="stat-number">${rejectedCount}</div>
+                            <div class="stat-label">Rejected</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 1rem; color: #1f2937;">📋 My Request History</h3>
+                        ${myRequestsHtml}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading employee leave page:', error);
+                main.innerHTML = `<div class="error-message"><h3>Error Loading Page</h3><p>${error.message}</p></div>`;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render my leave request card
+        function renderMyLeaveRequestCard(request) {
+            const statusColors = {
+                pending: { bg: '#fef3c7', text: '#b45309', label: '⏳ Pending', border: '#f59e0b' },
+                approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved', border: '#10b981' },
+                rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected', border: '#ef4444' }
+            };
+            const status = statusColors[request.status] || statusColors.pending;
+            const flowInfo = request.approvalFlow || {};
+            const currentStage = request.currentStage || 1;
+            
+            let progressHtml = '';
+            if (flowInfo.stages && flowInfo.stages.length > 0 && request.status === 'pending') {
+                progressHtml = '<div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.75rem;">';
+                flowInfo.stages.forEach((stage, idx) => {
+                    const stageNum = idx + 1;
+                    let bgColor = '#f3f4f6';
+                    let icon = '⏳';
+                    
+                    if (stageNum < currentStage) {
+                        bgColor = '#d1fae5';
+                        icon = '✅';
+                    } else if (stageNum === currentStage) {
+                        bgColor = '#dbeafe';
+                        icon = '🔄';
+                    }
+                    
+                    progressHtml += '<span style="background: ' + bgColor + '; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem;">' + icon + ' ' + stage + '</span>';
+                });
+                progressHtml += '</div>';
+            }
+            
+            return `
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid ${status.border};">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">${request.leaveType || 'Leave'}</h4>
+                            <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
+                                📅 ${formatDate(request.fromDate)}${request.isHalfDay ? '' : ' - ' + formatDate(request.toDate)} (${request.isHalfDay ? 'Half Day - ' + (request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') : request.totalDays + ' day' + (request.totalDays > 1 ? 's' : '')})
+                            </p>
+                            ${request.selectedTeamLead ? `
+                                <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.85rem;">
+                                    👤 Reporting to: <strong>${request.selectedTeamLead.split('@')[0]}</strong>
+                                </p>
+                            ` : ''}
+                            ${request.reason ? `<p style="margin: 0.5rem 0 0 0; color: #4b5563; font-size: 0.9rem;">💬 ${request.reason}</p>` : ''}
+                            ${progressHtml}
+                        </div>
+                        <span style="padding: 0.4rem 1rem; background: ${status.bg}; color: ${status.text}; border-radius: 20px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;">
+                            ${status.label}
+                        </span>
+                    </div>
+                    ${request.hrComment ? `
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: ${request.status === 'approved' ? '#ecfdf5' : '#fef2f2'}; border-radius: 8px;">
+                            <small style="color: #6b7280;">Comment:</small>
+                            <p style="margin: 0.25rem 0 0 0; color: #374151;">${request.hrComment}</p>
+                        </div>
+                    ` : ''}
+                    <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #9ca3af;">
+                        Submitted: ${formatDate(request.submittedAt)} ${request.processedAt ? '• Processed: ' + formatDate(request.processedAt) : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Show Employee Leave Modal
+        function showEmployeeLeaveModal(userName, userDept) {
+            const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
+            const userEmail = currentUser?.email || '';
+            const flowInfo = getApprovalFlowInfo(userRole, userEmail);
+            
+            let teamLeadDropdown = '';
+            if (flowInfo.requiresTeamLeadSelection) {
+                teamLeadDropdown = `
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="empLeaveTeamLead" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Select Reporting Team Lead <span style="color: #ef4444;">*</span>
+                        </label>
+                        <select id="empLeaveTeamLead" class="form-control" required>
+                            <option value="">-- Select Your Team Lead --</option>
+                            ${DESIGNER_TEAM_LEADS.map(tl => '<option value="' + tl.email + '">' + tl.name + ' (' + tl.email + ')</option>').join('')}
+                        </select>
+                        <small style="color: #6b7280; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                            Your leave request will be sent to this team lead for approval
+                        </small>
+                    </div>
+                `;
+            }
+            
+            const modalHtml = `
+                <div id="employeeLeaveModal" class="modal" style="display: flex;">
+                    <div class="modal-content large">
+                        <span class="close-button" onclick="closeModal('employeeLeaveModal')">&times;</span>
+                        <h2 style="margin-bottom: 0.5rem;">🏖️ Submit Leave Request</h2>
+                        <p style="color: #6b7280; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                            <strong>Approval Flow:</strong> ${flowInfo.flowDescription}
+                        </p>
+                        
+                        <form id="employeeLeaveForm" onsubmit="submitEmployeeLeave(event)">
+                            <input type="hidden" id="empLeaveName" value="${userName || ''}">
+                            <input type="hidden" id="empLeaveDept" value="${userDept || ''}">
+                            
+                            ${teamLeadDropdown}
+                            
+                            <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0;">📅 Leave Details</h4>
+                                <div style="padding: 0.75rem; background: #e0e7ff; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: #4338ca;">
+                                    ℹ️ <strong>Note:</strong> Leave type will be assigned by HR during approval process.
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 8px; transition: all 0.2s;">
+                                        <input type="checkbox" id="empLeaveHalfDay" onchange="toggleHalfDayLeave()" style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span style="font-weight: 600; color: #166534;">Half Day Leave</span>
+                                        <span style="font-size: 0.8rem; color: #6b7280; margin-left: auto;">Select for half-day leave</span>
+                                    </label>
+                                </div>
+                                <div id="halfDayPeriodContainer" style="display: none; margin-bottom: 1rem;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Half Day Period <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <div style="display: flex; gap: 1rem;">
+                                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;" id="firstHalfLabel">
+                                            <input type="radio" name="halfDayPeriod" value="first_half" checked style="width: 16px; height: 16px; cursor: pointer;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #374151;">First Half</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">Morning session</div>
+                                            </div>
+                                        </label>
+                                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;" id="secondHalfLabel">
+                                            <input type="radio" name="halfDayPeriod" value="second_half" style="width: 16px; height: 16px; cursor: pointer;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #374151;">Second Half</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">Afternoon session</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="empLeaveFromDate">From Date <span style="color: #ef4444;">*</span></label>
+                                        <input type="date" id="empLeaveFromDate" class="form-control" required onchange="calculateEmpLeaveDays()">
+                                    </div>
+                                    <div class="form-group" id="empLeaveToDateGroup">
+                                        <label for="empLeaveToDate">To Date <span style="color: #ef4444;">*</span></label>
+                                        <input type="date" id="empLeaveToDate" class="form-control" required onchange="calculateEmpLeaveDays()">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="empLeaveTotalDays">Total Days</label>
+                                    <input type="text" id="empLeaveTotalDays" class="form-control" readonly value="1" style="background: #e5e7eb;">
+                                </div>
+                            </div>
+                            
+                            <div class="hr-form-section" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0;">💬 Reason & Contact</h4>
+                                <div class="form-group">
+                                    <label for="empLeaveReason">Reason for Leave <span style="color: #ef4444;">*</span></label>
+                                    <textarea id="empLeaveReason" class="form-control" rows="3" required placeholder="Please provide a reason for your leave request..."></textarea>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="empEmergencyContact">Emergency Contact Name</label>
+                                        <input type="text" id="empEmergencyContact" class="form-control" placeholder="Contact person name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="empEmergencyPhone">Emergency Phone</label>
+                                        <input type="tel" id="empEmergencyPhone" class="form-control" placeholder="Phone number">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="modal-actions" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                                <button type="button" class="btn btn-outline" onclick="closeModal('employeeLeaveModal')">Cancel</button>
+                                <button type="submit" class="btn btn-primary">📤 Submit Request</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            const today = new Date();
+            document.getElementById('empLeaveFromDate').valueAsDate = today;
+            document.getElementById('empLeaveToDate').valueAsDate = today;
+        }
+        
+        // Toggle half-day leave option
+        function toggleHalfDayLeave() {
+            const isHalfDay = document.getElementById('empLeaveHalfDay').checked;
+            const halfDayContainer = document.getElementById('halfDayPeriodContainer');
+            const toDateGroup = document.getElementById('empLeaveToDateGroup');
+
+            if (isHalfDay) {
+                halfDayContainer.style.display = 'block';
+                toDateGroup.style.display = 'none';
+                // Set toDate = fromDate for half-day
+                const fromDate = document.getElementById('empLeaveFromDate').value;
+                if (fromDate) {
+                    document.getElementById('empLeaveToDate').value = fromDate;
+                }
+                document.getElementById('empLeaveTotalDays').value = '0.5';
+            } else {
+                halfDayContainer.style.display = 'none';
+                toDateGroup.style.display = 'block';
+                calculateEmpLeaveDays();
+            }
+        }
+
+        // Calculate employee leave days
+        function calculateEmpLeaveDays() {
+            const isHalfDay = document.getElementById('empLeaveHalfDay')?.checked;
+
+            if (isHalfDay) {
+                // For half-day, sync toDate with fromDate and set 0.5
+                const fromDate = document.getElementById('empLeaveFromDate').value;
+                if (fromDate) {
+                    document.getElementById('empLeaveToDate').value = fromDate;
+                }
+                document.getElementById('empLeaveTotalDays').value = '0.5';
+                return;
+            }
+
+            const fromDate = document.getElementById('empLeaveFromDate').value;
+            const toDate = document.getElementById('empLeaveToDate').value;
+
+            if (fromDate && toDate) {
+                const from = new Date(fromDate);
+                const to = new Date(toDate);
+                const diffTime = Math.abs(to - from);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                document.getElementById('empLeaveTotalDays').value = diffDays > 0 ? diffDays : 1;
+            }
+        }
+        
+        // Submit employee leave request (to Firestore)
+        async function submitEmployeeLeave(event) {
+            event.preventDefault();
+            
+            const userRole = (typeof currentUserRole !== 'undefined' ? currentUserRole : '').toLowerCase();
+            const userEmail = currentUser?.email || '';
+            const flowInfo = getApprovalFlowInfo(userRole, userEmail);
+            
+            let selectedTeamLead = null;
+            if (flowInfo.requiresTeamLeadSelection) {
+                const teamLeadSelect = document.getElementById('empLeaveTeamLead');
+                if (teamLeadSelect) {
+                    selectedTeamLead = teamLeadSelect.value;
+                    if (!selectedTeamLead) {
+                        alert('⚠️ Please select your reporting Team Lead');
+                        return;
+                    }
+                }
+            }
+            
+            const isHalfDay = document.getElementById('empLeaveHalfDay')?.checked || false;
+            const halfDayPeriod = isHalfDay ? (document.querySelector('input[name="halfDayPeriod"]:checked')?.value || 'first_half') : null;
+            const totalDaysVal = isHalfDay ? 0.5 : (parseInt(document.getElementById('empLeaveTotalDays').value) || 1);
+
+            const request = {
+                id: 'leave_' + Date.now(),
+                employeeName: document.getElementById('empLeaveName').value || (currentUser ? currentUser.email.split('@')[0] : 'Employee'),
+                department: document.getElementById('empLeaveDept').value || '',
+                leaveType: 'Pending HR Assignment', // HR will assign leave type during approval
+                fromDate: document.getElementById('empLeaveFromDate').value,
+                toDate: isHalfDay ? document.getElementById('empLeaveFromDate').value : document.getElementById('empLeaveToDate').value,
+                totalDays: totalDaysVal,
+                isHalfDay: isHalfDay,
+                halfDayPeriod: halfDayPeriod,
+                reason: document.getElementById('empLeaveReason').value,
+                emergencyContact: document.getElementById('empEmergencyContact')?.value || '',
+                emergencyPhone: document.getElementById('empEmergencyPhone')?.value || '',
+                selectedTeamLead: selectedTeamLead,
+                status: 'pending',
+                currentStage: 1,
+                submittedAt: new Date().toISOString(),
+                submittedBy: currentUser ? currentUser.email : 'Anonymous',
+                submittedByUid: currentUser ? currentUser.uid : null,
+                approvalFlow: flowInfo,
+                stage1Status: 'pending',
+                stage2Status: flowInfo.totalStages >= 2 ? 'pending' : 'not_required',
+                stage3Status: flowInfo.totalStages >= 3 ? 'pending' : 'not_required'
+            };
+            
+            try {
+                showLoading();
+                
+                // Save to Firestore
+                const docRef = await db.collection('leaveRequests').add(request);
+                console.log('✅ Leave request saved to Firestore with ID:', docRef.id);
+                
+                // ============================================
+                // SEND EMAIL NOTIFICATIONS
+                // ============================================
+                try {
+                    await triggerEmailNotification('leave.submitted', {
+                        employeeName: request.employeeName,
+                        department: request.department,
+                        fromDate: request.fromDate,
+                        toDate: request.toDate,
+                        totalDays: request.totalDays,
+                        isHalfDay: request.isHalfDay,
+                        halfDayPeriod: request.halfDayPeriod,
+                        reason: request.reason,
+                        emergencyContact: request.emergencyContact,
+                        selectedTeamLead: request.selectedTeamLead,
+                        submittedBy: request.submittedBy
+                    });
+                    console.log('✅ Leave request email notifications sent');
+                } catch (emailError) {
+                    console.warn('⚠️ Email notification failed (non-fatal):', emailError);
+                }
+                
+                // ============================================
+                // CREATE IN-APP NOTIFICATIONS FOR COO, DIRECTOR, HR
+                // ============================================
+                const halfDayLabel = request.isHalfDay ? ` (${request.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half'})` : '';
+                const notificationMessage = `🏖️ New Leave Request: ${request.employeeName} - ${request.totalDays} day(s)${halfDayLabel} from ${request.fromDate} to ${request.toDate}`;
+                
+                // Notify COO
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'coo',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ COO notification created');
+                } catch (e) { console.warn('⚠️ COO notification failed:', e); }
+                
+                // Notify Director
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'director',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ Director notification created');
+                } catch (e) { console.warn('⚠️ Director notification failed:', e); }
+                
+                // Notify HR
+                try {
+                    await apiCall('notifications', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'leave_request',
+                            recipientRole: 'hr',
+                            message: notificationMessage,
+                            notes: `Reason: ${request.reason}`,
+                            priority: 'normal'
+                        })
+                    });
+                    console.log('✅ HR notification created');
+                } catch (e) { console.warn('⚠️ HR notification failed:', e); }
+                
+                // Notify Team Lead if selected
+                if (selectedTeamLead) {
+                    try {
+                        // Find team lead UID by email
+                        const teamLeadSnapshot = await db.collection('users').where('email', '==', selectedTeamLead).get();
+                        if (!teamLeadSnapshot.empty) {
+                            const teamLeadUid = teamLeadSnapshot.docs[0].id;
+                            await apiCall('notifications', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    type: 'leave_request',
+                                    recipientRole: 'design_lead',
+                                    recipientUid: teamLeadUid,
+                                    message: notificationMessage,
+                                    notes: `Requires your approval. Reason: ${request.reason}`,
+                                    priority: 'high'
+                                })
+                            });
+                            console.log('✅ Team Lead notification created');
+                        }
+                    } catch (e) { console.warn('⚠️ Team Lead notification failed:', e); }
+                }
+                
+                hideLoading();
+                closeModal('employeeLeaveModal');
+                showEmployeeLeaveRequest();
+                updateHRLeaveRequestsBadge();
+                
+                let confirmMsg = '✅ Leave request submitted successfully!\n\n';
+                if (selectedTeamLead) {
+                    confirmMsg += 'Your request has been sent to ' + selectedTeamLead.split('@')[0] + ' for approval.';
+                } else {
+                    confirmMsg += 'Your request is pending approval.';
+                }
+                alert(confirmMsg);
+            } catch (error) {
+                console.error('❌ Error saving leave request:', error);
+                hideLoading();
+                alert('❌ Error submitting request: ' + error.message);
+            }
+        }
+        
+        // ============================================
+        // HR LEAVE REPORTS - COMPREHENSIVE VIEW
+        // ============================================
+        
+        async function showHRLeaveReports() {
+            setActiveNav('nav-hr-leave-reports');
+            const main = document.getElementById('mainContent');
+            main.style.display = 'block';
+            showLoading();
+            
+            try {
+                await loadLeaveRequests();
+                
+                // Calculate statistics
+                const totalRequests = leaveRequests.length;
+                const pendingRequests = leaveRequests.filter(r => r.status === 'pending');
+                const approvedRequests = leaveRequests.filter(r => r.status === 'approved');
+                const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected');
+                
+                // Calculate total leave days
+                const totalLeaveDays = leaveRequests.reduce((sum, r) => sum + (parseInt(r.totalDays) || 0), 0);
+                const approvedLeaveDays = approvedRequests.reduce((sum, r) => sum + (parseInt(r.totalDays) || 0), 0);
+                
+                // Get unique employees
+                const uniqueEmployees = [...new Set(leaveRequests.map(r => r.submittedBy))];
+                
+                main.innerHTML = `
+                    <div class="page-header">
+                        <h2>📊 Leave Reports - Complete Overview</h2>
+                        <p class="subtitle">Comprehensive view of all leave applications, status, and approval history</p>
+                    </div>
+                    
+                    <!-- Summary Statistics -->
+                    <div class="dashboard-stats" style="margin-bottom: 2rem;">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <div class="stat-number">${totalRequests}</div>
+                            <div class="stat-label">📋 Total Requests</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                            <div class="stat-number">${pendingRequests.length}</div>
+                            <div class="stat-label">⏳ Pending</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                            <div class="stat-number">${approvedRequests.length}</div>
+                            <div class="stat-label">✅ Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                            <div class="stat-number">${rejectedRequests.length}</div>
+                            <div class="stat-label">❌ Rejected</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">
+                            <div class="stat-number">${approvedLeaveDays}</div>
+                            <div class="stat-label">📅 Days Approved</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white;">
+                            <div class="stat-number">${uniqueEmployees.length}</div>
+                            <div class="stat-label">👥 Employees</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                        <h4 style="margin: 0 0 1rem 0; color: #374151;">🔍 Filter Reports</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">Status</label>
+                                <select id="leaveReportStatusFilter" class="form-control" onchange="filterLeaveReports()">
+                                    <option value="all">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">Leave Type</label>
+                                <select id="leaveReportTypeFilter" class="form-control" onchange="filterLeaveReports()">
+                                    <option value="all">All Types</option>
+                                    <option value="Casual Leave">Casual Leave</option>
+                                    <option value="Sick Leave">Sick Leave</option>
+                                    <option value="Annual Leave">Annual Leave</option>
+                                    <option value="Emergency Leave">Emergency Leave</option>
+                                    <option value="Maternity Leave">Maternity Leave</option>
+                                    <option value="Paternity Leave">Paternity Leave</option>
+                                    <option value="Unpaid Leave">Unpaid Leave</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">From Date</label>
+                                <input type="date" id="leaveReportFromDate" class="form-control" onchange="filterLeaveReports()">
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">To Date</label>
+                                <input type="date" id="leaveReportToDate" class="form-control" onchange="filterLeaveReports()">
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; font-size: 0.85rem; color: #6b7280; margin-bottom: 0.25rem;">Search Employee</label>
+                                <input type="text" id="leaveReportSearchEmployee" class="form-control" placeholder="Search by name or email..." oninput="filterLeaveReports()">
+                            </div>
+                            <div>
+                                <button class="btn btn-outline" onclick="resetLeaveReportFilters()" style="padding: 0.5rem 1rem;">
+                                    🔄 Reset
+                                </button>
+                            </div>
+                            <div>
+                                <button class="btn btn-success" onclick="exportLeaveReportsToExcel()" style="padding: 0.5rem 1rem;">
+                                    📥 Export Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reports Table -->
+                    <div style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden;">
+                        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+                            <h4 style="margin: 0; color: #374151;">📋 Leave Applications (<span id="leaveReportCount">${totalRequests}</span> records)</h4>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;" id="leaveReportsTable">
+                                <thead>
+                                    <tr style="background: #f3f4f6;">
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Employee</th>
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Leave Type</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Duration</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">From</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">To</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Status</th>
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Approval Progress</th>
+                                        <th style="padding: 1rem; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaveReportsTableBody">
+                                    ${renderLeaveReportsTableRows(leaveRequests)}
+                                </tbody>
+                            </table>
+                        </div>
+                        ${leaveRequests.length === 0 ? `
+                            <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
+                                <h4>No Leave Records Found</h4>
+                                <p>There are no leave applications in the system yet.</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Store data for filtering
+                window.allLeaveRequests = leaveRequests;
+                
+            } catch (error) {
+                console.error('❌ Error loading leave reports:', error);
+                main.innerHTML = `
+                    <div class="card" style="padding: 3rem; text-align: center;">
+                        <h3 style="color: var(--danger);">⚠️ Error Loading Reports</h3>
+                        <p style="color: var(--text-light); margin: 1rem 0;">${error.message}</p>
+                        <button onclick="showHRLeaveReports()" class="btn btn-primary">🔄 Retry</button>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render table rows for leave reports
+        function renderLeaveReportsTableRows(requests) {
+            if (!requests || requests.length === 0) return '';
+            
+            return requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)).map(req => {
+                const statusColors = {
+                    pending: { bg: '#fef3c7', text: '#92400e', label: '⏳ Pending' },
+                    approved: { bg: '#d1fae5', text: '#065f46', label: '✅ Approved' },
+                    rejected: { bg: '#fee2e2', text: '#991b1b', label: '❌ Rejected' }
+                };
+                const status = statusColors[req.status] || statusColors.pending;
+                
+                // Build approval progress
+                const flowInfo = req.approvalFlow || {};
+                const stages = flowInfo.stages || [];
+                const currentStage = req.currentStage || 1;
+                
+                let progressHtml = stages.map((stage, idx) => {
+                    const stageNum = idx + 1;
+                    const stageStatus = req['stage' + stageNum + 'Status'] || 'pending';
+                    let icon = '⏳';
+                    let color = '#9ca3af';
+                    
+                    if (stageStatus === 'approved') {
+                        icon = '✅';
+                        color = '#10b981';
+                    } else if (stageStatus === 'rejected') {
+                        icon = '❌';
+                        color = '#ef4444';
+                    } else if (stageNum === currentStage && req.status === 'pending') {
+                        icon = '🔄';
+                        color = '#3b82f6';
+                    }
+                    
+                    return `<span style="font-size: 0.75rem; color: ${color};">${icon} ${stage.replace(' Approval', '')}</span>`;
+                }).join(' → ');
+                
+                if (!progressHtml) {
+                    progressHtml = '<span style="font-size: 0.75rem; color: #9ca3af;">No approval flow</span>';
+                }
+                
+                return `
+                    <tr style="border-bottom: 1px solid #e5e7eb;" data-request='${JSON.stringify(req).replace(/'/g, "&#39;")}'>
+                        <td style="padding: 1rem;">
+                            <div style="font-weight: 600; color: #1f2937;">${req.employeeName || 'N/A'}</div>
+                            <div style="font-size: 0.8rem; color: #6b7280;">${req.submittedBy || ''}</div>
+                            ${req.department ? `<div style="font-size: 0.75rem; color: #9ca3af;">${req.department}</div>` : ''}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <span style="background: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">
+                                ${req.leaveType || 'N/A'}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            ${req.isHalfDay ? '<span style="font-weight: 600; color: #b45309;">Half Day</span><br><span style="font-size: 0.75rem; color: #92400e;">' + (req.halfDayPeriod === 'first_half' ? '1st Half' : '2nd Half') + '</span>' : '<span style="font-weight: 600; color: #374151;">' + (req.totalDays || 1) + '</span><span style="font-size: 0.8rem; color: #6b7280;"> day' + ((req.totalDays || 1) > 1 ? 's' : '') + '</span>'}
+                        </td>
+                        <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #374151;">${formatDate(req.fromDate)}</td>
+                        <td style="padding: 1rem; text-align: center; font-size: 0.9rem; color: #374151;">${formatDate(req.toDate)}</td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <span style="background: ${status.bg}; color: ${status.text}; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                                ${status.label}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; max-width: 200px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                                ${progressHtml}
+                            </div>
+                        </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <button class="btn btn-sm" onclick="showLeaveRequestDetails('${req.docId || req.id}')" style="background: #667eea; color: white; padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                                👁️ Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Filter leave reports
+        function filterLeaveReports() {
+            const statusFilter = document.getElementById('leaveReportStatusFilter')?.value || 'all';
+            const typeFilter = document.getElementById('leaveReportTypeFilter')?.value || 'all';
+            const fromDate = document.getElementById('leaveReportFromDate')?.value;
+            const toDate = document.getElementById('leaveReportToDate')?.value;
+            const searchTerm = (document.getElementById('leaveReportSearchEmployee')?.value || '').toLowerCase();
+            
+            let filtered = window.allLeaveRequests || [];
+            
+            // Status filter
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter(r => r.status === statusFilter);
+            }
+            
+            // Type filter
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(r => r.leaveType === typeFilter);
+            }
+            
+            // Date range filter
+            if (fromDate) {
+                filtered = filtered.filter(r => r.fromDate >= fromDate);
+            }
+            if (toDate) {
+                filtered = filtered.filter(r => r.toDate <= toDate);
+            }
+            
+            // Search filter
+            if (searchTerm) {
+                filtered = filtered.filter(r => 
+                    (r.employeeName || '').toLowerCase().includes(searchTerm) ||
+                    (r.submittedBy || '').toLowerCase().includes(searchTerm) ||
+                    (r.department || '').toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Update table
+            const tbody = document.getElementById('leaveReportsTableBody');
+            if (tbody) {
+                tbody.innerHTML = renderLeaveReportsTableRows(filtered);
+            }
+            
+            // Update count
+            const countEl = document.getElementById('leaveReportCount');
+            if (countEl) {
+                countEl.textContent = filtered.length;
+            }
+        }
+        
+        // Reset filters
+        function resetLeaveReportFilters() {
+            document.getElementById('leaveReportStatusFilter').value = 'all';
+            document.getElementById('leaveReportTypeFilter').value = 'all';
+            document.getElementById('leaveReportFromDate').value = '';
+            document.getElementById('leaveReportToDate').value = '';
+            document.getElementById('leaveReportSearchEmployee').value = '';
+            filterLeaveReports();
+        }
+        
+        // Show detailed leave request modal
+        function showLeaveRequestDetails(requestId) {
+            const requests = window.allLeaveRequests || [];
+            const req = requests.find(r => r.docId === requestId || r.id === requestId);
+            
+            if (!req) {
+                alert('Leave request not found');
+                return;
+            }
+            
+            const flowInfo = req.approvalFlow || {};
+            const stages = flowInfo.stages || [];
+            
+            // Build approval history
+            let approvalHistoryHtml = '';
+            stages.forEach((stage, idx) => {
+                const stageNum = idx + 1;
+                const stageStatus = req['stage' + stageNum + 'Status'] || 'pending';
+                const approvedBy = req['stage' + stageNum + 'ApprovedBy'] || req['stage' + stageNum + 'RejectedBy'] || '';
+                const approvedAt = req['stage' + stageNum + 'ApprovedAt'] || req['stage' + stageNum + 'RejectedAt'] || '';
+                const comments = req['stage' + stageNum + 'Comments'] || '';
+                
+                let statusIcon = '⏳';
+                let statusBg = '#f3f4f6';
+                let statusText = '#6b7280';
+                let statusLabel = 'Pending';
+                
+                if (stageStatus === 'approved') {
+                    statusIcon = '✅';
+                    statusBg = '#d1fae5';
+                    statusText = '#065f46';
+                    statusLabel = 'Approved';
+                } else if (stageStatus === 'rejected') {
+                    statusIcon = '❌';
+                    statusBg = '#fee2e2';
+                    statusText = '#991b1b';
+                    statusLabel = 'Rejected';
+                }
+                
+                approvalHistoryHtml += `
+                    <div style="padding: 1rem; background: ${statusBg}; border-radius: 8px; margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 600; color: ${statusText};">${statusIcon} Stage ${stageNum}: ${stage}</span>
+                            <span style="font-size: 0.8rem; color: ${statusText};">${statusLabel}</span>
+                        </div>
+                        ${approvedBy ? `
+                            <div style="font-size: 0.85rem; color: #4b5563;">
+                                <strong>By:</strong> ${approvedBy}
+                            </div>
+                        ` : ''}
+                        ${approvedAt ? `
+                            <div style="font-size: 0.85rem; color: #4b5563;">
+                                <strong>Date:</strong> ${formatDate(approvedAt)}
+                            </div>
+                        ` : ''}
+                        ${comments ? `
+                            <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 6px; font-size: 0.85rem; color: #374151;">
+                                💬 <strong>Comments:</strong> ${comments}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            if (!approvalHistoryHtml) {
+                approvalHistoryHtml = '<p style="color: #6b7280;">No approval stages defined</p>';
+            }
+            
+            const modalHtml = `
+                <div id="leaveDetailsModal" class="modal" style="display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 9999;">
+                    <div class="modal-content" style="background: white; border-radius: 16px; max-width: 700px; width: 95%; max-height: 90vh; overflow-y: auto; margin: 1rem;">
+                        <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 16px 16px 0 0;">
+                            <h3 style="margin: 0;">📋 Leave Request Details</h3>
+                            <button onclick="closeModal('leaveDetailsModal')" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; position: absolute; right: 1rem; top: 1rem;">&times;</button>
+                        </div>
+                        <div class="modal-body" style="padding: 1.5rem;">
+                            <!-- Employee Info -->
+                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 12px;">
+                                <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.5rem;">
+                                    ${(req.employeeName || 'E')[0].toUpperCase()}
+                                </div>
+                                <div>
+                                    <h4 style="margin: 0; color: #1f2937;">${req.employeeName || 'Employee'}</h4>
+                                    <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.9rem;">${req.submittedBy || ''}</p>
+                                    ${req.department ? `<p style="margin: 0.25rem 0 0 0; color: #9ca3af; font-size: 0.85rem;">${req.department}</p>` : ''}
+                                </div>
+                            </div>
+                            
+                            <!-- Leave Details Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div style="padding: 1rem; background: #e0e7ff; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #4338ca; text-transform: uppercase; margin-bottom: 0.25rem;">Leave Type</div>
+                                    <div style="font-weight: 600; color: #1e1b4b;">${req.leaveType || 'N/A'}</div>
+                                </div>
+                                <div style="padding: 1rem; background: #fef3c7; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.25rem;">Duration</div>
+                                    <div style="font-weight: 600; color: #78350f;">${req.isHalfDay ? 'Half Day' : (req.totalDays || 1) + ' Day' + ((req.totalDays || 1) > 1 ? 's' : '')}</div>
+                                    ${req.isHalfDay ? '<div style="font-size: 0.75rem; color: #b45309; margin-top: 0.25rem;">' + (req.halfDayPeriod === 'first_half' ? 'First Half (Morning)' : 'Second Half (Afternoon)') + '</div>' : ''}
+                                </div>
+                                <div style="padding: 1rem; background: #d1fae5; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #065f46; text-transform: uppercase; margin-bottom: 0.25rem;">From Date</div>
+                                    <div style="font-weight: 600; color: #064e3b;">${formatDate(req.fromDate)}</div>
+                                </div>
+                                <div style="padding: 1rem; background: #fee2e2; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #991b1b; text-transform: uppercase; margin-bottom: 0.25rem;">To Date</div>
+                                    <div style="font-weight: 600; color: #7f1d1d;">${formatDate(req.toDate)}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Team Lead -->
+                            ${req.selectedTeamLead ? `
+                                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #ede9fe; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #5b21b6; text-transform: uppercase; margin-bottom: 0.25rem;">Assigned Team Lead</div>
+                                    <div style="font-weight: 600; color: #4c1d95;">${req.selectedTeamLead}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Reason -->
+                            ${req.reason ? `
+                                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 10px; border-left: 4px solid #667eea;">
+                                    <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">Reason for Leave</div>
+                                    <div style="color: #374151;">${req.reason}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Emergency Contact -->
+                            ${req.emergencyContact || req.emergencyPhone ? `
+                                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase; margin-bottom: 0.5rem;">Emergency Contact</div>
+                                    ${req.emergencyContact ? `<div style="color: #78350f;"><strong>Name:</strong> ${req.emergencyContact}</div>` : ''}
+                                    ${req.emergencyPhone ? `<div style="color: #78350f;"><strong>Phone:</strong> ${req.emergencyPhone}</div>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Approval Flow Info -->
+                            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f0f9ff; border-radius: 10px;">
+                                <div style="font-size: 0.75rem; color: #0369a1; text-transform: uppercase; margin-bottom: 0.25rem;">Approval Flow</div>
+                                <div style="font-weight: 600; color: #0c4a6e;">${flowInfo.flowDescription || 'Standard Approval'}</div>
+                                <div style="font-size: 0.85rem; color: #0369a1; margin-top: 0.25rem;">Current Stage: ${req.currentStage || 1} of ${flowInfo.totalStages || 1}</div>
+                            </div>
+                            
+                            <!-- Approval History -->
+                            <div style="margin-bottom: 1rem;">
+                                <h4 style="margin: 0 0 1rem 0; color: #374151;">📜 Approval History & Comments</h4>
+                                ${approvalHistoryHtml}
+                            </div>
+                            
+                            <!-- Final Comments -->
+                            ${req.hrComment && req.status !== 'pending' ? `
+                                <div style="padding: 1rem; background: ${req.status === 'approved' ? '#d1fae5' : '#fee2e2'}; border-radius: 10px;">
+                                    <div style="font-size: 0.75rem; color: ${req.status === 'approved' ? '#065f46' : '#991b1b'}; text-transform: uppercase; margin-bottom: 0.25rem;">Final Decision Comment</div>
+                                    <div style="color: ${req.status === 'approved' ? '#064e3b' : '#7f1d1d'};">${req.hrComment}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Submission Info -->
+                            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.85rem; color: #6b7280;">
+                                <strong>Submitted:</strong> ${formatDate(req.submittedAt)} | 
+                                <strong>Request ID:</strong> ${req.id || req.docId || 'N/A'}
+                                ${req.processedAt ? `<br><strong>Last Updated:</strong> ${formatDate(req.processedAt)}` : ''}
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; text-align: right;">
+                            <button onclick="closeModal('leaveDetailsModal')" class="btn btn-outline">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('leaveDetailsModal');
+            if (existingModal) existingModal.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        // Export leave reports to Excel
+        function exportLeaveReportsToExcel() {
+            const requests = window.allLeaveRequests || [];
+            
+            if (requests.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            // Build CSV content
+            const headers = [
+                'Employee Name',
+                'Email',
+                'Department',
+                'Leave Type',
+                'From Date',
+                'To Date',
+                'Total Days',
+                'Half Day',
+                'Half Day Period',
+                'Status',
+                'Reason',
+                'Team Lead',
+                'Submitted At',
+                'Stage 1 Status',
+                'Stage 1 By',
+                'Stage 1 Comments',
+                'Stage 2 Status',
+                'Stage 2 By',
+                'Stage 2 Comments',
+                'Stage 3 Status',
+                'Stage 3 By',
+                'Stage 3 Comments',
+                'Final Comments'
+            ];
+            
+            const rows = requests.map(req => [
+                req.employeeName || '',
+                req.submittedBy || '',
+                req.department || '',
+                req.leaveType || '',
+                req.fromDate || '',
+                req.toDate || '',
+                req.totalDays || '',
+                req.isHalfDay ? 'Yes' : 'No',
+                req.isHalfDay ? (req.halfDayPeriod === 'first_half' ? 'First Half' : 'Second Half') : '',
+                req.status || '',
+                (req.reason || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                req.selectedTeamLead || '',
+                req.submittedAt || '',
+                req.stage1Status || '',
+                req.stage1ApprovedBy || req.stage1RejectedBy || '',
+                (req.stage1Comments || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                req.stage2Status || '',
+                req.stage2ApprovedBy || req.stage2RejectedBy || '',
+                (req.stage2Comments || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                req.stage3Status || '',
+                req.stage3ApprovedBy || req.stage3RejectedBy || '',
+                (req.stage3Comments || '').replace(/,/g, ';').replace(/\n/g, ' '),
+                (req.hrComment || '').replace(/,/g, ';').replace(/\n/g, ' ')
+            ]);
+            
+            let csvContent = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+            
+            // Download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Leave_Report_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert('✅ Leave report exported successfully!');
+        }
+        
+        // Make functions globally accessible
+        window.showEmployeeLeaveRequest = showEmployeeLeaveRequest;
+        window.showEmployeeLeaveModal = showEmployeeLeaveModal;
+        window.calculateEmpLeaveDays = calculateEmpLeaveDays;
+        window.submitEmployeeLeave = submitEmployeeLeave;
+        window.showHRLeaveApproval = showHRLeaveApproval;
+        window.approveLeaveRequest = approveLeaveRequest;
+        window.rejectLeaveRequest = rejectLeaveRequest;
+        window.updateHRLeaveRequestsBadge = updateHRLeaveRequestsBadge;
+        window.updateLeaveNavigation = updateLeaveNavigation;
+        window.isCurrentUserTeamLead = isCurrentUserTeamLead;
+        window.isEmailTeamLead = isEmailTeamLead;
+        window.isSameTeamLead = isSameTeamLead;
+        window.DESIGNER_TEAM_LEADS = DESIGNER_TEAM_LEADS;
+        window.showHRLeaveReports = showHRLeaveReports;
+        window.filterLeaveReports = filterLeaveReports;
+        window.resetLeaveReportFilters = resetLeaveReportFilters;
+        window.showLeaveRequestDetails = showLeaveRequestDetails;
+        window.exportLeaveReportsToExcel = exportLeaveReportsToExcel;
+
+        // ============================================
+        // DIAGNOSTICS
+        // ============================================
+
+        async function testBackendConnection() { /* ... (Unchanged) ... */ }
+        async function runDiagnostics() { /* ... (Unchanged) ... */ }
+
+let designerAllocationCounter = 0;
+let availableDesigners = [];
+
+/**
+ * Load all available designers for allocation
+ */
+async function loadAvailableDesigners() {
+    try {
+        // COO allocation modal only shows Design Leads (not designers)
+        const designLeadsResponse = await apiCall('users?role=design_lead');
+
+        availableDesigners = [];
+
+        if (designLeadsResponse.success && designLeadsResponse.data) {
+            availableDesigners.push(...designLeadsResponse.data.map(d => ({...d, roleType: 'design_lead'})));
+        }
+
+        console.log('Available design leads loaded:', availableDesigners.length);
+
+    } catch (error) {
+        console.error('Error loading design leads:', error);
+        availableDesigners = [];
+    }
+}
+
+/**
+ * ✅ FIXED: Show COO Multi-Designer Allocation Modal
+ * Handles both scenarios: Hours from Estimation OR Manual COO Entry (Tonnage case)
+ */
+async function showCooMultiDesignerAllocationModal(projectId) {
+    try {
+        showLoading();
+        
+        // 1. Load project details
+        const projectResponse = await apiCall(`projects?id=${projectId}`);
+        if (!projectResponse.success || !projectResponse.data) {
+            throw new Error('Failed to load project details');
+        }
+        
+        const project = projectResponse.data;
+        
+        // Store project data globally for edit functions
+        window.currentEditProject = project;
+        window.currentEditProjectId = projectId;
+        
+        // 2. Load available design leads
+        await loadAvailableDesigners();
+
+        if (availableDesigners.length === 0) {
+            alert('No design leads found in the system. Please create design lead accounts first.');
+            hideLoading();
+            return;
+        }
+
+        // 3. Populate project info
+        document.getElementById('cooAllocProjectId').value = projectId;
+        document.getElementById('cooAllocProjectNumber').textContent = project.projectNumber || 'N/A';
+        document.getElementById('cooAllocProjectName').textContent = project.projectName || 'N/A';
+        document.getElementById('cooAllocClientName').textContent = project.clientCompany || 'N/A';
+
+        // 3b. Populate project section if previously set
+        const sectionSelect = document.getElementById('cooProjectSection');
+        if (sectionSelect) {
+            sectionSelect.value = project.projectSection || '';
+        }
+
+        // 3c. Populate P.O. fields if previously set
+        const poNumberInput = document.getElementById('cooPoNumber');
+        if (poNumberInput && project.poNumber) poNumberInput.value = project.poNumber;
+        const poValueInput = document.getElementById('cooPoValue');
+        if (poValueInput && project.poValue) poValueInput.value = project.poValue;
+        const poCurrencySelect = document.getElementById('cooPoCurrency');
+        if (poCurrencySelect && project.poCurrency) poCurrencySelect.value = project.poCurrency;
+        // Show existing P.O. file info
+        const poPreview = document.getElementById('cooPoFilePreview');
+        if (poPreview && project.poFileName) {
+            poPreview.innerHTML = `📎 Existing: <strong>${project.poFileName}</strong> <a href="${project.poFileUrl || '#'}" target="_blank" style="color: #065f46;">(View)</a>`;
+            poPreview.style.display = 'block';
+        }
+
+        // 3d. Populate Project Contacts if previously set
+        const contacts = project.projectContacts || {};
+        const tech = contacts.technical || {};
+        const comm = contacts.commercial || {};
+        if (tech.bdmName) document.getElementById('cooTechBdmName').value = tech.bdmName;
+        if (tech.bdmEmail) document.getElementById('cooTechBdmEmail').value = tech.bdmEmail;
+        if (tech.clientPmName) document.getElementById('cooTechClientPmName').value = tech.clientPmName;
+        if (tech.clientPmEmail) document.getElementById('cooTechClientPmEmail').value = tech.clientPmEmail;
+        if (comm.accountName) document.getElementById('cooCommAccountName').value = comm.accountName;
+        if (comm.accountEmail) document.getElementById('cooCommAccountEmail').value = comm.accountEmail

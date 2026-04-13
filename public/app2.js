@@ -1511,7 +1511,7 @@ function filterDesignLeadProjects(filter) {
 
 // Design Lead Timesheet View
 async function showDesignLeadTimesheet() {
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('mainContent');
     if (!main) return;
     showLoading();
 

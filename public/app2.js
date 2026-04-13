@@ -1559,21 +1559,35 @@ async function showDesignLeadTimesheet() {
                         <th style="padding: 0.75rem; text-align: center; font-size: 0.85rem;">Hours</th>
                         <th style="padding: 0.75rem; text-align: left; font-size: 0.85rem;">Description</th>
                         <th style="padding: 0.75rem; text-align: center; font-size: 0.85rem;">Status</th>
+                        <th style="padding: 0.75rem; text-align: center; font-size: 0.85rem;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${recentEntries.map(e => {
                         const d = e.date?.seconds ? new Date(e.date.seconds * 1000) : new Date(e.date);
                         const dateStr = d instanceof Date && !isNaN(d) ? d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) : 'N/A';
+                        const dateISO = d instanceof Date && !isNaN(d) ? d.toISOString().split('T')[0] : '';
                         const statusColor = e.status === 'approved' ? '#10b981' : '#f59e0b';
                         const statusLabel = e.status === 'approved' ? 'Approved' : 'Pending';
+                        const escapedDesc = (e.description || '').replace(/'/g, "\'").replace(/"/g, '&quot;');
+                        const escapedProjName = (e.projectName || '').replace(/'/g, "\'").replace(/"/g, '&quot;');
                         return `<tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 0.75rem; font-size: 0.85rem;">${dateStr}</td>
                             <td style="padding: 0.75rem; font-size: 0.85rem;">${e.projectName || 'N/A'}</td>
                             <td style="padding: 0.75rem; text-align: center; font-weight: 600;">${parseFloat(e.hours).toFixed(1)}h</td>
-                            <td style="padding: 0.75rem; font-size: 0.85rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.description || ''}</td>
+                            <td style="padding: 0.75rem; font-size: 0.85rem; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.description || ''}</td>
                             <td style="padding: 0.75rem; text-align: center;">
                                 <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">${statusLabel}</span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: center; white-space: nowrap;">
+                                <button onclick="editTimesheetEntry('${e.id}', '${e.projectId || ''}', '${dateISO}', ${parseFloat(e.hours || 0)}, '${escapedDesc}', '${escapedProjName}')"
+                                    style="background: var(--accent-blue); color: white; border: none; padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; margin-right: 0.25rem;">
+                                    ✏️ Edit
+                                </button>
+                                <button onclick="deleteTimesheetEntry('${e.id}')"
+                                    style="background: #ef4444; color: white; border: none; padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem;">
+                                    🗑️ Delete
+                                </button>
                             </td>
                         </tr>`;
                     }).join('')}
@@ -7641,7 +7655,9 @@ window.deleteTimesheetEntry = async function(entryId) {
         if (response.success) {
             alert('✅ Entry deleted successfully');
             // Refresh the timesheet view
-            if (typeof showTimesheet === 'function') {
+            if (typeof currentUserRole !== 'undefined' && currentUserRole === 'design_lead' && typeof showDesignLeadTimesheet === 'function') {
+                showDesignLeadTimesheet();
+            } else if (typeof showTimesheet === 'function') {
                 showTimesheet();
             } else if (typeof loadDesignerTimesheet === 'function') {
                 loadDesignerTimesheet();
@@ -7677,7 +7693,8 @@ window.editTimesheetEntry = async function(entryId, projectId, date, hours, desc
             const projects = projectsResponse.data || [];
             const assignedProjects = projects.filter(p => 
                 (p.assignedDesigners && p.assignedDesigners.includes(currentUser.uid)) ||
-                (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid))
+                (p.assignedDesignerUids && p.assignedDesignerUids.includes(currentUser.uid)) ||
+                p.designLeadUid === currentUser.uid
             );
             
             projectOptions = assignedProjects.map(p => `
@@ -7864,7 +7881,9 @@ window.submitEditTimesheet = async function() {
             closeEditTimesheetModal();
             
             // Refresh the timesheet view
-            if (typeof showTimesheet === 'function') {
+            if (typeof currentUserRole !== 'undefined' && currentUserRole === 'design_lead' && typeof showDesignLeadTimesheet === 'function') {
+                showDesignLeadTimesheet();
+            } else if (typeof showTimesheet === 'function') {
                 showTimesheet();
             } else if (typeof loadDesignerTimesheet === 'function') {
                 loadDesignerTimesheet();

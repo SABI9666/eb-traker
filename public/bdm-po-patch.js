@@ -213,8 +213,6 @@
             var po = await collectPoPayloadFromModal(proposalId);
             if (!po) { if (typeof hideLoading === 'function') hideLoading(); return; }
 
-            // Use mark_won action which already accepts the same PO fields,
-            // so backend updates poNumber/poValue/etc. and re-notifies stakeholders.
             var payload = { action: 'mark_won', data: Object.assign({ poUpdated: true, poUpdatedAt: new Date().toISOString() }, po) };
             var resp = await apiCall('proposals?id=' + proposalId, {
                 method: 'PUT',
@@ -238,7 +236,6 @@
 
     // Public entry points
     window.updateBdmPo = function (proposalId) {
-        // Try to prefill from any in-memory proposal cache the app exposes
         var prefill = {};
         try {
             var lists = [window.proposals, window.allProposals, (window.appData && window.appData.proposals)];
@@ -270,8 +267,6 @@
             openBdmPoModal(proposalId, 'won');
         };
 
-        // Wrap getProposalAllocationButton so a BDM viewing a WON proposal
-        // also sees an "Update P.O." button.
         if (typeof window.getProposalAllocationButton === 'function' && !window.getProposalAllocationButton._bdmPoWrapped) {
             var orig = window.getProposalAllocationButton;
             var wrapped = function (p) {
@@ -289,16 +284,13 @@
     }
     installOverride();
     document.addEventListener('DOMContentLoaded', installOverride);
-    // Also re-run shortly after load in case index.html re-defines functions later
     setTimeout(installOverride, 500);
     setTimeout(installOverride, 2000);
 
     console.log('BDM PO patch loaded: markProposalWon overridden, Update P.O. enabled, COO PO section hidden');
 })();
 
-// ── Load patch scripts ─────────────────────────────────────────────────────────────────
-// All small patch files live in public/ next to index.html and are loaded here
-// so index.html itself does not need to be modified.
+// ── Load patch scripts ──────────────────────────────────────────────────────
 (function () {
     var patches = [
         { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
@@ -312,6 +304,5 @@
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };
         (document.head || document.body || document.documentElement).appendChild(s);
-        console.log('[patch-loader] loading ' + p.src);
     });
 })();

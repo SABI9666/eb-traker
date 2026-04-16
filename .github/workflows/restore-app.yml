@@ -1,0 +1,46 @@
+name: Restore App (Emergency Hotfix)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Restore index.html from last good commit and apply fix
+        run: |
+          # Restore the file from the last known good commit (before accidental wipe)
+          git checkout 3d5c0cd25f9a307acd31c3f64ddf649c81815175 -- public/index.html
+
+          # Apply the design lead fix: add designLeadUid check to showTimesheet()
+          sed -i 's/(p\.assignedDesignerUids && p\.assignedDesignerUids\.includes(currentUser\.uid))$/(p.assignedDesignerUids \&\& p.assignedDesignerUids.includes(currentUser.uid)) ||\n                        p.designLeadUid === currentUser.uid/' public/index.html
+
+          # Verify the file is correct
+          echo "Lines in restored file:"
+          wc -l public/index.html
+          echo "Checking fix is present:"
+          grep -n "designLeadUid" public/index.html | head -5
+
+      - name: Commit and push to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/index.html
+          git commit -m "fix: restore index.html - emergency hotfix for white screen
+
+Restores public/index.html from commit 3d5c0cd (last known good state).
+Also includes designLeadUid fix so design leads see their timesheet projects.
+
+The file was accidentally truncated to 1 line by an oversized push operation.
+
+https://claude.ai/code/session_01NFr7uiHB7mmPvFcmgaUgzf"
+          git push origin main

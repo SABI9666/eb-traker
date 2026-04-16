@@ -10,6 +10,7 @@
  * 3. Hide the COO Purchase Order section (P.O. is now captured
  *    by the BDM at win-time).
  * 4. Load coo-notification-badges.js patch for COO nav badges.
+ * 5. Load fix-timesheet-date.js to fix date display in My Timesheet.
  * ============================================================ */
 (function () {
     'use strict';
@@ -295,19 +296,22 @@
     console.log('BDM PO patch loaded: markProposalWon overridden, Update P.O. enabled, COO PO section hidden');
 })();
 
-// ── Load COO notification badge patch ─────────────────────────────────────────
-// coo-notification-badges.js adds red number badges to COO/Director nav items.
-// It lives in the same public/ directory and is injected here so we don't need
-// to touch the large index.html monolith.
+// ── Load patch scripts ─────────────────────────────────────────────────────────────────
+// All small patch files live in public/ next to index.html and are loaded here
+// so index.html itself does not need to be modified.
 (function () {
-    if (document.getElementById('_cooNotifBadgeScript')) return;
-    var s = document.createElement('script');
-    s.id = '_cooNotifBadgeScript';
-    s.src = 'coo-notification-badges.js';
-    s.async = true;
-    s.onerror = function () {
-        console.warn('[COO badges] coo-notification-badges.js failed to load – badge feature unavailable');
-    };
-    (document.head || document.body || document.documentElement).appendChild(s);
-    console.log('[COO badges] loading coo-notification-badges.js...');
+    var patches = [
+        { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
+        { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' }
+    ];
+    patches.forEach(function (p) {
+        if (document.getElementById(p.id)) return;
+        var s = document.createElement('script');
+        s.id  = p.id;
+        s.src = p.src;
+        s.async = true;
+        s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };
+        (document.head || document.body || document.documentElement).appendChild(s);
+        console.log('[patch-loader] loading ' + p.src);
+    });
 })();

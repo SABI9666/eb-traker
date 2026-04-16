@@ -9,6 +9,8 @@
  *    details after the proposal is already marked WON.
  * 3. Hide the COO Purchase Order section (P.O. is now captured
  *    by the BDM at win-time).
+ * 4. Load coo-notification-badges.js patch for COO nav badges.
+ * 5. Load fix-timesheet-date.js to fix date display in My Timesheet.
  * ============================================================ */
 (function () {
     'use strict';
@@ -211,8 +213,6 @@
             var po = await collectPoPayloadFromModal(proposalId);
             if (!po) { if (typeof hideLoading === 'function') hideLoading(); return; }
 
-            // Use mark_won action which already accepts the same PO fields,
-            // so backend updates poNumber/poValue/etc. and re-notifies stakeholders.
             var payload = { action: 'mark_won', data: Object.assign({ poUpdated: true, poUpdatedAt: new Date().toISOString() }, po) };
             var resp = await apiCall('proposals?id=' + proposalId, {
                 method: 'PUT',
@@ -236,7 +236,6 @@
 
     // Public entry points
     window.updateBdmPo = function (proposalId) {
-        // Try to prefill from any in-memory proposal cache the app exposes
         var prefill = {};
         try {
             var lists = [window.proposals, window.allProposals, (window.appData && window.appData.proposals)];
@@ -268,15 +267,13 @@
             openBdmPoModal(proposalId, 'won');
         };
 
-        // Wrap getProposalAllocationButton so a BDM viewing a WON proposal
-        // also sees an "Update P.O." button.
         if (typeof window.getProposalAllocationButton === 'function' && !window.getProposalAllocationButton._bdmPoWrapped) {
             var orig = window.getProposalAllocationButton;
             var wrapped = function (p) {
                 var html = orig.apply(this, arguments) || '';
                 try {
                     if (window.currentUserRole === 'bdm' && p && p.id) {
-                        html += ' <button class="btn btn-warning btn-sm" onclick="updateBdmPo(\'' + p.id + '\')" style="margin-left:10px;background:#f59e0b;color:#fff;border:none;padding:0.4rem 0.8rem;border-radius:6px;cursor:pointer;">📝 Update P.O.</button>';
+                        html += ' <button class="btn btn-warning btn-sm" onclick="updateBdmPo(\'' + p.id + '\')" style="margin-left:10px;background:#f59e0b;color:#fff;border:none;padding:0.4rem 0.8rem;border-radius:6px;cursor:pointer;">&#128221; Update P.O.</button>';
                     }
                 } catch (e) { /* ignore */ }
                 return html;
@@ -287,9 +284,25 @@
     }
     installOverride();
     document.addEventListener('DOMContentLoaded', installOverride);
-    // Also re-run shortly after load in case index.html re-defines functions later
     setTimeout(installOverride, 500);
     setTimeout(installOverride, 2000);
 
     console.log('BDM PO patch loaded: markProposalWon overridden, Update P.O. enabled, COO PO section hidden');
+})();
+
+// ── Load patch scripts ──────────────────────────────────────────────────────
+(function () {
+    var patches = [
+        { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
+        { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' }
+    ];
+    patches.forEach(function (p) {
+        if (document.getElementById(p.id)) return;
+        var s = document.createElement('script');
+        s.id  = p.id;
+        s.src = p.src;
+        s.async = true;
+        s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };
+        (document.head || document.body || document.documentElement).appendChild(s);
+    });
 })();

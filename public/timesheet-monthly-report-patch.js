@@ -3,11 +3,10 @@
 //   1) Lets the user download for a single month (or all months).
 //   2) Adds a "Project Details" sheet showing project number + name per designer.
 //
-// Approach: override window.downloadDesignerMonthlyExcel with a version that
-// opens a month selection modal, then generates the Excel workbook from the
-// cached report data. No backend changes are needed — the existing
-// timesheets?action=designer_weekly_report endpoint already returns the
-// projectReport[] with projectCode, projectName and per-designer monthlyHours.
+// "Project Number" is the value entered by the COO during project allocation
+// (stored as projects.projectNumber). The patch fetches the projects list
+// alongside the timesheet report so it can look up the correct projectNumber
+// per project — no backend changes required.
 
 (function () {
     'use strict';
@@ -60,8 +59,18 @@
     async function patchedDownloadDesignerMonthlyExcel() {
         try {
             if (typeof showLoading === 'function') showLoading();
-            var response = await apiCall('timesheets?action=designer_weekly_report');
+            // Fetch the timesheet report and the project list in parallel.
+            // The project list gives us projects.projectNumber (the value
+            // entered by the COO during allocation), which isn't currently
+            // included in the designer_weekly_report payload.
+            var results = await Promise.all([
+                apiCall('timesheets?action=designer_weekly_report'),
+                apiCall('projects').catch(function () { return null; })
+            ]);
             if (typeof hideLoading === 'function') hideLoading();
+
+            var response = results[0];
+            var projectsResp = results[1];
             if (!response || !response.success) throw new Error((response && response.error) || 'Failed to fetch data');
 
             var data = response.data || {};
@@ -69,12 +78,30 @@
             var monthlyTotals = data.monthlyTotals || [];
             var projectReport = data.projectReport || [];
 
+            // Build id -> projectNumber map from the projects collection.
+            var projectNumberById = {};
+            var projectsList = (projectsResp && projectsResp.success && projectsResp.data) ||
+                               (Array.isArray(projectsResp) ? projectsResp : []) ||
+                               [];
+            if (Array.isArray(projectsList)) {
+                projectsList.forEach(function (p) {
+                    if (!p) return;
+                    var id = p.id || p._id || p.projectId;
+                    if (id) projectNumberById[id] = p.projectNumber || '';
+                });
+            }
+
             if (!monthlyTotals.length) {
                 alert('No monthly data available to download.');
                 return;
             }
 
-            window._monthlyReportData = { designers: designers, monthlyTotals: monthlyTotals, projectReport: projectReport };
+            window._monthlyReportData = {
+                designers: designers,
+                monthlyTotals: monthlyTotals,
+                projectReport: projectReport,
+                projectNumberById: projectNumberById
+            };
             showMonthSelectionModal(monthlyTotals);
         } catch (error) {
             if (typeof hideLoading === 'function') hideLoading();
@@ -96,6 +123,7 @@
             var designers = cached.designers || [];
             var monthlyTotals = cached.monthlyTotals || [];
             var projectReport = cached.projectReport || [];
+            var projectNumberById = cached.projectNumberById || {};
 
             var isAllMonths = !selectedMonth || selectedMonth === 'ALL';
             var monthsToInclude = isAllMonths
@@ -179,7 +207,12 @@
                     var rowTotal = monthHours.reduce(function (sum, h) { return sum + h; }, 0);
                     if (rowTotal <= 0) return;
                     rows.push({
-                        projectNumber: p.projectCode || '',
+                        // Project Number = value entered by COO during allocation
+                        // (projects.projectNumber). Falls back only when unset.
+                        projectNumber: projectNumberById[p.projectId]
+                                       || p.projectNumber
+                                       || p.projectCode
+                                       || '',
                         projectName: p.projectName || '',
                         client: p.clientCompany || '',
                         section: p.projectSection || '',
@@ -217,9 +250,6 @@
         }
     }
 
-    // Install after app2.js has run. Also re-install on window load as a safety net,
-    // because app2.js executes `window.downloadDesignerMonthlyExcel = downloadDesignerMonthlyExcel;`
-    // at module evaluation time.
     function install() {
         window.downloadDesignerMonthlyExcel = patchedDownloadDesignerMonthlyExcel;
         window.generateDesignerMonthlyExcel = generateDesignerMonthlyExcel;
@@ -232,5 +262,5 @@
     }
     window.addEventListener('load', install);
 
-    console.log('[monthly-report-patch] loaded — single-month download + project details enabled');
+    console.log('[monthly-report-patch] loaded — single-month download + project details (COO project number)');
 })();

@@ -294,7 +294,8 @@
 (function () {
     var patches = [
         { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
-        { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' }
+        { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' },
+        { id: '_monthlyReportPatchScript', src: 'timesheet-monthly-report-patch.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

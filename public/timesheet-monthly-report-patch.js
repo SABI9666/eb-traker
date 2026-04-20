@@ -3,11 +3,10 @@
 //   1) Lets the user download for a single month (or all months).
 //   2) Adds a "Project Details" sheet showing project number + name per designer.
 //
-// Approach: override window.downloadDesignerMonthlyExcel with a version that
-// opens a month selection modal, then generates the Excel workbook from the
-// cached report data. No backend changes are needed — the existing
-// timesheets?action=designer_weekly_report endpoint already returns the
-// projectReport[] with projectCode, projectName and per-designer monthlyHours.
+// "Project Number" is the value entered by the COO during project allocation
+// (stored as projects.projectNumber on the project document). It falls back to
+// the older projectCode (quotation number) only when a projectNumber has not
+// yet been assigned.
 
 (function () {
     'use strict';
@@ -179,7 +178,9 @@
                     var rowTotal = monthHours.reduce(function (sum, h) { return sum + h; }, 0);
                     if (rowTotal <= 0) return;
                     rows.push({
-                        projectNumber: p.projectCode || '',
+                        // projectNumber = COO-entered number (projects.projectNumber).
+                        // Fall back to projectCode (quotation #) only when unset.
+                        projectNumber: p.projectNumber || p.projectCode || '',
                         projectName: p.projectName || '',
                         client: p.clientCompany || '',
                         section: p.projectSection || '',
@@ -217,9 +218,6 @@
         }
     }
 
-    // Install after app2.js has run. Also re-install on window load as a safety net,
-    // because app2.js executes `window.downloadDesignerMonthlyExcel = downloadDesignerMonthlyExcel;`
-    // at module evaluation time.
     function install() {
         window.downloadDesignerMonthlyExcel = patchedDownloadDesignerMonthlyExcel;
         window.generateDesignerMonthlyExcel = generateDesignerMonthlyExcel;

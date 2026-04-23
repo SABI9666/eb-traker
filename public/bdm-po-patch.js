@@ -11,6 +11,8 @@
  *    by the BDM at win-time).
  * 4. Load coo-notification-badges.js patch for COO nav badges.
  * 5. Load fix-timesheet-date.js to fix date display in My Timesheet.
+ * 6. Load timesheet-drawing-number-patch.js to add drawing/model
+ *    number fields to the designer timesheet entry form.
  * ============================================================ */
 (function () {
     'use strict';
@@ -295,7 +297,8 @@
     var patches = [
         { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
         { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' },
-        { id: '_monthlyReportPatchScript', src: 'timesheet-monthly-report-patch.js' }
+        { id: '_monthlyReportPatchScript', src: 'timesheet-monthly-report-patch.js' },
+        { id: '_timesheetDrawingPatchScript', src: 'timesheet-drawing-number-patch.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

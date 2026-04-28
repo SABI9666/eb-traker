@@ -182,13 +182,24 @@
     function renderBdmAnalytics(main) {
         var d = state.data;
         var totals = d.totals;
+        var hasFilteredActivity =
+            (totals.numQuotes || 0) +
+            (totals.numProjectsWon || 0) +
+            (totals.variationValue || 0) > 0;
 
         main.innerHTML =
             '<div class="page-header">' +
                 '<h2>📊 BDM Analytics Report</h2>' +
-                '<p class="subtitle">Quotes uploaded, projects won and variations — by BDM, per period.</p>' +
+                '<p class="subtitle">Quotes uploaded, projects won and variations — by BDM, per period. All values in INR.</p>' +
             '</div>' +
+            renderLifetimeBanner(d.lifetime) +
             renderControls() +
+            (hasFilteredActivity
+                ? ''
+                : '<div class="card" style="padding:0.75rem 1rem; margin-bottom:1rem; background:#fef3c7; border-left:4px solid #f59e0b;">' +
+                  '<strong>ℹ️ No activity in the selected date range.</strong> ' +
+                  'Lifetime totals are shown above. Widen the From/To range or click Apply with both fields blank to see all-time activity per period.' +
+                  '</div>') +
             renderSummaryCards(totals) +
             renderTabs() +
             '<div id="bdmAnalyticsTabs" style="margin-top:1rem;"></div>';
@@ -244,12 +255,77 @@
         return (
             '<div class="dashboard-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.25rem;">' +
                 summaryCard(totals.numQuotes, '📝 Quotes Uploaded', '#3b82f6') +
-                summaryCard(fmtMoney(totals.quoteValueTotal, ''), '💰 Total Quote Value', '#10b981') +
+                summaryCard(fmtMoney(totals.quoteValueTotal, '₹'), '💰 Total Quote Value', '#10b981') +
                 summaryCard(totals.numProjectsWon, '🏆 Projects Won', '#f59e0b') +
-                summaryCard(fmtMoney(totals.projectValue, ''), '📈 Project Value', '#8b5cf6') +
-                summaryCard(fmtMoney(totals.variationValue, ''), '➕ Variation Value', '#ec4899') +
-                summaryCard(fmtMoney(totals.totalValue, ''), '💵 Total Value', '#0ea5e9') +
+                summaryCard(fmtMoney(totals.projectValue, '₹'), '📈 Project Value', '#8b5cf6') +
+                summaryCard(fmtMoney(totals.variationValue, '₹'), '➕ Variation Value', '#ec4899') +
+                summaryCard(fmtMoney(totals.totalValue, '₹'), '💵 Total Value', '#0ea5e9') +
                 summaryCard(totals.numNewClients, '🤝 New Clients', '#14b8a6') +
+            '</div>'
+        );
+    }
+
+    // Lifetime banner: always shows all-time totals regardless of the user's
+    // date filter. Lets COO/Director see real numbers even when the selected
+    // window has no activity.
+    function renderLifetimeBanner(lifetime) {
+        if (!lifetime || !lifetime.totals) return '';
+        var t = lifetime.totals;
+        var bdms = lifetime.bdms || [];
+        var topRows = bdms.slice(0, 7).map(function (b, i) {
+            return (
+                '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td><strong>' + b.bdmName + '</strong></td>' +
+                    '<td style="text-align:right;">' + b.numQuotes + '</td>' +
+                    '<td style="text-align:right;">' + fmtMoney(b.quoteValueTotal, '₹') + '</td>' +
+                    '<td style="text-align:right;">' + b.numProjectsWon + '</td>' +
+                    '<td style="text-align:right;">' + fmtMoney(b.projectValue, '₹') + '</td>' +
+                    '<td style="text-align:right;">' + fmtMoney(b.variationValue, '₹') + '</td>' +
+                    '<td style="text-align:right; font-weight:700;">' + fmtMoney(b.totalValue, '₹') + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        return (
+            '<div class="card" style="padding:1.25rem; margin-bottom:1rem; background:linear-gradient(135deg,#eff6ff,#f0fdf4); border-left:4px solid #2563eb;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
+                    '<h3 style="margin:0; color:#1e40af;">🏆 Lifetime Totals — All BDMs (INR)</h3>' +
+                    '<span style="font-size:0.8rem; color:#64748b;">Independent of date filter</span>' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.75rem; margin-bottom:0.75rem;">' +
+                    miniMetric(t.numQuotes, 'Quotes', '#3b82f6') +
+                    miniMetric(fmtMoney(t.quoteValueTotal, '₹'), 'Quote Value', '#10b981') +
+                    miniMetric(t.numProjectsWon, 'Wins', '#f59e0b') +
+                    miniMetric(fmtMoney(t.projectValue, '₹'), 'Project Value', '#8b5cf6') +
+                    miniMetric(fmtMoney(t.variationValue, '₹'), 'Variation Value', '#ec4899') +
+                    miniMetric(fmtMoney(t.totalValue, '₹'), 'Total Value', '#0ea5e9') +
+                    miniMetric(t.numNewClients, 'Clients', '#14b8a6') +
+                '</div>' +
+                (topRows
+                    ? '<div style="overflow-x:auto;">' +
+                      '<table class="data-table" style="width:100%; font-size:0.9rem;">' +
+                          '<thead><tr>' +
+                              '<th>#</th><th>BDM</th>' +
+                              '<th style="text-align:right;">Quotes</th>' +
+                              '<th style="text-align:right;">Quote ₹</th>' +
+                              '<th style="text-align:right;">Wins</th>' +
+                              '<th style="text-align:right;">Project ₹</th>' +
+                              '<th style="text-align:right;">Variation ₹</th>' +
+                              '<th style="text-align:right;">Total ₹</th>' +
+                          '</tr></thead>' +
+                          '<tbody>' + topRows + '</tbody>' +
+                      '</table></div>'
+                    : '<div style="text-align:center; padding:0.5rem; color:#64748b;">No BDM activity recorded in the database yet.</div>') +
+            '</div>'
+        );
+    }
+
+    function miniMetric(value, label, color) {
+        return (
+            '<div style="background:white; border-radius:6px; padding:0.6rem 0.8rem; border-top:3px solid ' + color + ';">' +
+                '<div style="font-size:1.05rem; font-weight:700; color:' + color + ';">' + value + '</div>' +
+                '<div style="font-size:0.75rem; color:#64748b;">' + label + '</div>' +
             '</div>'
         );
     }

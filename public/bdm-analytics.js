@@ -13,12 +13,30 @@
 
     var ALLOWED_ROLES = ['coo', 'director'];
 
+    // app1.js declares `currentUserRole` with `let` at script top-level. That
+    // means it's a binding in the Script realm — reachable by name from this
+    // IIFE — but it is NOT a property on `window`. Try every plausible source.
+    function getCurrentRole() {
+        var role = '';
+        try {
+            // eslint-disable-next-line no-undef
+            if (typeof currentUserRole !== 'undefined' && currentUserRole) role = currentUserRole;
+        } catch (e) { /* ReferenceError before app1.js parses */ }
+        if (!role && window.currentUserRole) role = window.currentUserRole;
+        if (!role) {
+            // Last-ditch: read the role label rendered into the header.
+            var label = document.getElementById('userRole');
+            if (label && label.textContent) role = label.textContent;
+        }
+        return String(role || '').trim().toLowerCase();
+    }
+
     // ── nav injection ──────────────────────────────────────────────────────────
     // The <li id="bdmAnalyticsNavItem"> is shipped in index.html with
     // display:none. We unhide it for COO/Director. If for any reason it isn't
     // in the DOM (older cached index.html), we fall back to creating it.
     function injectNavItem() {
-        var role = (window.currentUserRole || '').trim().toLowerCase();
+        var role = getCurrentRole();
         if (ALLOWED_ROLES.indexOf(role) === -1) return false;
 
         var existing = document.getElementById('bdmAnalyticsNavItem');
@@ -122,7 +140,7 @@
     };
 
     window.showBdmAnalytics = async function () {
-        var role = (window.currentUserRole || '').trim().toLowerCase();
+        var role = getCurrentRole();
         if (ALLOWED_ROLES.indexOf(role) === -1) {
             alert('BDM Analytics is only available for COO and Director.');
             return;

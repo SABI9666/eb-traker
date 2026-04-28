@@ -14,14 +14,19 @@
     var ALLOWED_ROLES = ['coo', 'director'];
 
     // ── nav injection ──────────────────────────────────────────────────────────
+    // The <li id="bdmAnalyticsNavItem"> is shipped in index.html with
+    // display:none. We unhide it for COO/Director. If for any reason it isn't
+    // in the DOM (older cached index.html), we fall back to creating it.
     function injectNavItem() {
         var role = (window.currentUserRole || '').trim().toLowerCase();
         if (ALLOWED_ROLES.indexOf(role) === -1) return false;
 
-        // Already added?
-        if (document.getElementById('bdmAnalyticsNavItem')) return true;
+        var existing = document.getElementById('bdmAnalyticsNavItem');
+        if (existing) {
+            existing.style.display = '';
+            return true;
+        }
 
-        // The Business Development department uses #deptBDM in index.html.
         var dept = document.getElementById('deptBDM');
         if (!dept) return false;
         var ul = dept.querySelector('ul.nav-dept-items');

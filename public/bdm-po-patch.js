@@ -300,7 +300,8 @@
         { id: '_monthlyReportPatchScript', src: 'timesheet-monthly-report-patch.js' },
         { id: '_timesheetDrawingPatchScript', src: 'timesheet-drawing-number-patch.js' },
         { id: '_estimatorUploadPatchScript', src: 'estimator-upload-patch.js' },
-        { id: '_bdmAnalyticsPatchScript', src: 'bdm-analytics.js' }
+        { id: '_bdmAnalyticsPatchScript', src: 'bdm-analytics.js' },
+        { id: '_bdmEntriesPatchScript', src: 'bdm-entries.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

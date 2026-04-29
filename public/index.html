@@ -75,7 +75,10 @@
     <meta name="msapplication-TileColor" content="#667eea">
     <meta name="msapplication-TileImage" content="/icons/icon-144x144.png">
     
-    <title>EBTracker - EDANBROOK Project Management</title>
+    <title>EB Traker — Project Management Tool</title>
+    <meta name="description" content="EB Traker — a professional project management tool for project tracking, HR, and team collaboration.">
+    <meta name="application-name" content="EB Traker">
+    <meta name="apple-mobile-web-app-title" content="EB Traker">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.40.2/docxtemplater.js"></script>
     <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
@@ -1653,43 +1656,70 @@ body.modal-open {
     min-height: 600px; 
 }
 
-.login-left { 
-    flex: 1; 
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
-    color: white; 
-    padding: 3rem; 
-    text-align: center; 
+.login-left {
+    flex: 1;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #1e40af 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    padding: 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
 }
 
-.logo-circle { 
-    width: 100px; 
-    height: 100px; 
-    background: white; 
-    border-radius: 50%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-weight: bold; 
-    color: #667eea; 
-    font-size: 40px; 
-    margin-bottom: 1rem; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+.login-left::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.10), transparent 40%),
+                      radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08), transparent 45%);
+    pointer-events: none;
 }
 
-.company-title { 
-    font-size: 3rem; 
-    font-weight: bold; 
-    margin-bottom: 0.5rem; 
+.login-left > * { position: relative; z-index: 1; }
+
+.logo-circle {
+    width: 96px;
+    height: 96px;
+    background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #1e40af;
+    font-size: 38px;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.4);
+    letter-spacing: 1px;
 }
 
-.company-subtitle { 
-    font-size: 1.2rem; 
-    opacity: 0.9; 
-    margin-bottom: 2rem; 
+.company-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+    text-transform: none;
+}
+
+.company-subtitle {
+    font-size: 1.05rem;
+    opacity: 0.92;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.company-tagline {
+    font-size: 0.85rem;
+    opacity: 0.75;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+    font-weight: 500;
 }
 
 .login-right { 
@@ -5177,8 +5207,9 @@ body.is-ios .nav-menu {
         <div class="login-container">
             <div class="login-left">
                 <div class="logo-circle">EB</div>
-                <h1 class="company-title">EDANBROOK</h1>
-                <p class="company-subtitle">Project Management System</p>
+                <h1 class="company-title">EB Traker</h1>
+                <p class="company-subtitle">Project Management Tool</p>
+                <p class="company-tagline">Plan. Track. Deliver.</p>
             </div>
             <div class="login-right">
                 <div class="auth-tabs">
@@ -5265,8 +5296,8 @@ body.is-ios .nav-menu {
                 <div class="logo">
                     <div class="logo-circle">EB</div>
                     <div class="company-info">
-                        <h1>EDANBROOK</h1>
-                        <div class="subtitle">EBTrack - Enhanced Project Management</div>
+                        <h1>EB Traker</h1>
+                        <div class="subtitle">Project Management Tool</div>
                     </div>
                 </div>
              <div class="user-info">

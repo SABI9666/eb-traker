@@ -1,13 +1,13 @@
 {
-  "name": "EBTracker - EDANBROOK Project Management",
-  "short_name": "EBTracker",
-  "description": "EDANBROOK Project Management System with HR Announcements, Birthday & Company News",
+  "name": "EB Traker — Project Management Tool",
+  "short_name": "EB Traker",
+  "description": "EB Traker — Project Management Tool for project tracking, HR announcements, and team collaboration.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#667eea",
-  "theme_color": "#667eea",
+  "background_color": "#0f172a",
+  "theme_color": "#1e40af",
   "categories": [
     "business",
     "productivity"

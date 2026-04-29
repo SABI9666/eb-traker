@@ -2125,7 +2125,7 @@ async function triggerEmailNotification(eventName, data = {}) {
             document.getElementById('mainContent').innerHTML = `
                 <div class="page-header">
                     <h2>Dashboard</h2>
-                    <div class="subtitle">Welcome to EDANBROOK Project Management System</div>
+                    <div class="subtitle">Welcome to EB Traker — Project Management Tool</div>
                 </div>
                 ${announcementsHtml}
                 <div class="dashboard-stats">${statsHtml}</div>
@@ -11786,7 +11786,7 @@ async function markProjectComplete(projectId) {
                 designation: document.getElementById('joineeDesignation').value,
                 joiningDate: document.getElementById('joineeDate').value,
                 photo: photoImg ? photoImg.src : null,
-                message: document.getElementById('joineeMessage').value || 'Welcome to the EDANBROOK family! We are excited to have you on board.',
+                message: document.getElementById('joineeMessage').value || 'Welcome to the team! We are excited to have you on board.',
                 createdAt: new Date().toISOString(),
                 createdBy: currentUser ? currentUser.email : 'HR'
             };
@@ -12554,7 +12554,7 @@ async function markProjectComplete(projectId) {
                         
                         <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem;">
                             <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
-                            <span style="color: #667eea; font-weight: 600;">EDANBROOK HR</span>
+                            <span style="color: #667eea; font-weight: 600;">EB Traker HR</span>
                         </div>
                     </div>
                 `;
@@ -12579,7 +12579,7 @@ async function markProjectComplete(projectId) {
                         </div>
                         <div class="announcement-info" style="flex: 1; min-width: 0;">
                             <h3 style="margin: 0; font-size: 1rem; color: #1f2937; word-break: break-word;">${announcement.name}</h3>
-                            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #4b5563;">${announcement.department || 'EDANBROOK Team'}</p>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #4b5563;">${announcement.department || 'Team Member'}</p>
                         </div>
                     </div>
                     
@@ -12625,7 +12625,7 @@ async function markProjectComplete(projectId) {
                     
                     <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; flex-wrap: wrap; gap: 0.25rem;">
                         <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
-                        <span style="color: #667eea; font-weight: 600;">EDANBROOK HR</span>
+                        <span style="color: #667eea; font-weight: 600;">EB Traker HR</span>
                     </div>
                 </div>
             `;
@@ -12798,7 +12798,7 @@ async function markProjectComplete(projectId) {
                     <div class="news-ticker-header">
                         <div class="news-ticker-title">
                             <div class="news-ticker-title-icon">📰</div>
-                            <span>EDANBROOK NEWS & EVENTS</span>
+                            <span>NEWS & EVENTS</span>
                         </div>
                         <div class="news-ticker-badge">
                             <span class="news-ticker-count">${companyNews.length} Update${companyNews.length > 1 ? 's' : ''}</span>
@@ -12860,7 +12860,7 @@ async function markProjectComplete(projectId) {
                     </div>
                     <div class="news-modal-footer">
                         <span>📅 Posted: ${formatDate(news.createdAt)}</span>
-                        <span class="news-modal-brand">EDANBROOK HR</span>
+                        <span class="news-modal-brand">EB Traker HR</span>
                     </div>
                 </div>
             `;

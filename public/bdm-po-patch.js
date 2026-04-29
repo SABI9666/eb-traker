@@ -295,6 +295,9 @@
 // ── Load patch scripts ──────────────────────────────────────────────────────
 (function () {
     var patches = [
+        // auth-persistence first so SESSION mode is set before any other code
+        // queries the auth state.
+        { id: '_authPersistencePatchScript', src: 'auth-persistence-patch.js' },
         { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
         { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' },
         { id: '_monthlyReportPatchScript', src: 'timesheet-monthly-report-patch.js' },

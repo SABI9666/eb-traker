@@ -58,7 +58,7 @@
             designer: [],
             accounts: ["accounts@edanbrook.com", "accounts1@edanbrook.com", "finance@edanbrook.com"],
             bdm: [],
-            it: ["ithelpdesk@edanbrook.com"]
+            it: ["ithelpdesk@edanbrook.com","ithelpdesk1@edanbrook.com"]
         };
         let currentUser = null;
         let currentUserRole = '';

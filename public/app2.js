@@ -11594,13 +11594,13 @@ function showLinkModal(token, position) {
 }
 
 window.shareViaWhatsApp = function(url, position) {
-    const text = encodeURIComponent('Hi! Please complete the screening assessment for ' + position + ' position at EDANBROOK:\\n\\n' + url);
+    const text = encodeURIComponent('Hi! Please complete the screening assessment for the ' + position + ' position with our team:\\n\\n' + url);
     window.open('https://wa.me/?text=' + text, '_blank');
 };
 
 window.shareViaEmail = function(url, position) {
-    const subject = encodeURIComponent('EDANBROOK - ' + position + ' Position Assessment');
-    const body = encodeURIComponent('Dear Candidate,\\n\\nPlease complete the self-assessment form for the ' + position + ' position at EDANBROOK.\\n\\nClick the link below to start:\\n' + url + '\\n\\nBest regards,\\nEDANBROOK HR Team');
+    const subject = encodeURIComponent(position + ' Position — Assessment');
+    const body = encodeURIComponent('Dear Candidate,\\n\\nPlease complete the self-assessment form for the ' + position + ' position with our team.\\n\\nClick the link below to start:\\n' + url + '\\n\\nBest regards,\\nHR Team');
     window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
 };
 
@@ -11651,7 +11651,7 @@ window.viewScreeningResult = function(id) {
                 ${s.strengths?`<div style="margin-bottom:1rem;"><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Strengths</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.strengths}</div></div>`:''}
                 ${s.improvements?`<div style="margin-bottom:1rem;"><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Areas to Improve</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.improvements}</div></div>`:''}
                 ${s.achievements?`<div style="margin-bottom:1rem;"><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Achievements</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.achievements}</div></div>`:''}
-                ${s.motivation?`<div><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Why Join EDANBROOK?</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.motivation}</div></div>`:''}
+                ${s.motivation?`<div><div style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.25rem;">Why Join Our Team?</div><div style="background:white;padding:0.85rem;border-radius:8px;">${s.motivation}</div></div>`:''}
             </div>`:`<div style="background:#fef3c7;padding:2.5rem;border-radius:12px;text-align:center;margin-bottom:1.5rem;"><div style="font-size:4rem;margin-bottom:1rem;">⏳</div><p style="color:#92400e;margin:0;font-size:1.1rem;font-weight:500;">Waiting for candidate to complete</p><p style="color:#a16207;margin:0.5rem 0 0;font-size:0.9rem;">Sent: ${s.sentAt?new Date(s.sentAt).toLocaleString('en-IN'):'-'}</p></div>`}
             <div style="background:#f8fafc;padding:1.5rem;border-radius:12px;">
                 <h3 style="margin:0 0 1rem;font-size:1rem;">📅 Timeline</h3>

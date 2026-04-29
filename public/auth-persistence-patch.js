@@ -1,19 +1,14 @@
 // public/auth-persistence-patch.js
-// Force per-device login: switch Firebase Auth to SESSION persistence.
+// Force LOCAL Firebase Auth persistence so login STAYS on the same device
+// across browser sessions (closing/reopening the browser keeps you signed
+// in). Login still does not cross devices unless a true SSO provider
+// (Google/Apple/etc.) is wired in — that requires a different change.
 //
-// Default Firebase persistence is LOCAL — login state lives in IndexedDB and
-// (on some browsers / when synced) carries across devices. Concretely: a BDM
-// who signs in on their phone may find that opening the same site on their
-// desktop auto-authenticates without re-entering the password.
-//
-// SESSION persistence:
-//   - Each browser tab/window keeps its own auth state
-//   - Login does NOT survive a browser/window close
-//   - Cross-device sync is impossible (sessionStorage is never synced)
-//
-// This matches the requested behaviour: "any device can log in, but every
-// device must log in on its own — opening on phone shouldn't auto-open on
-// desktop".
+// Why this patch exists:
+//   - The default in some Firebase SDK setups can be SESSION (cleared on
+//     tab close), which felt unprofessional on this site.
+//   - We want every authenticated user to stay signed in on each device
+//     they have used to log in, until they explicitly sign out.
 
 (function () {
     'use strict';
@@ -25,10 +20,10 @@
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) return false;
             var auth = firebase.auth();
-            var SESSION = (firebase.auth.Auth && firebase.auth.Auth.Persistence && firebase.auth.Auth.Persistence.SESSION)
-                || 'session';
-            auth.setPersistence(SESSION).then(function () {
-                console.log('[auth-persistence] Firebase Auth persistence set to SESSION (per-device login).');
+            var LOCAL = (firebase.auth.Auth && firebase.auth.Auth.Persistence && firebase.auth.Auth.Persistence.LOCAL)
+                || 'local';
+            auth.setPersistence(LOCAL).then(function () {
+                console.log('[auth-persistence] Firebase Auth persistence set to LOCAL (sticky per-device login).');
             }).catch(function (e) {
                 console.warn('[auth-persistence] setPersistence failed:', e && e.message);
             });
@@ -39,7 +34,6 @@
         }
     }
 
-    // Try once now, then poll for up to 30s in case Firebase loads late.
     if (applyPersistence()) return;
     var tries = 0;
     var iv = setInterval(function () {

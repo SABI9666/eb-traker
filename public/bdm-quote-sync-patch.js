@@ -7,6 +7,10 @@
 //   2. Replaces the Save click handler so the submission goes to the new
 //      /api/bdm-quote-sync endpoint, which locks the rupee conversion in
 //      server-side before writing to the bdm_entries collection.
+//   3. Falls back to the original /api/bdm-entries endpoint if the new one
+//      is not available yet (e.g. backend redeploy lag) -- value is then
+//      stored as-entered and BDM Analytics converts on read, same as
+//      before this patch existed. No save is ever lost.
 //
 // Existing files (bdm-entries.js, bdm-analytics.js front+back) are NOT
 // modified. Loaded via bdm-po-patch.js's patch list.
@@ -85,6 +89,38 @@
         c.addEventListener('change', updatePreview);
     }
 
+    // Detect a "route not found" style failure so we can fall back without
+    // surfacing a scary error to the user.
+    function isRouteMissing(err) {
+        var msg = String((err && err.message) || err || '').toLowerCase();
+        return msg.indexOf('does not exist') !== -1 ||
+               msg.indexOf('not found') !== -1 ||
+               msg.indexOf('404') !== -1;
+    }
+
+    async function trySync(body) {
+        var resp = await window.apiCall('bdm-quote-sync', {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
+        return resp;
+    }
+
+    async function fallbackToBdmEntries(body) {
+        // Original /api/bdm-entries accepts the same fields. Stored with raw
+        // value + currency; BDM Analytics' toInr() handles conversion at
+        // read time. Behaviour matches what was in place before this patch.
+        var resp = await window.apiCall('bdm-entries', {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
+        return resp;
+    }
+
     async function newSaveHandler() {
         var btn = document.getElementById('be-save');
         var status = document.getElementById('be-status');
@@ -108,16 +144,26 @@
 
         btn.disabled = true; btn.textContent = '⏳ Saving (converting to ₹)…';
         status.textContent = ''; status.style.color = '#64748b';
+
+        var clientInr = toInr(body.value, body.currency);
+
         try {
-            var resp = await window.apiCall('bdm-quote-sync', {
-                method: 'POST',
-                body: JSON.stringify(body),
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
-            var conv = resp.conversion || {};
-            status.textContent = '✅ Saved as ' + fmtInr(conv.valueInr || 0) +
-                ' (from ' + (conv.originalCurrency || body.currency) + ' ' + (conv.originalValue || body.value) +
+            var resp;
+            var usedFallback = false;
+            try {
+                resp = await trySync(body);
+            } catch (primaryErr) {
+                if (!isRouteMissing(primaryErr)) throw primaryErr;
+                console.warn('[bdm-quote-sync] new endpoint unavailable, falling back to /api/bdm-entries');
+                resp = await fallbackToBdmEntries(body);
+                usedFallback = true;
+            }
+
+            var conv = (resp && resp.conversion) || {};
+            var inrShown = conv.valueInr != null ? conv.valueInr : clientInr;
+            status.textContent = (usedFallback ? '✅ Saved (fallback). ' : '✅ Saved as ') +
+                fmtInr(inrShown) +
+                ' (from ' + body.currency + ' ' + body.value +
                 '). Reflects in BDM Analytics.';
             status.style.color = '#059669';
 

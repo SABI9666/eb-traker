@@ -304,7 +304,11 @@
         { id: '_timesheetDrawingPatchScript', src: 'timesheet-drawing-number-patch.js' },
         { id: '_estimatorUploadPatchScript', src: 'estimator-upload-patch.js' },
         { id: '_bdmAnalyticsPatchScript', src: 'bdm-analytics.js' },
-        { id: '_bdmEntriesPatchScript', src: 'bdm-entries.js' }
+        { id: '_bdmEntriesPatchScript', src: 'bdm-entries.js' },
+        // Locks rupee conversion at save time and adds a live ₹ preview to
+        // the Upload Quote / Won form. Companion to api/bdm-quote-sync.js.
+        // Loaded after bdm-entries.js so it can hook the rendered form.
+        { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

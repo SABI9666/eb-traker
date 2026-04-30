@@ -54,7 +54,7 @@
             estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
             coo: ["coo@edanbrook.com", "coo2@edanbrook.com"],
             director: ["director@edanbrook.com", "ajit@edanbrook.com"],
-            design_lead: ["muruganantham.tech@edanbrook.in", "kathar.tech@edanbrook.in", "aravindhan.tech@edanbrook.in","aravindhan.tech@edanbrook.com" ,"sathish.tech@edanbrook.in", "rebar.lead@edanbrook.com", "rebar.lead1@edanbrook.com"],
+            design_lead: ["muruganantham.tech@edanbrook.in", "kathar.tech@edanbrook.in", "aravindhan.tech@edanbrook.in" ,"sathish.tech@edanbrook.in", "rebar.lead@edanbrook.com", "rebar.lead1@edanbrook.com"],
             designer: [],
             accounts: ["accounts@edanbrook.com", "accounts1@edanbrook.com", "finance@edanbrook.com"],
             bdm: [],

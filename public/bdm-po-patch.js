@@ -308,7 +308,10 @@
         // Locks rupee conversion at save time and adds a live ₹ preview to
         // the Upload Quote / Won form. Companion to api/bdm-quote-sync.js.
         // Loaded after bdm-entries.js so it can hook the rendered form.
-        { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' }
+        { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' },
+        // Guarantees the BDM Analytics period dropdown is populated whenever
+        // there is activity. Adds "All Time" / "Reset" buttons + auto-reset.
+        { id: '_bdmAnalyticsDropdownFixScript', src: 'bdm-analytics-dropdown-fix.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

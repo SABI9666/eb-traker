@@ -311,7 +311,10 @@
         { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' },
         // Guarantees the BDM Analytics period dropdown is populated whenever
         // there is activity. Adds "All Time" / "Reset" buttons + auto-reset.
-        { id: '_bdmAnalyticsDropdownFixScript', src: 'bdm-analytics-dropdown-fix.js' }
+        { id: '_bdmAnalyticsDropdownFixScript', src: 'bdm-analytics-dropdown-fix.js' },
+        // Defensive role guard: keeps the BDM Analytics nav item hidden
+        // and showBdmAnalytics() blocked for everyone except COO/Director.
+        { id: '_bdmAnalyticsRoleGuardScript', src: 'bdm-analytics-role-guard.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

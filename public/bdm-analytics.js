@@ -187,6 +187,17 @@
             (totals.numProjectsWon || 0) +
             (totals.variationValue || 0) > 0;
 
+        // When the user's selected From/To excludes every entry but the
+        // database actually has data, fall back to lifetime values so the
+        // cards and charts always show real numbers instead of all zeros.
+        var lifetime = d.lifetime || {};
+        var hasLifetimeActivity =
+            ((lifetime.totals && lifetime.totals.numQuotes) || 0) +
+            ((lifetime.totals && lifetime.totals.numProjectsWon) || 0) +
+            ((lifetime.totals && lifetime.totals.variationValue) || 0) > 0;
+        var useLifetime = !hasFilteredActivity && hasLifetimeActivity;
+        var cardsTotals = useLifetime ? lifetime.totals : totals;
+
         main.innerHTML =
             '<div class="page-header">' +
                 '<h2>📊 BDM Analytics Report</h2>' +
@@ -198,9 +209,11 @@
                 ? ''
                 : '<div class="card" style="padding:0.75rem 1rem; margin-bottom:1rem; background:#fef3c7; border-left:4px solid #f59e0b;">' +
                   '<strong>ℹ️ No activity in the selected date range.</strong> ' +
-                  'Lifetime totals are shown above. Widen the From/To range or click Apply with both fields blank to see all-time activity per period.' +
+                  (useLifetime
+                      ? 'Cards and charts below are showing <strong>all-time</strong> figures so you still see the team\'s pipeline. Widen From/To or click Apply with both blank to update the per-period tables.'
+                      : 'Lifetime totals are shown above. Widen the From/To range or click Apply with both fields blank to see all-time activity per period.') +
                   '</div>') +
-            renderSummaryCards(totals) +
+            renderSummaryCards(cardsTotals, useLifetime) +
             renderTabs() +
             '<div id="bdmAnalyticsTabs" style="margin-top:1rem;"></div>';
 
@@ -251,8 +264,9 @@
         );
     }
 
-    function renderSummaryCards(totals) {
-        return (
+    function renderSummaryCards(totals, isLifetime) {
+        var caption = isLifetime ? '<div style="text-align:center; font-size:0.75rem; color:#92400e; margin:-0.75rem 0 0.75rem 0; font-weight:600;">📊 Showing all-time totals (current From/To range has no activity)</div>' : '';
+        return caption +
             '<div class="dashboard-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.25rem;">' +
                 summaryCard(totals.numQuotes, '📝 Quotes Uploaded', '#3b82f6') +
                 summaryCard(fmtMoney(totals.quoteValueTotal, '₹'), '💰 Total Quote Value', '#10b981') +
@@ -261,8 +275,7 @@
                 summaryCard(fmtMoney(totals.variationValue, '₹'), '➕ Variation Value', '#ec4899') +
                 summaryCard(fmtMoney(totals.totalValue, '₹'), '💵 Total Value', '#0ea5e9') +
                 summaryCard(totals.numNewClients, '🤝 New Clients', '#14b8a6') +
-            '</div>'
-        );
+            '</div>';
     }
 
     // Lifetime banner: always shows all-time totals regardless of the user's
@@ -685,21 +698,77 @@
         var d = state.data;
         var palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#ef4444', '#84cc16'];
 
+        // Build the per-BDM totals the bar charts will use. Prefer the
+        // in-range overall totals so the charts honour the date filter
+        // when there's data, but fall back to the lifetime per-BDM totals
+        // (keyed by bdmUid) when the in-range totals are all zero -- that
+        // way the bars are never empty just because the user picked a
+        // narrow window.
+        var inRangeTotal = (d.bdms || []).reduce(function (s, b) {
+            return s + ((b.overall && b.overall.projectValue) || 0)
+                     + ((b.overall && b.overall.variationValue) || 0)
+                     + ((b.overall && b.overall.numQuotes) || 0);
+        }, 0);
+        var lifetimeBdms = (d.lifetime && d.lifetime.bdms) || [];
+        var lifetimeByUid = {};
+        lifetimeBdms.forEach(function (lb) { lifetimeByUid[lb.bdmUid] = lb; });
+        var useLifetimeCharts = inRangeTotal === 0 && lifetimeBdms.length > 0;
+
+        function chartProjectValue(b) {
+            if (useLifetimeCharts) {
+                var lb = lifetimeByUid[b.bdmUid];
+                return lb ? (lb.projectValue || 0) : 0;
+            }
+            return (b.overall && b.overall.projectValue) || 0;
+        }
+        function chartVariationValue(b) {
+            if (useLifetimeCharts) {
+                var lb = lifetimeByUid[b.bdmUid];
+                return lb ? (lb.variationValue || 0) : 0;
+            }
+            return (b.overall && b.overall.variationValue) || 0;
+        }
+        function chartNumQuotes(b) {
+            if (useLifetimeCharts) {
+                var lb = lifetimeByUid[b.bdmUid];
+                return lb ? (lb.numQuotes || 0) : 0;
+            }
+            return (b.overall && b.overall.numQuotes) || 0;
+        }
+        // If we're falling back, prefer the lifetime BDM list itself (it
+        // already includes every BDM seeded with zero, ordered by total
+        // value descending) so the chart axes match what users expect.
+        var chartBdms = useLifetimeCharts && lifetimeBdms.length
+            ? lifetimeBdms.map(function (lb) {
+                  return { bdmUid: lb.bdmUid, bdmName: lb.bdmName, overall: lb, periods: [] };
+              })
+            : (d.bdms || []);
+
+        var totalsTitle = useLifetimeCharts ? ' (all-time)' : '';
+
         // Bar: total value per BDM
         var totalsCanvas = document.getElementById('bdmAnTotalsChart');
         if (totalsCanvas) {
             if (Chart.getChart(totalsCanvas)) Chart.getChart(totalsCanvas).destroy();
+            // Update the chart card heading if present so the user knows
+            // the bars are showing all-time numbers.
+            try {
+                var totalsHeading = totalsCanvas.parentNode && totalsCanvas.parentNode.querySelector('h3');
+                if (totalsHeading && !/all-time/i.test(totalsHeading.textContent || '')) {
+                    totalsHeading.textContent = 'Total Value by BDM' + totalsTitle;
+                }
+            } catch (e) { /* ignore */ }
             new Chart(totalsCanvas, {
                 type: 'bar',
                 data: {
-                    labels: d.bdms.map(function (b) { return b.bdmName; }),
+                    labels: chartBdms.map(function (b) { return b.bdmName; }),
                     datasets: [{
                         label: 'Project Value',
-                        data: d.bdms.map(function (b) { return b.overall.projectValue; }),
+                        data: chartBdms.map(chartProjectValue),
                         backgroundColor: palette[0]
                     }, {
                         label: 'Variation Value',
-                        data: d.bdms.map(function (b) { return b.overall.variationValue; }),
+                        data: chartBdms.map(chartVariationValue),
                         backgroundColor: palette[3]
                     }]
                 },
@@ -715,13 +784,19 @@
         var qCanvas = document.getElementById('bdmAnQuotesChart');
         if (qCanvas) {
             if (Chart.getChart(qCanvas)) Chart.getChart(qCanvas).destroy();
+            try {
+                var qHeading = qCanvas.parentNode && qCanvas.parentNode.querySelector('h3');
+                if (qHeading && !/all-time/i.test(qHeading.textContent || '')) {
+                    qHeading.textContent = 'Quotes Uploaded by BDM' + totalsTitle;
+                }
+            } catch (e) { /* ignore */ }
             new Chart(qCanvas, {
                 type: 'bar',
                 data: {
-                    labels: d.bdms.map(function (b) { return b.bdmName; }),
+                    labels: chartBdms.map(function (b) { return b.bdmName; }),
                     datasets: [{
                         label: 'No. of Quotes',
-                        data: d.bdms.map(function (b) { return b.overall.numQuotes; }),
+                        data: chartBdms.map(chartNumQuotes),
                         backgroundColor: palette[1]
                     }]
                 },

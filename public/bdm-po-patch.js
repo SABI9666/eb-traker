@@ -320,7 +320,12 @@
         if (document.getElementById(p.id)) return;
         var s = document.createElement('script');
         s.id  = p.id;
-        s.src = p.src;
+        // Append a version query string so a new deploy always fetches the
+        // fresh patch script — bypasses both the browser's HTTP cache and
+        // the service worker's static-asset cache. Bump APP_PATCH_VERSION
+        // on every release that touches any of the patch files below.
+        var APP_PATCH_VERSION = 'v52';
+        s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };
         (document.head || document.body || document.documentElement).appendChild(s);

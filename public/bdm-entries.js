@@ -245,6 +245,10 @@
             // Always switch the filter to the saved type and refresh so the
             // user sees their entry appear immediately.
             await window._bdmEntriesReload(body.type);
+            // Notify any other open module (e.g. BDM Analytics) that a new
+            // entry exists, so it can refresh its live data without a full
+            // page reload.
+            try { window.dispatchEvent(new CustomEvent('bdm-quote-saved', { detail: { type: body.type, entry: resp.entry } })); } catch (e) { /* ignore */ }
         } catch (e) {
             status.textContent = '⚠️ ' + (e.message || e);
             status.style.color = '#dc2626';

@@ -184,8 +184,21 @@
             '.bdm-entries-empty .hint { font-size:0.8rem; margin-top:0.35rem; color:#94a3b8; }',
             '.bdm-entries-error { padding:0.85rem 1rem; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#991b1b; font-size:0.85rem; }',
             '.bdm-entries-scroll { max-height: 440px; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; }',
+            '.bdm-row-actions { white-space:nowrap; display:flex; gap:0.25rem; align-items:center; }',
             '.bdm-row-del { background:transparent; border:none; cursor:pointer; color:#94a3b8; padding:0.25rem 0.4rem; border-radius:4px; }',
-            '.bdm-row-del:hover { background:#fee2e2; color:#b91c1c; }'
+            '.bdm-row-del:hover { background:#fee2e2; color:#b91c1c; }',
+            '.bdm-row-mark-won { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:0.2rem 0.55rem; border-radius:4px; font-size:0.72rem; font-weight:600; cursor:pointer; }',
+            '.bdm-row-mark-won:hover { background:#d1fae5; border-color:#6ee7b7; }',
+            '.bdm-mark-won-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.45); z-index:10000; display:flex; align-items:center; justify-content:center; padding:1rem; }',
+            '.bdm-mark-won-modal { background:#fff; border-radius:10px; max-width:440px; width:100%; box-shadow:0 18px 40px rgba(0,0,0,0.25); padding:1.1rem 1.2rem; font-family:inherit; }',
+            '.bdm-mark-won-modal h3 { margin:0 0 0.25rem 0; font-size:1.05rem; color:#065f46; }',
+            '.bdm-mark-won-modal .meta { font-size:0.8rem; color:#475569; margin-bottom:0.85rem; }',
+            '.bdm-mark-won-modal label { display:block; font-size:0.78rem; color:#475569; margin:0.65rem 0 0.25rem 0; }',
+            '.bdm-mark-won-modal input { width:100%; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; box-sizing:border-box; }',
+            '.bdm-mark-won-modal .actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem; }',
+            '.bdm-mark-won-modal .btn-cancel { padding:0.5rem 0.95rem; background:#fff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; color:#334155; }',
+            '.bdm-mark-won-modal .btn-confirm { padding:0.5rem 0.95rem; background:#059669; border:1px solid #059669; color:#fff; border-radius:6px; cursor:pointer; font-weight:600; }',
+            '.bdm-mark-won-modal .btn-confirm:disabled { opacity:0.65; cursor:wait; }'
         ].join('\n');
         document.head.appendChild(st);
     }
@@ -350,6 +363,16 @@
 
         var rows = state.entries.map(function (e, i) {
             var safeId = encodeURIComponent(e.id || '');
+            // Quote rows get a "Mark Won" shortcut so the BDM can promote a
+            // quote to a won project (with their chosen won-date) in one
+            // click instead of re-typing the form. Won/variation rows just
+            // get a delete button.
+            var isQuote = String(e.type || '').toLowerCase() === 'quote';
+            var actions = '';
+            if (isQuote) {
+                actions += '<button class="bdm-row-mark-won" title="Mark this quote as Won" onclick="window._beMarkWon(\'' + safeId + '\')">🏆 Won</button>';
+            }
+            actions += '<button class="bdm-row-del" title="Delete entry" onclick="window._beDelete(\'' + safeId + '\')">🗑️</button>';
             return '<tr>' +
                 '<td class="muted">' + (i + 1) + '</td>' +
                 '<td>' + typeBadge(e.type) + '</td>' +
@@ -360,7 +383,7 @@
                 '<td>' + escapeHtml(e.clientCompany || '') + '</td>' +
                 '<td class="num"><strong>' + escapeHtml(fmtMoney(e.value, e.currency)) + '</strong></td>' +
                 '<td class="muted">' + escapeHtml(e.notes || '') + '</td>' +
-                '<td><button class="bdm-row-del" title="Delete entry" onclick="window._beDelete(\'' + safeId + '\')">🗑️</button></td>' +
+                '<td class="bdm-row-actions">' + actions + '</td>' +
             '</tr>';
         }).join('');
 
@@ -370,7 +393,7 @@
                     '<thead><tr>' +
                         '<th style="width:42px;">#</th><th>Type</th><th>Date</th><th>BDM</th>' +
                         '<th>Number</th><th>Project</th><th>Client</th>' +
-                        '<th class="num">Value</th><th>Notes</th><th style="width:42px;"></th>' +
+                        '<th class="num">Value</th><th>Notes</th><th style="width:90px;"></th>' +
                     '</tr></thead>' +
                     '<tbody>' + rows + '</tbody>' +
                 '</table>' +
@@ -386,6 +409,105 @@
             await loadEntries();
             renderList();
         } catch (e) { alert(e.message || e); }
+    };
+
+    // Promote a quote row to a Won entry. Opens a small modal so the user
+    // can pick the won date (defaults to today) and tweak the won value
+    // (defaults to the quote's value), then POSTs a new bdm_entries doc
+    // with type='won'. The original quote row is intentionally left in
+    // place so BDM Analytics still credits the quote stage; the Won row
+    // shows up alongside it once the panel reloads.
+    window._beMarkWon = function (encodedId) {
+        var id = encodedId ? decodeURIComponent(encodedId) : '';
+        if (!id) return;
+        var quote = null;
+        for (var i = 0; i < state.entries.length; i++) {
+            if (state.entries[i] && state.entries[i].id === id) { quote = state.entries[i]; break; }
+        }
+        if (!quote) { alert('Could not find that quote in the loaded list. Refresh and try again.'); return; }
+
+        var existing = document.getElementById('bdmMarkWonOverlay');
+        if (existing) existing.remove();
+
+        var today = new Date().toISOString().slice(0, 10);
+        var quoteDateIso = quote.date ? new Date(quote.date).toISOString().slice(0, 10) : '';
+        var defaultValue = quote.value != null ? quote.value : '';
+        var defaultCurrency = quote.currency || 'INR';
+        var currencies = ['INR','USD','AUD','NZD','EUR','GBP','SGD','AED','CAD','JPY'];
+        var currencyOpts = currencies.map(function (c) {
+            return '<option value="' + c + '"' + (c === defaultCurrency ? ' selected' : '') + '>' + c + '</option>';
+        }).join('');
+
+        var html =
+            '<div class="bdm-mark-won-overlay" id="bdmMarkWonOverlay">' +
+                '<div class="bdm-mark-won-modal">' +
+                    '<h3>🏆 Mark as Won</h3>' +
+                    '<div class="meta">' +
+                        '<strong>' + escapeHtml(quote.projectName || quote.projectNumber || '(no project name)') + '</strong>' +
+                        (quote.clientCompany ? ' &middot; ' + escapeHtml(quote.clientCompany) : '') +
+                        (quoteDateIso ? '<br>Quoted on ' + escapeHtml(fmtDate(quoteDateIso)) : '') +
+                    '</div>' +
+                    '<label for="bmw-date">Won Date</label>' +
+                    '<input type="date" id="bmw-date" value="' + today + '" max="' + today + '">' +
+                    '<label for="bmw-value">Won Value</label>' +
+                    '<input type="number" id="bmw-value" min="0" step="0.01" value="' + escapeHtml(String(defaultValue)) + '">' +
+                    '<label for="bmw-currency">Currency</label>' +
+                    '<select id="bmw-currency" style="width:100%; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; box-sizing:border-box;">' + currencyOpts + '</select>' +
+                    '<label for="bmw-notes">Notes (optional)</label>' +
+                    '<input type="text" id="bmw-notes" placeholder="e.g. PO-2026-...">' +
+                    '<div class="actions">' +
+                        '<button type="button" class="btn-cancel" id="bmw-cancel">Cancel</button>' +
+                        '<button type="button" class="btn-confirm" id="bmw-confirm">🏆 Save as Won</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        var overlay = document.getElementById('bdmMarkWonOverlay');
+        function close() { if (overlay) overlay.remove(); }
+        document.getElementById('bmw-cancel').onclick = close;
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+
+        document.getElementById('bmw-confirm').onclick = async function () {
+            var btn = this;
+            var date = (document.getElementById('bmw-date') || {}).value;
+            var value = (document.getElementById('bmw-value') || {}).value;
+            var currency = (document.getElementById('bmw-currency') || {}).value || defaultCurrency;
+            var notes = ((document.getElementById('bmw-notes') || {}).value || '').trim();
+            if (!date) { alert('Please pick a won date.'); return; }
+            if (value === '' || isNaN(parseFloat(value)) || parseFloat(value) < 0) { alert('Please enter a valid won value.'); return; }
+            btn.disabled = true; btn.textContent = '⏳ Saving…';
+            var body = {
+                type: 'won',
+                date: date,
+                projectNumber: quote.projectNumber || '',
+                projectName: quote.projectName || '',
+                clientCompany: quote.clientCompany || '',
+                value: value,
+                currency: currency,
+                notes: notes || ('Won from quote ' + (quote.projectNumber || quote.id || ''))
+            };
+            try {
+                var resp = unwrapApi(await window.apiCall('bdm-entries', {
+                    method: 'POST',
+                    body: JSON.stringify(body),
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+                if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
+                close();
+                // Switch to the Wins tab so the new row is visible immediately
+                // and notify the analytics page to refresh its live data.
+                await window._bdmEntriesReload('won');
+                try {
+                    window.dispatchEvent(new CustomEvent('bdm-quote-saved', {
+                        detail: { type: 'won', entryId: resp.id, entry: resp.entry }
+                    }));
+                } catch (evErr) { /* ignore */ }
+            } catch (err) {
+                btn.disabled = false; btn.textContent = '🏆 Save as Won';
+                alert('Could not mark as Won: ' + (err.message || err));
+            }
+        };
     };
 
     console.log('[bdm-entries] module loaded');

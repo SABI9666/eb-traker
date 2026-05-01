@@ -232,6 +232,89 @@
         host.style.color = '';
     }
 
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Build a row that visually matches both the old and new bdm-entries.js
+    // table layouts. The old table has 9 columns (#, Date, BDM, Number,
+    // Project, Client, Value, Notes, [delete]). The new one prepends a Type
+    // column. We render 10 cells with colspan logic: the Type cell uses
+    // display:none if the table has only 9 column headers in <thead>, so it
+    // gracefully degrades on the cached build.
+    function optimisticallyInjectRow(body, resp) {
+        var host = document.getElementById('be-list');
+        if (!host) return;
+        var entry = (resp && resp.entry) || {};
+        var conv  = (resp && resp.conversion) || {};
+        var displayCurrency = entry.currency || (conv.valueInr != null ? 'INR' : (body.currency || 'INR'));
+        var displayValue = entry.value != null ? entry.value
+            : (conv.valueInr != null ? conv.valueInr : body.value);
+        var dateIso = entry.date || (body.date ? new Date(body.date).toISOString() : new Date().toISOString());
+        var bdmName = entry.bdmName || entry.createdByName || '';
+        var rowFields = {
+            date: fmtDate(dateIso),
+            bdmName: bdmName,
+            projectNumber: body.projectNumber || entry.projectNumber || '',
+            projectName: body.projectName || entry.projectName || '',
+            clientCompany: body.clientCompany || entry.clientCompany || '',
+            value: (displayCurrency ? displayCurrency + ' ' : '') +
+                   (Number(displayValue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            notes: body.notes || entry.notes || ''
+        };
+
+        // Try to find an existing tbody. Headers vary between the old and
+        // new bdm-entries.js builds, so detect the column count from <thead>.
+        var table = host.querySelector('table');
+        var tbody = table && table.querySelector('tbody');
+        var headerCells = table ? table.querySelectorAll('thead th').length : 0;
+        var hasTypeColumn = headerCells >= 10; // new layout has 10 columns
+
+        var TYPE_LABELS = { quote: 'Quote', won: 'Won', variation: 'Variation' };
+        var typeLabel = TYPE_LABELS[String(body.type || '').toLowerCase()] || (body.type || '');
+
+        var rowHtml =
+            '<tr class="bdm-quote-sync-just-saved" style="background:#ecfdf5;">' +
+                '<td>•</td>' +
+                (hasTypeColumn ? '<td><strong style="color:#059669;">' + escHtml(typeLabel) + '</strong></td>' : '') +
+                '<td>' + escHtml(rowFields.date) + '</td>' +
+                '<td><strong>' + escHtml(rowFields.bdmName) + '</strong></td>' +
+                '<td>' + escHtml(rowFields.projectNumber) + '</td>' +
+                '<td>' + escHtml(rowFields.projectName) + '</td>' +
+                '<td>' + escHtml(rowFields.clientCompany) + '</td>' +
+                '<td style="text-align:right;"><strong>' + escHtml(rowFields.value) + '</strong></td>' +
+                '<td>' + escHtml(rowFields.notes) + '</td>' +
+                (hasTypeColumn ? '<td></td>' : '<td></td>') +
+            '</tr>';
+
+        if (tbody) {
+            // Wipe any "No entries yet" placeholder and prepend our row.
+            var placeholder = tbody.querySelector('td[colspan]');
+            if (placeholder) tbody.innerHTML = '';
+            tbody.insertAdjacentHTML('afterbegin', rowHtml);
+        } else {
+            // No table at all (e.g. cached build's empty state div). Build
+            // a minimal one so the saved entry is visible.
+            host.innerHTML =
+                '<table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.88rem;">' +
+                    '<thead><tr style="background:#f1f5f9;">' +
+                        '<th style="padding:0.5rem; text-align:left;">#</th>' +
+                        '<th style="padding:0.5rem; text-align:left;">Date</th>' +
+                        '<th style="padding:0.5rem; text-align:left;">BDM</th>' +
+                        '<th style="padding:0.5rem; text-align:left;">Number</th>' +
+                        '<th style="padding:0.5rem; text-align:left;">Project</th>' +
+                        '<th style="padding:0.5rem; text-align:left;">Client</th>' +
+                        '<th style="padding:0.5rem; text-align:right;">Value</th>' +
+                        '<th style="padding:0.5rem; text-align:left;">Notes</th>' +
+                        '<th></th>' +
+                    '</tr></thead>' +
+                    '<tbody>' + rowHtml.replace('<td>•</td>', '<td>1</td>') + '</tbody>' +
+                '</table>';
+        }
+    }
+
     async function newSaveHandler() {
         var btn = document.getElementById('be-save');
         var status = document.getElementById('be-status');
@@ -306,6 +389,15 @@
                     try { filt.dispatchEvent(new Event('change')); } catch (e) { /* ignore */ }
                 }
             }
+
+            // Defensive optimistic injection. If the bdm-entries.js sitting
+            // in the user's browser is a stale cached build (the reload
+            // path above is a no-op or returns an empty list), the user
+            // would still see "No entries yet" right after they just saved
+            // one. To guarantee feedback, we directly inject the freshly
+            // saved row into the Recent Entries table so it shows up no
+            // matter what state the panel is in.
+            try { optimisticallyInjectRow(body, resp); } catch (e) { /* ignore */ }
             // Broadcast so BDM Analytics (if currently rendered) refreshes
             // its Live Period Summary and period dropdown.
             try {

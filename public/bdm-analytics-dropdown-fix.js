@@ -175,12 +175,15 @@
             return [];
         }
         var types = ['quote', 'won', 'variation'];
-        var diag = { perType: {}, totalCount: 0, sample: null, errors: [], rawSample: null };
+        var diag = { perType: {}, totalCount: 0, totalDocsInCollection: null, sample: null, errors: [], rawSample: null };
         var lists = await Promise.all(types.map(async function (t) {
             try {
                 var resp = await window.apiCall('bdm-entries?type=' + t);
                 if (!diag.rawSample) diag.rawSample = JSON.parse(JSON.stringify(resp || {}));
                 var entries = (resp && resp.success && resp.entries) || [];
+                if (resp && resp.meta && resp.meta.totalDocsInCollection != null) {
+                    diag.totalDocsInCollection = resp.meta.totalDocsInCollection;
+                }
                 if (!entries.length) {
                     var resp2 = await window.apiCall('bdm-entries?type=' + t + '&_cb=' + Date.now());
                     var entries2 = (resp2 && resp2.success && resp2.entries) || [];
@@ -258,11 +261,18 @@
             ? '<pre style="font-size:0.72rem; background:#1e293b; color:#cbd5e1; padding:0.5rem; border-radius:4px; overflow:auto; max-height:160px;">' +
               JSON.stringify(d.rawSample, null, 2).slice(0, 2000) + '</pre>'
             : '';
+        var collectionLine = d.totalDocsInCollection != null
+            ? '<strong>Docs in <code>bdm_entries</code> collection:</strong> ' + d.totalDocsInCollection +
+              (d.totalDocsInCollection > 0 && d.totalCount === 0
+                  ? ' <span style="color:#b91c1c;">(filtered out by current type/filter — try saving via the form again or check role)</span>'
+                  : '') + '<br>'
+            : '';
         return (
             '<details style="margin-top:0.5rem;">' +
                 '<summary style="cursor:pointer; font-weight:600; color:#0f172a;">🔍 Diagnostics — ' + perTypeText + '</summary>' +
                 '<div style="margin-top:0.5rem; font-size:0.78rem; color:#475569; line-height:1.6;">' +
                     '<strong>Errors:</strong> ' + (d.errors && d.errors.length ? d.errors.join('; ') : 'none') + '<br>' +
+                    collectionLine +
                     '<strong>Total fetched:</strong> ' + d.totalCount + '<br>' +
                     (d.sample ? '<strong>First entry (parsed):</strong>' + sampleHtml : '<em>No entries returned by /api/bdm-entries.</em>') +
                     (d.rawSample ? '<strong>First raw response (any type):</strong>' + rawHtml : '') +

@@ -96,6 +96,25 @@
         renderList();
     };
 
+    // app1.js's apiCall wraps responses that don't carry a top-level `data`
+    // key by re-emitting them as `{success: true, data: <originalResponse>}`.
+    // Our backend returns `{success, entries, count, meta}` with no `data`,
+    // so the actual payload ends up at `resp.data`. This helper unwraps that
+    // layer when it detects the inner shape, so every reader can keep using
+    // `resp.entries` etc. without caring whether the wrap kicked in.
+    function unwrapApi(resp) {
+        if (!resp || typeof resp !== 'object') return resp;
+        if (resp.data && typeof resp.data === 'object' && !Array.isArray(resp.data)) {
+            var inner = resp.data;
+            if (inner.success !== undefined ||
+                'entries' in inner || 'entry' in inner ||
+                'count' in inner || 'meta' in inner) {
+                return inner;
+            }
+        }
+        return resp;
+    }
+
     async function loadEntries() {
         state.loading = true;
         state.lastError = '';
@@ -105,7 +124,8 @@
             var qs = 'type=' + encodeURIComponent(state.filterType) +
                      (state.mineOnly ? '&mine=1' : '') +
                      '&_t=' + Date.now();
-            var resp = await window.apiCall('bdm-entries?' + qs);
+            var raw = await window.apiCall('bdm-entries?' + qs);
+            var resp = unwrapApi(raw);
             // Defensive: accept several response shapes so a backend tweak
             // doesn't silently empty the table.
             var list = [];
@@ -116,7 +136,9 @@
                 state.lastError = resp.error || resp.message || 'Server returned an error';
             }
             state.entries = list;
-            console.log('[bdm-entries] loaded', list.length, 'entries for type=' + state.filterType, resp);
+            state.lastMeta = (resp && resp.meta) || null;
+            console.log('[bdm-entries] loaded', list.length, 'entries for type=' + state.filterType,
+                { unwrapped: resp, raw: raw });
         } catch (e) {
             console.error('[bdm-entries] load error:', e);
             state.entries = [];
@@ -265,7 +287,7 @@
         btn.disabled = true; btn.textContent = '⏳ Saving…';
         status.textContent = ''; status.style.color = '#64748b';
         try {
-            var resp = await window.apiCall('bdm-entries', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+            var resp = unwrapApi(await window.apiCall('bdm-entries', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }));
             if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
             status.textContent = '✅ Saved. It will reflect in BDM Analytics.';
             status.style.color = '#059669';
@@ -359,7 +381,7 @@
         if (!id) return;
         if (!confirm('Delete this entry?')) return;
         try {
-            var resp = await window.apiCall('bdm-entries?id=' + encodeURIComponent(decodeURIComponent(id)), { method: 'DELETE' });
+            var resp = unwrapApi(await window.apiCall('bdm-entries?id=' + encodeURIComponent(decodeURIComponent(id)), { method: 'DELETE' }));
             if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Delete failed');
             await loadEntries();
             renderList();

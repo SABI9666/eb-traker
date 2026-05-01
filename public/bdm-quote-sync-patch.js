@@ -306,6 +306,13 @@
                     try { filt.dispatchEvent(new Event('change')); } catch (e) { /* ignore */ }
                 }
             }
+            // Broadcast so BDM Analytics (if currently rendered) refreshes
+            // its Live Period Summary and period dropdown.
+            try {
+                window.dispatchEvent(new CustomEvent('bdm-quote-saved', {
+                    detail: { type: body.type, entryId: resp && resp.id, entry: resp && resp.entry }
+                }));
+            } catch (e) { /* ignore */ }
         } catch (e) {
             status.textContent = '⚠️ ' + (e.message || e);
             status.style.color = '#dc2626';

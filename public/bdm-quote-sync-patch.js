@@ -37,10 +37,30 @@
     };
     var fxLoaded = false;
 
+    // app1.js's apiCall wraps responses that don't carry a top-level `data`
+    // key as `{success: true, data: <originalResponse>}`. Our backend
+    // returns `{success, fxRates}` / `{success, id, entry, conversion}` /
+    // `{success, entries, count, meta}` with no `data` field, so the actual
+    // payload ends up nested under `resp.data`. Unwrap before reading.
+    function unwrapApi(resp) {
+        if (!resp || typeof resp !== 'object') return resp;
+        if (resp.data && typeof resp.data === 'object' && !Array.isArray(resp.data)) {
+            var inner = resp.data;
+            if (inner.success !== undefined ||
+                'entries' in inner || 'entry' in inner ||
+                'fxRates' in inner || 'conversion' in inner ||
+                'count' in inner || 'meta' in inner || 'id' in inner) {
+                return inner;
+            }
+        }
+        return resp;
+    }
+
     function loadRates() {
         if (fxLoaded) return Promise.resolve(FX_RATES);
         if (typeof window.apiCall !== 'function') return Promise.resolve(FX_RATES);
-        return window.apiCall('bdm-quote-sync').then(function (resp) {
+        return window.apiCall('bdm-quote-sync').then(function (raw) {
+            var resp = unwrapApi(raw);
             if (resp && resp.success && resp.fxRates) {
                 FX_RATES = resp.fxRates;
                 fxLoaded = true;
@@ -138,21 +158,21 @@
     }
 
     async function trySync(body) {
-        var resp = await window.apiCall('bdm-quote-sync', {
+        var resp = unwrapApi(await window.apiCall('bdm-quote-sync', {
             method: 'POST',
             body: JSON.stringify(body),
             headers: { 'Content-Type': 'application/json' }
-        });
+        }));
         if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
         return resp;
     }
 
     async function fallbackToBdmEntries(body) {
-        var resp = await window.apiCall('bdm-entries', {
+        var resp = unwrapApi(await window.apiCall('bdm-entries', {
             method: 'POST',
             body: JSON.stringify(body),
             headers: { 'Content-Type': 'application/json' }
-        });
+        }));
         if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Save failed');
         return resp;
     }

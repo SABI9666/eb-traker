@@ -60,18 +60,16 @@
         variation: { label: 'Variation', icon: '➕', color: '#7c3aed', bg: '#f5f3ff' }
     };
 
-    // mineOnly defaults true for BDMs (so they always see their own saves
-    // even if some legacy row carries an inconsistent owner field) and
-    // false for COO / Director (who manage the team's pipeline).
-    function defaultMineOnly() {
-        return getCurrentRole() === 'bdm';
-    }
+    // mineOnly is opt-in for everyone. Default OFF so Recent Entries
+    // always shows the same rows the backend returns (matching what BDM
+    // Analytics displays). Users can tick the "Only mine" toggle in the
+    // toolbar to narrow the list to entries they themselves filed.
     var state = {
         entries: [],
         filterType: 'quote',
         loading: false,
         lastError: '',
-        mineOnly: defaultMineOnly()
+        mineOnly: false
     };
 
     // Exposed so other modules (e.g. bdm-quote-sync-patch.js) can refresh

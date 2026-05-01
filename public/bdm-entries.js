@@ -48,8 +48,33 @@
         if (isNaN(d)) return iso || '';
         return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
     }
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
 
-    var state = { entries: [], filterType: 'quote' };
+    var TYPE_META = {
+        quote:     { label: 'Quote',     icon: '📝', color: '#2563eb', bg: '#eff6ff' },
+        won:       { label: 'Won',       icon: '🏆', color: '#059669', bg: '#ecfdf5' },
+        variation: { label: 'Variation', icon: '➕', color: '#7c3aed', bg: '#f5f3ff' }
+    };
+
+    var state = { entries: [], filterType: 'quote', loading: false, lastError: '' };
+
+    // Exposed so other modules (e.g. bdm-quote-sync-patch.js) can refresh
+    // the recent entries list after a save without depending on DOM events.
+    window._bdmEntriesReload = async function (preferType) {
+        if (preferType && TYPE_META[preferType]) {
+            state.filterType = preferType;
+            var f = document.getElementById('be-filter');
+            if (f) f.value = preferType;
+        }
+        var host = document.getElementById('be-list');
+        if (host) host.innerHTML = loadingHtml();
+        await loadEntries();
+        renderList();
+    };
 
     window.showBdmEntries = async function () {
         var main = document.getElementById('mainContent');
@@ -62,16 +87,71 @@
     };
 
     async function loadEntries() {
+        state.loading = true;
+        state.lastError = '';
         try {
             var resp = await window.apiCall('bdm-entries?type=' + encodeURIComponent(state.filterType));
-            state.entries = (resp && resp.success && resp.entries) || [];
+            // Defensive: accept several response shapes so a backend tweak
+            // doesn't silently empty the table.
+            var list = [];
+            if (resp && Array.isArray(resp.entries)) list = resp.entries;
+            else if (resp && Array.isArray(resp.data)) list = resp.data;
+            else if (Array.isArray(resp)) list = resp;
+            else if (resp && resp.success === false) {
+                state.lastError = resp.error || resp.message || 'Server returned an error';
+            }
+            state.entries = list;
+            console.log('[bdm-entries] loaded', list.length, 'entries for type=' + state.filterType, resp);
         } catch (e) {
             console.error('[bdm-entries] load error:', e);
             state.entries = [];
+            state.lastError = (e && e.message) || String(e);
+        } finally {
+            state.loading = false;
         }
     }
 
+    function loadingHtml() {
+        return '<div style="padding:1.25rem; text-align:center; color:#64748b;">' +
+            '<span style="display:inline-block; width:14px; height:14px; border:2px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; vertical-align:middle; margin-right:0.5rem; animation: bdmSpin 0.8s linear infinite;"></span>' +
+            'Loading recent entries…' +
+            '</div>';
+    }
+
+    function injectStylesOnce() {
+        if (document.getElementById('bdm-entries-style')) return;
+        var st = document.createElement('style');
+        st.id = 'bdm-entries-style';
+        st.textContent = [
+            '@keyframes bdmSpin { to { transform: rotate(360deg); } }',
+            '.bdm-entries-table { width:100%; border-collapse: separate; border-spacing:0; font-size:0.88rem; }',
+            '.bdm-entries-table thead th { position:sticky; top:0; background:#f1f5f9; color:#0f172a; font-weight:600; text-align:left; padding:0.65rem 0.75rem; border-bottom:1px solid #e2e8f0; font-size:0.78rem; letter-spacing:0.04em; text-transform:uppercase; }',
+            '.bdm-entries-table tbody td { padding:0.6rem 0.75rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; color:#1e293b; }',
+            '.bdm-entries-table tbody tr:nth-child(even) td { background:#fafbfc; }',
+            '.bdm-entries-table tbody tr:hover td { background:#eff6ff; }',
+            '.bdm-entries-table .num { text-align:right; font-variant-numeric: tabular-nums; white-space:nowrap; }',
+            '.bdm-entries-table .muted { color:#64748b; }',
+            '.bdm-type-badge { display:inline-flex; align-items:center; gap:0.3rem; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.72rem; font-weight:600; line-height:1.4; }',
+            '.bdm-entries-card { padding:1rem 1.1rem; }',
+            '.bdm-entries-toolbar { display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.75rem; }',
+            '.bdm-entries-toolbar h3 { margin:0; font-size:1.05rem; color:#0f172a; }',
+            '.bdm-entries-toolbar .meta { font-size:0.78rem; color:#64748b; }',
+            '.bdm-entries-actions { display:flex; gap:0.4rem; align-items:center; }',
+            '.bdm-entries-select { padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:0.85rem; }',
+            '.bdm-entries-refresh { padding:0.4rem 0.7rem; border:1px solid #cbd5e1; background:#fff; border-radius:6px; cursor:pointer; font-size:0.82rem; color:#334155; }',
+            '.bdm-entries-refresh:hover { background:#f1f5f9; }',
+            '.bdm-entries-empty { padding:1.5rem 1rem; text-align:center; color:#64748b; }',
+            '.bdm-entries-empty .hint { font-size:0.8rem; margin-top:0.35rem; color:#94a3b8; }',
+            '.bdm-entries-error { padding:0.85rem 1rem; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#991b1b; font-size:0.85rem; }',
+            '.bdm-entries-scroll { max-height: 440px; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; }',
+            '.bdm-row-del { background:transparent; border:none; cursor:pointer; color:#94a3b8; padding:0.25rem 0.4rem; border-radius:4px; }',
+            '.bdm-row-del:hover { background:#fee2e2; color:#b91c1c; }'
+        ].join('\n');
+        document.head.appendChild(st);
+    }
+
     function render(main) {
+        injectStylesOnce();
         var today = new Date().toISOString().slice(0, 10);
         main.innerHTML =
             '<div class="page-header"><h2>📝 Upload Quote / Project Won</h2>' +
@@ -94,28 +174,39 @@
                     '</select>') +
                     field('Notes (optional)', '<input type="text" id="be-notes" placeholder="Any remark">') +
                 '</div>' +
-                '<div style="margin-top:1rem; display:flex; gap:0.75rem;">' +
+                '<div style="margin-top:1rem; display:flex; gap:0.75rem; flex-wrap:wrap;">' +
                     '<button id="be-save" class="btn btn-primary">💾 Save Entry</button>' +
                     '<span id="be-status" style="align-self:center; color:#64748b;"></span>' +
                 '</div>' +
             '</div>' +
-            '<div class="card" style="padding:1rem;">' +
-                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; gap:0.75rem; flex-wrap:wrap;">' +
-                    '<h3 style="margin:0;">Recent Entries</h3>' +
-                    '<select id="be-filter" style="padding:0.4rem; border:1px solid #ddd; border-radius:6px;">' +
-                        '<option value="quote">Quotes</option>' +
-                        '<option value="won">Wins</option>' +
-                        '<option value="variation">Variations</option>' +
-                    '</select>' +
+            '<div class="card bdm-entries-card">' +
+                '<div class="bdm-entries-toolbar">' +
+                    '<div>' +
+                        '<h3>Recent Entries</h3>' +
+                        '<div class="meta" id="be-meta">&nbsp;</div>' +
+                    '</div>' +
+                    '<div class="bdm-entries-actions">' +
+                        '<select id="be-filter" class="bdm-entries-select" title="Filter by type">' +
+                            '<option value="quote">📝 Quotes</option>' +
+                            '<option value="won">🏆 Wins</option>' +
+                            '<option value="variation">➕ Variations</option>' +
+                        '</select>' +
+                        '<button id="be-refresh" class="bdm-entries-refresh" title="Refresh list">↻ Refresh</button>' +
+                    '</div>' +
                 '</div>' +
-                '<div id="be-list" style="overflow-x:auto;"><em style="color:#64748b;">Loading…</em></div>' +
+                '<div id="be-list">' + loadingHtml() + '</div>' +
             '</div>';
 
         document.getElementById('be-save').onclick = saveEntry;
         document.getElementById('be-filter').value = state.filterType;
         document.getElementById('be-filter').onchange = async function (e) {
             state.filterType = e.target.value;
-            document.getElementById('be-list').innerHTML = '<em style="color:#64748b;">Loading…</em>';
+            document.getElementById('be-list').innerHTML = loadingHtml();
+            await loadEntries();
+            renderList();
+        };
+        document.getElementById('be-refresh').onclick = async function () {
+            document.getElementById('be-list').innerHTML = loadingHtml();
             await loadEntries();
             renderList();
         };
@@ -151,8 +242,9 @@
             document.getElementById('be-value').value = '';
             document.getElementById('be-num').value = '';
             document.getElementById('be-notes').value = '';
-            // refresh list if filtered to this type
-            if (state.filterType === body.type) { await loadEntries(); renderList(); }
+            // Always switch the filter to the saved type and refresh so the
+            // user sees their entry appear immediately.
+            await window._bdmEntriesReload(body.type);
         } catch (e) {
             status.textContent = '⚠️ ' + (e.message || e);
             status.style.color = '#dc2626';
@@ -161,36 +253,76 @@
         }
     }
 
+    function typeBadge(t) {
+        var meta = TYPE_META[String(t || '').toLowerCase()] || { label: t || '—', icon: '•', color: '#475569', bg: '#f1f5f9' };
+        return '<span class="bdm-type-badge" style="color:' + meta.color + '; background:' + meta.bg + ';">' +
+            meta.icon + ' ' + escapeHtml(meta.label) + '</span>';
+    }
+
     function renderList() {
         var host = document.getElementById('be-list');
+        var meta = document.getElementById('be-meta');
         if (!host) return;
+
+        if (state.loading) { host.innerHTML = loadingHtml(); return; }
+
+        if (state.lastError) {
+            host.innerHTML = '<div class="bdm-entries-error">⚠️ Could not load entries: ' +
+                escapeHtml(state.lastError) + '</div>';
+            if (meta) meta.textContent = '';
+            return;
+        }
+
+        var typeLabel = (TYPE_META[state.filterType] || {}).label || state.filterType;
+        if (meta) {
+            meta.textContent = state.entries.length
+                ? 'Showing ' + state.entries.length + ' ' + typeLabel.toLowerCase() + (state.entries.length === 1 ? ' entry' : ' entries')
+                : '';
+        }
+
+        if (!state.entries.length) {
+            host.innerHTML =
+                '<div class="bdm-entries-empty">' +
+                    'No ' + escapeHtml(typeLabel.toLowerCase()) + ' entries yet.' +
+                    '<div class="hint">Use the form above to record your first entry — it will appear here right away.</div>' +
+                '</div>';
+            return;
+        }
+
         var rows = state.entries.map(function (e, i) {
+            var safeId = encodeURIComponent(e.id || '');
             return '<tr>' +
-                '<td>' + (i + 1) + '</td>' +
-                '<td>' + fmtDate(e.date) + '</td>' +
-                '<td><strong>' + (e.bdmName || '') + '</strong></td>' +
-                '<td>' + (e.projectNumber || '') + '</td>' +
-                '<td>' + (e.projectName || '') + '</td>' +
-                '<td>' + (e.clientCompany || '') + '</td>' +
-                '<td style="text-align:right;">' + fmtMoney(e.value, e.currency) + '</td>' +
-                '<td>' + (e.notes || '') + '</td>' +
-                '<td><button class="btn btn-sm btn-danger" onclick="window._beDelete(\'' + e.id + '\')">🗑️</button></td>' +
+                '<td class="muted">' + (i + 1) + '</td>' +
+                '<td>' + typeBadge(e.type) + '</td>' +
+                '<td>' + escapeHtml(fmtDate(e.date)) + '</td>' +
+                '<td><strong>' + escapeHtml(e.bdmName || '') + '</strong></td>' +
+                '<td>' + escapeHtml(e.projectNumber || '') + '</td>' +
+                '<td>' + escapeHtml(e.projectName || '') + '</td>' +
+                '<td>' + escapeHtml(e.clientCompany || '') + '</td>' +
+                '<td class="num"><strong>' + escapeHtml(fmtMoney(e.value, e.currency)) + '</strong></td>' +
+                '<td class="muted">' + escapeHtml(e.notes || '') + '</td>' +
+                '<td><button class="bdm-row-del" title="Delete entry" onclick="window._beDelete(\'' + safeId + '\')">🗑️</button></td>' +
             '</tr>';
         }).join('');
+
         host.innerHTML =
-            '<table class="data-table" style="width:100%;">' +
-                '<thead><tr>' +
-                    '<th>#</th><th>Date</th><th>BDM</th><th>Number</th><th>Project</th><th>Client</th>' +
-                    '<th style="text-align:right;">Value</th><th>Notes</th><th></th>' +
-                '</tr></thead>' +
-                '<tbody>' + (rows || '<tr><td colspan="9" style="text-align:center; padding:1rem; color:#64748b;">No entries yet.</td></tr>') + '</tbody>' +
-            '</table>';
+            '<div class="bdm-entries-scroll">' +
+                '<table class="bdm-entries-table">' +
+                    '<thead><tr>' +
+                        '<th style="width:42px;">#</th><th>Type</th><th>Date</th><th>BDM</th>' +
+                        '<th>Number</th><th>Project</th><th>Client</th>' +
+                        '<th class="num">Value</th><th>Notes</th><th style="width:42px;"></th>' +
+                    '</tr></thead>' +
+                    '<tbody>' + rows + '</tbody>' +
+                '</table>' +
+            '</div>';
     }
 
     window._beDelete = async function (id) {
+        if (!id) return;
         if (!confirm('Delete this entry?')) return;
         try {
-            var resp = await window.apiCall('bdm-entries?id=' + encodeURIComponent(id), { method: 'DELETE' });
+            var resp = await window.apiCall('bdm-entries?id=' + encodeURIComponent(decodeURIComponent(id)), { method: 'DELETE' });
             if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Delete failed');
             await loadEntries();
             renderList();

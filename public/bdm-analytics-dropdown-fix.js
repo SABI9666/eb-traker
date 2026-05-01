@@ -169,6 +169,23 @@
         return key;
     }
 
+    // app1.js's apiCall wraps responses lacking a top-level `data` key as
+    // `{success: true, data: <originalResponse>}`. Our backend returns
+    // `{success, entries, count, meta}` with no `data`, so the actual
+    // payload is one level deeper than this code used to assume — that's
+    // why Live Period Summary used to show 0 even when entries existed.
+    function unwrapApi(resp) {
+        if (!resp || typeof resp !== 'object') return resp;
+        if (resp.data && typeof resp.data === 'object' && !Array.isArray(resp.data)) {
+            var inner = resp.data;
+            if (inner.success !== undefined ||
+                'entries' in inner || 'count' in inner || 'meta' in inner) {
+                return inner;
+            }
+        }
+        return resp;
+    }
+
     async function fetchAllEntries() {
         if (typeof window.apiCall !== 'function') {
             liveDiagnostics = { error: 'window.apiCall is not available yet', perType: {}, totalCount: 0 };
@@ -178,14 +195,16 @@
         var diag = { perType: {}, totalCount: 0, totalDocsInCollection: null, sample: null, errors: [], rawSample: null };
         var lists = await Promise.all(types.map(async function (t) {
             try {
-                var resp = await window.apiCall('bdm-entries?type=' + t);
-                if (!diag.rawSample) diag.rawSample = JSON.parse(JSON.stringify(resp || {}));
+                var raw = await window.apiCall('bdm-entries?type=' + t);
+                var resp = unwrapApi(raw);
+                if (!diag.rawSample) diag.rawSample = JSON.parse(JSON.stringify(raw || {}));
                 var entries = (resp && resp.success && resp.entries) || [];
                 if (resp && resp.meta && resp.meta.totalDocsInCollection != null) {
                     diag.totalDocsInCollection = resp.meta.totalDocsInCollection;
                 }
                 if (!entries.length) {
-                    var resp2 = await window.apiCall('bdm-entries?type=' + t + '&_cb=' + Date.now());
+                    var raw2 = await window.apiCall('bdm-entries?type=' + t + '&_cb=' + Date.now());
+                    var resp2 = unwrapApi(raw2);
                     var entries2 = (resp2 && resp2.success && resp2.entries) || [];
                     if (entries2.length) entries = entries2;
                 }

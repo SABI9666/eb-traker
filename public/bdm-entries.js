@@ -60,7 +60,19 @@
         variation: { label: 'Variation', icon: '➕', color: '#7c3aed', bg: '#f5f3ff' }
     };
 
-    var state = { entries: [], filterType: 'quote', loading: false, lastError: '' };
+    // mineOnly defaults true for BDMs (so they always see their own saves
+    // even if some legacy row carries an inconsistent owner field) and
+    // false for COO / Director (who manage the team's pipeline).
+    function defaultMineOnly() {
+        return getCurrentRole() === 'bdm';
+    }
+    var state = {
+        entries: [],
+        filterType: 'quote',
+        loading: false,
+        lastError: '',
+        mineOnly: defaultMineOnly()
+    };
 
     // Exposed so other modules (e.g. bdm-quote-sync-patch.js) can refresh
     // the recent entries list after a save without depending on DOM events.
@@ -90,7 +102,12 @@
         state.loading = true;
         state.lastError = '';
         try {
-            var resp = await window.apiCall('bdm-entries?type=' + encodeURIComponent(state.filterType));
+            // Cache-buster + optional ?mine=1 ensure a stale browser cache
+            // can't hide entries after a logout/login round-trip.
+            var qs = 'type=' + encodeURIComponent(state.filterType) +
+                     (state.mineOnly ? '&mine=1' : '') +
+                     '&_t=' + Date.now();
+            var resp = await window.apiCall('bdm-entries?' + qs);
             // Defensive: accept several response shapes so a backend tweak
             // doesn't silently empty the table.
             var list = [];
@@ -140,6 +157,9 @@
             '.bdm-entries-select { padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:0.85rem; }',
             '.bdm-entries-refresh { padding:0.4rem 0.7rem; border:1px solid #cbd5e1; background:#fff; border-radius:6px; cursor:pointer; font-size:0.82rem; color:#334155; }',
             '.bdm-entries-refresh:hover { background:#f1f5f9; }',
+            '.bdm-entries-mine { display:inline-flex; align-items:center; gap:0.35rem; padding:0.35rem 0.6rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:0.82rem; color:#334155; cursor:pointer; user-select:none; }',
+            '.bdm-entries-mine input { margin:0; cursor:pointer; }',
+            '.bdm-entries-mine:hover { background:#f1f5f9; }',
             '.bdm-entries-empty { padding:1.5rem 1rem; text-align:center; color:#64748b; }',
             '.bdm-entries-empty .hint { font-size:0.8rem; margin-top:0.35rem; color:#94a3b8; }',
             '.bdm-entries-error { padding:0.85rem 1rem; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#991b1b; font-size:0.85rem; }',
@@ -186,6 +206,10 @@
                         '<div class="meta" id="be-meta">&nbsp;</div>' +
                     '</div>' +
                     '<div class="bdm-entries-actions">' +
+                        '<label class="bdm-entries-mine" title="Show only entries I created">' +
+                            '<input type="checkbox" id="be-mine"' + (state.mineOnly ? ' checked' : '') + '>' +
+                            '<span>Only mine</span>' +
+                        '</label>' +
                         '<select id="be-filter" class="bdm-entries-select" title="Filter by type">' +
                             '<option value="quote">📝 Quotes</option>' +
                             '<option value="won">🏆 Wins</option>' +
@@ -210,6 +234,15 @@
             await loadEntries();
             renderList();
         };
+        var mineCb = document.getElementById('be-mine');
+        if (mineCb) {
+            mineCb.onchange = async function () {
+                state.mineOnly = !!mineCb.checked;
+                document.getElementById('be-list').innerHTML = loadingHtml();
+                await loadEntries();
+                renderList();
+            };
+        }
     }
 
     function field(label, html) {
@@ -280,15 +313,17 @@
         var typeLabel = (TYPE_META[state.filterType] || {}).label || state.filterType;
         if (meta) {
             meta.textContent = state.entries.length
-                ? 'Showing ' + state.entries.length + ' ' + typeLabel.toLowerCase() + (state.entries.length === 1 ? ' entry' : ' entries')
+                ? 'Showing ' + state.entries.length + ' ' + typeLabel.toLowerCase() + (state.entries.length === 1 ? ' entry' : ' entries') + (state.mineOnly ? ' (yours only)' : '')
                 : '';
         }
 
         if (!state.entries.length) {
             host.innerHTML =
                 '<div class="bdm-entries-empty">' +
-                    'No ' + escapeHtml(typeLabel.toLowerCase()) + ' entries yet.' +
-                    '<div class="hint">Use the form above to record your first entry — it will appear here right away.</div>' +
+                    'No ' + escapeHtml(typeLabel.toLowerCase()) + ' entries yet' + (state.mineOnly ? ' for you' : '') + '.' +
+                    '<div class="hint">' + (state.mineOnly
+                        ? 'Untick "Only mine" above to see entries from the rest of the team, or use the form above to record one — it will appear here right away.'
+                        : 'Use the form above to record your first entry — it will appear here right away.') + '</div>' +
                 '</div>';
             return;
         }

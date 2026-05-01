@@ -295,11 +295,16 @@
             });
             updatePreview();
 
-            // Soft-refresh the recent-entries list by re-firing the filter
-            // change event (existing module reloads on filter change).
-            var filt = document.getElementById('be-filter');
-            if (filt) {
-                try { filt.dispatchEvent(new Event('change')); } catch (e) { /* ignore */ }
+            // Refresh the recent-entries list and switch the filter to the
+            // saved type so the user sees the new row appear immediately.
+            if (typeof window._bdmEntriesReload === 'function') {
+                try { await window._bdmEntriesReload(body.type); } catch (e) { /* ignore */ }
+            } else {
+                var filt = document.getElementById('be-filter');
+                if (filt) {
+                    if (body.type && filt.value !== body.type) filt.value = body.type;
+                    try { filt.dispatchEvent(new Event('change')); } catch (e) { /* ignore */ }
+                }
             }
         } catch (e) {
             status.textContent = '⚠️ ' + (e.message || e);

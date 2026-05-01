@@ -111,9 +111,12 @@
     function maybeAutoReset() {
         if (autoResetDoneThisVisit) return;
         if (!periodDropdownIsEmpty()) return;
-        if (!hasLifetimeActivity()) return;
+        // Force the all-time view on first load so the dashboard cards,
+        // period dropdown, and charts populate from the saved entries
+        // even when the default From/To range happens to exclude every
+        // entry. The user can still narrow the window manually.
         autoResetDoneThisVisit = true;
-        console.log('[bdm-analytics-dropdown-fix] auto-clearing date filter');
+        console.log('[bdm-analytics-dropdown-fix] auto-clearing date filter to surface all-time activity');
         clearFiltersAndApply();
     }
 

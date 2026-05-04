@@ -245,7 +245,13 @@
             state.chartsCacheKey = null;
             window.showBdmAnalytics();
         };
-        document.getElementById('bdmAnalyticsExcelBtn').onclick = downloadExcel;
+        document.getElementById('bdmAnalyticsExcelBtn').onclick = function () {
+            var sel = document.getElementById('bdmAnExportGranularity');
+            var g = (sel && sel.value) || state.granularity || 'month';
+            downloadExcel(g);
+        };
+        var chartsBtn = document.getElementById('bdmAnChartsPngBtn');
+        if (chartsBtn) chartsBtn.onclick = downloadChartsPng;
 
         // open default tab: Period Summary
         showTab('period');
@@ -272,7 +278,19 @@
                     '<input type="date" id="bdmAnalyticsTo" style="padding:0.5rem; border:1px solid var(--border,#ddd); border-radius:6px;">' +
                 '</div>' +
                 '<button id="bdmAnalyticsApplyBtn" class="btn btn-primary">Apply</button>' +
-                '<button id="bdmAnalyticsExcelBtn" class="btn btn-success">📥 Download Excel</button>' +
+                '<div style="border-left:1px solid var(--border,#ddd); padding-left:1rem; display:flex; gap:0.5rem; align-items:end; flex-wrap:wrap;">' +
+                    '<div>' +
+                        '<label style="display:block; font-size:0.85rem; color:var(--text-light,#666);">Export</label>' +
+                        '<select id="bdmAnExportGranularity" style="padding:0.5rem; border:1px solid var(--border,#ddd); border-radius:6px;">' +
+                            '<option value="week">Weekly</option>' +
+                            '<option value="month" selected>Monthly</option>' +
+                            '<option value="year">Yearly</option>' +
+                            '<option value="all">All cadences</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<button id="bdmAnalyticsExcelBtn" class="btn btn-success" title="Download summary + quotes + wins + variations + lifetime">📥 Excel</button>' +
+                    '<button id="bdmAnChartsPngBtn" class="btn btn-info" title="Save the rendered chart canvases as PNG files (open the Charts tab first)">🖼️ Charts (PNG)</button>' +
+                '</div>' +
             '</div>'
         );
     }
@@ -1096,73 +1114,152 @@
     }
 
     // ── Excel download ─────────────────────────────────────────────────────────
-    function downloadExcel() {
-        if (typeof XLSX === 'undefined') {
-            alert('Excel library not loaded. Please refresh the page.');
-            return;
+    // Fetch a full-detail (section=all) payload for one granularity so the
+    // workbook can include quotes / wins / variations rows alongside the
+    // per-BDM × period summary.
+    async function fetchFullForGranularity(granularity) {
+        var qs = 'granularity=' + encodeURIComponent(granularity) + '&section=all';
+        if (state.from) qs += '&from=' + encodeURIComponent(state.from);
+        if (state.to) qs += '&to=' + encodeURIComponent(state.to);
+        var resp = await window.apiCall('bdm-analytics?' + qs);
+        if (!resp || !resp.success) {
+            throw new Error((resp && resp.error) || 'Failed to load BDM analytics (' + granularity + ')');
         }
-        var d = state.data;
-        var wb = XLSX.utils.book_new();
+        return resp.data;
+    }
 
-        // Sheet 1: Per-BDM-per-period summary
-        var sum = [['BDM', 'Period', 'No. of Quotes', 'Quote Value', 'Projects Won', 'Project Value', 'Variation Value', 'Total Value', 'New Clients']];
-        d.bdms.forEach(function (b) {
-            b.periods.forEach(function (p) {
+    // Append the four standard sheets (Summary, Quotes, Wins, Variations)
+    // for a single granularity to the supplied workbook. Sheet names are
+    // prefixed with the cadence label so an "All cadences" workbook keeps
+    // Weekly / Monthly / Yearly tabs disambiguated.
+    function appendGranularitySheets(wb, d, granLabel, granKey) {
+        var sum = [['BDM', 'Period', 'No. of Quotes', 'Quote Value (INR)', 'Projects Won', 'Project Value (INR)', 'Variation Value (INR)', 'Total Value (INR)', 'New Clients']];
+        (d.bdms || []).forEach(function (b) {
+            (b.periods || []).forEach(function (p) {
                 sum.push([
-                    b.bdmName, periodLabel(p.period, state.granularity),
+                    b.bdmName, periodLabel(p.period, granKey),
                     p.numQuotes, p.quoteValueTotal,
                     p.numProjectsWon, p.projectValue,
                     p.variationValue, p.totalValue, p.numNewClients
                 ]);
             });
         });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Period Summary');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), (granLabel + ' Summary').slice(0, 31));
 
-        // Sheet 2: All quotes uploaded (date + value)
-        var quotes = [['Date', 'BDM', 'Period', 'Project', 'Client', 'Project #', 'Currency', 'Value', 'Status']];
-        d.bdms.forEach(function (b) {
-            b.periods.forEach(function (p) {
-                p.quotes.forEach(function (q) {
+        var quotes = [['Date', 'BDM', 'Period', 'Project', 'Client', 'Project #', 'Currency', 'Value (INR)', 'Status']];
+        (d.bdms || []).forEach(function (b) {
+            (b.periods || []).forEach(function (p) {
+                (p.quotes || []).forEach(function (q) {
                     quotes.push([
-                        q.date, b.bdmName, periodLabel(p.period, state.granularity),
+                        fmtDate(q.date), b.bdmName, periodLabel(p.period, granKey),
                         q.projectName, q.clientCompany, q.projectNumber,
                         q.currency, q.value, q.status
                     ]);
                 });
             });
         });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(quotes), 'Quotes Uploaded');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(quotes), (granLabel + ' Quotes').slice(0, 31));
 
-        // Sheet 3: Projects Won
-        var wins = [['Won On', 'BDM', 'Period', 'Project', 'Client', 'Currency', 'Value']];
-        d.bdms.forEach(function (b) {
-            b.periods.forEach(function (p) {
-                p.wonProjects.forEach(function (w) {
+        var wins = [['Won On', 'BDM', 'Period', 'Project', 'Client', 'Currency', 'Value (INR)']];
+        (d.bdms || []).forEach(function (b) {
+            (b.periods || []).forEach(function (p) {
+                (p.wonProjects || []).forEach(function (w) {
                     wins.push([
-                        w.date, b.bdmName, periodLabel(p.period, state.granularity),
+                        fmtDate(w.date), b.bdmName, periodLabel(p.period, granKey),
                         w.projectName, w.clientCompany, w.currency, w.value
                     ]);
                 });
             });
         });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wins), 'Projects Won');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wins), (granLabel + ' Wins').slice(0, 31));
 
-        // Sheet 4: Variations
-        var vars = [['Approved On', 'BDM', 'Period', 'Variation Code', 'Project', 'Client', 'Hours', 'Currency', 'Value']];
-        d.bdms.forEach(function (b) {
-            b.periods.forEach(function (p) {
-                p.variations.forEach(function (v) {
+        var vars = [['Approved On', 'BDM', 'Period', 'Variation Code', 'Project', 'Client', 'Hours', 'Currency', 'Value (INR)']];
+        (d.bdms || []).forEach(function (b) {
+            (b.periods || []).forEach(function (p) {
+                (p.variations || []).forEach(function (v) {
                     vars.push([
-                        v.date, b.bdmName, periodLabel(p.period, state.granularity),
+                        fmtDate(v.date), b.bdmName, periodLabel(p.period, granKey),
                         v.variationCode, v.projectName, v.clientCompany,
                         v.estimatedHours, v.currency, v.value
                     ]);
                 });
             });
         });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(vars), 'Variations');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(vars), (granLabel + ' Variations').slice(0, 31));
+    }
 
-        XLSX.writeFile(wb, 'BDM_Analytics_' + state.granularity + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    function appendLifetimeSheet(wb, lifetime) {
+        if (!lifetime) return;
+        var rows = [['BDM', 'No. of Quotes', 'Quote Value (INR)', 'Projects Won', 'Project Value (INR)', 'Variation Value (INR)', 'Total Value (INR)', 'New Clients']];
+        (lifetime.bdms || []).forEach(function (b) {
+            rows.push([b.bdmName, b.numQuotes, b.quoteValueTotal, b.numProjectsWon, b.projectValue, b.variationValue, b.totalValue, b.numNewClients]);
+        });
+        var t = lifetime.totals;
+        if (t) {
+            rows.push([]);
+            rows.push(['TOTAL', t.numQuotes, t.quoteValueTotal, t.numProjectsWon, t.projectValue, t.variationValue, t.totalValue, t.numNewClients]);
+        }
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Lifetime');
+    }
+
+    async function downloadExcel(granularity) {
+        if (typeof XLSX === 'undefined') {
+            alert('Excel library not loaded. Please refresh the page.');
+            return;
+        }
+        var picks = granularity === 'all' ? ['week', 'month', 'year'] : [granularity || 'month'];
+        if (typeof window.showLoading === 'function') window.showLoading();
+        try {
+            var datas = await Promise.all(picks.map(fetchFullForGranularity));
+            var wb = XLSX.utils.book_new();
+            // Lifetime is identical across granularities — pull from the
+            // first response so it appears once at the top of the workbook.
+            appendLifetimeSheet(wb, datas[0] && datas[0].lifetime);
+            picks.forEach(function (g, i) {
+                var label = g === 'week' ? 'Weekly' : g === 'month' ? 'Monthly' : 'Yearly';
+                appendGranularitySheets(wb, datas[i], label, g);
+            });
+            var GRAN_LABELS = { week: 'Weekly', month: 'Monthly', year: 'Yearly', all: 'All' };
+            var fname = 'BDM_Analytics_' + (GRAN_LABELS[granularity] || 'Report') + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
+            XLSX.writeFile(wb, fname);
+        } catch (err) {
+            console.error('[BDM analytics] excel download error:', err);
+            alert('Failed to download Excel: ' + (err.message || err));
+        } finally {
+            if (typeof window.hideLoading === 'function') window.hideLoading();
+        }
+    }
+
+    // Save every rendered chart canvas as a PNG. The user must have opened
+    // the Charts tab at least once for the canvases to exist; otherwise we
+    // surface a hint instead of silently doing nothing.
+    function downloadChartsPng() {
+        var ids = [
+            'bdmAnChart_quotes_week', 'bdmAnChart_won_week', 'bdmAnChart_trend_week',
+            'bdmAnChart_quotes_month', 'bdmAnChart_won_month', 'bdmAnChart_trend_month',
+            'bdmAnChart_quotes_year', 'bdmAnChart_won_year', 'bdmAnChart_trend_year',
+            'bdmAnTotalsChart'
+        ];
+        var date = new Date().toISOString().split('T')[0];
+        var found = 0;
+        ids.forEach(function (id, i) {
+            var canvas = document.getElementById(id);
+            if (!canvas) return;
+            var url;
+            try { url = canvas.toDataURL('image/png'); } catch (e) { return; }
+            found += 1;
+            setTimeout(function () {
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'BDM_' + id.replace(/^bdmAn/, '') + '_' + date + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, i * 250);
+        });
+        if (!found) {
+            alert('No charts to export. Open the 📈 Charts tab first so the canvases render, then click again.');
+        }
     }
 
     console.log('[BDM analytics] module loaded');

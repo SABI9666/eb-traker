@@ -450,14 +450,27 @@
                 var results = await Promise.all(needs.map(function (n) { return n[1]; }));
                 needs.forEach(function (n, i) { state.chartsCache[n[0]] = results[i]; });
             }
-            // Default each cadence to its most recent period (last item
-            // of periodKeys) the first time we render for this filter.
+            // Default each cadence to the most recent period that
+            // actually has activity, so the chart isn't blank on first
+            // open. Falls back to the most recent key if nothing has
+            // activity in the entire range.
             ['week', 'month', 'year'].forEach(function (g) {
-                var d = state.chartsCache[g];
-                var keys = (d && d.periodKeys) || [];
-                if (!state.chartsSelectedPeriod[g] || keys.indexOf(state.chartsSelectedPeriod[g]) === -1) {
-                    state.chartsSelectedPeriod[g] = keys[keys.length - 1] || null;
+                var data = state.chartsCache[g];
+                var keys = (data && data.periodKeys) || [];
+                if (state.chartsSelectedPeriod[g] && keys.indexOf(state.chartsSelectedPeriod[g]) !== -1) return;
+                var pick = null;
+                for (var i = keys.length - 1; i >= 0 && !pick; i--) {
+                    var k = keys[i];
+                    var hasIt = (data.bdms || []).some(function (b) {
+                        return (b.periods || []).some(function (pp) {
+                            if (String(pp.period) !== String(k)) return false;
+                            return (pp.numQuotes || 0) + (pp.numProjectsWon || 0)
+                                 + (pp.quoteValueTotal || 0) + (pp.projectValue || 0) > 0;
+                        });
+                    });
+                    if (hasIt) pick = k;
                 }
+                state.chartsSelectedPeriod[g] = pick || keys[keys.length - 1] || null;
             });
             host.innerHTML = renderChartsContainer();
             setTimeout(function () {
@@ -837,7 +850,9 @@
         // has no entry for a BDM the row is zeroed.
         function periodRowFor(b) {
             if (!selectedKey) return null;
-            var p = (b.periods || []).filter(function (pp) { return pp.period === selectedKey; })[0];
+            var p = (b.periods || []).filter(function (pp) {
+                return String(pp.period) === String(selectedKey);
+            })[0];
             return p || {
                 numQuotes: 0, quoteValueTotal: 0,
                 numProjectsWon: 0, projectValue: 0,
@@ -845,33 +860,27 @@
             };
         }
 
-        var perBdm = allBdms.map(function (b) {
+        // Keep only BDMs who have activity in the selected period so the
+        // chart isn't dominated by a long tail of zero bars. If nobody
+        // has any activity we render an empty-state message.
+        var perBdmAll = allBdms.map(function (b) {
             return { bdmUid: b.bdmUid, bdmName: b.bdmName, row: periodRowFor(b) || {} };
         });
-        var hasActivityInPeriod = perBdm.reduce(function (s, x) {
-            var r = x.row || {};
-            return s + (r.numQuotes || 0) + (r.numProjectsWon || 0)
-                     + (r.quoteValueTotal || 0) + (r.projectValue || 0);
-        }, 0) > 0;
-
-        // If the picked period has nothing for anyone (or no period
-        // could be picked), fall back to lifetime per-BDM totals so the
-        // chart still tells a story instead of being empty.
-        var lifetimeBdms = (d.lifetime && d.lifetime.bdms) || [];
-        var useLifetime = !hasActivityInPeriod && lifetimeBdms.length > 0;
-        if (useLifetime) {
-            perBdm = lifetimeBdms.map(function (lb) {
-                return { bdmUid: lb.bdmUid, bdmName: lb.bdmName, row: lb };
-            });
+        function rowHasActivity(r) {
+            return (r.numQuotes || 0) + (r.numProjectsWon || 0)
+                 + (r.quoteValueTotal || 0) + (r.projectValue || 0) > 0;
         }
+        var perBdm = perBdmAll.filter(function (x) { return rowHasActivity(x.row); });
+        var hasActivityInPeriod = perBdm.length > 0;
 
         function pick(x, field) { return (x.row && x.row[field]) || 0; }
 
-        var bdms = perBdm; // for trend lookup below
+        var bdms = perBdm;
         var labels = perBdm.map(function (x) { return x.bdmName; });
-        var suffix = useLifetime
-            ? ' (all-time — ' + (selectedKey ? periodLabel(selectedKey, gran) + ' has no activity' : 'no period selected') + ')'
-            : (selectedKey ? ' — ' + periodLabel(selectedKey, gran) : '');
+        var suffix = selectedKey ? ' — ' + periodLabel(selectedKey, gran) : '';
+        var emptyMsg = selectedKey
+            ? 'No activity recorded for ' + periodLabel(selectedKey, gran) + '.'
+            : 'No period selected.';
 
         // Quotes Uploaded — count + value as a grouped bar chart.
         var quotesCanvas = document.getElementById('bdmAnChart_quotes_' + gran);
@@ -879,6 +888,9 @@
             if (Chart.getChart(quotesCanvas)) Chart.getChart(quotesCanvas).destroy();
             var quotesHead = document.getElementById('bdmAnHead_quotes_' + gran);
             if (quotesHead) quotesHead.textContent = '📝 Quotes Uploaded by BDM' + suffix;
+            renderEmptyOverlay(quotesCanvas, hasActivityInPeriod ? '' : emptyMsg);
+        }
+        if (quotesCanvas && hasActivityInPeriod) {
             new Chart(quotesCanvas, {
                 type: 'bar',
                 data: {
@@ -915,6 +927,9 @@
             if (Chart.getChart(wonCanvas)) Chart.getChart(wonCanvas).destroy();
             var wonHead = document.getElementById('bdmAnHead_won_' + gran);
             if (wonHead) wonHead.textContent = '🏆 Projects Won by BDM' + suffix;
+            renderEmptyOverlay(wonCanvas, hasActivityInPeriod ? '' : emptyMsg);
+        }
+        if (wonCanvas && hasActivityInPeriod) {
             new Chart(wonCanvas, {
                 type: 'bar',
                 data: {
@@ -1043,6 +1058,31 @@
                 scales: { x: { stacked: true }, y: { stacked: true } }
             }
         });
+    }
+
+    // Show a centered message over a canvas's wrapper when there's
+    // nothing to chart. Pass an empty message to clear any existing
+    // overlay so the next chart render isn't masked.
+    function renderEmptyOverlay(canvas, message) {
+        var wrap = canvas && canvas.parentNode;
+        if (!wrap) return;
+        if (getComputedStyle(wrap).position === 'static') {
+            wrap.style.position = 'relative';
+        }
+        var existing = wrap.querySelector('[data-bdm-an-empty]');
+        if (!message) {
+            if (existing) existing.remove();
+            canvas.style.opacity = '';
+            return;
+        }
+        if (!existing) {
+            existing = document.createElement('div');
+            existing.setAttribute('data-bdm-an-empty', '1');
+            existing.style.cssText = 'position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#64748b; font-size:0.95rem; text-align:center; padding:1rem; background:rgba(255,255,255,0.85); border-radius:6px;';
+            wrap.appendChild(existing);
+        }
+        existing.textContent = message;
+        canvas.style.opacity = '0.15';
     }
 
     function updateHeading(canvas, tag, baseText, suffix) {

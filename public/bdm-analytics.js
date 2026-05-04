@@ -141,7 +141,11 @@
         // weekly / monthly / yearly views can be rendered side-by-side
         // without firing the same fetch every time the tab is opened.
         chartsCache: { week: null, month: null, year: null },
-        chartsCacheKey: null
+        chartsCacheKey: null,
+        // Per-cadence selected period for the Charts tab. Each entry is
+        // a period key from the matching cache payload (e.g. "2025-W26",
+        // "2025-06", "2025"). Charts render for the chosen period.
+        chartsSelectedPeriod: { week: null, month: null, year: null }
     };
 
     window.showBdmAnalytics = async function () {
@@ -430,6 +434,7 @@
         var cacheKey = (state.from || '') + '|' + (state.to || '');
         if (state.chartsCacheKey !== cacheKey) {
             state.chartsCache = { week: null, month: null, year: null };
+            state.chartsSelectedPeriod = { week: null, month: null, year: null };
             state.chartsCacheKey = cacheKey;
         }
         host.innerHTML =
@@ -445,8 +450,20 @@
                 var results = await Promise.all(needs.map(function (n) { return n[1]; }));
                 needs.forEach(function (n, i) { state.chartsCache[n[0]] = results[i]; });
             }
+            // Default each cadence to its most recent period (last item
+            // of periodKeys) the first time we render for this filter.
+            ['week', 'month', 'year'].forEach(function (g) {
+                var d = state.chartsCache[g];
+                var keys = (d && d.periodKeys) || [];
+                if (!state.chartsSelectedPeriod[g] || keys.indexOf(state.chartsSelectedPeriod[g]) === -1) {
+                    state.chartsSelectedPeriod[g] = keys[keys.length - 1] || null;
+                }
+            });
             host.innerHTML = renderChartsContainer();
-            setTimeout(renderCharts, 50);
+            setTimeout(function () {
+                renderCharts();
+                bindPeriodSelectors();
+            }, 50);
         } catch (err) {
             console.error('[BDM analytics] charts load error:', err);
             host.innerHTML =
@@ -454,6 +471,18 @@
                     '⚠️ Failed to load charts: ' + (err.message || err) +
                 '</div>';
         }
+    }
+
+    function bindPeriodSelectors() {
+        ['week', 'month', 'year'].forEach(function (g) {
+            var sel = document.getElementById('bdmAnPeriodSel_' + g);
+            if (!sel) return;
+            sel.onchange = function () {
+                state.chartsSelectedPeriod[g] = sel.value;
+                var palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#ef4444', '#84cc16'];
+                renderGranularityCharts(g, palette);
+            };
+        });
     }
 
     // ── Period Summary tab ─────────────────────────────────────────────────────
@@ -726,10 +755,9 @@
     }
 
     // ── Charts tab ─────────────────────────────────────────────────────────────
-    // Three independent sections (Weekly / Monthly / Yearly), each split
-    // into a "Quotes Uploaded" chart and a "Projects Won" chart so the COO
-    // and Director can read pipeline activity and conversion side-by-side
-    // at every cadence.
+    // Three independent sections (Weekly / Monthly / Yearly), each with
+    // a period dropdown so the bar charts re-render for the chosen
+    // week / month / year. Trend line still spans the full window.
     function renderChartsContainer() {
         return (
             renderGranularitySection('week', 'Weekly') +
@@ -743,18 +771,35 @@
     }
 
     function renderGranularitySection(gran, label) {
+        var d = state.chartsCache[gran] || {};
+        var keys = (d.periodKeys || []).slice().reverse(); // most recent first
+        var sel = state.chartsSelectedPeriod[gran];
+        var pickerLabel = gran === 'week' ? 'Week' : gran === 'month' ? 'Month' : 'Year';
+        var options = keys.length
+            ? keys.map(function (k) {
+                  return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' +
+                      periodLabel(k, gran) + '</option>';
+              }).join('')
+            : '<option value="">(no data)</option>';
+
         return (
             '<div style="margin-bottom:1.75rem;">' +
-                '<h3 style="margin:0 0 0.75rem 0; padding-bottom:0.4rem; border-bottom:2px solid #e5e7eb; color:#1e293b;">' +
-                    '📅 ' + label + ' Charts' +
-                '</h3>' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap; padding-bottom:0.4rem; margin-bottom:0.75rem; border-bottom:2px solid #e5e7eb;">' +
+                    '<h3 style="margin:0; color:#1e293b;">📅 ' + label + ' Charts</h3>' +
+                    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+                        '<label style="font-size:0.85rem; color:#475569; font-weight:600;">' + pickerLabel + ':</label>' +
+                        '<select id="bdmAnPeriodSel_' + gran + '" style="padding:0.4rem 0.6rem; border:1px solid #ddd; border-radius:6px; font-size:0.9rem; min-width:140px;">' +
+                            options +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
                 '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:1.5rem;">' +
                     '<div class="card" style="padding:1rem;">' +
-                        '<h4 style="margin-top:0; color:#3b82f6;">📝 Quotes Uploaded by BDM (' + label + ')</h4>' +
+                        '<h4 style="margin-top:0; color:#3b82f6;" id="bdmAnHead_quotes_' + gran + '">📝 Quotes Uploaded by BDM (' + label + ')</h4>' +
                         '<div style="height:300px;"><canvas id="bdmAnChart_quotes_' + gran + '"></canvas></div>' +
                     '</div>' +
                     '<div class="card" style="padding:1rem;">' +
-                        '<h4 style="margin-top:0; color:#f59e0b;">🏆 Projects Won by BDM (' + label + ')</h4>' +
+                        '<h4 style="margin-top:0; color:#f59e0b;" id="bdmAnHead_won_' + gran + '">🏆 Projects Won by BDM (' + label + ')</h4>' +
                         '<div style="height:300px;"><canvas id="bdmAnChart_won_' + gran + '"></canvas></div>' +
                     '</div>' +
                     '<div class="card" style="padding:1rem; grid-column:1/-1;">' +
@@ -777,47 +822,63 @@
     }
 
     // Render the per-BDM bar charts (Quotes Uploaded + Projects Won) and
-    // the per-period trend line for one granularity using the data
-    // returned for that granularity.
+    // the per-period trend line for one granularity. Bar charts are
+    // scoped to the period selected in the section's dropdown
+    // (state.chartsSelectedPeriod[gran]); the trend line still spans the
+    // full window so trends remain visible.
     function renderGranularityCharts(gran, palette) {
         var d = state.chartsCache[gran];
         if (!d) return;
 
-        // Per-BDM totals across the requested window. If everything is
-        // zero, fall back to lifetime so the bars aren't empty when the
-        // user has a narrow date window or no recent activity.
-        var inRangeTotal = (d.bdms || []).reduce(function (s, b) {
-            var o = b.overall || {};
-            return s + (o.numQuotes || 0) + (o.numProjectsWon || 0)
-                     + (o.quoteValueTotal || 0) + (o.projectValue || 0);
-        }, 0);
-        var lifetimeBdms = (d.lifetime && d.lifetime.bdms) || [];
-        var useLifetime = inRangeTotal === 0 && lifetimeBdms.length > 0;
-        var lifetimeByUid = {};
-        lifetimeBdms.forEach(function (lb) { lifetimeByUid[lb.bdmUid] = lb; });
+        var selectedKey = state.chartsSelectedPeriod[gran];
+        var allBdms = d.bdms || [];
 
-        var bdms = useLifetime
-            ? lifetimeBdms.map(function (lb) {
-                  return { bdmUid: lb.bdmUid, bdmName: lb.bdmName, overall: lb, periods: [] };
-              })
-            : (d.bdms || []);
-
-        function pick(b, field) {
-            if (useLifetime) {
-                var lb = lifetimeByUid[b.bdmUid];
-                return lb ? (lb[field] || 0) : 0;
-            }
-            return (b.overall && b.overall[field]) || 0;
+        // Build a per-BDM row from the selected period. If that period
+        // has no entry for a BDM the row is zeroed.
+        function periodRowFor(b) {
+            if (!selectedKey) return null;
+            var p = (b.periods || []).filter(function (pp) { return pp.period === selectedKey; })[0];
+            return p || {
+                numQuotes: 0, quoteValueTotal: 0,
+                numProjectsWon: 0, projectValue: 0,
+                variationValue: 0, totalValue: 0
+            };
         }
 
-        var labels = bdms.map(function (b) { return b.bdmName; });
-        var suffix = useLifetime ? ' (all-time)' : '';
+        var perBdm = allBdms.map(function (b) {
+            return { bdmUid: b.bdmUid, bdmName: b.bdmName, row: periodRowFor(b) || {} };
+        });
+        var hasActivityInPeriod = perBdm.reduce(function (s, x) {
+            var r = x.row || {};
+            return s + (r.numQuotes || 0) + (r.numProjectsWon || 0)
+                     + (r.quoteValueTotal || 0) + (r.projectValue || 0);
+        }, 0) > 0;
+
+        // If the picked period has nothing for anyone (or no period
+        // could be picked), fall back to lifetime per-BDM totals so the
+        // chart still tells a story instead of being empty.
+        var lifetimeBdms = (d.lifetime && d.lifetime.bdms) || [];
+        var useLifetime = !hasActivityInPeriod && lifetimeBdms.length > 0;
+        if (useLifetime) {
+            perBdm = lifetimeBdms.map(function (lb) {
+                return { bdmUid: lb.bdmUid, bdmName: lb.bdmName, row: lb };
+            });
+        }
+
+        function pick(x, field) { return (x.row && x.row[field]) || 0; }
+
+        var bdms = perBdm; // for trend lookup below
+        var labels = perBdm.map(function (x) { return x.bdmName; });
+        var suffix = useLifetime
+            ? ' (all-time — ' + (selectedKey ? periodLabel(selectedKey, gran) + ' has no activity' : 'no period selected') + ')'
+            : (selectedKey ? ' — ' + periodLabel(selectedKey, gran) : '');
 
         // Quotes Uploaded — count + value as a grouped bar chart.
         var quotesCanvas = document.getElementById('bdmAnChart_quotes_' + gran);
         if (quotesCanvas) {
             if (Chart.getChart(quotesCanvas)) Chart.getChart(quotesCanvas).destroy();
-            updateHeading(quotesCanvas, 'h4', 'Quotes Uploaded by BDM', suffix);
+            var quotesHead = document.getElementById('bdmAnHead_quotes_' + gran);
+            if (quotesHead) quotesHead.textContent = '📝 Quotes Uploaded by BDM' + suffix;
             new Chart(quotesCanvas, {
                 type: 'bar',
                 data: {
@@ -852,7 +913,8 @@
         var wonCanvas = document.getElementById('bdmAnChart_won_' + gran);
         if (wonCanvas) {
             if (Chart.getChart(wonCanvas)) Chart.getChart(wonCanvas).destroy();
-            updateHeading(wonCanvas, 'h4', 'Projects Won by BDM', suffix);
+            var wonHead = document.getElementById('bdmAnHead_won_' + gran);
+            if (wonHead) wonHead.textContent = '🏆 Projects Won by BDM' + suffix;
             new Chart(wonCanvas, {
                 type: 'bar',
                 data: {

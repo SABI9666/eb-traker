@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 6.0.4 - Cache Version 58 (BDM Analytics charts: empty-state + smart default period)
+// Version: 6.0.5 - Cache Version 59 (BDM Analytics export: granularity-aware Excel + chart PNGs)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v58';
-const STATIC_CACHE = 'ebtracker-static-v58';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v58';
+const CACHE_NAME = 'ebtracker-v59';
+const STATIC_CACHE = 'ebtracker-static-v59';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v59';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -41,18 +41,18 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v58: Installing...');
+  console.log('🔧 Service Worker v59: Installing...');
   
   event.waitUntil(
     Promise.all([
       caches.open(STATIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v58: Caching static assets');
+          console.log('📦 Service Worker v59: Caching static assets');
           return cache.addAll(STATIC_ASSETS);
         }),
       caches.open(DYNAMIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v58: Caching Firebase SDK');
+          console.log('📦 Service Worker v59: Caching Firebase SDK');
           return Promise.all(
             EXTERNAL_SCRIPTS.map(url => 
               cache.add(url).catch(err => {
@@ -63,11 +63,11 @@ self.addEventListener('install', (event) => {
         })
     ])
     .then(() => {
-      console.log('✅ Service Worker v58: All assets cached');
+      console.log('✅ Service Worker v59: All assets cached');
       return self.skipWaiting();
     })
     .catch((error) => {
-      console.error('❌ Service Worker v58: Cache failed', error);
+      console.error('❌ Service Worker v59: Cache failed', error);
     })
   );
 });
@@ -76,7 +76,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v58: Activating...');
+  console.log('🚀 Service Worker v59: Activating...');
   
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
   
@@ -86,26 +86,26 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v58: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v59: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v58: Activated - Old caches cleared');
+        console.log('✅ Service Worker v59: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v58: Notifying clients to refresh');
+        console.log('📢 Service Worker v59: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v58',
-            message: 'BDM analytics charts: empty-state + smart default period.'
+            version: 'v59',
+            message: 'BDM analytics export: granularity-aware Excel + chart PNGs.'
           });
         });
       })
@@ -241,7 +241,7 @@ self.addEventListener('message', (event) => {
       self.skipWaiting();
       break;
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v58', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v59', cache: CACHE_NAME });
       break;
     case 'CLEAR_CACHE':
       caches.keys().then(names => { names.forEach(name => caches.delete(name)); })
@@ -276,4 +276,4 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('error', (event) => { console.error('❌ SW Error:', event.error); });
 self.addEventListener('unhandledrejection', (event) => { console.error('❌ SW Unhandled:', event.reason); });
 
-console.log('✅ Service Worker v58: Loaded - empty-state + smart default for BDM analytics charts');
+console.log('✅ Service Worker v59: Loaded - granularity-aware Excel export + chart PNGs');

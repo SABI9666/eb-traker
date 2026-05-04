@@ -136,7 +136,12 @@
         to: '',
         data: null,
         selectedBdmUid: 'ALL',
-        selectedPeriodKey: null
+        selectedPeriodKey: null,
+        // Cached payloads for the Charts tab keyed by granularity so the
+        // weekly / monthly / yearly views can be rendered side-by-side
+        // without firing the same fetch every time the tab is opened.
+        chartsCache: { week: null, month: null, year: null },
+        chartsCacheKey: null
     };
 
     window.showBdmAnalytics = async function () {
@@ -230,6 +235,10 @@
             state.from = document.getElementById('bdmAnalyticsFrom').value;
             state.to = document.getElementById('bdmAnalyticsTo').value;
             state.selectedPeriodKey = null;
+            // The cached charts payloads were fetched against the previous
+            // From/To window — invalidate so the Charts tab refetches.
+            state.chartsCache = { week: null, month: null, year: null };
+            state.chartsCacheKey = null;
             window.showBdmAnalytics();
         };
         document.getElementById('bdmAnalyticsExcelBtn').onclick = downloadExcel;
@@ -399,8 +408,51 @@
         else if (name === 'won') host.innerHTML = renderWonList();
         else if (name === 'variations') host.innerHTML = renderVariationsList();
         else if (name === 'charts') {
+            loadAndRenderCharts(host);
+        }
+    }
+
+    // Fetch a single granularity payload for the Charts tab. Honours the
+    // user's From/To filter so the weekly / monthly / yearly bars stay in
+    // sync with the rest of the page.
+    async function fetchChartsData(granularity) {
+        var qs = 'granularity=' + encodeURIComponent(granularity);
+        if (state.from) qs += '&from=' + encodeURIComponent(state.from);
+        if (state.to) qs += '&to=' + encodeURIComponent(state.to);
+        var resp = await window.apiCall('bdm-analytics?' + qs);
+        if (!resp || !resp.success) {
+            throw new Error((resp && resp.error) || 'Failed to load BDM analytics (' + granularity + ')');
+        }
+        return resp.data;
+    }
+
+    async function loadAndRenderCharts(host) {
+        var cacheKey = (state.from || '') + '|' + (state.to || '');
+        if (state.chartsCacheKey !== cacheKey) {
+            state.chartsCache = { week: null, month: null, year: null };
+            state.chartsCacheKey = cacheKey;
+        }
+        host.innerHTML =
+            '<div class="card" style="padding:1.5rem; text-align:center; color:#64748b;">' +
+                '⏳ Loading weekly / monthly / yearly charts…' +
+            '</div>';
+        try {
+            var needs = [];
+            if (!state.chartsCache.week) needs.push(['week', fetchChartsData('week')]);
+            if (!state.chartsCache.month) needs.push(['month', fetchChartsData('month')]);
+            if (!state.chartsCache.year) needs.push(['year', fetchChartsData('year')]);
+            if (needs.length) {
+                var results = await Promise.all(needs.map(function (n) { return n[1]; }));
+                needs.forEach(function (n, i) { state.chartsCache[n[0]] = results[i]; });
+            }
             host.innerHTML = renderChartsContainer();
             setTimeout(renderCharts, 50);
+        } catch (err) {
+            console.error('[BDM analytics] charts load error:', err);
+            host.innerHTML =
+                '<div class="card" style="padding:1.5rem; color:#dc2626;">' +
+                    '⚠️ Failed to load charts: ' + (err.message || err) +
+                '</div>';
         }
     }
 
@@ -674,20 +726,41 @@
     }
 
     // ── Charts tab ─────────────────────────────────────────────────────────────
+    // Three independent sections (Weekly / Monthly / Yearly), each split
+    // into a "Quotes Uploaded" chart and a "Projects Won" chart so the COO
+    // and Director can read pipeline activity and conversion side-by-side
+    // at every cadence.
     function renderChartsContainer() {
         return (
-            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:1.5rem;">' +
-                '<div class="card" style="padding:1rem;">' +
-                    '<h3 style="margin-top:0;">Total Value by BDM</h3>' +
-                    '<div style="height:320px;"><canvas id="bdmAnTotalsChart"></canvas></div>' +
-                '</div>' +
-                '<div class="card" style="padding:1rem;">' +
-                    '<h3 style="margin-top:0;">Quotes Uploaded by BDM</h3>' +
-                    '<div style="height:320px;"><canvas id="bdmAnQuotesChart"></canvas></div>' +
-                '</div>' +
-                '<div class="card" style="padding:1rem; grid-column:1/-1;">' +
-                    '<h3 style="margin-top:0;">Project Value Trend</h3>' +
-                    '<div style="height:320px;"><canvas id="bdmAnTrendChart"></canvas></div>' +
+            renderGranularitySection('week', 'Weekly') +
+            renderGranularitySection('month', 'Monthly') +
+            renderGranularitySection('year', 'Yearly') +
+            '<div class="card" style="padding:1rem; margin-top:1.5rem;">' +
+                '<h3 style="margin-top:0;">Total Value by BDM (current filter)</h3>' +
+                '<div style="height:320px;"><canvas id="bdmAnTotalsChart"></canvas></div>' +
+            '</div>'
+        );
+    }
+
+    function renderGranularitySection(gran, label) {
+        return (
+            '<div style="margin-bottom:1.75rem;">' +
+                '<h3 style="margin:0 0 0.75rem 0; padding-bottom:0.4rem; border-bottom:2px solid #e5e7eb; color:#1e293b;">' +
+                    '📅 ' + label + ' Charts' +
+                '</h3>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:1.5rem;">' +
+                    '<div class="card" style="padding:1rem;">' +
+                        '<h4 style="margin-top:0; color:#3b82f6;">📝 Quotes Uploaded by BDM (' + label + ')</h4>' +
+                        '<div style="height:300px;"><canvas id="bdmAnChart_quotes_' + gran + '"></canvas></div>' +
+                    '</div>' +
+                    '<div class="card" style="padding:1rem;">' +
+                        '<h4 style="margin-top:0; color:#f59e0b;">🏆 Projects Won by BDM (' + label + ')</h4>' +
+                        '<div style="height:300px;"><canvas id="bdmAnChart_won_' + gran + '"></canvas></div>' +
+                    '</div>' +
+                    '<div class="card" style="padding:1rem; grid-column:1/-1;">' +
+                        '<h4 style="margin-top:0; color:#8b5cf6;">📈 ' + label + ' Trend — Quote Value vs Won Value</h4>' +
+                        '<div style="height:320px;"><canvas id="bdmAnChart_trend_' + gran + '"></canvas></div>' +
+                    '</div>' +
                 '</div>' +
             '</div>'
         );
@@ -695,147 +768,229 @@
 
     function renderCharts() {
         if (typeof Chart === 'undefined') return;
-        var d = state.data;
         var palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#ef4444', '#84cc16'];
 
-        // Build the per-BDM totals the bar charts will use. Prefer the
-        // in-range overall totals so the charts honour the date filter
-        // when there's data, but fall back to the lifetime per-BDM totals
-        // (keyed by bdmUid) when the in-range totals are all zero -- that
-        // way the bars are never empty just because the user picked a
-        // narrow window.
+        renderGranularityCharts('week', palette);
+        renderGranularityCharts('month', palette);
+        renderGranularityCharts('year', palette);
+        renderTotalValueChart(palette);
+    }
+
+    // Render the per-BDM bar charts (Quotes Uploaded + Projects Won) and
+    // the per-period trend line for one granularity using the data
+    // returned for that granularity.
+    function renderGranularityCharts(gran, palette) {
+        var d = state.chartsCache[gran];
+        if (!d) return;
+
+        // Per-BDM totals across the requested window. If everything is
+        // zero, fall back to lifetime so the bars aren't empty when the
+        // user has a narrow date window or no recent activity.
         var inRangeTotal = (d.bdms || []).reduce(function (s, b) {
-            return s + ((b.overall && b.overall.projectValue) || 0)
-                     + ((b.overall && b.overall.variationValue) || 0)
-                     + ((b.overall && b.overall.numQuotes) || 0);
+            var o = b.overall || {};
+            return s + (o.numQuotes || 0) + (o.numProjectsWon || 0)
+                     + (o.quoteValueTotal || 0) + (o.projectValue || 0);
         }, 0);
         var lifetimeBdms = (d.lifetime && d.lifetime.bdms) || [];
+        var useLifetime = inRangeTotal === 0 && lifetimeBdms.length > 0;
         var lifetimeByUid = {};
         lifetimeBdms.forEach(function (lb) { lifetimeByUid[lb.bdmUid] = lb; });
-        var useLifetimeCharts = inRangeTotal === 0 && lifetimeBdms.length > 0;
 
-        function chartProjectValue(b) {
-            if (useLifetimeCharts) {
-                var lb = lifetimeByUid[b.bdmUid];
-                return lb ? (lb.projectValue || 0) : 0;
-            }
-            return (b.overall && b.overall.projectValue) || 0;
-        }
-        function chartVariationValue(b) {
-            if (useLifetimeCharts) {
-                var lb = lifetimeByUid[b.bdmUid];
-                return lb ? (lb.variationValue || 0) : 0;
-            }
-            return (b.overall && b.overall.variationValue) || 0;
-        }
-        function chartNumQuotes(b) {
-            if (useLifetimeCharts) {
-                var lb = lifetimeByUid[b.bdmUid];
-                return lb ? (lb.numQuotes || 0) : 0;
-            }
-            return (b.overall && b.overall.numQuotes) || 0;
-        }
-        // If we're falling back, prefer the lifetime BDM list itself (it
-        // already includes every BDM seeded with zero, ordered by total
-        // value descending) so the chart axes match what users expect.
-        var chartBdms = useLifetimeCharts && lifetimeBdms.length
+        var bdms = useLifetime
             ? lifetimeBdms.map(function (lb) {
                   return { bdmUid: lb.bdmUid, bdmName: lb.bdmName, overall: lb, periods: [] };
               })
             : (d.bdms || []);
 
-        var totalsTitle = useLifetimeCharts ? ' (all-time)' : '';
+        function pick(b, field) {
+            if (useLifetime) {
+                var lb = lifetimeByUid[b.bdmUid];
+                return lb ? (lb[field] || 0) : 0;
+            }
+            return (b.overall && b.overall[field]) || 0;
+        }
 
-        // Bar: total value per BDM
-        var totalsCanvas = document.getElementById('bdmAnTotalsChart');
-        if (totalsCanvas) {
-            if (Chart.getChart(totalsCanvas)) Chart.getChart(totalsCanvas).destroy();
-            // Update the chart card heading if present so the user knows
-            // the bars are showing all-time numbers.
-            try {
-                var totalsHeading = totalsCanvas.parentNode && totalsCanvas.parentNode.querySelector('h3');
-                if (totalsHeading && !/all-time/i.test(totalsHeading.textContent || '')) {
-                    totalsHeading.textContent = 'Total Value by BDM' + totalsTitle;
-                }
-            } catch (e) { /* ignore */ }
-            new Chart(totalsCanvas, {
+        var labels = bdms.map(function (b) { return b.bdmName; });
+        var suffix = useLifetime ? ' (all-time)' : '';
+
+        // Quotes Uploaded — count + value as a grouped bar chart.
+        var quotesCanvas = document.getElementById('bdmAnChart_quotes_' + gran);
+        if (quotesCanvas) {
+            if (Chart.getChart(quotesCanvas)) Chart.getChart(quotesCanvas).destroy();
+            updateHeading(quotesCanvas, 'h4', 'Quotes Uploaded by BDM', suffix);
+            new Chart(quotesCanvas, {
                 type: 'bar',
                 data: {
-                    labels: chartBdms.map(function (b) { return b.bdmName; }),
-                    datasets: [{
-                        label: 'Project Value',
-                        data: chartBdms.map(chartProjectValue),
-                        backgroundColor: palette[0]
-                    }, {
-                        label: 'Variation Value',
-                        data: chartBdms.map(chartVariationValue),
-                        backgroundColor: palette[3]
-                    }]
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'No. of Quotes',
+                            data: bdms.map(function (b) { return pick(b, 'numQuotes'); }),
+                            backgroundColor: palette[0],
+                            yAxisID: 'yCount'
+                        },
+                        {
+                            label: 'Quote Value (₹)',
+                            data: bdms.map(function (b) { return pick(b, 'quoteValueTotal'); }),
+                            backgroundColor: palette[1],
+                            yAxisID: 'yValue'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { position: 'bottom' } },
-                    scales: { x: { stacked: true }, y: { stacked: true } }
+                    scales: {
+                        yCount: { type: 'linear', position: 'left', title: { display: true, text: 'Count' }, beginAtZero: true },
+                        yValue: { type: 'linear', position: 'right', title: { display: true, text: 'Value (₹)' }, beginAtZero: true, grid: { drawOnChartArea: false } }
+                    }
                 }
             });
         }
 
-        // Bar: quotes uploaded per BDM
-        var qCanvas = document.getElementById('bdmAnQuotesChart');
-        if (qCanvas) {
-            if (Chart.getChart(qCanvas)) Chart.getChart(qCanvas).destroy();
-            try {
-                var qHeading = qCanvas.parentNode && qCanvas.parentNode.querySelector('h3');
-                if (qHeading && !/all-time/i.test(qHeading.textContent || '')) {
-                    qHeading.textContent = 'Quotes Uploaded by BDM' + totalsTitle;
-                }
-            } catch (e) { /* ignore */ }
-            new Chart(qCanvas, {
+        // Projects Won — count + value as a grouped bar chart.
+        var wonCanvas = document.getElementById('bdmAnChart_won_' + gran);
+        if (wonCanvas) {
+            if (Chart.getChart(wonCanvas)) Chart.getChart(wonCanvas).destroy();
+            updateHeading(wonCanvas, 'h4', 'Projects Won by BDM', suffix);
+            new Chart(wonCanvas, {
                 type: 'bar',
                 data: {
-                    labels: chartBdms.map(function (b) { return b.bdmName; }),
-                    datasets: [{
-                        label: 'No. of Quotes',
-                        data: chartBdms.map(chartNumQuotes),
-                        backgroundColor: palette[1]
-                    }]
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Projects Won',
+                            data: bdms.map(function (b) { return pick(b, 'numProjectsWon'); }),
+                            backgroundColor: palette[2],
+                            yAxisID: 'yCount'
+                        },
+                        {
+                            label: 'Won Value (₹)',
+                            data: bdms.map(function (b) { return pick(b, 'projectValue'); }),
+                            backgroundColor: palette[3],
+                            yAxisID: 'yValue'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        yCount: { type: 'linear', position: 'left', title: { display: true, text: 'Count' }, beginAtZero: true },
+                        yValue: { type: 'linear', position: 'right', title: { display: true, text: 'Value (₹)' }, beginAtZero: true, grid: { drawOnChartArea: false } }
+                    }
                 }
             });
         }
 
-        // Line: project value trend across periods (one line per BDM)
-        var trendCanvas = document.getElementById('bdmAnTrendChart');
+        // Trend — per-period totals across the team. Two lines:
+        // total quote value uploaded, and total won project value.
+        var trendCanvas = document.getElementById('bdmAnChart_trend_' + gran);
         if (trendCanvas) {
             if (Chart.getChart(trendCanvas)) Chart.getChart(trendCanvas).destroy();
-            var labels = d.periodKeys.map(function (k) { return periodLabel(k, state.granularity); });
-            var datasets = d.bdms.map(function (b, i) {
-                var series = d.periodKeys.map(function (k) {
-                    var p = b.periods.filter(function (pp) { return pp.period === k; })[0];
-                    return p ? p.projectValue : 0;
+            var pkeys = d.periodKeys || [];
+            var trendLabels = pkeys.map(function (k) { return periodLabel(k, gran); });
+            var quoteSeries = pkeys.map(function (k) {
+                var sum = 0;
+                (d.bdms || []).forEach(function (b) {
+                    var p = (b.periods || []).filter(function (pp) { return pp.period === k; })[0];
+                    if (p) sum += (p.quoteValueTotal || 0);
                 });
-                var color = palette[i % palette.length];
-                return {
-                    label: b.bdmName,
-                    data: series,
-                    borderColor: color,
-                    backgroundColor: color + '33',
-                    tension: 0.3,
-                    fill: false
-                };
+                return sum;
+            });
+            var wonSeries = pkeys.map(function (k) {
+                var sum = 0;
+                (d.bdms || []).forEach(function (b) {
+                    var p = (b.periods || []).filter(function (pp) { return pp.period === k; })[0];
+                    if (p) sum += (p.projectValue || 0);
+                });
+                return sum;
             });
             new Chart(trendCanvas, {
                 type: 'line',
-                data: { labels: labels, datasets: datasets },
+                data: {
+                    labels: trendLabels,
+                    datasets: [
+                        {
+                            label: 'Quote Value Uploaded',
+                            data: quoteSeries,
+                            borderColor: palette[1],
+                            backgroundColor: palette[1] + '33',
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Won Project Value',
+                            data: wonSeries,
+                            borderColor: palette[3],
+                            backgroundColor: palette[3] + '33',
+                            tension: 0.3,
+                            fill: false
+                        }
+                    ]
+                },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Value (₹)' } } }
                 }
             });
         }
+    }
+
+    // Total value bar chart for the currently selected granularity. Kept
+    // around so the previous "stacked Project + Variation" view is still
+    // available below the per-cadence sections.
+    function renderTotalValueChart(palette) {
+        var d = state.data;
+        if (!d) return;
+        var totalsCanvas = document.getElementById('bdmAnTotalsChart');
+        if (!totalsCanvas) return;
+
+        var inRangeTotal = (d.bdms || []).reduce(function (s, b) {
+            return s + ((b.overall && b.overall.projectValue) || 0)
+                     + ((b.overall && b.overall.variationValue) || 0);
+        }, 0);
+        var lifetimeBdms = (d.lifetime && d.lifetime.bdms) || [];
+        var useLifetime = inRangeTotal === 0 && lifetimeBdms.length > 0;
+        var bdms = useLifetime
+            ? lifetimeBdms.map(function (lb) {
+                  return { bdmUid: lb.bdmUid, bdmName: lb.bdmName, overall: lb };
+              })
+            : (d.bdms || []);
+
+        if (Chart.getChart(totalsCanvas)) Chart.getChart(totalsCanvas).destroy();
+        updateHeading(totalsCanvas, 'h3', 'Total Value by BDM (current filter)', useLifetime ? ' (all-time)' : '');
+        new Chart(totalsCanvas, {
+            type: 'bar',
+            data: {
+                labels: bdms.map(function (b) { return b.bdmName; }),
+                datasets: [{
+                    label: 'Project Value',
+                    data: bdms.map(function (b) { return (b.overall && b.overall.projectValue) || 0; }),
+                    backgroundColor: palette[0]
+                }, {
+                    label: 'Variation Value',
+                    data: bdms.map(function (b) { return (b.overall && b.overall.variationValue) || 0; }),
+                    backgroundColor: palette[3]
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { x: { stacked: true }, y: { stacked: true } }
+            }
+        });
+    }
+
+    function updateHeading(canvas, tag, baseText, suffix) {
+        try {
+            var heading = canvas.parentNode && canvas.parentNode.parentNode && canvas.parentNode.parentNode.querySelector(tag);
+            if (!heading) heading = canvas.parentNode && canvas.parentNode.querySelector(tag);
+            if (heading && suffix && !/all-time/i.test(heading.textContent || '')) {
+                heading.textContent = baseText + suffix;
+            }
+        } catch (e) { /* ignore */ }
     }
 
     // ── Excel download ─────────────────────────────────────────────────────────

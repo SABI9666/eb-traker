@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 6.0.2 - Cache Version 55 (Dashboard cards + charts fall back to lifetime when in-range is empty)
+// Version: 6.0.2 - Cache Version 56 (Per-role scoping: BDMs see only their entries; COO/Director see all)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v55';
-const STATIC_CACHE = 'ebtracker-static-v55';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v55';
+const CACHE_NAME = 'ebtracker-v56';
+const STATIC_CACHE = 'ebtracker-static-v56';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v56';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -41,20 +41,20 @@ const NETWORK_ONLY = [
 // INSTALL EVENT
 // ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v55: Installing...');
+  console.log('🔧 Service Worker v56: Installing...');
   
   event.waitUntil(
     Promise.all([
       // Cache static assets
       caches.open(STATIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v55: Caching static assets');
+          console.log('📦 Service Worker v56: Caching static assets');
           return cache.addAll(STATIC_ASSETS);
         }),
       // Cache external scripts (Firebase SDK including Storage)
       caches.open(DYNAMIC_CACHE)
         .then((cache) => {
-          console.log('📦 Service Worker v55: Caching Firebase SDK');
+          console.log('📦 Service Worker v56: Caching Firebase SDK');
           return Promise.all(
             EXTERNAL_SCRIPTS.map(url => 
               cache.add(url).catch(err => {
@@ -65,11 +65,11 @@ self.addEventListener('install', (event) => {
         })
     ])
     .then(() => {
-      console.log('✅ Service Worker v55: All assets cached');
+      console.log('✅ Service Worker v56: All assets cached');
       return self.skipWaiting();
     })
     .catch((error) => {
-      console.error('❌ Service Worker v55: Cache failed', error);
+      console.error('❌ Service Worker v56: Cache failed', error);
     })
   );
 });
@@ -78,7 +78,7 @@ self.addEventListener('install', (event) => {
 // ACTIVATE EVENT
 // ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v55: Activating...');
+  console.log('🚀 Service Worker v56: Activating...');
   
   // List of valid cache names to keep
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
@@ -88,16 +88,16 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            // Delete any cache that's not in our valid list (including all v54 caches)
+            // Delete any cache that's not in our valid list (including all v55 caches)
             if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v55: Deleting old cache:', cacheName);
+              console.log('🗑️ Service Worker v56: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker v55: Activated - Old caches cleared');
+        console.log('✅ Service Worker v56: Activated - Old caches cleared');
         return self.clients.claim();
       })
       .then(() => {
@@ -105,11 +105,11 @@ self.addEventListener('activate', (event) => {
         return self.clients.matchAll({ type: 'window' });
       })
       .then((clients) => {
-        console.log('📢 Service Worker v55: Notifying clients to refresh');
+        console.log('📢 Service Worker v56: Notifying clients to refresh');
         clients.forEach(client => {
           client.postMessage({ 
             type: 'CACHE_UPDATED',
-            version: 'v55',
+            version: 'v56',
             message: 'App restored! Fixed JS loaded. Please refresh.'
           });
         });
@@ -357,7 +357,7 @@ self.addEventListener('message', (event) => {
       self.skipWaiting();
       break;
     case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v55', cache: CACHE_NAME });
+      event.ports[0]?.postMessage({ version: 'v56', cache: CACHE_NAME });
       break;
     case 'CLEAR_CACHE':
       caches.keys().then(names => {
@@ -394,4 +394,4 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('error', (event) => { console.error('❌ SW Error:', event.error); });
 self.addEventListener('unhandledrejection', (event) => { console.error('❌ SW Unhandled:', event.reason); });
 
-console.log('✅ Service Worker v55: Loaded - app restored with correct JS files');
+console.log('✅ Service Worker v56: Loaded - app restored with correct JS files');

@@ -60,17 +60,23 @@
         variation: { label: 'Variation', icon: '➕', color: '#7c3aed', bg: '#f5f3ff' }
     };
 
-    // mineOnly is opt-in for everyone. Default OFF so Recent Entries
-    // always shows the same rows the backend returns (matching what BDM
-    // Analytics displays). Users can tick the "Only mine" toggle in the
-    // toolbar to narrow the list to entries they themselves filed.
+    // mineOnly is the optional client-side toggle for COO / Director.
+    // For BDMs the backend always scopes to their own entries, so the
+    // toggle is irrelevant and hidden in the UI. Default OFF so Recent
+    // Entries shows whatever the backend returns for the role: every
+    // entry for COO/Director, the BDM's own entries for a BDM.
     var state = {
         entries: [],
         filterType: 'quote',
         loading: false,
         lastError: '',
-        mineOnly: false
+        mineOnly: false,
+        scope: null   // 'mine' or 'all', filled in by loadEntries from the backend response
     };
+
+    function isBdmRole() {
+        return getCurrentRole() === 'bdm';
+    }
 
     // Exposed so other modules (e.g. bdm-quote-sync-patch.js) can refresh
     // the recent entries list after a save without depending on DOM events.
@@ -137,7 +143,8 @@
             }
             state.entries = list;
             state.lastMeta = (resp && resp.meta) || null;
-            console.log('[bdm-entries] loaded', list.length, 'entries for type=' + state.filterType,
+            state.scope = (resp && resp.meta && resp.meta.scope) || null;
+            console.log('[bdm-entries] loaded', list.length, 'entries for type=' + state.filterType, 'scope=' + state.scope,
                 { unwrapped: resp, raw: raw });
         } catch (e) {
             console.error('[bdm-entries] load error:', e);
@@ -239,10 +246,17 @@
                         '<div class="meta" id="be-meta">&nbsp;</div>' +
                     '</div>' +
                     '<div class="bdm-entries-actions">' +
-                        '<label class="bdm-entries-mine" title="Show only entries I created">' +
-                            '<input type="checkbox" id="be-mine"' + (state.mineOnly ? ' checked' : '') + '>' +
-                            '<span>Only mine</span>' +
-                        '</label>' +
+                        // BDMs are always scoped server-side to their own
+                        // entries; no need to expose the toggle to them.
+                        // COO / Director see the team-wide list and can
+                        // tick this to narrow to entries they themselves
+                        // filed on behalf of a BDM.
+                        (isBdmRole()
+                            ? ''
+                            : '<label class="bdm-entries-mine" title="Show only entries I created">' +
+                                '<input type="checkbox" id="be-mine"' + (state.mineOnly ? ' checked' : '') + '>' +
+                                '<span>Only mine</span>' +
+                              '</label>') +
                         '<select id="be-filter" class="bdm-entries-select" title="Filter by type">' +
                             '<option value="quote">📝 Quotes</option>' +
                             '<option value="won">🏆 Wins</option>' +
@@ -344,19 +358,32 @@
         }
 
         var typeLabel = (TYPE_META[state.filterType] || {}).label || state.filterType;
+        // The badge after the count clarifies whose entries the user is
+        // looking at: BDMs always see only their own (enforced by the
+        // backend), COO/Director see the whole team unless they tick
+        // "Only mine".
+        var scopeBadge = '';
+        if (state.scope === 'mine') scopeBadge = isBdmRole() ? ' (your entries)' : ' (yours only)';
+        else if (state.scope === 'all') scopeBadge = ' (team)';
         if (meta) {
             meta.textContent = state.entries.length
-                ? 'Showing ' + state.entries.length + ' ' + typeLabel.toLowerCase() + (state.entries.length === 1 ? ' entry' : ' entries') + (state.mineOnly ? ' (yours only)' : '')
+                ? 'Showing ' + state.entries.length + ' ' + typeLabel.toLowerCase() + (state.entries.length === 1 ? ' entry' : ' entries') + scopeBadge
                 : '';
         }
 
         if (!state.entries.length) {
+            var emptyHint;
+            if (isBdmRole()) {
+                emptyHint = 'Use the form above to record your first entry — it will appear here right away. Only you and the COO / Director can see the entries you create.';
+            } else if (state.mineOnly) {
+                emptyHint = 'Untick "Only mine" above to see entries from the rest of the team, or use the form above to record one — it will appear here right away.';
+            } else {
+                emptyHint = 'No one on the team has filed a ' + typeLabel.toLowerCase() + ' yet. Use the form above to record one.';
+            }
             host.innerHTML =
                 '<div class="bdm-entries-empty">' +
-                    'No ' + escapeHtml(typeLabel.toLowerCase()) + ' entries yet' + (state.mineOnly ? ' for you' : '') + '.' +
-                    '<div class="hint">' + (state.mineOnly
-                        ? 'Untick "Only mine" above to see entries from the rest of the team, or use the form above to record one — it will appear here right away.'
-                        : 'Use the form above to record your first entry — it will appear here right away.') + '</div>' +
+                    'No ' + escapeHtml(typeLabel.toLowerCase()) + ' entries yet' + (isBdmRole() || state.mineOnly ? ' for you' : '') + '.' +
+                    '<div class="hint">' + emptyHint + '</div>' +
                 '</div>';
             return;
         }

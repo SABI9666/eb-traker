@@ -2370,10 +2370,50 @@ function renderProposals(proposals) {
             </div>
         `;
     }
+    else if (currentUserRole === 'estimator') {
+        // Estimator gets two clearly-separated pending queues: Estimation Pending and Pricing Pending
+        const estPendingEstimationCount = proposals.filter(p => {
+            const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+            return (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) &&
+                   statusLower !== 'approved' &&
+                   statusLower !== 'rejected' &&
+                   statusLower !== 'won' &&
+                   statusLower !== 'lost' &&
+                   statusLower !== 'subcontracted' &&
+                   !p.subcontractor;
+        }).length;
 
-    // Filter proposals based on current filter (WORKS FOR BOTH DIRECTOR AND COO NOW)
+        const estPendingPricingCount = proposals.filter(p => {
+            const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+            return (statusLower === 'estimated' || p.estimation) &&
+                   (!p.pricing || !p.pricing.projectNumber) &&
+                   !p.subcontractor && statusLower !== 'subcontracted';
+        }).length;
+
+        directorFilterButtons = `
+            <div class="filter-buttons-container">
+                <button class="filter-btn filter-btn-all ${currentProposalFilter === 'all' ? 'active' : ''}"
+                        onclick="filterProposals('all')">
+                    All Proposals
+                    <span class="filter-count">${proposals.length}</span>
+                </button>
+                <button class="filter-btn filter-btn-estimation ${currentProposalFilter === 'pending_estimation' ? 'active' : ''}"
+                        onclick="filterProposals('pending_estimation')">
+                    Estimation Pending
+                    <span class="filter-count">${estPendingEstimationCount}</span>
+                </button>
+                <button class="filter-btn filter-btn-pricing ${currentProposalFilter === 'pending_pricing' ? 'active' : ''}"
+                        onclick="filterProposals('pending_pricing')">
+                    Pricing Pending
+                    <span class="filter-count">${estPendingPricingCount}</span>
+                </button>
+            </div>
+        `;
+    }
+
+    // Filter proposals based on current filter (Director, COO, and Estimator)
     let filteredProposals = proposals;
-    if ((currentUserRole === 'director' || currentUserRole === 'coo') && currentProposalFilter !== 'all') {
+    if ((currentUserRole === 'director' || currentUserRole === 'coo' || currentUserRole === 'estimator') && currentProposalFilter !== 'all') {
         console.log('🔍 Applying filter:', currentProposalFilter);
         console.log('📊 Total proposals before filter:', proposals.length);
         
@@ -2387,7 +2427,9 @@ function renderProposals(proposals) {
         } else if (currentProposalFilter === 'pending_pricing') {
             filteredProposals = proposals.filter(p => {
                 const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
-                return (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber);
+                return (statusLower === 'estimated' || p.estimation) &&
+                       (!p.pricing || !p.pricing.projectNumber) &&
+                       !p.subcontractor && statusLower !== 'subcontracted';
             });
         } else if (currentProposalFilter === 'pending_estimation') {
             filteredProposals = proposals.filter(p => {
@@ -2653,8 +2695,8 @@ function renderProposals(proposals) {
         </div>
     `}).join('') : '<p>No proposals found for this filter.</p>';
 
-    const filterInfo = currentUserRole === 'director' && currentProposalFilter !== 'all' ? 
-        `<div class="subtitle" style="color: var(--primary-blue); font-weight: 600;">Filtered: ${currentProposalFilter.replace(/_/g, ' ').toUpperCase()}</div>` : 
+    const filterInfo = (['director', 'coo', 'estimator'].includes(currentUserRole)) && currentProposalFilter !== 'all' ?
+        `<div class="subtitle" style="color: var(--primary-blue); font-weight: 600;">Filtered: ${currentProposalFilter.replace(/_/g, ' ').toUpperCase()}</div>` :
         `<div class="subtitle">Manage and track all project proposals</div>`;
 
     document.getElementById('mainContent').innerHTML = `
@@ -2669,7 +2711,7 @@ function renderProposals(proposals) {
         ${submittedSection}
         ${wonSection}
         <div class="action-section">
-            <h3>${currentUserRole === 'director' && currentProposalFilter !== 'all' ? 'Filtered Results' : 'All Other Proposals'}</h3>
+            <h3>${(['director', 'coo', 'estimator'].includes(currentUserRole)) && currentProposalFilter !== 'all' ? 'Filtered Results' : 'All Other Proposals'}</h3>
             ${proposalsHtml}
         </div>
     `;

@@ -2143,12 +2143,11 @@ async function triggerEmailNotification(eventName, data = {}) {
                         actionBtn = `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${item.proposalId}')">ENTER MANHOURS</button>`;
                     break;
                 case 'pricing_required':
-                    if (role === 'coo')
-                        // MODIFIED: Use new pricing form
+                    if (role === 'estimator' || role === 'coo' || role === 'director')
                         actionBtn = `<button class="btn btn-primary btn-sm" onclick="showCOOPricingForm('${item.proposalId}')">SET PRICING</button>`;
                     break;
                 case 'approval_required':
-                    if (role === 'director')
+                    if (role === 'director' || role === 'coo')
                         actionBtn = `<button class="btn btn-primary btn-sm" onclick="viewProposal('${item.proposalId}')">EXECUTIVE REVIEW</button>`;
                     break;
                 case 'ready_for_client':
@@ -2621,11 +2620,11 @@ function renderProposals(proposals) {
             actionButtons += `<button class="btn btn-sm" style="background: #7c3aed; color: white; border: none;" onclick="showSubcontractorModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}')">Subcontractor</button> `;
         }
 
-        if (currentUserRole === 'coo' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
-            actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
+        if (currentUserRole === 'estimator' && (statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
+            actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Quote # & Pricing</button> `;
         }
 
-        if (currentUserRole === 'director' && (statusLower === 'pending_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected'))) {
+        if ((currentUserRole === 'director' || currentUserRole === 'coo') && (statusLower === 'pending_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost'))) {
             actionButtons += `
                 <button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">Approve</button>
                 <button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">Reject</button>
@@ -2715,9 +2714,14 @@ function renderProposalsTable(proposals) {
         // Action buttons based on proposal status
         let actionButtons = '';
 
-        // COO can set pricing for estimated proposals
-        if (p.status === 'estimated' && (!p.pricing || !p.pricing.projectNumber)) {
-            actionButtons += `<button class="btn btn-success btn-sm" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button> `;
+        // Pricing is now entered by Estimator. COO/Director only approve here.
+        // Approve/Reject for COO/Director when pricing is complete and not yet decided
+        const _statusLowerTbl = (p.status || '').toLowerCase().replace(/\s+/g, '_');
+        if ((currentUserRole === 'coo' || currentUserRole === 'director') &&
+            (_statusLowerTbl === 'pricing_complete' || _statusLowerTbl === 'pending_approval' ||
+             (p.pricing && p.pricing.projectNumber && !['approved','rejected','won','lost'].includes(_statusLowerTbl)))) {
+            actionButtons += `<button class="btn btn-success btn-sm" onclick="showApproveModal('${p.id}')">Approve</button> `;
+            actionButtons += `<button class="btn btn-danger btn-sm" onclick="showRejectModal('${p.id}')">Reject</button> `;
         }
 
         // COO can allocate won proposals with pricing
@@ -5153,21 +5157,33 @@ function showCreateProposalModal() {
             // Role-based actions - normalize status to lowercase for comparison
             const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
             
-            // ESTIMATOR: Show Add Estimation button
-            if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation)) {
-                actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}')">Add Estimation</button>`;
-            
-            // COO: Show pricing form when estimation is done
-            } else if (currentUserRole === 'coo' && (statusLower === 'estimated' || statusLower === 'won' || statusLower === 'pricing_complete' || statusLower === 'pending_approval' || statusLower === 'pending_pricing' || p.estimation)) {
-                // If no pricing yet, show pricing button
-                if (!p.pricing || !p.pricing.projectNumber) {
-                    actionsHtml = `<button class="btn btn-success" onclick="showCOOPricingForm('${p.id}')">Set Pricing</button>`;
-                } else {
-                    actionsHtml = getProposalAllocationButton(p);
+            // ESTIMATOR: Show Add Estimation button, then Set Pricing button after estimation done
+            if (currentUserRole === 'estimator') {
+                if (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) {
+                    actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}')">Add Estimation</button>`;
+                } else if ((statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
+                    actionsHtml = `<button class="btn btn-success" onclick="showCOOPricingForm('${p.id}')">Set Quote # & Pricing</button>`;
+                } else if (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost') {
+                    // Estimator can edit pricing before approval
+                    actionsHtml = `<button class="btn btn-outline" onclick="showCOOEditPricingForm ? showCOOEditPricingForm('${p.id}') : showCOOPricingForm('${p.id}')">Update Pricing</button>`;
                 }
-            
-            // MODIFIED: Director can approve/reject proposals with pending_approval status or after pricing
-            } else if (currentUserRole === 'director') { 
+
+            // COO: Approve/Reject when pricing is complete (single approval works); allocation when won
+            } else if (currentUserRole === 'coo') {
+                if (statusLower === 'pricing_complete' || statusLower === 'pending_approval' ||
+                    (p.pricing && p.pricing.projectNumber && !['approved','rejected','won','lost'].includes(statusLower))) {
+                    actionsHtml = `
+                        <button class="btn btn-danger" onclick="showRejectModal('${p.id}')">❌ Reject</button>
+                        <button class="btn btn-success" onclick="showApproveModal('${p.id}')">✅ Approve</button>
+                    `;
+                } else if (statusLower === 'won' || statusLower === 'approved') {
+                    actionsHtml = getProposalAllocationButton(p);
+                } else if (statusLower === 'rejected') {
+                    actionsHtml = '<span style="color: var(--danger); font-weight: 600;">❌ Rejected</span>';
+                }
+
+            // Director can approve/reject proposals (single approval — same as COO)
+            } else if (currentUserRole === 'director') {
                 if (statusLower === 'pending_approval' || statusLower === 'pending_director_approval' || statusLower === 'pricing_complete' || (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost')) {
                     actionsHtml = `
                         <button class="btn btn-danger" onclick="showRejectModal('${p.id}')">❌ Reject</button>
@@ -6559,7 +6575,7 @@ async function editProposal(proposalId) {
                         <div class="modal-content" style="max-width: 800px;">
                             <div class="modal-header">
                                 <div>
-                                    <h2>COO Pricing Form</h2>
+                                    <h2>Quote Number &amp; Pricing</h2>
                                     <div class="subtitle">${proposal.projectName} - ${proposal.clientCompany}</div>
                                 </div>
                                 <span class="close-modal" onclick="closeModal()">&times;</span>
@@ -7216,13 +7232,13 @@ async function submitEditedPricing() {
                 return '';
             }
 
-            // Show pricing button for COO only (not Director)
-            if (currentUserRole === 'coo') {
+            // Show pricing button for Estimator (pricing/quote-number entry moved from COO to Estimator)
+            if (currentUserRole === 'estimator') {
                 if ((proposal.status === 'estimated' || proposal.status === 'pricing_complete') &&
                     (!proposal.pricing || !proposal.pricing.projectNumber)) {
                     return `
                         <button onclick="showCOOPricingForm('${proposal.id}')" class="btn btn-primary btn-sm">
-                            Add Pricing & Project Number
+                            Add Quote # & Pricing
                         </button>
                     `;
                 }

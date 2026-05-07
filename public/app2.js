@@ -2766,10 +2766,10 @@ async function showAllocateProjectModal(projectId) {
 function generateProposalActionButtons(proposal) {
     const actions = [];
     
-    // ===== DIRECTOR APPROVE/REJECT BUTTONS =====
-    if (currentUserRole === 'director') {
+    // ===== APPROVE/REJECT BUTTONS — COO or Director (single approval is enough) =====
+    if (currentUserRole === 'director' || currentUserRole === 'coo') {
         const needsApprovalStatuses = ['pricing_complete', 'pending_approval', 'estimation_complete'];
-        if (needsApprovalStatuses.includes(proposal.status) && 
+        if (needsApprovalStatuses.includes(proposal.status) &&
             proposal.status !== 'approved' && proposal.status !== 'rejected') {
             actions.push(`
                 <button onclick="showDirectorApprovalModal('${proposal.id}', 'approve')" class="btn btn-success btn-sm">

@@ -292,7 +292,7 @@
     console.log('BDM PO patch loaded: markProposalWon overridden, Update P.O. enabled, COO PO section hidden');
 })();
 
-// ── Load patch scripts ──────────────────────────────────────────────────────
+// ── Load patch scripts ─────────────────────────────────────────────────────────────────
 (function () {
     var patches = [
         // auth-persistence first so SESSION mode is set before any other code
@@ -314,7 +314,10 @@
         { id: '_bdmAnalyticsDropdownFixScript', src: 'bdm-analytics-dropdown-fix.js' },
         // Defensive role guard: keeps the BDM Analytics nav item hidden
         // and showBdmAnalytics() blocked for everyone except COO/Director.
-        { id: '_bdmAnalyticsRoleGuardScript', src: 'bdm-analytics-role-guard.js' }
+        { id: '_bdmAnalyticsRoleGuardScript', src: 'bdm-analytics-role-guard.js' },
+        // Accounts-driven Variation upload + COO Variation Tracker section +
+        // BDM "My Variations" view. Companion to api/account-variations.js.
+        { id: '_accountVariationPatchScript', src: 'account-variation-patch.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;
@@ -324,7 +327,7 @@
         // fresh patch script — bypasses both the browser's HTTP cache and
         // the service worker's static-asset cache. Bump APP_PATCH_VERSION
         // on every release that touches any of the patch files below.
-        var APP_PATCH_VERSION = 'v56';
+        var APP_PATCH_VERSION = 'v57';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

@@ -1,34 +1,20 @@
 /* ============================================================
- * Account Variation Patch
+ * Account Variation Patch  (rev 2)
  *
- * Adds an Accounts-driven "Variations" feature on top of the
- * existing EB Tracker frontend without touching app1.js/app2.js.
+ * Accounts-driven Variation uploads + COO Tracker section + BDM "My
+ * Variations" page. This rev makes nav injection much more resilient:
  *
- * Roles & behaviour:
- *   accounts:
- *     - New nav item under Finance & Accounts: "Account Variations"
- *     - Form to upload: BDM, variation value+currency, file, description
- *     - List of uploaded variations with delete option
- *   coo / director:
- *     - The same list appears as an extra section inside the existing
- *       COO Variation Tracker page (read-only here)
- *     - Also accessible via a "Account Variations" nav item under
- *       Operations & Management
- *   bdm:
- *     - New nav item under Business Development: "My Variations"
- *     - List of variations Accounts has uploaded for them
+ *   - MutationObserver re-runs injection if the sidebar re-renders.
+ *   - 5-second periodic re-attempt for the first 60 s after login.
+ *   - Case-insensitive role check + multiple sources for current user.
+ *   - Falls back to the first sidebar <ul> if no `deptFinance` id is found.
+ *   - Exposes window.installAccountVariationsNav() so the menu can be
+ *     forced via devtools if anything else fails.
  *
  * Backend endpoints used (eb-backend):
  *   POST   /api/account-variations    (multipart/form-data)
  *   GET    /api/account-variations
- *   GET    /api/account-variations?id=<id>
  *   DELETE /api/account-variations?id=<id>
- *
- * Public globals exposed:
- *   window.showAccountVariations()       // accounts/coo/director list page
- *   window.showMyAccountVariations()     // bdm list page
- *   window.openAccountVariationModal()   // upload modal (accounts)
- *
  * ============================================================ */
 (function () {
     'use strict';
@@ -36,15 +22,21 @@
     if (window._accountVariationPatchLoaded) return;
     window._accountVariationPatchLoaded = true;
 
+    var TAG = '[account-variation]';
     var STYLE_ID = 'account-variation-patch-styles';
     var MODAL_ID = 'accountVariationModal';
     var PAGE_ID = 'accountVariationsPage';
     var BDM_PAGE_ID = 'myAccountVariationsPage';
     var COO_SECTION_ID = 'cooAccountVariationsSection';
 
-    // ----------------------------------------------------------------------
-    // 0. CSS (scoped, very small)
-    // ----------------------------------------------------------------------
+    var NAV_IDS = {
+        accounts: 'accountVariationsNavItem',
+        coo: 'cooAccountVariationsNavItem',
+        bdm: 'bdmAccountVariationsNavItem'
+    };
+
+    console.log(TAG, 'script loaded');
+
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
         var s = document.createElement('style');
@@ -55,8 +47,6 @@
             '.av-table th{background:#f8fafc;font-weight:600;color:#1e293b;}',
             '.av-table tr:last-child td{border-bottom:none;}',
             '.av-empty{padding:2rem;text-align:center;color:#64748b;background:#fff;border-radius:8px;}',
-            '.av-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.75rem;font-weight:600;background:#e0f2fe;color:#075985;}',
-            '.av-actions{display:flex;gap:0.5rem;align-items:center;}',
             '.av-btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-size:0.85rem;font-weight:500;}',
             '.av-btn-primary{background:#2563eb;color:#fff;}',
             '.av-btn-danger{background:#dc2626;color:#fff;}',
@@ -79,24 +69,26 @@
         document.head.appendChild(s);
     }
 
-    // ----------------------------------------------------------------------
-    // 1. Helpers
-    // ----------------------------------------------------------------------
     function role() {
-        return (window.currentUserRole || '').trim().toLowerCase();
+        var candidates = [
+            window.currentUserRole,
+            window.userRole,
+            window.currentUser && window.currentUser.role,
+            window.appUser && window.appUser.role,
+            window.currentRole
+        ];
+        for (var i = 0; i < candidates.length; i++) {
+            if (candidates[i]) return String(candidates[i]).trim().toLowerCase();
+        }
+        return '';
     }
 
     function fmtMoney(value, currency) {
         if (value === null || value === undefined || value === '') return '—';
-        var n = Number(value);
-        if (isNaN(n)) return String(value);
+        var n = Number(value); if (isNaN(n)) return String(value);
         var c = (currency || '').toString().toUpperCase();
         try {
-            return new Intl.NumberFormat(undefined, {
-                style: 'currency',
-                currency: c || 'INR',
-                maximumFractionDigits: 2
-            }).format(n);
+            return new Intl.NumberFormat(undefined, { style: 'currency', currency: c || 'INR', maximumFractionDigits: 2 }).format(n);
         } catch (e) {
             return (c ? c + ' ' : '') + n.toLocaleString();
         }
@@ -106,13 +98,9 @@
         if (!ts) return '—';
         try {
             var d;
-            if (typeof ts === 'object' && ts._seconds) {
-                d = new Date(ts._seconds * 1000);
-            } else if (typeof ts === 'object' && typeof ts.toDate === 'function') {
-                d = ts.toDate();
-            } else {
-                d = new Date(ts);
-            }
+            if (typeof ts === 'object' && ts._seconds) d = new Date(ts._seconds * 1000);
+            else if (typeof ts === 'object' && typeof ts.toDate === 'function') d = ts.toDate();
+            else d = new Date(ts);
             if (isNaN(d.getTime())) return '—';
             return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         } catch (e) { return '—'; }
@@ -120,13 +108,11 @@
 
     function escapeHtml(s) {
         if (s === null || s === undefined) return '';
-        return String(s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function getMainContent() {
-        // Try a few well-known container ids used elsewhere in the app
         return document.getElementById('mainContent')
             || document.getElementById('main-content')
             || document.getElementById('appMainContent')
@@ -135,27 +121,11 @@
             || document.body;
     }
 
-    function hideAllPages() {
-        // Best-effort: many sections in the app use `.page-section` or `.content-section`.
-        // We just hide our own custom pages — the app's own showXxx() functions
-        // will handle hiding others when the user navigates back.
-        var ids = [PAGE_ID, BDM_PAGE_ID];
-        ids.forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-    }
-
     function authToken() {
-        // The app generally calls window.apiCall which handles auth itself.
-        // We rely on that whenever possible. For multipart uploads we need to
-        // build the request manually, so we read the same Firebase token.
         try {
             var u = firebase && firebase.auth && firebase.auth().currentUser;
             return u ? u.getIdToken() : Promise.resolve(null);
-        } catch (e) {
-            return Promise.resolve(null);
-        }
+        } catch (e) { return Promise.resolve(null); }
     }
 
     function apiBase() {
@@ -163,17 +133,13 @@
     }
 
     async function uploadAccountVariation(formData) {
-        // Multipart upload. window.apiCall is JSON-only in most builds, so we
-        // POST directly and attach the auth token ourselves.
         var token = await authToken();
-        var url = apiBase() + '/api/account-variations';
-        var res = await fetch(url, {
+        var res = await fetch(apiBase() + '/api/account-variations', {
             method: 'POST',
             headers: token ? { Authorization: 'Bearer ' + token } : {},
             body: formData
         });
-        var json;
-        try { json = await res.json(); } catch (e) { json = {}; }
+        var json; try { json = await res.json(); } catch (e) { json = {}; }
         if (!res.ok || json.success === false) {
             throw new Error(json.error || json.message || ('Upload failed: HTTP ' + res.status));
         }
@@ -183,12 +149,9 @@
     async function fetchAccountVariations() {
         if (typeof window.apiCall === 'function') {
             var resp = await window.apiCall('account-variations');
-            if (!resp || resp.success === false) {
-                throw new Error((resp && resp.error) || 'Failed to load account variations');
-            }
+            if (!resp || resp.success === false) throw new Error((resp && resp.error) || 'Failed to load');
             return resp.data || [];
         }
-        // Fallback
         var token = await authToken();
         var res = await fetch(apiBase() + '/api/account-variations', {
             headers: token ? { Authorization: 'Bearer ' + token } : {}
@@ -200,18 +163,13 @@
 
     async function deleteAccountVariation(id) {
         if (typeof window.apiCall === 'function') {
-            var resp = await window.apiCall('account-variations?id=' + encodeURIComponent(id), {
-                method: 'DELETE'
-            });
-            if (!resp || resp.success === false) {
-                throw new Error((resp && resp.error) || 'Delete failed');
-            }
+            var resp = await window.apiCall('account-variations?id=' + encodeURIComponent(id), { method: 'DELETE' });
+            if (!resp || resp.success === false) throw new Error((resp && resp.error) || 'Delete failed');
             return resp;
         }
         var token = await authToken();
         var res = await fetch(apiBase() + '/api/account-variations?id=' + encodeURIComponent(id), {
-            method: 'DELETE',
-            headers: token ? { Authorization: 'Bearer ' + token } : {}
+            method: 'DELETE', headers: token ? { Authorization: 'Bearer ' + token } : {}
         });
         var json = await res.json();
         if (!res.ok || !json.success) throw new Error(json.error || 'Delete failed');
@@ -231,13 +189,9 @@
         return (json && json.data) || [];
     }
 
-    // ----------------------------------------------------------------------
-    // 2. Upload modal (accounts)
-    // ----------------------------------------------------------------------
     function buildModal() {
         var existing = document.getElementById(MODAL_ID);
         if (existing) existing.remove();
-
         var overlay = document.createElement('div');
         overlay.id = MODAL_ID;
         overlay.className = 'av-modal-overlay';
@@ -245,44 +199,29 @@
             + '<div class="av-modal">'
             + '  <div class="av-modal-header">'
             + '    <h2>📤 Upload Variation</h2>'
-            + '    <span style="cursor:pointer;font-size:1.5rem;line-height:1;color:#64748b;" onclick="closeAccountVariationModal()">&times;</span>'
+            + '    <span style="cursor:pointer;font-size:1.5rem;color:#64748b;" onclick="closeAccountVariationModal()">&times;</span>'
             + '  </div>'
             + '  <div class="av-modal-body">'
             + '    <form id="accountVariationForm" onsubmit="return false;">'
-            + '      <div class="av-field">'
-            + '        <label>BDM <span class="av-required">*</span></label>'
-            + '        <select id="avBdmSelect" required><option value="">Loading BDMs…</option></select>'
-            + '      </div>'
+            + '      <div class="av-field"><label>BDM <span class="av-required">*</span></label>'
+            + '        <select id="avBdmSelect" required><option value="">Loading BDMs…</option></select></div>'
             + '      <div class="av-row">'
-            + '        <div class="av-field">'
-            + '          <label>Variation Value <span class="av-required">*</span></label>'
-            + '          <input type="number" id="avValue" step="0.01" min="0" placeholder="e.g. 25000.00" required />'
-            + '        </div>'
-            + '        <div class="av-field" style="max-width:140px;">'
-            + '          <label>Currency</label>'
+            + '        <div class="av-field"><label>Variation Value <span class="av-required">*</span></label>'
+            + '          <input type="number" id="avValue" step="0.01" min="0" placeholder="e.g. 25000.00" required /></div>'
+            + '        <div class="av-field" style="max-width:140px;"><label>Currency</label>'
             + '          <select id="avCurrency">'
-            + '            <option value="INR" selected>INR</option>'
-            + '            <option value="USD">USD</option>'
-            + '            <option value="AUD">AUD</option>'
-            + '            <option value="GBP">GBP</option>'
-            + '            <option value="CAD">CAD</option>'
-            + '            <option value="EUR">EUR</option>'
-            + '          </select>'
-            + '        </div>'
+            + '            <option value="INR" selected>INR</option><option value="USD">USD</option>'
+            + '            <option value="AUD">AUD</option><option value="GBP">GBP</option>'
+            + '            <option value="CAD">CAD</option><option value="EUR">EUR</option>'
+            + '          </select></div>'
             + '      </div>'
-            + '      <div class="av-field">'
-            + '        <label>Reference / Project Name (optional)</label>'
-            + '        <input type="text" id="avProjectName" placeholder="e.g. Acme Towers — Stage 3" />'
-            + '      </div>'
-            + '      <div class="av-field">'
-            + '        <label>Description / Notes (optional)</label>'
-            + '        <textarea id="avDescription" rows="3" placeholder="Short summary of the variation…"></textarea>'
-            + '      </div>'
-            + '      <div class="av-field">'
-            + '        <label>Variation File (PDF / Word / Excel / Image)</label>'
+            + '      <div class="av-field"><label>Reference / Project Name (optional)</label>'
+            + '        <input type="text" id="avProjectName" placeholder="e.g. Acme Towers — Stage 3" /></div>'
+            + '      <div class="av-field"><label>Description / Notes (optional)</label>'
+            + '        <textarea id="avDescription" rows="3" placeholder="Short summary…"></textarea></div>'
+            + '      <div class="av-field"><label>Variation File (PDF / Word / Excel / Image)</label>'
             + '        <input type="file" id="avFile" accept=".pdf,.doc,.docx,.xls,.xlsx,image/png,image/jpeg" />'
-            + '        <small style="color:#64748b;">Max 50&nbsp;MB. Optional.</small>'
-            + '      </div>'
+            + '        <small style="color:#64748b;">Max 50&nbsp;MB. Optional.</small></div>'
             + '    </form>'
             + '  </div>'
             + '  <div class="av-modal-footer">'
@@ -309,18 +248,16 @@
                 if (b.email) label += ' (' + escapeHtml(b.email) + ')';
                 return '<option value="' + escapeHtml(b.uid) + '"'
                     + ' data-name="' + escapeHtml(b.name || '') + '"'
-                    + ' data-email="' + escapeHtml(b.email || '') + '">'
-                    + label + '</option>';
+                    + ' data-email="' + escapeHtml(b.email || '') + '">' + label + '</option>';
             }).join('');
         } catch (e) {
             sel.innerHTML = '<option value="">Failed to load BDMs</option>';
-            console.error('Failed to load BDMs', e);
+            console.error(TAG, 'Failed to load BDMs', e);
         }
     };
 
     window.closeAccountVariationModal = function () {
-        var m = document.getElementById(MODAL_ID);
-        if (m) m.remove();
+        var m = document.getElementById(MODAL_ID); if (m) m.remove();
     };
 
     window.submitAccountVariation = async function () {
@@ -335,15 +272,12 @@
         var projectName = document.getElementById('avProjectName').value.trim();
         var fileInput = document.getElementById('avFile');
         var file = fileInput && fileInput.files && fileInput.files[0];
-
         if (!bdmUid) { alert('Please select a BDM.'); return; }
         if (!value || isNaN(parseFloat(value)) || parseFloat(value) < 0) {
             alert('Please enter a valid variation value.'); return;
         }
-
         var btn = document.getElementById('avSubmitBtn');
         if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
-
         try {
             var fd = new FormData();
             fd.append('bdmUid', bdmUid);
@@ -354,65 +288,47 @@
             if (description) fd.append('description', description);
             if (projectName) fd.append('projectName', projectName);
             if (file) fd.append('variationFile', file);
-
             await uploadAccountVariation(fd);
             alert('✅ Variation uploaded successfully.');
             window.closeAccountVariationModal();
-            if (document.getElementById(PAGE_ID) &&
-                document.getElementById(PAGE_ID).style.display !== 'none') {
+            if (document.getElementById(PAGE_ID) && document.getElementById(PAGE_ID).style.display !== 'none') {
                 window.showAccountVariations();
             }
-            // If COO tracker section is open, refresh it
             var sec = document.getElementById(COO_SECTION_ID);
             if (sec) renderCOOSection(sec);
         } catch (e) {
-            console.error(e);
+            console.error(TAG, e);
             alert('Upload failed: ' + (e.message || e));
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = 'Upload'; }
         }
     };
 
-    // ----------------------------------------------------------------------
-    // 3. List rendering
-    // ----------------------------------------------------------------------
     function renderTable(list, opts) {
         opts = opts || {};
         var canDelete = !!opts.canDelete;
         var hideBdmColumn = !!opts.hideBdmColumn;
-        if (!list || !list.length) {
-            return '<div class="av-empty">No account variations to show.</div>';
-        }
+        if (!list || !list.length) return '<div class="av-empty">No account variations to show.</div>';
         var head = '<tr>'
             + (hideBdmColumn ? '' : '<th>BDM</th>')
-            + '<th>Project / Ref</th>'
-            + '<th>Value</th>'
-            + '<th>Description</th>'
-            + '<th>File</th>'
-            + '<th>Uploaded By</th>'
-            + '<th>Uploaded At</th>'
-            + (canDelete ? '<th></th>' : '')
-            + '</tr>';
+            + '<th>Project / Ref</th><th>Value</th><th>Description</th><th>File</th>'
+            + '<th>Uploaded By</th><th>Uploaded At</th>' + (canDelete ? '<th></th>' : '') + '</tr>';
         var rows = list.map(function (v) {
             var fileCell = v.fileUrl
-                ? '<a href="' + escapeHtml(v.fileUrl) + '" target="_blank" rel="noopener">'
-                  + '📎 ' + escapeHtml(v.fileOriginalName || 'view') + '</a>'
+                ? '<a href="' + escapeHtml(v.fileUrl) + '" target="_blank" rel="noopener">📎 ' + escapeHtml(v.fileOriginalName || 'view') + '</a>'
                 : '<span style="color:#94a3b8;">—</span>';
             var del = canDelete
                 ? '<td><button class="av-btn av-btn-danger" onclick="deleteAccountVariationConfirm(\'' + escapeHtml(v.id) + '\')">Delete</button></td>'
                 : '';
             return '<tr>'
                 + (hideBdmColumn ? '' : '<td><strong>' + escapeHtml(v.bdmName || '—') + '</strong>'
-                    + (v.bdmEmail ? '<div style="font-size:0.8rem;color:#64748b;">' + escapeHtml(v.bdmEmail) + '</div>' : '')
-                    + '</td>')
+                    + (v.bdmEmail ? '<div style="font-size:0.8rem;color:#64748b;">' + escapeHtml(v.bdmEmail) + '</div>' : '') + '</td>')
                 + '<td>' + escapeHtml(v.projectName || v.referenceCode || '—') + '</td>'
                 + '<td><strong>' + escapeHtml(fmtMoney(v.variationValue, v.currency)) + '</strong></td>'
                 + '<td style="max-width:280px;white-space:pre-wrap;">' + escapeHtml(v.description || '—') + '</td>'
                 + '<td>' + fileCell + '</td>'
                 + '<td>' + escapeHtml(v.uploadedByName || '—') + '</td>'
-                + '<td>' + escapeHtml(fmtDate(v.createdAt)) + '</td>'
-                + del
-                + '</tr>';
+                + '<td>' + escapeHtml(fmtDate(v.createdAt)) + '</td>' + del + '</tr>';
         }).join('');
         return '<table class="av-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table>';
     }
@@ -421,21 +337,14 @@
         if (!confirm('Delete this account variation?')) return;
         try {
             await deleteAccountVariation(id);
-            // Refresh whichever view is active
-            if (document.getElementById(PAGE_ID) &&
-                document.getElementById(PAGE_ID).style.display !== 'none') {
+            if (document.getElementById(PAGE_ID) && document.getElementById(PAGE_ID).style.display !== 'none') {
                 window.showAccountVariations();
             }
             var sec = document.getElementById(COO_SECTION_ID);
             if (sec) renderCOOSection(sec);
-        } catch (e) {
-            alert('Delete failed: ' + (e.message || e));
-        }
+        } catch (e) { alert('Delete failed: ' + (e.message || e)); }
     };
 
-    // ----------------------------------------------------------------------
-    // 4. Pages (accounts/coo/director + bdm)
-    // ----------------------------------------------------------------------
     function ensurePage(pageId, title, headerExtraHtml) {
         var main = getMainContent();
         var page = document.getElementById(pageId);
@@ -446,26 +355,17 @@
             page.style.padding = '1.25rem';
             main.appendChild(page);
         }
-        page.innerHTML = ''
-            + '<div class="av-page-header">'
-            + '  <h2>' + title + '</h2>'
-            + '  <div>' + (headerExtraHtml || '') + '</div>'
-            + '</div>'
+        page.innerHTML = '<div class="av-page-header"><h2>' + title + '</h2>'
+            + '<div>' + (headerExtraHtml || '') + '</div></div>'
             + '<div id="' + pageId + '-content"><div class="av-empty">Loading…</div></div>';
         return page;
     }
 
     function tryHideOtherPages() {
-        // Best-effort: hide common containers that the app uses for its own pages.
-        // We don't enumerate every section; the existing showXxx() functions
-        // handle visibility for their own pages when the user navigates away.
-        var main = getMainContent();
-        if (!main) return;
+        var main = getMainContent(); if (!main) return;
         Array.prototype.forEach.call(main.children, function (child) {
             if (child.id === PAGE_ID || child.id === BDM_PAGE_ID) return;
-            // Hide elements that look like top-level page sections only.
-            if (child.classList && (child.classList.contains('page-section') ||
-                                    child.classList.contains('content-section'))) {
+            if (child.classList && (child.classList.contains('page-section') || child.classList.contains('content-section'))) {
                 child.style.display = 'none';
             }
         });
@@ -478,78 +378,54 @@
             ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>'
             : '';
         tryHideOtherPages();
-        hideAllPages();
         var page = ensurePage(PAGE_ID, '📑 Account Variations', headerExtra);
         page.style.display = 'block';
         var holder = document.getElementById(PAGE_ID + '-content');
         try {
             var list = await fetchAccountVariations();
-            holder.innerHTML = renderTable(list, {
-                canDelete: ['accounts', 'coo', 'director'].includes(r)
-            });
+            holder.innerHTML = renderTable(list, { canDelete: ['accounts', 'coo', 'director'].includes(r) });
         } catch (e) {
-            holder.innerHTML = '<div class="av-empty" style="color:#dc2626;">Failed to load: '
-                + escapeHtml(e.message || e) + '</div>';
+            holder.innerHTML = '<div class="av-empty" style="color:#dc2626;">Failed to load: ' + escapeHtml(e.message || e) + '</div>';
         }
     };
 
     window.showMyAccountVariations = async function () {
         injectStyles();
         tryHideOtherPages();
-        hideAllPages();
         var page = ensurePage(BDM_PAGE_ID, '📑 My Variations (from Accounts)', '');
         page.style.display = 'block';
         var holder = document.getElementById(BDM_PAGE_ID + '-content');
         try {
             var list = await fetchAccountVariations();
-            holder.innerHTML = renderTable(list, {
-                canDelete: false,
-                hideBdmColumn: true
-            });
+            holder.innerHTML = renderTable(list, { canDelete: false, hideBdmColumn: true });
         } catch (e) {
-            holder.innerHTML = '<div class="av-empty" style="color:#dc2626;">Failed to load: '
-                + escapeHtml(e.message || e) + '</div>';
+            holder.innerHTML = '<div class="av-empty" style="color:#dc2626;">Failed to load: ' + escapeHtml(e.message || e) + '</div>';
         }
     };
 
-    // ----------------------------------------------------------------------
-    // 5. COO Variation Tracker integration
-    //    We append an "Account-uploaded variations" section to the existing
-    //    page after the user opens it.
-    // ----------------------------------------------------------------------
     async function renderCOOSection(container) {
         injectStyles();
         container.innerHTML = '<h3 style="margin-top:2rem;">📥 Account-uploaded Variations</h3>'
             + '<div id="cooAccountVarTableHolder"><div class="av-empty">Loading…</div></div>';
         try {
             var list = await fetchAccountVariations();
-            document.getElementById('cooAccountVarTableHolder').innerHTML = renderTable(list, {
-                canDelete: true
-            });
+            document.getElementById('cooAccountVarTableHolder').innerHTML = renderTable(list, { canDelete: true });
         } catch (e) {
             document.getElementById('cooAccountVarTableHolder').innerHTML =
-                '<div class="av-empty" style="color:#dc2626;">Failed to load: '
-                + escapeHtml(e.message || e) + '</div>';
+                '<div class="av-empty" style="color:#dc2626;">Failed to load: ' + escapeHtml(e.message || e) + '</div>';
         }
     }
 
     function injectIntoCOOTracker() {
-        // Find the COO variation tracking page container. It is rendered by
-        // the app when showCOOVariationTracking() is invoked. We use a
-        // mutation observer + a poll to detect when it becomes visible.
         var r = role();
         if (!['coo', 'director'].includes(r)) return;
-
-        // Look for likely containers
         var candidates = [
             document.getElementById('cooVariationTrackingPage'),
             document.getElementById('cooVariationsPage'),
             document.getElementById('variationTrackingPage'),
             document.getElementById('variationsPage')
         ].filter(Boolean);
-
         var host = candidates[0];
-        // Fallback: find a parent of any heading saying "Variation Tracking"
         if (!host) {
             var headings = document.querySelectorAll('h1, h2, h3');
             for (var i = 0; i < headings.length; i++) {
@@ -560,8 +436,7 @@
             }
         }
         if (!host) return;
-        if (document.getElementById(COO_SECTION_ID)) return; // already injected
-
+        if (document.getElementById(COO_SECTION_ID)) return;
         var sec = document.createElement('div');
         sec.id = COO_SECTION_ID;
         sec.style.marginTop = '2rem';
@@ -583,113 +458,109 @@
         return true;
     }
 
-    // ----------------------------------------------------------------------
-    // 6. Nav item injection
-    // ----------------------------------------------------------------------
-    function makeNavItem(id, iconChar, label, onclick) {
+    function makeNavLi(id, iconChar, label, onclick) {
         var li = document.createElement('li');
         li.id = id;
-        li.innerHTML = '<a href="#" onclick="' + onclick + '"><span class="nav-icon">' + iconChar + '</span>' + escapeHtml(label) + '</a>';
+        li.style.display = '';
+        li.innerHTML = '<a href="#" onclick="' + onclick + '"><span class="nav-icon">'
+            + iconChar + '</span>' + escapeHtml(label) + '</a>';
         return li;
+    }
+
+    function findDeptUL(deptId, headingRegex) {
+        var dept = document.getElementById(deptId);
+        if (dept) {
+            var ul = dept.querySelector('ul.nav-dept-items, ul');
+            if (ul) return ul;
+        }
+        if (headingRegex) {
+            var headers = document.querySelectorAll('.nav-dept-header, .sidebar h3, nav h3, aside h3, .sidebar .dept-name');
+            for (var i = 0; i < headers.length; i++) {
+                if (headingRegex.test((headers[i].textContent || '').trim())) {
+                    var parent = headers[i].closest('li, .nav-department, .sidebar-section') || headers[i].parentElement;
+                    if (parent) {
+                        var u = parent.querySelector('ul');
+                        if (u) return u;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     function injectNavItems() {
         var r = role();
-        if (!r) return;
-
-        // ----- Accounts: under "Finance & Accounts" -----
-        if (r === 'accounts' && !document.getElementById('accountVariationsNavItem')) {
-            var financeDept = document.getElementById('deptFinance');
-            if (financeDept) {
-                var ul = financeDept.querySelector('ul.nav-dept-items');
-                if (ul) {
-                    var item = makeNavItem(
-                        'accountVariationsNavItem',
-                        '📑',
-                        'Account Variations',
-                        "showAccountVariations(); return false;"
-                    );
-                    item.style.display = ''; // ensure visible
-                    ul.appendChild(item);
-                }
+        if (!r) return false;
+        var injected = false;
+        if (r === 'accounts' && !document.getElementById(NAV_IDS.accounts)) {
+            var ul = findDeptUL('deptFinance', /finance|accounts/i);
+            if (ul) {
+                ul.appendChild(makeNavLi(NAV_IDS.accounts, '📑', 'Account Variations',
+                    "showAccountVariations(); return false;"));
+                injected = true;
+                console.log(TAG, 'injected Accounts nav item under Finance');
+            } else {
+                console.warn(TAG, 'could not find Finance dept UL for accounts user');
             }
         }
-
-        // ----- COO / Director: under "Operations & Management"
-        // (so they have a direct entry point in addition to the section
-        // appended to the existing Variation Tracking page) -----
-        if (['coo', 'director'].includes(r) && !document.getElementById('cooAccountVariationsNavItem')) {
-            var opsDept = document.getElementById('deptOperations');
-            if (opsDept) {
-                var opsUl = opsDept.querySelector('ul.nav-dept-items');
-                if (opsUl) {
-                    var opsItem = makeNavItem(
-                        'cooAccountVariationsNavItem',
-                        '📑',
-                        'Account Variations',
-                        "showAccountVariations(); return false;"
-                    );
-                    opsItem.style.display = '';
-                    opsUl.appendChild(opsItem);
-                }
+        if (['coo', 'director'].includes(r) && !document.getElementById(NAV_IDS.coo)) {
+            var opsUl = findDeptUL('deptOperations', /operations|management/i);
+            if (opsUl) {
+                opsUl.appendChild(makeNavLi(NAV_IDS.coo, '📑', 'Account Variations',
+                    "showAccountVariations(); return false;"));
+                injected = true;
+                console.log(TAG, 'injected COO nav item under Operations');
             }
         }
-
-        // ----- BDM: under "Business Development" -----
-        if (r === 'bdm' && !document.getElementById('bdmAccountVariationsNavItem')) {
-            var bdmDept = document.getElementById('deptBDM');
-            if (bdmDept) {
-                var bdmUl = bdmDept.querySelector('ul.nav-dept-items');
-                if (bdmUl) {
-                    var bdmItem = makeNavItem(
-                        'bdmAccountVariationsNavItem',
-                        '📑',
-                        'My Variations',
-                        "showMyAccountVariations(); return false;"
-                    );
-                    bdmItem.style.display = '';
-                    bdmUl.appendChild(bdmItem);
-                }
+        if (r === 'bdm' && !document.getElementById(NAV_IDS.bdm)) {
+            var bdmUl = findDeptUL('deptBDM', /business\s*development|bdm/i);
+            if (bdmUl) {
+                bdmUl.appendChild(makeNavLi(NAV_IDS.bdm, '📑', 'My Variations',
+                    "showMyAccountVariations(); return false;"));
+                injected = true;
+                console.log(TAG, 'injected BDM nav item under Business Development');
             }
         }
+        return injected;
     }
 
-    // ----------------------------------------------------------------------
-    // 7. Bootstrap
-    // ----------------------------------------------------------------------
+    window.installAccountVariationsNav = injectNavItems;
+
+    var _observer = null;
     var _started = false;
-    var _pollInterval = null;
+    var _retryCount = 0;
+    var MAX_RETRIES = 30;
 
     function tryStart() {
-        if (_started) return;
         var r = role();
-        if (!r) return;
-        if (typeof window.apiCall !== 'function' && typeof firebase === 'undefined') return;
-
-        _started = true;
-        if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
-
-        injectStyles();
+        if (!r) {
+            if (_retryCount++ > MAX_RETRIES) console.warn(TAG, 'role still unknown after retries');
+            return;
+        }
+        if (!_started) {
+            _started = true;
+            console.log(TAG, 'starting for role:', r);
+            injectStyles();
+            hookCOOVariationTracking();
+            try {
+                _observer = new MutationObserver(function () { injectNavItems(); });
+                var target = document.querySelector('nav, aside, .sidebar') || document.body;
+                _observer.observe(target, { childList: true, subtree: true });
+            } catch (e) {}
+        }
         injectNavItems();
-        hookCOOVariationTracking();
-
-        // Re-attempt nav injection after a short delay in case the menu
-        // is being re-rendered by a role guard script.
-        setTimeout(injectNavItems, 800);
-        setTimeout(injectNavItems, 2500);
-
-        console.log('[account-variation] patch initialised for role:', r);
     }
 
-    _pollInterval = setInterval(tryStart, 1500);
-    setTimeout(function () {
-        if (!_started && _pollInterval) {
-            clearInterval(_pollInterval);
-            _pollInterval = null;
-            console.warn('[account-variation] gave up waiting for auth');
-        }
-    }, 120000);
-    tryStart();
+    var _interval = setInterval(function () {
+        tryStart();
+        if (_retryCount++ > MAX_RETRIES) clearInterval(_interval);
+    }, 2000);
+    setTimeout(function () { try { clearInterval(_interval); } catch (e) {} }, 120000);
 
-    console.log('[account-variation] patch loaded, waiting for auth…');
+    document.addEventListener('DOMContentLoaded', tryStart);
+    tryStart();
+    setTimeout(tryStart, 500);
+    setTimeout(tryStart, 1500);
+    setTimeout(tryStart, 4000);
+    setTimeout(tryStart, 8000);
 })();

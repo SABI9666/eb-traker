@@ -1,11 +1,11 @@
 // ============================================
 // EBTracker Service Worker - FULL FEATURED
-// Version: 6.0.5 - Cache Version 59 (BDM Analytics export: granularity-aware Excel + chart PNGs)
+// Version: 6.0.6 - Cache Version 60 (Accounts variation upload)
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v59';
-const STATIC_CACHE = 'ebtracker-static-v59';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v59';
+const CACHE_NAME = 'ebtracker-v60';
+const STATIC_CACHE = 'ebtracker-static-v60';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v60';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -37,102 +37,56 @@ const NETWORK_ONLY = [
   'firebasestorage.googleapis.com'
 ];
 
-// ==============================
-// INSTALL EVENT
-// ==============================
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v59: Installing...');
-  
+  console.log('🔧 Service Worker v60: Installing...');
   event.waitUntil(
     Promise.all([
-      caches.open(STATIC_CACHE)
-        .then((cache) => {
-          console.log('📦 Service Worker v59: Caching static assets');
-          return cache.addAll(STATIC_ASSETS);
-        }),
-      caches.open(DYNAMIC_CACHE)
-        .then((cache) => {
-          console.log('📦 Service Worker v59: Caching Firebase SDK');
-          return Promise.all(
-            EXTERNAL_SCRIPTS.map(url => 
-              cache.add(url).catch(err => {
-                console.warn('⚠️ Failed to cache:', url, err);
-              })
-            )
-          );
-        })
+      caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)),
+      caches.open(DYNAMIC_CACHE).then((cache) =>
+        Promise.all(EXTERNAL_SCRIPTS.map(url => cache.add(url).catch(() => {}))))
     ])
-    .then(() => {
-      console.log('✅ Service Worker v59: All assets cached');
-      return self.skipWaiting();
-    })
-    .catch((error) => {
-      console.error('❌ Service Worker v59: Cache failed', error);
-    })
+    .then(() => self.skipWaiting())
+    .catch((error) => console.error('❌ Service Worker v60: Cache failed', error))
   );
 });
 
-// ==============================
-// ACTIVATE EVENT
-// ==============================
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v59: Activating...');
-  
+  console.log('🚀 Service Worker v60: Activating...');
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
-  
   event.waitUntil(
     caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (!validCaches.includes(cacheName)) {
-              console.log('🗑️ Service Worker v59: Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-      .then(() => {
-        console.log('✅ Service Worker v59: Activated - Old caches cleared');
-        return self.clients.claim();
-      })
-      .then(() => {
-        return self.clients.matchAll({ type: 'window' });
-      })
+      .then((cacheNames) => Promise.all(
+        cacheNames.map((cacheName) => {
+          if (!validCaches.includes(cacheName)) {
+            console.log('🗑️ Service Worker v60: Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      ))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
       .then((clients) => {
-        console.log('📢 Service Worker v59: Notifying clients to refresh');
         clients.forEach(client => {
-          client.postMessage({ 
-            type: 'CACHE_UPDATED',
-            version: 'v59',
-            message: 'BDM analytics export: granularity-aware Excel + chart PNGs.'
-          });
+          client.postMessage({ type: 'CACHE_UPDATED', version: 'v60',
+            message: 'Accounts variation upload (BDM, value, file).' });
         });
       })
   );
 });
 
-// ==============================
-// FETCH EVENT
-// ==============================
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET') return;
   if (!url.protocol.startsWith('http')) return;
   if (url.protocol === 'blob:') return;
-  const shouldSkipCache = NETWORK_ONLY.some(pattern => 
-    url.href.includes(pattern) || url.pathname.includes(pattern)
-  );
+  const shouldSkipCache = NETWORK_ONLY.some(pattern =>
+    url.href.includes(pattern) || url.pathname.includes(pattern));
   if (shouldSkipCache) {
     event.respondWith(
-      fetch(request).catch((error) => {
-        console.warn('⚠️ Network request failed:', url.href, error);
-        return new Response(
-          JSON.stringify({ error: 'Offline', message: 'You are offline. Please check your connection.', offline: true }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
-      })
+      fetch(request).catch(() => new Response(
+        JSON.stringify({ error: 'Offline', offline: true }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }))
     );
     return;
   }
@@ -146,10 +100,7 @@ self.addEventListener('fetch', (event) => {
 async function cacheFirst(request) {
   try {
     const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      fetchAndCache(request);
-      return cachedResponse;
-    }
+    if (cachedResponse) { fetchAndCache(request); return cachedResponse; }
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
       const cache = await caches.open(STATIC_CACHE);
@@ -157,7 +108,6 @@ async function cacheFirst(request) {
     }
     return networkResponse;
   } catch (error) {
-    console.warn('⚠️ Cache first failed for:', request.url);
     return offlineFallback();
   }
 }
@@ -171,7 +121,6 @@ async function networkFirst(request) {
     }
     return networkResponse;
   } catch (error) {
-    console.warn('⚠️ Network first failed, trying cache:', request.url);
     const cachedResponse = await caches.match(request);
     if (cachedResponse) return cachedResponse;
     return offlineFallback();
@@ -194,65 +143,47 @@ function isStaticAsset(pathname) {
 }
 
 function offlineFallback() {
-  return new Response('<!DOCTYPE html><html><body><h1>Offline</h1><p>Please reconnect.</p></body></html>', {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return new Response('<!DOCTYPE html><html><body><h1>Offline</h1></body></html>',
+    { headers: { 'Content-Type': 'text/html' } });
 }
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'EBTracker', body: 'New notification from EBTracker', icon: '/icons/icon-192x192.png', url: '/' };
+  let data = { title: 'EBTracker', body: 'New notification', icon: '/icons/icon-192x192.png', url: '/' };
   if (event.data) {
     try { data = { ...data, ...event.data.json() }; } catch (e) { data.body = event.data.text(); }
   }
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
-      vibrate: [100, 50, 100],
-      tag: data.tag || 'ebtracker-notification',
-      renotify: true,
-      data: { url: data.url || '/', timestamp: Date.now() }
-    })
-  );
+  event.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body, icon: data.icon, badge: '/icons/icon-72x72.png',
+    vibrate: [100, 50, 100], tag: data.tag || 'ebtracker-notification',
+    renotify: true, data: { url: data.url || '/', timestamp: Date.now() }
+  }));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const urlToOpen = event.notification.data?.url || '/';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(urlToOpen);
-            return client.focus();
-          }
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(urlToOpen); return client.focus();
         }
-        if (clients.openWindow) return clients.openWindow(urlToOpen);
-      })
-  );
+      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
+    }));
 });
 
 self.addEventListener('message', (event) => {
   if (!event.data) return;
   switch (event.data.type) {
-    case 'SKIP_WAITING':
-      self.skipWaiting();
-      break;
-    case 'GET_VERSION':
-      event.ports[0]?.postMessage({ version: 'v59', cache: CACHE_NAME });
-      break;
+    case 'SKIP_WAITING': self.skipWaiting(); break;
+    case 'GET_VERSION': event.ports[0]?.postMessage({ version: 'v60', cache: CACHE_NAME }); break;
     case 'CLEAR_CACHE':
       caches.keys().then(names => { names.forEach(name => caches.delete(name)); })
-        .then(() => { event.ports[0]?.postMessage({ success: true }); });
-      break;
+        .then(() => { event.ports[0]?.postMessage({ success: true }); }); break;
     case 'FORCE_REFRESH':
       caches.keys().then(names => Promise.all(names.map(name => caches.delete(name))))
-        .then(() => { event.ports[0]?.postMessage({ success: true, message: 'All caches cleared' }); });
-      break;
-    default:
-      console.log('Unknown message type:', event.data.type);
+        .then(() => { event.ports[0]?.postMessage({ success: true }); }); break;
   }
 });
 
@@ -265,15 +196,13 @@ self.addEventListener('sync', (event) => {
     'sync-timesheets': 'SYNC_TIMESHEETS'
   };
   if (syncMap[event.tag]) {
-    event.waitUntil(
-      self.clients.matchAll().then(clients => {
-        clients.forEach(c => c.postMessage({ type: syncMap[event.tag], timestamp: Date.now() }));
-      })
-    );
+    event.waitUntil(self.clients.matchAll().then(clients => {
+      clients.forEach(c => c.postMessage({ type: syncMap[event.tag], timestamp: Date.now() }));
+    }));
   }
 });
 
 self.addEventListener('error', (event) => { console.error('❌ SW Error:', event.error); });
 self.addEventListener('unhandledrejection', (event) => { console.error('❌ SW Unhandled:', event.reason); });
 
-console.log('✅ Service Worker v59: Loaded - granularity-aware Excel export + chart PNGs');
+console.log('✅ Service Worker v60: Loaded - Accounts variation upload');

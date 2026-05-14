@@ -47,7 +47,7 @@
     // 2. P.O. modal (used by Mark-as-Won AND Update-P.O. flows)
     // ---------------------------------------------------------
     function openBdmPoModal(proposalId, mode, prefill) {
-        mode = mode || 'won'; // 'won' or 'update'
+        mode = mode || 'won';
         prefill = prefill || {};
 
         var existing = document.getElementById('bdmPoModalOverlay');
@@ -129,7 +129,6 @@
         if (el) el.remove();
     };
 
-    // Helper: read modal fields, validate, optionally upload file
     async function collectPoPayloadFromModal(proposalId) {
         var poNumber = (document.getElementById('bdmPoNumber').value || '').trim();
         var poValueStr = (document.getElementById('bdmPoValue').value || '').trim();
@@ -137,11 +136,9 @@
         var trackingNumber = (document.getElementById('bdmPoTracking').value || '').trim();
         var poFileEl = document.getElementById('bdmPoFile');
         var poFile = (poFileEl && poFileEl.files && poFileEl.files[0]) ? poFileEl.files[0] : null;
-
         if (!poNumber) { alert('P.O. Number is required.'); return null; }
         var poValueNum = parseFloat(poValueStr);
         if (isNaN(poValueNum) || poValueNum <= 0) { alert('Please enter a valid P.O. Value.'); return null; }
-
         var attachmentUrl = '', attachmentName = '', attachmentFileId = '';
         if (poFile) {
             try {
@@ -151,92 +148,54 @@
                         attachmentUrl = up.data.fileUrl || up.data.url || '';
                         attachmentName = up.data.originalName || poFile.name;
                         attachmentFileId = up.data.id || '';
-                    } else {
-                        attachmentName = poFile.name;
-                    }
-                } else {
-                    attachmentName = poFile.name;
-                }
+                    } else { attachmentName = poFile.name; }
+                } else { attachmentName = poFile.name; }
             } catch (uErr) {
                 console.error('PO upload failed:', uErr);
                 if (!confirm('P.O. file upload failed. Continue without the new attachment?')) return null;
             }
         }
-
-        return {
-            poNumber: poNumber,
-            poValue: poValueNum,
-            poCurrency: poCurrency,
-            trackingNumber: trackingNumber,
-            attachmentUrl: attachmentUrl,
-            attachmentName: attachmentName,
-            attachmentFileId: attachmentFileId
-        };
+        return { poNumber, poValue: poValueNum, poCurrency, trackingNumber, attachmentUrl, attachmentName, attachmentFileId };
     }
 
-    // ---------------------------------------------------------
-    // 3. Mark proposal as WON (initial submit)
-    // ---------------------------------------------------------
     window.confirmMarkProposalWon = async function (proposalId) {
         try {
             if (typeof showLoading === 'function') showLoading();
             var po = await collectPoPayloadFromModal(proposalId);
             if (!po) { if (typeof hideLoading === 'function') hideLoading(); return; }
-
             var payload = { action: 'mark_won', data: Object.assign({ wonDate: new Date().toISOString() }, po) };
             var resp = await apiCall('proposals?id=' + proposalId, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
-
             if (resp && resp.success) {
                 window.closeBdmPoModal();
                 alert('Proposal marked as WON!\n\nP.O. details have been sent to COO, HR & Accounts.');
                 try { if (typeof triggerEmailNotification === 'function') triggerEmailNotification('project.won', { proposalId: proposalId }); } catch (e) {}
                 if (typeof closeModal === 'function') closeModal();
                 if (typeof showProposals === 'function') showProposals();
-            } else {
-                throw new Error((resp && resp.error) || 'Failed to mark as WON');
-            }
-        } catch (error) {
-            alert('Error: ' + error.message);
-        } finally {
-            if (typeof hideLoading === 'function') hideLoading();
-        }
+            } else { throw new Error((resp && resp.error) || 'Failed to mark as WON'); }
+        } catch (error) { alert('Error: ' + error.message); }
+        finally { if (typeof hideLoading === 'function') hideLoading(); }
     };
 
-    // ---------------------------------------------------------
-    // 4. Update P.O. on an already-WON proposal
-    // ---------------------------------------------------------
     window.confirmUpdateBdmPo = async function (proposalId) {
         try {
             if (typeof showLoading === 'function') showLoading();
             var po = await collectPoPayloadFromModal(proposalId);
             if (!po) { if (typeof hideLoading === 'function') hideLoading(); return; }
-
             var payload = { action: 'mark_won', data: Object.assign({ poUpdated: true, poUpdatedAt: new Date().toISOString() }, po) };
             var resp = await apiCall('proposals?id=' + proposalId, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
-
             if (resp && resp.success) {
                 window.closeBdmPoModal();
                 alert('P.O. details updated.\n\nCOO, HR & Accounts have been notified.');
                 if (typeof showProposals === 'function') showProposals();
-            } else {
-                throw new Error((resp && resp.error) || 'Failed to update P.O.');
-            }
-        } catch (error) {
-            alert('Error: ' + error.message);
-        } finally {
-            if (typeof hideLoading === 'function') hideLoading();
-        }
+            } else { throw new Error((resp && resp.error) || 'Failed to update P.O.'); }
+        } catch (error) { alert('Error: ' + error.message); }
+        finally { if (typeof hideLoading === 'function') hideLoading(); }
     };
 
-    // Public entry points
     window.updateBdmPo = function (proposalId) {
         var prefill = {};
         try {
@@ -261,14 +220,10 @@
         openBdmPoModal(proposalId, 'update', prefill);
     };
 
-    // ---------------------------------------------------------
-    // 5. Override markProposalWon to open the PO modal
-    // ---------------------------------------------------------
     function installOverride() {
         window.markProposalWon = function (proposalId) {
             openBdmPoModal(proposalId, 'won');
         };
-
         if (typeof window.getProposalAllocationButton === 'function' && !window.getProposalAllocationButton._bdmPoWrapped) {
             var orig = window.getProposalAllocationButton;
             var wrapped = function (p) {
@@ -295,8 +250,6 @@
 // ── Load patch scripts ─────────────────────────────────────────────────────────────────
 (function () {
     var patches = [
-        // auth-persistence first so SESSION mode is set before any other code
-        // queries the auth state.
         { id: '_authPersistencePatchScript', src: 'auth-persistence-patch.js' },
         { id: '_cooNotifBadgeScript',   src: 'coo-notification-badges.js' },
         { id: '_fixTimesheetDateScript', src: 'fix-timesheet-date.js' },
@@ -305,15 +258,8 @@
         { id: '_estimatorUploadPatchScript', src: 'estimator-upload-patch.js' },
         { id: '_bdmAnalyticsPatchScript', src: 'bdm-analytics.js' },
         { id: '_bdmEntriesPatchScript', src: 'bdm-entries.js' },
-        // Locks rupee conversion at save time and adds a live ₹ preview to
-        // the Upload Quote / Won form. Companion to api/bdm-quote-sync.js.
-        // Loaded after bdm-entries.js so it can hook the rendered form.
         { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' },
-        // Guarantees the BDM Analytics period dropdown is populated whenever
-        // there is activity. Adds "All Time" / "Reset" buttons + auto-reset.
         { id: '_bdmAnalyticsDropdownFixScript', src: 'bdm-analytics-dropdown-fix.js' },
-        // Defensive role guard: keeps the BDM Analytics nav item hidden
-        // and showBdmAnalytics() blocked for everyone except COO/Director.
         { id: '_bdmAnalyticsRoleGuardScript', src: 'bdm-analytics-role-guard.js' },
         // Accounts-driven Variation upload + COO Variation Tracker section +
         // BDM "My Variations" view. Companion to api/account-variations.js.
@@ -323,10 +269,6 @@
         if (document.getElementById(p.id)) return;
         var s = document.createElement('script');
         s.id  = p.id;
-        // Append a version query string so a new deploy always fetches the
-        // fresh patch script — bypasses both the browser's HTTP cache and
-        // the service worker's static-asset cache. Bump APP_PATCH_VERSION
-        // on every release that touches any of the patch files below.
         var APP_PATCH_VERSION = 'v57';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;

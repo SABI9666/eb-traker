@@ -7,19 +7,12 @@ const CACHE_NAME = 'ebtracker-v60';
 const STATIC_CACHE = 'ebtracker-static-v60';
 const DYNAMIC_CACHE = 'ebtracker-dynamic-v60';
 
-// Static assets to cache immediately
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/app1.js',
-  '/app2.js',
-  '/candidate-screening.html',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/', '/index.html', '/app1.js', '/app2.js',
+  '/candidate-screening.html', '/manifest.json',
+  '/icons/icon-192x192.png', '/icons/icon-512x512.png'
 ];
 
-// External scripts to cache
 const EXTERNAL_SCRIPTS = [
   'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js',
@@ -27,15 +20,7 @@ const EXTERNAL_SCRIPTS = [
   'https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js'
 ];
 
-// URLs to always fetch from network (never cache)
-const NETWORK_ONLY = [
-  '/api/',
-  'render.com',
-  'firebase',
-  'firestore',
-  'googleapis.com',
-  'firebasestorage.googleapis.com'
-];
+const NETWORK_ONLY = ['/api/','render.com','firebase','firestore','googleapis.com','firebasestorage.googleapis.com'];
 
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker v60: Installing...');
@@ -83,17 +68,12 @@ self.addEventListener('fetch', (event) => {
   const shouldSkipCache = NETWORK_ONLY.some(pattern =>
     url.href.includes(pattern) || url.pathname.includes(pattern));
   if (shouldSkipCache) {
-    event.respondWith(
-      fetch(request).catch(() => new Response(
-        JSON.stringify({ error: 'Offline', offline: true }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } }))
-    );
+    event.respondWith(fetch(request).catch(() => new Response(
+      JSON.stringify({ error: 'Offline', offline: true }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } })));
     return;
   }
-  if (isStaticAsset(url.pathname)) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
+  if (isStaticAsset(url.pathname)) { event.respondWith(cacheFirst(request)); return; }
   event.respondWith(networkFirst(request));
 });
 
@@ -107,9 +87,7 @@ async function cacheFirst(request) {
       cache.put(request, networkResponse.clone());
     }
     return networkResponse;
-  } catch (error) {
-    return offlineFallback();
-  }
+  } catch (error) { return offlineFallback(); }
 }
 
 async function networkFirst(request) {
@@ -138,8 +116,8 @@ async function fetchAndCache(request) {
 }
 
 function isStaticAsset(pathname) {
-  const staticExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.webp'];
-  return staticExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
+  const exts = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.webp'];
+  return exts.some(ext => pathname.toLowerCase().endsWith(ext));
 }
 
 function offlineFallback() {

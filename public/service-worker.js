@@ -1,11 +1,15 @@
 // ============================================
-// EBTracker Service Worker - FULL FEATURED
-// Version: 6.0.6 - Cache Version 60 (Accounts variation upload)
+// EBTracker Service Worker
+// Version: 6.0.7 - Cache Version 61
+//   - Accounts variation upload feature
+//   - Patch scripts are now NETWORK_ONLY so they bypass the SW cache
+//     and always reflect the latest deploy without needing a SW bump.
+//   - The SW itself is not cached (browser handles SW updates).
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v60';
-const STATIC_CACHE = 'ebtracker-static-v60';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v60';
+const CACHE_NAME = 'ebtracker-v61';
+const STATIC_CACHE = 'ebtracker-static-v61';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v61';
 
 const STATIC_ASSETS = [
   '/', '/index.html', '/app1.js', '/app2.js',
@@ -20,10 +24,18 @@ const EXTERNAL_SCRIPTS = [
   'https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js'
 ];
 
-const NETWORK_ONLY = ['/api/','render.com','firebase','firestore','googleapis.com','firebasestorage.googleapis.com'];
+// Always fetch these from the network (never cache).
+// `*-patch.js` covers bdm-po-patch.js, account-variation-patch.js,
+// timesheet-*-patch.js, bdm-quote-sync-patch.js etc. — future patches will
+// pick up new deploys immediately without needing a SW cache bump.
+const NETWORK_ONLY = [
+  '/api/', 'render.com', 'firebase', 'firestore',
+  'googleapis.com', 'firebasestorage.googleapis.com',
+  '-patch.js', 'account-variation', 'service-worker.js'
+];
 
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker v60: Installing...');
+  console.log('🔧 Service Worker v61: Installing...');
   event.waitUntil(
     Promise.all([
       caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)),
@@ -31,19 +43,19 @@ self.addEventListener('install', (event) => {
         Promise.all(EXTERNAL_SCRIPTS.map(url => cache.add(url).catch(() => {}))))
     ])
     .then(() => self.skipWaiting())
-    .catch((error) => console.error('❌ Service Worker v60: Cache failed', error))
+    .catch((error) => console.error('❌ Service Worker v61: Cache failed', error))
   );
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker v60: Activating...');
+  console.log('🚀 Service Worker v61: Activating...');
   const validCaches = [STATIC_CACHE, DYNAMIC_CACHE];
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => Promise.all(
         cacheNames.map((cacheName) => {
           if (!validCaches.includes(cacheName)) {
-            console.log('🗑️ Service Worker v60: Deleting old cache:', cacheName);
+            console.log('🗑️ Service Worker v61: Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -52,8 +64,11 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.matchAll({ type: 'window' }))
       .then((clients) => {
         clients.forEach(client => {
-          client.postMessage({ type: 'CACHE_UPDATED', version: 'v60',
-            message: 'Accounts variation upload (BDM, value, file).' });
+          client.postMessage({
+            type: 'CACHE_UPDATED',
+            version: 'v61',
+            message: 'Accounts variation upload (BDM, value, file). Patch scripts now bypass cache.'
+          });
         });
       })
   );
@@ -155,7 +170,7 @@ self.addEventListener('message', (event) => {
   if (!event.data) return;
   switch (event.data.type) {
     case 'SKIP_WAITING': self.skipWaiting(); break;
-    case 'GET_VERSION': event.ports[0]?.postMessage({ version: 'v60', cache: CACHE_NAME }); break;
+    case 'GET_VERSION': event.ports[0]?.postMessage({ version: 'v61', cache: CACHE_NAME }); break;
     case 'CLEAR_CACHE':
       caches.keys().then(names => { names.forEach(name => caches.delete(name)); })
         .then(() => { event.ports[0]?.postMessage({ success: true }); }); break;
@@ -183,4 +198,4 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('error', (event) => { console.error('❌ SW Error:', event.error); });
 self.addEventListener('unhandledrejection', (event) => { console.error('❌ SW Unhandled:', event.reason); });
 
-console.log('✅ Service Worker v60: Loaded - Accounts variation upload');
+console.log('✅ Service Worker v61: Loaded - Accounts variation upload, patch scripts bypass cache');

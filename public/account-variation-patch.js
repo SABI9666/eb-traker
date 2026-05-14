@@ -2,14 +2,7 @@
  * Account Variation Patch  (rev 2)
  *
  * Accounts-driven Variation uploads + COO Tracker section + BDM "My
- * Variations" page. This rev makes nav injection much more resilient:
- *
- *   - MutationObserver re-runs injection if the sidebar re-renders.
- *   - 5-second periodic re-attempt for the first 60 s after login.
- *   - Case-insensitive role check + multiple sources for current user.
- *   - Falls back to the first sidebar <ul> if no `deptFinance` id is found.
- *   - Exposes window.installAccountVariationsNav() so the menu can be
- *     forced via devtools if anything else fails.
+ * Variations" page. Resilient nav injection with MutationObserver.
  *
  * Backend endpoints used (eb-backend):
  *   POST   /api/account-variations    (multipart/form-data)
@@ -71,8 +64,7 @@
 
     function role() {
         var candidates = [
-            window.currentUserRole,
-            window.userRole,
+            window.currentUserRole, window.userRole,
             window.currentUser && window.currentUser.role,
             window.appUser && window.appUser.role,
             window.currentRole
@@ -87,13 +79,9 @@
         if (value === null || value === undefined || value === '') return '—';
         var n = Number(value); if (isNaN(n)) return String(value);
         var c = (currency || '').toString().toUpperCase();
-        try {
-            return new Intl.NumberFormat(undefined, { style: 'currency', currency: c || 'INR', maximumFractionDigits: 2 }).format(n);
-        } catch (e) {
-            return (c ? c + ' ' : '') + n.toLocaleString();
-        }
+        try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: c || 'INR', maximumFractionDigits: 2 }).format(n); }
+        catch (e) { return (c ? c + ' ' : '') + n.toLocaleString(); }
     }
-
     function fmtDate(ts) {
         if (!ts) return '—';
         try {
@@ -105,32 +93,23 @@
             return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         } catch (e) { return '—'; }
     }
-
     function escapeHtml(s) {
         if (s === null || s === undefined) return '';
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-
     function getMainContent() {
-        return document.getElementById('mainContent')
-            || document.getElementById('main-content')
-            || document.getElementById('appMainContent')
-            || document.querySelector('.main-content')
-            || document.querySelector('main')
-            || document.body;
+        return document.getElementById('mainContent') || document.getElementById('main-content')
+            || document.getElementById('appMainContent') || document.querySelector('.main-content')
+            || document.querySelector('main') || document.body;
     }
-
     function authToken() {
         try {
             var u = firebase && firebase.auth && firebase.auth().currentUser;
             return u ? u.getIdToken() : Promise.resolve(null);
         } catch (e) { return Promise.resolve(null); }
     }
-
-    function apiBase() {
-        return (window.API_BASE_URL || window.apiBaseUrl || '').replace(/\/$/, '');
-    }
+    function apiBase() { return (window.API_BASE_URL || window.apiBaseUrl || '').replace(/\/$/, ''); }
 
     async function uploadAccountVariation(formData) {
         var token = await authToken();
@@ -145,7 +124,6 @@
         }
         return json;
     }
-
     async function fetchAccountVariations() {
         if (typeof window.apiCall === 'function') {
             var resp = await window.apiCall('account-variations');
@@ -160,7 +138,6 @@
         if (!res.ok || !json.success) throw new Error(json.error || 'Load failed');
         return json.data || [];
     }
-
     async function deleteAccountVariation(id) {
         if (typeof window.apiCall === 'function') {
             var resp = await window.apiCall('account-variations?id=' + encodeURIComponent(id), { method: 'DELETE' });
@@ -175,7 +152,6 @@
         if (!res.ok || !json.success) throw new Error(json.error || 'Delete failed');
         return json;
     }
-
     async function fetchBDMs() {
         if (typeof window.apiCall === 'function') {
             var resp = await window.apiCall('users?role=bdm');
@@ -239,10 +215,7 @@
         var sel = modal.querySelector('#avBdmSelect');
         try {
             var bdms = await fetchBDMs();
-            if (!bdms.length) {
-                sel.innerHTML = '<option value="">No active BDMs found</option>';
-                return;
-            }
+            if (!bdms.length) { sel.innerHTML = '<option value="">No active BDMs found</option>'; return; }
             sel.innerHTML = '<option value="">— Select BDM —</option>' + bdms.map(function (b) {
                 var label = escapeHtml(b.name || b.email || b.uid);
                 if (b.email) label += ' (' + escapeHtml(b.email) + ')';
@@ -255,11 +228,9 @@
             console.error(TAG, 'Failed to load BDMs', e);
         }
     };
-
     window.closeAccountVariationModal = function () {
         var m = document.getElementById(MODAL_ID); if (m) m.remove();
     };
-
     window.submitAccountVariation = async function () {
         var sel = document.getElementById('avBdmSelect');
         var bdmUid = sel && sel.value;
@@ -273,9 +244,7 @@
         var fileInput = document.getElementById('avFile');
         var file = fileInput && fileInput.files && fileInput.files[0];
         if (!bdmUid) { alert('Please select a BDM.'); return; }
-        if (!value || isNaN(parseFloat(value)) || parseFloat(value) < 0) {
-            alert('Please enter a valid variation value.'); return;
-        }
+        if (!value || isNaN(parseFloat(value)) || parseFloat(value) < 0) { alert('Please enter a valid variation value.'); return; }
         var btn = document.getElementById('avSubmitBtn');
         if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
         try {
@@ -360,7 +329,6 @@
             + '<div id="' + pageId + '-content"><div class="av-empty">Loading…</div></div>';
         return page;
     }
-
     function tryHideOtherPages() {
         var main = getMainContent(); if (!main) return;
         Array.prototype.forEach.call(main.children, function (child) {
@@ -374,9 +342,7 @@
     window.showAccountVariations = async function () {
         injectStyles();
         var r = role();
-        var headerExtra = (r === 'accounts')
-            ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>'
-            : '';
+        var headerExtra = (r === 'accounts') ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>' : '';
         tryHideOtherPages();
         var page = ensurePage(PAGE_ID, '📑 Account Variations', headerExtra);
         page.style.display = 'block';
@@ -388,7 +354,6 @@
             holder.innerHTML = '<div class="av-empty" style="color:#dc2626;">Failed to load: ' + escapeHtml(e.message || e) + '</div>';
         }
     };
-
     window.showMyAccountVariations = async function () {
         injectStyles();
         tryHideOtherPages();
@@ -415,7 +380,6 @@
                 '<div class="av-empty" style="color:#dc2626;">Failed to load: ' + escapeHtml(e.message || e) + '</div>';
         }
     }
-
     function injectIntoCOOTracker() {
         var r = role();
         if (!['coo', 'director'].includes(r)) return;
@@ -443,7 +407,6 @@
         host.appendChild(sec);
         renderCOOSection(sec);
     }
-
     function hookCOOVariationTracking() {
         if (typeof window.showCOOVariationTracking !== 'function') return false;
         if (window.showCOOVariationTracking._avHooked) return true;
@@ -466,7 +429,6 @@
             + iconChar + '</span>' + escapeHtml(label) + '</a>';
         return li;
     }
-
     function findDeptUL(deptId, headingRegex) {
         var dept = document.getElementById(deptId);
         if (dept) {
@@ -487,7 +449,6 @@
         }
         return null;
     }
-
     function injectNavItems() {
         var r = role();
         if (!r) return false;
@@ -523,7 +484,6 @@
         }
         return injected;
     }
-
     window.installAccountVariationsNav = injectNavItems;
 
     var _observer = null;
@@ -550,13 +510,11 @@
         }
         injectNavItems();
     }
-
     var _interval = setInterval(function () {
         tryStart();
         if (_retryCount++ > MAX_RETRIES) clearInterval(_interval);
     }, 2000);
     setTimeout(function () { try { clearInterval(_interval); } catch (e) {} }, 120000);
-
     document.addEventListener('DOMContentLoaded', tryStart);
     tryStart();
     setTimeout(tryStart, 500);

@@ -1,22 +1,16 @@
 /* ============================================================
- * Account Variation Patch  (rev 3 — real fix)
+ * Account Variation Patch  (rev 4)
  *
- * THE BUG (rev 1 / rev 2):
- *   app1.js declares `let currentUserRole = '';` at script scope, so it is
- *   NEVER attached to `window`. `window.currentUserRole` is permanently
- *   undefined — the role check always fell through, the nav was never
- *   injected, and `[account-variation]` simply waited forever for a role.
- *
- * THE FIX:
- *   Read the role from `#userRole .textContent`, which app1.js explicitly
- *   sets to `roleForCheck.replace('_', ' ').toUpperCase()` (so "ACCOUNTS"
- *   for accounts users). Lowercase and underscore-back to derive the role.
- *
- * Other improvements:
- *   - Injected <li> uses inline `display:block` to match the existing items.
- *   - Faster poll (500 ms) for the first 60 s to catch role assignment quickly.
- *   - Re-injects on MutationObserver if the sidebar mutates.
- *   - window.installAccountVariationsNav() exposed for manual install.
+ * rev 3 fixed role detection. rev 4 fixes the page rendering:
+ *   - All other show*() functions in app1.js do `mainContent.innerHTML = ''`
+ *     and then build the new page inside it. The previous version of this
+ *     patch APPENDED a new div to mainContent, leaving whatever page was
+ *     visible (e.g. "Projects ready for invoicing") in place. The Account
+ *     Variations page then rendered *below* it.
+ *   - Now `showAccountVariations()` / `showMyAccountVariations()` clear
+ *     `mainContent.innerHTML` first, exactly like `showPayments()` etc.
+ *   - The injected nav <a> now has an id (`nav-account-variations`,
+ *     `nav-bdm-account-variations`) so `setActiveNav()` can highlight it.
  * ============================================================ */
 (function () {
     'use strict';
@@ -36,8 +30,13 @@
         coo: 'cooAccountVariationsNavItem',
         bdm: 'bdmAccountVariationsNavItem'
     };
+    var NAV_LINK_IDS = {
+        accounts: 'nav-account-variations',
+        coo: 'nav-coo-account-variations',
+        bdm: 'nav-bdm-account-variations'
+    };
 
-    console.log(TAG, 'script loaded (rev 3)');
+    console.log(TAG, 'script loaded (rev 4)');
 
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
@@ -71,19 +70,12 @@
         document.head.appendChild(s);
     }
 
-    // -----------------------------------------------------------
-    // Role detection — the actual fix (rev 3)
-    // -----------------------------------------------------------
     function role() {
-        // PRIMARY: #userRole textContent, set by app1.js showApp() to the
-        // uppercase role with underscores replaced by spaces (e.g. "ACCOUNTS",
-        // "DESIGN LEAD", "DOCUMENT CONTROLLER").
         var el = document.getElementById('userRole');
         if (el && el.textContent) {
             var t = el.textContent.trim().toLowerCase().replace(/ /g, '_');
             if (t) return t;
         }
-        // FALLBACKS (kept for safety even though they’re unreliable in this app)
         var candidates = [
             window.currentUserRole, window.userRole,
             window.currentUser && window.currentUser.role,
@@ -119,10 +111,8 @@
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    function getMainContent() {
-        return document.getElementById('mainContent') || document.getElementById('main-content')
-            || document.getElementById('appMainContent') || document.querySelector('.main-content')
-            || document.querySelector('main') || document.body;
+    function mainContentEl() {
+        return document.getElementById('mainContent') || document.querySelector('.main-content') || document.body;
     }
     function authToken() {
         try {
@@ -281,11 +271,8 @@
             await uploadAccountVariation(fd);
             alert('✅ Variation uploaded successfully.');
             window.closeAccountVariationModal();
-            if (document.getElementById(PAGE_ID) && document.getElementById(PAGE_ID).style.display !== 'none') {
-                window.showAccountVariations();
-            }
-            var sec = document.getElementById(COO_SECTION_ID);
-            if (sec) renderCOOSection(sec);
+            // refresh the list
+            window.showAccountVariations();
         } catch (e) {
             console.error(TAG, e);
             alert('Upload failed: ' + (e.message || e));
@@ -327,48 +314,31 @@
         if (!confirm('Delete this account variation?')) return;
         try {
             await deleteAccountVariation(id);
-            if (document.getElementById(PAGE_ID) && document.getElementById(PAGE_ID).style.display !== 'none') {
-                window.showAccountVariations();
-            }
-            var sec = document.getElementById(COO_SECTION_ID);
-            if (sec) renderCOOSection(sec);
+            window.showAccountVariations();
         } catch (e) { alert('Delete failed: ' + (e.message || e)); }
     };
 
-    function ensurePage(pageId, title, headerExtraHtml) {
-        var main = getMainContent();
-        var page = document.getElementById(pageId);
-        if (!page) {
-            page = document.createElement('div');
-            page.id = pageId;
-            page.className = 'page-section content-section';
-            page.style.padding = '1.25rem';
-            main.appendChild(page);
+    // -----------------------------------------------------------
+    // Page render — rev 4 fix: replace mainContent, don’t append
+    // -----------------------------------------------------------
+    function setActive(navLinkId) {
+        if (typeof window.setActiveNav === 'function' && navLinkId) {
+            try { window.setActiveNav(navLinkId); } catch (e) {}
         }
-        page.innerHTML = '<div class="av-page-header"><h2>' + title + '</h2>'
-            + '<div>' + (headerExtraHtml || '') + '</div></div>'
-            + '<div id="' + pageId + '-content"><div class="av-empty">Loading…</div></div>';
-        return page;
-    }
-    function tryHideOtherPages() {
-        var main = getMainContent(); if (!main) return;
-        Array.prototype.forEach.call(main.children, function (child) {
-            if (child.id === PAGE_ID || child.id === BDM_PAGE_ID) return;
-            if (child.classList && (child.classList.contains('page-section') || child.classList.contains('content-section'))) {
-                child.style.display = 'none';
-            }
-        });
     }
 
     window.showAccountVariations = async function () {
         injectStyles();
         var r = role();
-        var headerExtra = (r === 'accounts')
-            ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>'
-            : '';
-        tryHideOtherPages();
-        var page = ensurePage(PAGE_ID, '📑 Account Variations', headerExtra);
-        page.style.display = 'block';
+        setActive(r === 'accounts' ? NAV_LINK_IDS.accounts : NAV_LINK_IDS.coo);
+        var main = mainContentEl();
+        main.innerHTML = '<div style="padding:1.25rem;">'
+            + '<div class="av-page-header"><h2>📑 Account Variations</h2>'
+            + '<div>' + (r === 'accounts'
+                ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>'
+                : '') + '</div></div>'
+            + '<div id="' + PAGE_ID + '-content"><div class="av-empty">Loading…</div></div>'
+            + '</div>';
         var holder = document.getElementById(PAGE_ID + '-content');
         try {
             var list = await fetchAccountVariations();
@@ -377,11 +347,15 @@
             holder.innerHTML = '<div class="av-empty" style="color:#dc2626;">Failed to load: ' + escapeHtml(e.message || e) + '</div>';
         }
     };
+
     window.showMyAccountVariations = async function () {
         injectStyles();
-        tryHideOtherPages();
-        var page = ensurePage(BDM_PAGE_ID, '📑 My Variations (from Accounts)', '');
-        page.style.display = 'block';
+        setActive(NAV_LINK_IDS.bdm);
+        var main = mainContentEl();
+        main.innerHTML = '<div style="padding:1.25rem;">'
+            + '<div class="av-page-header"><h2>📑 My Variations (from Accounts)</h2><div></div></div>'
+            + '<div id="' + BDM_PAGE_ID + '-content"><div class="av-empty">Loading…</div></div>'
+            + '</div>';
         var holder = document.getElementById(BDM_PAGE_ID + '-content');
         try {
             var list = await fetchAccountVariations();
@@ -414,19 +388,17 @@
         ].filter(Boolean);
         var host = candidates[0];
         if (!host) {
-            var headings = document.querySelectorAll('h1, h2, h3');
-            for (var i = 0; i < headings.length; i++) {
-                if (/variation\s*track/i.test(headings[i].textContent || '')) {
-                    host = headings[i].closest('.page-section, .content-section, section, div');
-                    if (host) break;
-                }
-            }
+            // The COO Variation Tracker is rendered into #mainContent by
+            // showCOOVariationTracking() in app1.js. Append our section at
+            // the bottom of mainContent in that case.
+            host = mainContentEl();
         }
         if (!host) return;
         if (document.getElementById(COO_SECTION_ID)) return;
         var sec = document.createElement('div');
         sec.id = COO_SECTION_ID;
         sec.style.marginTop = '2rem';
+        sec.style.padding = '0 1.25rem 1.25rem';
         host.appendChild(sec);
         renderCOOSection(sec);
     }
@@ -444,13 +416,12 @@
         return true;
     }
 
-    function makeNavLi(id, iconChar, label, onclick) {
+    function makeNavLi(liId, anchorId, iconChar, label, onclick) {
         var li = document.createElement('li');
-        li.id = id;
-        // Match existing items: app1.js sets inline display:block when visible.
+        li.id = liId;
         li.style.display = 'block';
-        li.innerHTML = '<a href="#" onclick="' + onclick + '"><span class="nav-icon">'
-            + iconChar + '</span>' + escapeHtml(label) + '</a>';
+        li.innerHTML = '<a href="#" id="' + anchorId + '" onclick="' + onclick + '">'
+            + '<span class="nav-icon">' + iconChar + '</span>' + escapeHtml(label) + '</a>';
         return li;
     }
     function findDeptUL(deptId, headingRegex) {
@@ -480,7 +451,7 @@
         if (r === 'accounts' && !document.getElementById(NAV_IDS.accounts)) {
             var ul = findDeptUL('deptFinance', /finance|accounts/i);
             if (ul) {
-                ul.appendChild(makeNavLi(NAV_IDS.accounts, '📑', 'Account Variations',
+                ul.appendChild(makeNavLi(NAV_IDS.accounts, NAV_LINK_IDS.accounts, '📑', 'Account Variations',
                     "showAccountVariations(); return false;"));
                 injected = true;
                 console.log(TAG, 'injected Accounts nav item under Finance');
@@ -491,7 +462,7 @@
         if (['coo', 'director'].includes(r) && !document.getElementById(NAV_IDS.coo)) {
             var opsUl = findDeptUL('deptOperations', /operations|management/i);
             if (opsUl) {
-                opsUl.appendChild(makeNavLi(NAV_IDS.coo, '📑', 'Account Variations',
+                opsUl.appendChild(makeNavLi(NAV_IDS.coo, NAV_LINK_IDS.coo, '📑', 'Account Variations',
                     "showAccountVariations(); return false;"));
                 injected = true;
                 console.log(TAG, 'injected COO nav item under Operations');
@@ -500,7 +471,7 @@
         if (r === 'bdm' && !document.getElementById(NAV_IDS.bdm)) {
             var bdmUl = findDeptUL('deptBDM', /business\s*development|bdm/i);
             if (bdmUl) {
-                bdmUl.appendChild(makeNavLi(NAV_IDS.bdm, '📑', 'My Variations',
+                bdmUl.appendChild(makeNavLi(NAV_IDS.bdm, NAV_LINK_IDS.bdm, '📑', 'My Variations',
                     "showMyAccountVariations(); return false;"));
                 injected = true;
                 console.log(TAG, 'injected BDM nav item under Business Development');
@@ -513,14 +484,11 @@
     var _observer = null;
     var _started = false;
     var _retryCount = 0;
-    var MAX_RETRIES = 120; // 60 s at 500 ms
+    var MAX_RETRIES = 120;
 
     function tryStart() {
         var r = role();
-        if (!r) {
-            if (_retryCount === 0) console.log(TAG, 'waiting for role…');
-            return;
-        }
+        if (!r) return;
         if (!_started) {
             _started = true;
             console.log(TAG, 'starting for role:', r);

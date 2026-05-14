@@ -1,13 +1,22 @@
 /* ============================================================
- * Account Variation Patch  (rev 2)
+ * Account Variation Patch  (rev 3 — real fix)
  *
- * Accounts-driven Variation uploads + COO Tracker section + BDM "My
- * Variations" page. Resilient nav injection with MutationObserver.
+ * THE BUG (rev 1 / rev 2):
+ *   app1.js declares `let currentUserRole = '';` at script scope, so it is
+ *   NEVER attached to `window`. `window.currentUserRole` is permanently
+ *   undefined — the role check always fell through, the nav was never
+ *   injected, and `[account-variation]` simply waited forever for a role.
  *
- * Backend endpoints used (eb-backend):
- *   POST   /api/account-variations    (multipart/form-data)
- *   GET    /api/account-variations
- *   DELETE /api/account-variations?id=<id>
+ * THE FIX:
+ *   Read the role from `#userRole .textContent`, which app1.js explicitly
+ *   sets to `roleForCheck.replace('_', ' ').toUpperCase()` (so "ACCOUNTS"
+ *   for accounts users). Lowercase and underscore-back to derive the role.
+ *
+ * Other improvements:
+ *   - Injected <li> uses inline `display:block` to match the existing items.
+ *   - Faster poll (500 ms) for the first 60 s to catch role assignment quickly.
+ *   - Re-injects on MutationObserver if the sidebar mutates.
+ *   - window.installAccountVariationsNav() exposed for manual install.
  * ============================================================ */
 (function () {
     'use strict';
@@ -28,7 +37,7 @@
         bdm: 'bdmAccountVariationsNavItem'
     };
 
-    console.log(TAG, 'script loaded');
+    console.log(TAG, 'script loaded (rev 3)');
 
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
@@ -62,7 +71,19 @@
         document.head.appendChild(s);
     }
 
+    // -----------------------------------------------------------
+    // Role detection — the actual fix (rev 3)
+    // -----------------------------------------------------------
     function role() {
+        // PRIMARY: #userRole textContent, set by app1.js showApp() to the
+        // uppercase role with underscores replaced by spaces (e.g. "ACCOUNTS",
+        // "DESIGN LEAD", "DOCUMENT CONTROLLER").
+        var el = document.getElementById('userRole');
+        if (el && el.textContent) {
+            var t = el.textContent.trim().toLowerCase().replace(/ /g, '_');
+            if (t) return t;
+        }
+        // FALLBACKS (kept for safety even though they’re unreliable in this app)
         var candidates = [
             window.currentUserRole, window.userRole,
             window.currentUser && window.currentUser.role,
@@ -342,7 +363,9 @@
     window.showAccountVariations = async function () {
         injectStyles();
         var r = role();
-        var headerExtra = (r === 'accounts') ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>' : '';
+        var headerExtra = (r === 'accounts')
+            ? '<button class="av-btn av-btn-primary" onclick="openAccountVariationModal()">+ Upload Variation</button>'
+            : '';
         tryHideOtherPages();
         var page = ensurePage(PAGE_ID, '📑 Account Variations', headerExtra);
         page.style.display = 'block';
@@ -424,7 +447,8 @@
     function makeNavLi(id, iconChar, label, onclick) {
         var li = document.createElement('li');
         li.id = id;
-        li.style.display = '';
+        // Match existing items: app1.js sets inline display:block when visible.
+        li.style.display = 'block';
         li.innerHTML = '<a href="#" onclick="' + onclick + '"><span class="nav-icon">'
             + iconChar + '</span>' + escapeHtml(label) + '</a>';
         return li;
@@ -489,12 +513,12 @@
     var _observer = null;
     var _started = false;
     var _retryCount = 0;
-    var MAX_RETRIES = 30;
+    var MAX_RETRIES = 120; // 60 s at 500 ms
 
     function tryStart() {
         var r = role();
         if (!r) {
-            if (_retryCount++ > MAX_RETRIES) console.warn(TAG, 'role still unknown after retries');
+            if (_retryCount === 0) console.log(TAG, 'waiting for role…');
             return;
         }
         if (!_started) {
@@ -510,10 +534,11 @@
         }
         injectNavItems();
     }
+
     var _interval = setInterval(function () {
         tryStart();
         if (_retryCount++ > MAX_RETRIES) clearInterval(_interval);
-    }, 2000);
+    }, 500);
     setTimeout(function () { try { clearInterval(_interval); } catch (e) {} }, 120000);
     document.addEventListener('DOMContentLoaded', tryStart);
     tryStart();

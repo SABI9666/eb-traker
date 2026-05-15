@@ -1470,7 +1470,8 @@
                 'muruganantham.tech@edanbrook.in',
                 'aravindhan.tech@edanbrook.in',
                 'sathish.tech@edanbrook.in',
-                'meeraj.tech@edanbrook.in'
+                'meeraj.tech@edanbrook.in',
+                'rebar.lead@edanbrook.com'
             ];
             
             const userEmailLower = (currentUser?.email || '').toLowerCase().trim();
@@ -13017,25 +13018,27 @@ async function markProjectComplete(projectId) {
         // Version 5.0.0
         // ============================================
         
-        // DESIGNER TEAM LEADS - These emails can approve designer leave requests (5 Team Leads)
+        // DESIGNER TEAM LEADS - These emails can approve designer leave requests (6 Team Leads)
         const DESIGNER_TEAM_LEADS = [
             { email: 'kathar.tech@edanbrook.in', name: 'Kathar', namePrefix: 'kathar' },
             { email: 'muruganantham.tech@edanbrook.in', name: 'Muruganantham', namePrefix: 'muruganantham' },
             { email: 'aravindhan.tech@edanbrook.in', name: 'Aravindhan', namePrefix: 'aravindhan' },
             { email: 'sathish.tech@edanbrook.in', name: 'Sathish', namePrefix: 'sathish' },
-            { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj', namePrefix: 'meeraj' }
+            { email: 'meeraj.tech@edanbrook.in', name: 'Meeraj', namePrefix: 'meeraj' },
+            { email: 'rebar.lead@edanbrook.com', name: 'Rebar Lead', namePrefix: 'rebar' }
         ];
-        
+
         // All possible team lead email formats
         const TEAM_LEAD_EMAIL_PATTERNS = [
             'kathar.tech@edanbrook.in', 'kathar.p@edanbrook.in', 'kathar@edanbrook.in',
             'muruganantham.tech@edanbrook.in', 'muruganantham.p@edanbrook.in', 'muruganantham@edanbrook.in',
             'aravindhan.tech@edanbrook.in', 'aravindhan.p@edanbrook.in', 'aravindhan@edanbrook.in',
             'sathish.tech@edanbrook.in', 'sathish.p@edanbrook.in', 'sathish@edanbrook.in',
-            'meeraj.tech@edanbrook.in', 'meeraj.p@edanbrook.in', 'meeraj@edanbrook.in'
+            'meeraj.tech@edanbrook.in', 'meeraj.p@edanbrook.in', 'meeraj@edanbrook.in',
+            'rebar.lead@edanbrook.com', 'rebar.lead1@edanbrook.com', 'rebar@edanbrook.com'
         ];
-        
-        const TEAM_LEAD_NAME_PREFIXES = ['kathar', 'muruganantham', 'aravindhan', 'sathish', 'meeraj'];
+
+        const TEAM_LEAD_NAME_PREFIXES = ['kathar', 'muruganantham', 'aravindhan', 'sathish', 'meeraj', 'rebar'];
         
         // Helper function to check if an email belongs to a team lead
         function isEmailTeamLead(email) {
@@ -13045,13 +13048,14 @@ async function markProjectComplete(projectId) {
             }
             const emailLower = email.toLowerCase().trim();
             
-            // Direct check against the 5 team lead emails
+            // Direct check against the team lead emails
             const TEAM_LEAD_EMAILS_CHECK = [
                 'kathar.tech@edanbrook.in',
                 'muruganantham.tech@edanbrook.in',
                 'aravindhan.tech@edanbrook.in',
                 'sathish.tech@edanbrook.in',
-                'meeraj.tech@edanbrook.in'
+                'meeraj.tech@edanbrook.in',
+                'rebar.lead@edanbrook.com'
             ];
             
             const isMatch = TEAM_LEAD_EMAILS_CHECK.includes(emailLower);

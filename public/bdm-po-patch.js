@@ -256,6 +256,11 @@
         { id: '_monthlyReportPatchScript', src: 'timesheet-monthly-report-patch.js' },
         { id: '_timesheetDrawingPatchScript', src: 'timesheet-drawing-number-patch.js' },
         { id: '_estimatorUploadPatchScript', src: 'estimator-upload-patch.js' },
+        // Estimator-side .docx quotation template upload + BDM auto-priced
+        // download. Companion to /public/quotation_generator.js -- overrides
+        // window.generateWordQuote so the BDM gets the estimator's custom
+        // template (if any) rendered with live p.pricing values.
+        { id: '_estimatorQuoteTemplatePatchScript', src: 'estimator-quote-template-patch.js' },
         { id: '_bdmAnalyticsPatchScript', src: 'bdm-analytics.js' },
         { id: '_bdmEntriesPatchScript', src: 'bdm-entries.js' },
         { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' },
@@ -269,7 +274,7 @@
         if (document.getElementById(p.id)) return;
         var s = document.createElement('script');
         s.id  = p.id;
-        var APP_PATCH_VERSION = 'v57';
+        var APP_PATCH_VERSION = 'v58';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

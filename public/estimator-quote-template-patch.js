@@ -18,20 +18,40 @@
  * 2. BDM SIDE
  *    Replaces window.generateWordQuote (defined in
  *    /public/quotation_generator.js). When the BDM clicks "Generate
- *    Word Quote", we look up the proposal's quotationTemplate file. If
- *    one is attached, we render IT with the current pricing data
- *    (p.pricing.quoteValue / .projectNumber / .hourlyRate / etc.) and
- *    download the result as a .docx. If no template is attached we
- *    fall back to the default /public/proposal_template.docx -- the
- *    pre-patch behaviour.
+ *    Word Quote":
+ *      a. We fetch the proposal so the rendered quote reflects the
+ *         latest pricing edits.
+ *      b. We GATE on COO/Director approval -- the Word file only
+ *         renders once proposal.approved === true (the flag set by
+ *         api/proposals.js's approve_proposal action). Until then a
+ *         clear message tells the BDM the price the Estimator entered
+ *         is still pending COO approval.
+ *      c. If a quotationTemplate file was attached by the Estimator in
+ *         the estimation modal, we render IT with the current
+ *         p.pricing.* values; otherwise we fall back to the default
+ *         /public/proposal_template.docx -- pre-patch behaviour.
  *
- * Because the pricing fields are pulled live at click-time, any COO
- * pricing edit is automatically reflected in the next download.
+ * Because the pricing fields are pulled live at click-time, any later
+ * COO pricing edit (via api/proposals.js's update_pricing action) is
+ * automatically reflected in the next download.
  * ============================================================ */
 (function () {
     'use strict';
     if (window._estimatorQuoteTemplatePatchLoaded) return;
     window._estimatorQuoteTemplatePatchLoaded = true;
+
+    // Statuses that mean "COO or Director has already approved this
+    // proposal". approve_proposal sets status='approved' and approved=true;
+    // submit_to_client / mark_won / mark_lost all come AFTER approval, so
+    // their statuses also count as approved.
+    var APPROVED_STATUSES = ['approved', 'submitted_to_client', 'won', 'lost'];
+
+    function isApproved(p) {
+        if (!p) return false;
+        if (p.approved === true) return true;
+        var s = String(p.status || '').toLowerCase();
+        return APPROVED_STATUSES.indexOf(s) !== -1;
+    }
 
     // -----------------------------------------------------------
     // Small helpers
@@ -126,6 +146,10 @@
                     '<input type="file" id="quotationTemplateInput" style="display:none;" accept=".docx">' +
                 '</div>' +
                 '<div id="quotationTemplatePreview" style="margin-top:0.5rem;"></div>' +
+                '<div style="margin-top:0.5rem; padding:0.5rem 0.75rem; background:#fff7ed; border-left:3px solid #f59e0b; border-radius:4px; font-size:0.78rem; color:#7c2d12;">' +
+                    '<strong>Note:</strong> the price you set via the COO/Estimator pricing modal flows into this quote, ' +
+                    'but the BDM can only download the priced Word file <em>after</em> the COO (or Director) approves the proposal.' +
+                '</div>' +
             '</div>';
         section.insertAdjacentHTML('beforeend', html);
 
@@ -325,10 +349,36 @@
                     return;
                 }
                 var p = proposalResp.data;
+
+                // 2. COO / Director approval gate.
+                //    The Estimator's price only flows into the BDM's quote
+                //    AFTER api/proposals.js's approve_proposal action has
+                //    fired (status -> 'approved', approved=true). Until
+                //    then, refuse to render the quote and tell the BDM
+                //    exactly what's pending.
+                if (!isApproved(p)) {
+                    var hasPricing = !!(p.pricing && p.pricing.quoteValue);
+                    var statusLabel = p.status || 'pending';
+                    var msg = hasPricing
+                        ? 'The Estimator has set a price of ' +
+                          (p.pricing && p.pricing.quoteValue) +
+                          ' (' + ((p.pricing && p.pricing.currency) || 'USD') + '), ' +
+                          'but it is still awaiting COO / Director approval.\n\n' +
+                          'Current status: ' + statusLabel + '\n\n' +
+                          'Once approved, this button will produce the priced Word quote.'
+                        : 'Pricing has not yet been entered for this proposal.\n\n' +
+                          'Current status: ' + statusLabel + '\n\n' +
+                          'The Word quote will be available once the Estimator submits a ' +
+                          'price and the COO / Director approves the proposal.';
+                    alert('⏳ Quote not yet released\n\n' + msg);
+                    if (typeof window.hideLoading === 'function') window.hideLoading();
+                    return;
+                }
+
                 var quoteData = buildQuoteData(p);
                 console.log('[estimator-quote-template] quoteData:', quoteData);
 
-                // 2. Look for a custom template attached to this proposal.
+                // 3. Look for a custom template attached to this proposal.
                 var tpl = await fetchProposalTemplate(proposalId);
 
                 if (!tpl) {
@@ -344,7 +394,7 @@
                     return;
                 }
 
-                // 3. Render the custom template with the live pricing.
+                // 4. Render the custom template with the live pricing.
                 var tplUrl = tpl.fileUrl || tpl.url;
                 if (!tplUrl) {
                     alert('Custom quotation template has no downloadable URL.');

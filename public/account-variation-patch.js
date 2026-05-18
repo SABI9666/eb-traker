@@ -1,16 +1,18 @@
 /* ============================================================
- * Account Variation Patch  (rev 4)
+ * Account Variation Patch  (rev 5)
  *
- * rev 3 fixed role detection. rev 4 fixes the page rendering:
- *   - All other show*() functions in app1.js do `mainContent.innerHTML = ''`
- *     and then build the new page inside it. The previous version of this
- *     patch APPENDED a new div to mainContent, leaving whatever page was
- *     visible (e.g. "Projects ready for invoicing") in place. The Account
- *     Variations page then rendered *below* it.
- *   - Now `showAccountVariations()` / `showMyAccountVariations()` clear
- *     `mainContent.innerHTML` first, exactly like `showPayments()` etc.
- *   - The injected nav <a> now has an id (`nav-account-variations`,
- *     `nav-bdm-account-variations`) so `setActiveNav()` can highlight it.
+ * rev 5 fixes the HTTP 404 on upload. The upload POST used to build its
+ * URL from `window.API_BASE_URL`, which is never set — `app1.js` keeps
+ * the backend URL in a closure-scoped `const API_BASE`. The relative
+ * fetch then hit the Vercel frontend host instead of the Render
+ * backend and returned 404. The upload now goes through
+ * `window.apiCall()` (same code path used by every other endpoint in
+ * the app), with a hard-coded fallback to the production backend host.
+ *
+ * rev 4: page rendering — clear `mainContent.innerHTML` before
+ * rendering (other show*() funcs in app1.js do the same), and give
+ * the injected nav <a> an id so `setActiveNav()` can highlight it.
+ * rev 3: role detection.
  * ============================================================ */
 (function () {
     'use strict';
@@ -36,7 +38,7 @@
         bdm: 'nav-bdm-account-variations'
     };
 
-    console.log(TAG, 'script loaded (rev 4)');
+    console.log(TAG, 'script loaded (rev 5)');
 
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
@@ -120,9 +122,24 @@
             return u ? u.getIdToken() : Promise.resolve(null);
         } catch (e) { return Promise.resolve(null); }
     }
-    function apiBase() { return (window.API_BASE_URL || window.apiBaseUrl || '').replace(/\/$/, ''); }
+    // app1.js holds the backend URL as a closure-scoped const, not on window.
+    // Fall back to the known production backend host so direct fetches don't
+    // hit the Vercel frontend (which has no /api routes and returns 404).
+    var DEFAULT_API_BASE = 'https://eb-backend-rxu6.onrender.com';
+    function apiBase() {
+        return (window.API_BASE_URL || window.apiBaseUrl || window.API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
+    }
 
     async function uploadAccountVariation(formData) {
+        // Prefer the app's own apiCall — it knows the real backend URL,
+        // handles token refresh, and correctly omits Content-Type for FormData.
+        if (typeof window.apiCall === 'function') {
+            var resp = await window.apiCall('account-variations', { method: 'POST', body: formData });
+            if (!resp || resp.success === false) {
+                throw new Error((resp && (resp.error || resp.message)) || 'Upload failed');
+            }
+            return resp;
+        }
         var token = await authToken();
         var res = await fetch(apiBase() + '/api/account-variations', {
             method: 'POST',

@@ -23,7 +23,7 @@
     }
 
     function getAuthHeader() {
-        // eb-traker uses authToken global set in app1.js
+        // EB-Tracker uses authToken global set in app1.js
         var token = window.authToken || '';
         return token ? ('Bearer ' + token) : '';
     }

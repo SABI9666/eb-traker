@@ -1,7 +1,7 @@
 {
-  "name": "EB Traker — Project Management Tool",
-  "short_name": "EB Traker",
-  "description": "EB Traker — Project Management Tool for project tracking, HR announcements, and team collaboration.",
+  "name": "EB-Tracker — Project Management Tool",
+  "short_name": "EB-Tracker",
+  "description": "EB-Tracker — Project Management Tool for project tracking, HR announcements, and team collaboration.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",

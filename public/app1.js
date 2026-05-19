@@ -2126,7 +2126,7 @@ async function triggerEmailNotification(eventName, data = {}) {
             document.getElementById('mainContent').innerHTML = `
                 <div class="page-header">
                     <h2>Dashboard</h2>
-                    <div class="subtitle">Welcome to EB Traker — Project Management Tool</div>
+                    <div class="subtitle">Welcome to EB-Tracker — Project Management Tool</div>
                 </div>
                 ${announcementsHtml}
                 <div class="dashboard-stats">${statsHtml}</div>
@@ -12613,7 +12613,7 @@ async function markProjectComplete(projectId) {
                         
                         <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem;">
                             <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
-                            <span style="color: #667eea; font-weight: 600;">EB Traker HR</span>
+                            <span style="color: #667eea; font-weight: 600;">EB-Tracker HR</span>
                         </div>
                     </div>
                 `;
@@ -12684,7 +12684,7 @@ async function markProjectComplete(projectId) {
                     
                     <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; flex-wrap: wrap; gap: 0.25rem;">
                         <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
-                        <span style="color: #667eea; font-weight: 600;">EB Traker HR</span>
+                        <span style="color: #667eea; font-weight: 600;">EB-Tracker HR</span>
                     </div>
                 </div>
             `;
@@ -12919,7 +12919,7 @@ async function markProjectComplete(projectId) {
                     </div>
                     <div class="news-modal-footer">
                         <span>📅 Posted: ${formatDate(news.createdAt)}</span>
-                        <span class="news-modal-brand">EB Traker HR</span>
+                        <span class="news-modal-brand">EB-Tracker HR</span>
                     </div>
                 </div>
             `;

@@ -2659,7 +2659,7 @@ function renderProposals(proposals) {
         const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
 
         if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && statusLower !== 'subcontracted' && !p.subcontractor) {
-            actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}')">Add Estimation</button> `;
+            actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}', '${(p.estimation?.quoteNumber || '').replace(/'/g, "\\'")}')">Add Estimation</button> `;
             actionButtons += `<button class="btn btn-sm" style="background: #7c3aed; color: white; border: none;" onclick="showSubcontractorModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}')">Subcontractor</button> `;
         }
 
@@ -5203,7 +5203,7 @@ function showCreateProposalModal() {
             // ESTIMATOR: Show Add Estimation button, then Set Pricing button after estimation done
             if (currentUserRole === 'estimator') {
                 if (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) {
-                    actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}')">Add Estimation</button>`;
+                    actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}', '${(p.estimation?.quoteNumber || '').replace(/'/g, "\\'")}')">Add Estimation</button>`;
                 } else if ((statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
                     actionsHtml = `<button class="btn btn-success" onclick="showCOOPricingForm('${p.id}')">Set Quote # & Pricing</button>`;
                 } else if (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost') {
@@ -5420,9 +5420,11 @@ function showCreateProposalModal() {
                               ${p.estimation ? `
                                     <div class="form-section">
                                         <h4>Estimation Details</h4>
-                                        
+
+                                        <p><strong>Quote Number:</strong> ${p.estimation.quoteNumber || p.pricing?.projectNumber || 'N/A'}</p>
+
                                         <p><strong>Total Hours:</strong> ${p.estimation.manhours || p.estimation.totalHours || 'N/A'}</p>
-                                        
+
                                         <p><strong>Tonnage:</strong> ${p.estimation.tonnage || 'N/A'}</p>
                                         
                                         <p><strong>Services:</strong> ${p.estimation.services?.join(', ') || 'N/A'}</p>
@@ -5522,7 +5524,7 @@ function showCreateProposalModal() {
             }
             return false;
         }
-      function showEstimationModal(id, projectName = 'N/A') {
+      function showEstimationModal(id, projectName = 'N/A', existingQuoteNumber = '') {
     closeModal();
     const modalHtml = `
         <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
@@ -5533,7 +5535,16 @@ function showCreateProposalModal() {
                 </div>
                 <form id="estimationForm" class="modal-form">
                     <input type="hidden" id="estProjectName" value="${projectName}">
-                    
+
+                    <div class="form-section">
+                        <h4>Quote Number</h4>
+                        <div class="form-group">
+                            <label for="estimationQuoteNumber">Quote Number (Optional)</label>
+                            <input type="text" id="estimationQuoteNumber" class="form-control" placeholder="e.g. Q-2026-001" value="${existingQuoteNumber || ''}">
+                            <small style="color: var(--text-muted, #6b7280);">This number is visible to the BDM on the proposal.</small>
+                        </div>
+                    </div>
+
                     <div class="form-section">
                         <h4>View Project Files</h4>
                         <div id="projectFilesView">Loading...</div>
@@ -5690,13 +5701,17 @@ function showCreateProposalModal() {
     }
     if (services.length === 0) return alert('Please select at least one service.');
 
+    const quoteNumberEl = document.getElementById('estimationQuoteNumber');
+    const quoteNumber = quoteNumberEl ? quoteNumberEl.value.trim() : '';
+
     const estimationData = {
         tonnage: tonnage,
-        
+        quoteNumber: quoteNumber || null,
+
         // ✅ CRITICAL NEW FIELDS FOR ALLOCATION LOGIC
         usedTonnageForDesign: usedTonnageForDesign,
         tonnageValue: usedTonnageForDesign ? tonnage : null,
-        
+
         designHours: document.getElementById('designHours').value || 0,
         detailingHours: document.getElementById('detailingHours').value || 0,
         checkingHours: document.getElementById('checkingHours').value || 0,

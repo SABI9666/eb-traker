@@ -63,6 +63,43 @@
         let currentUser = null;
         let currentUserRole = '';
         let authToken = '';
+        // When the current `authToken` was last issued (ms epoch). Firebase ID
+        // tokens are valid for 1 hour, so we proactively refresh after ~55min.
+        let authTokenIssuedAt = 0;
+        const TOKEN_REFRESH_AFTER_MS = 55 * 60 * 1000;
+
+        // Single-flight token refresh: if a refresh is already in progress,
+        // concurrent callers await the same promise instead of triggering
+        // multiple parallel refreshes.
+        let pendingTokenRefresh = null;
+        async function ensureFreshToken(forceRefresh = false) {
+            // Prefer the firebase SDK's current user (survives if our global
+            // `currentUser` was momentarily cleared during a re-render).
+            const fbUser = (auth && auth.currentUser) || currentUser;
+            if (!fbUser) return null;
+
+            const tokenStale = !authToken
+                || forceRefresh
+                || (Date.now() - authTokenIssuedAt) >= TOKEN_REFRESH_AFTER_MS;
+
+            if (!tokenStale) return authToken;
+
+            if (!pendingTokenRefresh) {
+                pendingTokenRefresh = (async () => {
+                    try {
+                        const fresh = await fbUser.getIdToken(forceRefresh || true);
+                        authToken = fresh;
+                        authTokenIssuedAt = Date.now();
+                        if (typeof window !== 'undefined') window.authToken = fresh;
+                        console.log(`🔑 Token refreshed (force=${forceRefresh})`);
+                        return fresh;
+                    } finally {
+                        pendingTokenRefresh = null;
+                    }
+                })();
+            }
+            return pendingTokenRefresh;
+        }
 
         // ============================================
         // DIRECT FUNCTION DEFINITIONS - NO WRAPPERS
@@ -275,13 +312,14 @@
             const RETRY_DELAY = 2000;
             const url = `${API_BASE}/api/${endpoint}`;
 
-            if (!authToken && currentUser && !endpoint.includes('health')) {
+            // Proactively refresh an expiring/expired token before the call.
+            if (!endpoint.includes('health')) {
                 try {
-                    authToken = await currentUser.getIdToken(true);
-                    console.log('🔑 Token refreshed for API call');
+                    await ensureFreshToken(false);
                 } catch (error) {
                     console.error('❌ Failed to refresh token:', error);
-                    throw new Error('Authentication token expired. Please log in again.');
+                    // Fall through and let the request fail with 401 so the
+                    // reactive retry path below can also attempt a refresh.
                 }
             }
           // Inside apiCall function...
@@ -326,20 +364,23 @@
             }
 
             if (!response.ok) {
-                if (response.status === 401) {
-                    console.error('❌ 401 Unauthorized - Token may be invalid');
-                    if (currentUser && retryCount === 0) {
-                        console.log('🔄 Attempting token refresh...');
-                        try {
-                            authToken = await currentUser.getIdToken(true);
-                            console.log('✅ Token refreshed, retrying request...');
-                            return await apiCall(endpoint, options, retryCount + 1);
-                        } catch (refreshError) {
-                            console.error('❌ Token refresh failed:', refreshError);
-                            await auth.signOut();
-                            throw new Error('Session expired. Please log in again.');
+                if (response.status === 401 && retryCount === 0) {
+                    console.error('❌ 401 Unauthorized - forcing token refresh and retry');
+                    // FormData body is reusable across fetches (the underlying
+                    // Files/Blobs are still readable), so we can safely retry.
+                    try {
+                        const fresh = await ensureFreshToken(true);
+                        if (!fresh) {
+                            throw new Error('No authenticated user available for refresh');
                         }
+                        console.log('✅ Token refreshed, retrying request...');
+                        return await apiCall(endpoint, options, retryCount + 1);
+                    } catch (refreshError) {
+                        console.error('❌ Token refresh failed:', refreshError);
+                        throw new Error('Session expired. Please log in again.');
                     }
+                }
+                if (response.status === 401) {
                     throw new Error('Authentication failed. Please log in again.');
                 }
                 const errorMessage = responseData.message || responseData.error || `Request failed with status ${response.status}`;
@@ -1064,6 +1105,8 @@
                     try {
                         console.log('🔐 Getting fresh auth token...');
                         authToken = await user.getIdToken(true);
+                        authTokenIssuedAt = Date.now();
+                        window.authToken = authToken;
                         console.log('✅ Auth token obtained successfully');
 
                         console.log('📂 Fetching user document from Firestore...');
@@ -1088,6 +1131,8 @@
                     currentUser = null;
                     currentUserRole = '';
                     authToken = '';
+                    authTokenIssuedAt = 0;
+                    window.authToken = '';
                     console.log('👤 User logged out, showing login page');
                     showLogin();
                 }
@@ -1099,6 +1144,8 @@
             if (currentUser) {
                 try {
                     authToken = await currentUser.getIdToken(true);
+                    authTokenIssuedAt = Date.now();
+                    window.authToken = authToken;
                     console.log('Auth token auto-refreshed');
                 } catch (error) {
                     console.error('Token refresh failed:', error);
@@ -1146,6 +1193,8 @@
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 console.log('✅ Login successful, user:', userCredential.user.uid);
                 authToken = await userCredential.user.getIdToken(true);
+                authTokenIssuedAt = Date.now();
+                window.authToken = authToken;
                 console.log('✅ Fresh token obtained');
             } catch (error) {
                 console.error('❌ Login error:', error.code, error.message);

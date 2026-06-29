@@ -22,7 +22,7 @@
       // ============================================
       // CACHE BUSTER - Version 1.0.3-final-20251125
       // ============================================
-      console.log('🚀 EBTracker v1.0.3-final loaded at:', new Date().toISOString());
+      console.log('🚀 West EPCM Technology v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
      
         const firebaseConfig = {
@@ -804,7 +804,7 @@
                     <div style="display: flex; align-items: flex-start; gap: 1rem;">
                         <div style="font-size: 2.5rem;">📱</div>
                         <div style="flex: 1;">
-                            <strong style="font-size: 1.1rem;">Install EBTracker App</strong>
+                            <strong style="font-size: 1.1rem;">Install West EPCM Technology App</strong>
                             <p style="font-size: 0.85rem; opacity: 0.95; margin-top: 0.5rem; line-height: 1.4;">
                                 Install this app on your iPhone:
                             </p>
@@ -864,7 +864,7 @@
                     <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
                         <span style="font-size: 2rem;">📱</span>
                         <div>
-                            <strong>Install EBTracker</strong>
+                            <strong>Install West EPCM Technology</strong>
                             <p style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">Add to home screen for quick access</p>
                         </div>
                     </div>
@@ -2175,7 +2175,7 @@ async function triggerEmailNotification(eventName, data = {}) {
             document.getElementById('mainContent').innerHTML = `
                 <div class="page-header">
                     <h2>Dashboard</h2>
-                    <div class="subtitle">Welcome to EB-Tracker — Project Management Tool</div>
+                    <div class="subtitle">Welcome to West EPCM Technology — Project Management Tool</div>
                 </div>
                 ${announcementsHtml}
                 <div class="dashboard-stats">${statsHtml}</div>
@@ -12677,7 +12677,7 @@ async function markProjectComplete(projectId) {
                         
                         <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem;">
                             <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
-                            <span style="color: #667eea; font-weight: 600;">EB-Tracker HR</span>
+                            <span style="color: #667eea; font-weight: 600;">West EPCM Technology HR</span>
                         </div>
                     </div>
                 `;
@@ -12748,7 +12748,7 @@ async function markProjectComplete(projectId) {
                     
                     <div class="announcement-footer" style="padding: 0.5rem 1rem; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; flex-wrap: wrap; gap: 0.25rem;">
                         <span class="announcement-date" style="color: #6b7280;">Posted: ${formatDate(announcement.createdAt)}</span>
-                        <span style="color: #667eea; font-weight: 600;">EB-Tracker HR</span>
+                        <span style="color: #667eea; font-weight: 600;">West EPCM Technology HR</span>
                     </div>
                 </div>
             `;
@@ -12983,7 +12983,7 @@ async function markProjectComplete(projectId) {
                     </div>
                     <div class="news-modal-footer">
                         <span>📅 Posted: ${formatDate(news.createdAt)}</span>
-                        <span class="news-modal-brand">EB-Tracker HR</span>
+                        <span class="news-modal-brand">West EPCM Technology HR</span>
                     </div>
                 </div>
             `;

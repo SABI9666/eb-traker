@@ -7,9 +7,9 @@
 //   - The SW itself is not cached (browser handles SW updates).
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v62';
-const STATIC_CACHE = 'ebtracker-static-v62';
-const DYNAMIC_CACHE = 'ebtracker-dynamic-v62';
+const CACHE_NAME = 'ebtracker-v63';
+const STATIC_CACHE = 'ebtracker-static-v63';
+const DYNAMIC_CACHE = 'ebtracker-dynamic-v63';
 
 const STATIC_ASSETS = [
   '/', '/index.html', '/app1.js', '/app2.js',

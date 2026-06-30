@@ -1289,6 +1289,10 @@
        }
 
        function updateDeptGroupVisibility() {
+           // In COO/Director top-tile mode the department groups are flattened
+           // into one horizontal tile row (CSS uses display:contents), so use
+           // 'contents' for visible groups and drop the dividers.
+           const topMode = document.getElementById('appContainer')?.classList.contains('top-menu-mode');
            // Hide department groups that have no visible menu items
            document.querySelectorAll('.nav-department').forEach(dept => {
                const items = dept.querySelectorAll('.nav-dept-items > li');
@@ -1298,11 +1302,11 @@
                        hasVisibleItem = true;
                    }
                });
-               dept.style.display = hasVisibleItem ? 'block' : 'none';
+               dept.style.display = hasVisibleItem ? (topMode ? 'contents' : 'block') : 'none';
                // Also hide the divider that follows this department
                const nextSibling = dept.nextElementSibling;
                if (nextSibling && nextSibling.classList.contains('nav-dept-divider')) {
-                   nextSibling.style.display = hasVisibleItem ? 'block' : 'none';
+                   nextSibling.style.display = (hasVisibleItem && !topMode) ? 'block' : 'none';
                }
            });
        }
@@ -1654,6 +1658,20 @@
             // 4. Update Badges (if applicable)
             if (['coo', 'director'].includes(roleForCheck)) {
                 updatePendingRequestsBadge();
+            }
+
+            // 4a. COO/Director use a professional top square-tile menu instead
+            //     of the left sidebar (same nav elements, restyled via CSS).
+            const appContainerEl = document.getElementById('appContainer');
+            if (appContainerEl) {
+                appContainerEl.classList.toggle('top-menu-mode', isManagement);
+                if (isManagement) {
+                    // Expand every department so all tiles are visible in the row
+                    document.querySelectorAll('.nav-dept-items.collapsed')
+                        .forEach(el => el.classList.remove('collapsed'));
+                    document.querySelectorAll('.nav-dept-header.collapsed')
+                        .forEach(el => el.classList.remove('collapsed'));
+                }
             }
 
             // 4b. Update Department Group Visibility

@@ -1281,6 +1281,20 @@
 
        // ========== DEPARTMENT MENU FUNCTIONS ==========
        function toggleDeptMenu(headerEl) {
+           // COO/Director top menu: two-level drill-down. Clicking a category
+           // opens its dropdown (accordion — only one open at a time).
+           const appEl = document.getElementById('appContainer');
+           if (appEl && appEl.classList.contains('top-menu-mode')) {
+               const dept = headerEl.closest('.nav-department');
+               if (dept) {
+                   const willOpen = !dept.classList.contains('dept-open');
+                   document.querySelectorAll('.nav-department.dept-open')
+                       .forEach(d => d.classList.remove('dept-open'));
+                   if (willOpen) dept.classList.add('dept-open');
+                   return;
+               }
+           }
+           // Default sidebar behaviour: collapse/expand in place
            const itemsEl = headerEl.nextElementSibling;
            if (itemsEl) {
                headerEl.classList.toggle('collapsed');
@@ -1660,17 +1674,34 @@
                 updatePendingRequestsBadge();
             }
 
-            // 4a. COO/Director use a professional top square-tile menu instead
-            //     of the left sidebar (same nav elements, restyled via CSS).
+            // 4a. COO/Director use a professional two-level drill-down top menu
+            //     instead of the left sidebar (same nav elements, restyled via CSS).
             const appContainerEl = document.getElementById('appContainer');
             if (appContainerEl) {
                 appContainerEl.classList.toggle('top-menu-mode', isManagement);
                 if (isManagement) {
-                    // Expand every department so all tiles are visible in the row
-                    document.querySelectorAll('.nav-dept-items.collapsed')
+                    // Start with every category closed (show groups only)
+                    document.querySelectorAll('.nav-department.dept-open')
+                        .forEach(d => d.classList.remove('dept-open'));
+                    document.querySelectorAll('.nav-dept-items.collapsed, .nav-dept-header.collapsed')
                         .forEach(el => el.classList.remove('collapsed'));
-                    document.querySelectorAll('.nav-dept-header.collapsed')
-                        .forEach(el => el.classList.remove('collapsed'));
+
+                    // Wire auto-close: pick an item -> close the panel; click
+                    // outside the menu -> close any open category. Bind once.
+                    if (!window._topMenuDrilldownInit) {
+                        window._topMenuDrilldownInit = true;
+                        document.addEventListener('click', (e) => {
+                            const app = document.getElementById('appContainer');
+                            if (!app || !app.classList.contains('top-menu-mode')) return;
+                            const closeAll = () => document.querySelectorAll('.nav-department.dept-open')
+                                .forEach(d => d.classList.remove('dept-open'));
+                            if (e.target.closest('.sidebar .nav-dept-items a')) {
+                                setTimeout(closeAll, 60); // let navigation run first
+                            } else if (!e.target.closest('.sidebar')) {
+                                closeAll();
+                            }
+                        });
+                    }
                 }
             }
 

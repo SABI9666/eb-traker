@@ -2406,16 +2406,18 @@ body.modal-open {
     background: transparent;
 }
 
-/* ============================================== */
-/* COO / DIRECTOR — PROFESSIONAL TOP TILE MENU     */
-/* Sidebar is transformed into a horizontal bar of */
-/* premium square tiles (same elements, IDs, badges)*/
-/* ============================================== */
+/* ===================================================== */
+/* COO / DIRECTOR — TWO-LEVEL DRILL-DOWN TOP MENU         */
+/* Level 1: department category tiles only.              */
+/* Level 2: click a category -> mega-dropdown of its      */
+/* items (accordion: one open at a time). Same elements. */
+/* ===================================================== */
 .top-menu-mode .main-layout {
     flex-direction: column;
     min-height: auto;
 }
 .top-menu-mode .sidebar {
+    position: relative;            /* anchor for the dropdown panels */
     width: 100%;
     min-height: auto;
     padding: 0;
@@ -2423,67 +2425,148 @@ body.modal-open {
     border-right: none;
     border-bottom: 1px solid rgba(255,255,255,0.07);
     box-shadow: 0 12px 32px -20px rgba(0,0,0,0.6);
+    z-index: 500;
 }
 .top-menu-mode .nav-menu {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.6rem;
-    padding: 1.1rem 1.5rem;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1.15rem 1.5rem;
     margin: 0 auto;
     max-width: 1400px;
     width: 100%;
 }
-.top-menu-mode .nav-department { display: contents; }
-.top-menu-mode .nav-dept-header,
-.top-menu-mode .nav-dept-divider { display: none !important; }
-.top-menu-mode .nav-dept-items { display: contents; }
+.top-menu-mode .nav-department { position: static; margin: 0; }
 .top-menu-mode .nav-menu li { margin: 0; }
-.top-menu-mode .nav-menu a {
+.top-menu-mode .nav-dept-divider { display: none !important; }
+
+/* ---- Level 1: category tile (the department header) ---- */
+.top-menu-mode .nav-dept-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 150px;
+    min-height: 94px;
+    padding: 0.8rem 0.7rem;
+    margin: 0;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    color: #e6edf5;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    text-transform: none;
+    text-align: center;
+    line-height: 1.2;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+.top-menu-mode .nav-dept-header:hover {
+    background: rgba(34,199,240,0.10);
+    border-color: rgba(34,199,240,0.5);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+.top-menu-mode .nav-dept-header .dept-icon {
+    width: auto; height: auto; margin: 0;
+    font-size: 1.7rem;
+}
+.top-menu-mode .nav-dept-header .dept-chevron {
+    margin: 0;
+    font-size: 0.6rem;
+    color: #8ea0b5;
+    transition: transform 0.25s ease;
+}
+.top-menu-mode .nav-department.dept-open .nav-dept-header {
+    background: linear-gradient(135deg, #22c7f0 0%, #0e9ed1 100%);
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: 0 14px 30px -12px rgba(34,199,240,0.6);
+}
+.top-menu-mode .nav-department.dept-open .nav-dept-header .dept-chevron {
+    transform: rotate(180deg);
+    color: #ffffff;
+}
+
+/* ---- Level 2: dropdown panel with the department's items ---- */
+.top-menu-mode .nav-dept-items {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 600;
+    margin: 0;
+    padding: 1.3rem 1.6rem;
+    background: #141b27;
+    border-top: 1px solid rgba(34,199,240,0.25);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 28px 44px -22px rgba(0,0,0,0.75);
+    max-height: none !important;
+    overflow: visible;
+}
+.top-menu-mode .nav-department.dept-open .nav-dept-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    animation: deptPanelIn 0.22s ease;
+}
+@keyframes deptPanelIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+.top-menu-mode .nav-dept-items a {
     position: relative;
+    display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     gap: 0.4rem;
     width: 112px;
-    min-height: 84px;
+    min-height: 82px;
     height: auto;
     padding: 0.6rem 0.45rem;
     text-align: center;
     border-radius: 14px;
-    background: rgba(255,255,255,0.045);
+    background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.09);
     color: #cdd7e5;
     font-size: 0.72rem;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.18;
+    text-decoration: none;
     transform: none;
 }
-.top-menu-mode .nav-menu a:hover {
+.top-menu-mode .nav-dept-items a:hover {
     transform: translateY(-3px);
     background: rgba(34,199,240,0.12);
     border-color: rgba(34,199,240,0.55);
     color: #ffffff;
     box-shadow: 0 14px 28px -14px rgba(34,199,240,0.55);
 }
-.top-menu-mode .nav-menu a.active {
+.top-menu-mode .nav-dept-items a.active {
     background: linear-gradient(135deg, #22c7f0 0%, #0e9ed1 100%);
     border-color: transparent;
     color: #ffffff;
     transform: none;
     box-shadow: 0 14px 30px -12px rgba(34,199,240,0.6);
 }
-.top-menu-mode .nav-menu .nav-icon {
-    width: auto;
-    height: auto;
-    margin: 0;
-    font-size: 1.4rem;
+.top-menu-mode .nav-dept-items .nav-icon {
+    width: auto; height: auto; margin: 0;
+    font-size: 1.35rem;
     opacity: 1;
 }
-.top-menu-mode .nav-menu a.active .nav-icon { opacity: 1; }
-.top-menu-mode .nav-menu a .notification-count {
+.top-menu-mode .nav-dept-items a .notification-count {
     position: absolute;
-    top: 5px;
-    right: 7px;
+    top: 4px;
+    right: 6px;
     margin: 0 !important;
 }
 .top-menu-mode .main-content {
@@ -2491,64 +2574,60 @@ body.modal-open {
     overflow: visible;
 }
 
-/* --- COO/Director top tiles: mobile (Android + iOS Safari) --- */
+/* --- COO/Director drill-down menu: mobile (Android + iOS Safari) --- */
 @media (max-width: 768px) {
     .top-menu-mode .main-layout { flex-direction: column; }
     .top-menu-mode .sidebar {
-        position: static;
+        position: relative;
         width: 100%;
         min-height: auto;
         max-height: none;
-        background: linear-gradient(180deg, #1f2a39 0%, #18212e 100%);
-        border-right: none;
-        border-bottom: 1px solid rgba(255,255,255,0.07);
         box-shadow: none;
     }
     .top-menu-mode .nav-menu {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.5rem;
-        flex-direction: initial;
-        flex-wrap: initial;
+        gap: 0.55rem;
         overflow: visible;
         padding: 0.9rem;
         padding-left: max(0.9rem, env(safe-area-inset-left));
         padding-right: max(0.9rem, env(safe-area-inset-right));
         scroll-snap-type: none;
     }
-    .top-menu-mode .nav-menu li {
-        margin: 0;
-        min-width: 0;
-        flex-shrink: 1;
-        scroll-snap-align: none;
+    .top-menu-mode .nav-dept-header {
+        width: 104px;
+        min-height: 84px;
+        padding: 0.6rem 0.4rem;
+        font-size: 0.66rem;
+        -webkit-tap-highlight-color: transparent;
     }
-    .top-menu-mode .nav-menu li:last-child { padding-right: 0; }
-    .top-menu-mode .nav-menu a {
+    .top-menu-mode .nav-dept-header .dept-icon { font-size: 1.4rem; }
+    .top-menu-mode .nav-dept-items {
+        padding: 1rem 0.9rem;
+        padding-left: max(0.9rem, env(safe-area-inset-left));
+        padding-right: max(0.9rem, env(safe-area-inset-right));
+    }
+    .top-menu-mode .nav-department.dept-open .nav-dept-items {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem;
+        justify-content: stretch;
+    }
+    .top-menu-mode .nav-dept-items li { margin: 0; min-width: 0; }
+    .top-menu-mode .nav-dept-items a {
         width: 100%;
         min-height: 74px;
-        height: auto;
         padding: 0.5rem 0.3rem;
         gap: 0.3rem;
         font-size: 0.64rem;
-        line-height: 1.15;
         white-space: normal;
         border-radius: 12px;
         -webkit-tap-highlight-color: transparent;
     }
-    .top-menu-mode .nav-menu .nav-icon {
-        font-size: 1.25rem;
-        margin: 0;
-        margin-right: 0;
-    }
-    .top-menu-mode .nav-menu a .notification-count {
-        top: 3px;
-        right: 4px;
-        font-size: 0.62rem;
-    }
+    .top-menu-mode .nav-dept-items .nav-icon { font-size: 1.25rem; margin: 0; }
+    .top-menu-mode .nav-dept-items a .notification-count { top: 3px; right: 4px; font-size: 0.62rem; }
 }
 
 @media (max-width: 480px) {
-    .top-menu-mode .nav-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .top-menu-mode .nav-department.dept-open .nav-dept-items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ============================== */

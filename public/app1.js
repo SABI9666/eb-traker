@@ -1289,9 +1289,9 @@
        }
 
        function updateDeptGroupVisibility() {
-           // In COO/Director top-tile mode the department groups are flattened
-           // into one horizontal tile row (CSS uses display:contents), so use
-           // 'contents' for visible groups and drop the dividers.
+           // In COO/Director top-menu mode each department renders as a
+           // grouped tile "card" (label + its tiles), so visible groups use
+           // flex; dividers are dropped (cards are self-separating).
            const topMode = document.getElementById('appContainer')?.classList.contains('top-menu-mode');
            // Hide department groups that have no visible menu items
            document.querySelectorAll('.nav-department').forEach(dept => {
@@ -1302,7 +1302,7 @@
                        hasVisibleItem = true;
                    }
                });
-               dept.style.display = hasVisibleItem ? (topMode ? 'contents' : 'block') : 'none';
+               dept.style.display = hasVisibleItem ? (topMode ? 'flex' : 'block') : 'none';
                // Also hide the divider that follows this department
                const nextSibling = dept.nextElementSibling;
                if (nextSibling && nextSibling.classList.contains('nav-dept-divider')) {

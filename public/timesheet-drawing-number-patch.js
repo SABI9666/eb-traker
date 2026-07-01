@@ -23,7 +23,7 @@
     }
 
     function getAuthHeader() {
-        // West EPCM Technology uses authToken global set in app1.js
+        // West EPCM Technologies uses authToken global set in app1.js
         var token = window.authToken || '';
         return token ? ('Bearer ' + token) : '';
     }

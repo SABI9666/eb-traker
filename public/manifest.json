@@ -1,7 +1,7 @@
 {
-  "name": "West EPCM Technology — Project Management Tool",
-  "short_name": "West EPCM Technology",
-  "description": "West EPCM Technology — Project Management Tool for project tracking, HR announcements, and team collaboration.",
+  "name": "West EPCM Technologies — Project Management Tool",
+  "short_name": "West EPCM Technologies",
+  "description": "West EPCM Technologies — Project Management Tool for project tracking, HR announcements, and team collaboration.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",

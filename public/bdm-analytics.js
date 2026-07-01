@@ -92,6 +92,20 @@
         return cur ? cur + ' ' + s : s;
     }
 
+    // Compact Indian-currency format for dashboard tiles so large values are
+    // shown professionally (₹5.16 Cr / ₹79.51 L) instead of being truncated.
+    function fmtMoneyShort(v, currency) {
+        var n = Number(v) || 0;
+        var cur = currency || '';
+        var abs = Math.abs(n);
+        var out;
+        var strip = function (x) { return x.toFixed(2).replace(/\.?0+$/, ''); };
+        if (abs >= 1e7)      out = strip(n / 1e7) + ' Cr';
+        else if (abs >= 1e5) out = strip(n / 1e5) + ' L';
+        else                 out = n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        return cur ? cur + ' ' + out : out;
+    }
+
     function fmtDate(iso) {
         if (!iso) return '';
         var d = new Date(iso);
@@ -299,13 +313,13 @@
         var caption = isLifetime ? '<div style="text-align:center; font-size:0.75rem; color:#92400e; margin:-0.75rem 0 0.75rem 0; font-weight:600;">📊 Showing all-time totals (current From/To range has no activity)</div>' : '';
         return caption +
             '<div class="dashboard-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.25rem;">' +
-                summaryCard(totals.numQuotes, '📝 Quotes Uploaded', '#3b82f6') +
-                summaryCard(fmtMoney(totals.quoteValueTotal, '₹'), '💰 Total Quote Value', '#10b981') +
-                summaryCard(totals.numProjectsWon, '🏆 Projects Won', '#f59e0b') +
-                summaryCard(fmtMoney(totals.projectValue, '₹'), '📈 Project Value', '#8b5cf6') +
-                summaryCard(fmtMoney(totals.variationValue, '₹'), '➕ Variation Value', '#ec4899') +
-                summaryCard(fmtMoney(totals.totalValue, '₹'), '💵 Total Value', '#0ea5e9') +
-                summaryCard(totals.numNewClients, '🤝 New Clients', '#14b8a6') +
+                summaryCard(totals.numQuotes, '📝 Quotes Uploaded') +
+                summaryCard(fmtMoneyShort(totals.quoteValueTotal, '₹'), '💰 Total Quote Value', fmtMoney(totals.quoteValueTotal, '₹')) +
+                summaryCard(totals.numProjectsWon, '🏆 Projects Won') +
+                summaryCard(fmtMoneyShort(totals.projectValue, '₹'), '📈 Project Value', fmtMoney(totals.projectValue, '₹')) +
+                summaryCard(fmtMoneyShort(totals.variationValue, '₹'), '➕ Variation Value', fmtMoney(totals.variationValue, '₹')) +
+                summaryCard(fmtMoneyShort(totals.totalValue, '₹'), '💵 Total Value', fmtMoney(totals.totalValue, '₹')) +
+                summaryCard(totals.numNewClients, '🤝 New Clients') +
             '</div>';
     }
 
@@ -338,13 +352,13 @@
                     '<span style="font-size:0.8rem; color:#64748b;">Independent of date filter</span>' +
                 '</div>' +
                 '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.75rem; margin-bottom:0.75rem;">' +
-                    miniMetric(t.numQuotes, 'Quotes', '#3b82f6') +
-                    miniMetric(fmtMoney(t.quoteValueTotal, '₹'), 'Quote Value', '#10b981') +
-                    miniMetric(t.numProjectsWon, 'Wins', '#f59e0b') +
-                    miniMetric(fmtMoney(t.projectValue, '₹'), 'Project Value', '#8b5cf6') +
-                    miniMetric(fmtMoney(t.variationValue, '₹'), 'Variation Value', '#ec4899') +
-                    miniMetric(fmtMoney(t.totalValue, '₹'), 'Total Value', '#0ea5e9') +
-                    miniMetric(t.numNewClients, 'Clients', '#14b8a6') +
+                    miniMetric(t.numQuotes, 'Quotes') +
+                    miniMetric(fmtMoneyShort(t.quoteValueTotal, '₹'), 'Quote Value', fmtMoney(t.quoteValueTotal, '₹')) +
+                    miniMetric(t.numProjectsWon, 'Wins') +
+                    miniMetric(fmtMoneyShort(t.projectValue, '₹'), 'Project Value', fmtMoney(t.projectValue, '₹')) +
+                    miniMetric(fmtMoneyShort(t.variationValue, '₹'), 'Variation Value', fmtMoney(t.variationValue, '₹')) +
+                    miniMetric(fmtMoneyShort(t.totalValue, '₹'), 'Total Value', fmtMoney(t.totalValue, '₹')) +
+                    miniMetric(t.numNewClients, 'Clients') +
                 '</div>' +
                 (topRows
                     ? '<div style="overflow-x:auto;">' +
@@ -365,20 +379,26 @@
         );
     }
 
-    function miniMetric(value, label, color) {
+    function miniMetric(value, label, titleFull) {
+        var ACCENT = '#0e7490'; // uniform brand accent
+        var titleAttr = titleFull ? ' title="' + String(titleFull).replace(/"/g, '&quot;') + '"' : '';
         return (
-            '<div style="background:white; border-radius:6px; padding:0.6rem 0.8rem; border-top:3px solid ' + color + ';">' +
-                '<div style="font-size:1.05rem; font-weight:700; color:' + color + ';">' + value + '</div>' +
-                '<div style="font-size:0.75rem; color:#64748b;">' + label + '</div>' +
+            '<div' + titleAttr + ' style="background:white; border-radius:8px; padding:0.6rem 0.8rem; border-top:3px solid ' + ACCENT + '; border:1px solid #e6ebf2;">' +
+                '<div style="font-size:1.05rem; font-weight:800; color:' + ACCENT + '; white-space:normal;">' + value + '</div>' +
+                '<div style="font-size:0.72rem; letter-spacing:0.4px; text-transform:uppercase; color:#64748b; font-weight:600;">' + label + '</div>' +
             '</div>'
         );
     }
 
-    function summaryCard(value, label, color) {
+    // Uniform, professional stat tile. `titleFull` (optional) shows the exact
+    // value on hover when the displayed value is compacted (e.g. ₹5.16 Cr).
+    function summaryCard(value, label, titleFull) {
+        var STAT_ACCENT = '#0e7490'; // uniform brand accent for all tiles
+        var titleAttr = titleFull ? ' title="' + String(titleFull).replace(/"/g, '&quot;') + '"' : '';
         return (
-            '<div class="stat-card" style="border-top:4px solid ' + color + '; padding:1rem; background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
-                '<div class="stat-number" style="color:' + color + '; font-size:1.5rem; font-weight:700;">' + value + '</div>' +
-                '<div class="stat-label" style="font-size:0.8rem; color:var(--text-light,#666); margin-top:0.25rem;">' + label + '</div>' +
+            '<div class="stat-card"' + titleAttr + ' style="border-top:3px solid ' + STAT_ACCENT + '; padding:1.15rem 1.1rem; background:#fff; border:1px solid #e6ebf2; border-radius:14px; box-shadow:0 10px 28px -14px rgba(15,23,42,0.18);">' +
+                '<div class="stat-number" style="color:' + STAT_ACCENT + '; font-size:1.5rem; font-weight:800; line-height:1.15; letter-spacing:-0.01em; white-space:normal; overflow:visible; text-overflow:clip;">' + value + '</div>' +
+                '<div class="stat-label" style="font-size:0.72rem; letter-spacing:0.6px; text-transform:uppercase; color:#64748b; margin-top:0.4rem; font-weight:600;">' + label + '</div>' +
             '</div>'
         );
     }

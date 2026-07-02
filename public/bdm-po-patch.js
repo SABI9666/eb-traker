@@ -268,7 +268,10 @@
         { id: '_bdmAnalyticsRoleGuardScript', src: 'bdm-analytics-role-guard.js' },
         // Accounts-driven Variation upload + COO Variation Tracker section +
         // BDM "My Variations" view. Companion to api/account-variations.js.
-        { id: '_accountVariationPatchScript', src: 'account-variation-patch.js' }
+        { id: '_accountVariationPatchScript', src: 'account-variation-patch.js' },
+        // Tekla Structures model reports for COO/Director portal.
+        // Companion to api/tekla-reports.js (see TEKLA_INTEGRATION.md).
+        { id: '_teklaReportsPatchScript', src: 'tekla-reports-patch.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

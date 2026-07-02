@@ -1519,6 +1519,7 @@
             setDisplay('hrPoTrackerNavItem', isHR);
             setDisplay('executiveMonitoringNavItem', isManagement && !isHR && !isDC); // Executive Dashboard ENABLED for COO & Director
             setDisplay('timeRequestsNavItem', isManagement && !isHR && !isDC);
+            setDisplay('teklaReportsNavItem', isManagement && !isHR && !isDC); // Tekla model reports for COO/Director
             setDisplay('variationTrackingNavItem', (currentUserRole === 'coo' || currentUserRole === 'director') && !isHR && !isDC);
             setDisplay('allocationRequestsNavItem', currentUserRole === 'director'); // Only Director sees Allocation Requests
             

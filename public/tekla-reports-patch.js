@@ -72,6 +72,14 @@
         return items;
     }
 
+    // Same normalization as the server's planDocId()
+    function planKey(projectNumber) {
+        return String(projectNumber || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_');
+    }
+    function planFor(projectNumber) {
+        return (_cache.plans || {})[planKey(projectNumber)] || null;
+    }
+
     var _cache = { reports: [], models: [], summary: {} };
 
     window.showTeklaReports = async function () {
@@ -166,12 +174,24 @@
         var cards = models.map(function (r) {
             var pr = r.progress || {};
             var pend = pendingSummary(r);
-            var pendHtml = pend.length
-                ? '<ul style="margin:0.5rem 0 0; padding-left:1.1rem; color:#b45309; font-size:0.78rem;">' +
+            var plan = planFor(r.projectNumber);
+            var hasPlan = plan && (Number(plan.plannedTonnage) > 0 || Number(plan.targetDrawings) > 0);
+            var pendHtml;
+            if (pend.length) {
+                pendHtml = '<ul style="margin:0.5rem 0 0; padding-left:1.1rem; color:#b45309; font-size:0.78rem;">' +
                     pend.slice(0, 6).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') +
                     (pend.length > 6 ? '<li>+' + (pend.length - 6) + ' more…</li>' : '') +
-                  '</ul>'
-                : '<div style="margin-top:0.5rem; color:#059669; font-size:0.78rem; font-weight:600;">✔ No pending work reported</div>';
+                  '</ul>';
+            } else if (hasPlan || pr.overallPercent !== null) {
+                pendHtml = '<div style="margin-top:0.5rem; color:#059669; font-size:0.78rem; font-weight:600;">✔ No pending work</div>';
+            } else {
+                pendHtml = '<div style="margin-top:0.5rem; color:#b45309; font-size:0.78rem;">⚠ Set the plan targets to see completion % and pending work.</div>';
+            }
+            var planLine = hasPlan
+                ? '<div style="margin-top:0.45rem; font-size:0.72rem; color:#64748b;">🎯 Plan: ' +
+                    (Number(plan.plannedTonnage) > 0 ? Number(plan.plannedTonnage).toLocaleString() + ' T' : '—') +
+                    ' · ' + (Number(plan.targetDrawings) > 0 ? plan.targetDrawings + ' drawings' : '— drawings') + '</div>'
+                : '';
             return '<div class="card" style="padding:1.1rem 1.2rem; margin:0;">' +
                 '<div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.5rem; flex-wrap:wrap;">' +
                     '<div><strong>' + esc(r.modelName || r.projectNumber || 'Model') + '</strong>' +
@@ -183,7 +203,11 @@
                     '<span style="font-size:0.72rem; color:#64748b; font-weight:600;">DRAWINGS</span>' + progressBar(pr.drawingPercent, 160) +
                     '<span style="font-size:0.72rem; color:#0f172a; font-weight:800;">OVERALL</span>' + progressBar(pr.overallPercent, 160) +
                 '</div>' +
+                planLine +
                 pendHtml +
+                '<div style="margin-top:0.65rem;">' +
+                    '<button class="btn btn-outline btn-sm" onclick="window._teklaSetPlan(\'' + esc(r.projectNumber || '') + '\')">🎯 ' + (hasPlan ? 'Edit Plan' : 'Set Plan') + '</button>' +
+                '</div>' +
             '</div>';
         }).join('');
         return '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:1rem; margin-bottom:1.25rem;">' + cards + '</div>';
@@ -256,7 +280,7 @@
                     '</div>' +
                     '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.75rem; margin-bottom:1rem;">' +
                         statCard(m.tonnage ? fmtTon(m.tonnage) : '—', 'Modeled Tonnage') +
-                        statCard(m.plannedTonnage ? fmtTon(m.plannedTonnage) : '—', 'Planned Tonnage') +
+                        statCard((pr.plannedTonnage || m.plannedTonnage) ? fmtTon(pr.plannedTonnage || m.plannedTonnage) : '—', 'Planned Tonnage') +
                         statCard(m.assemblies || 0, 'Assemblies') +
                         statCard(m.parts || 0, 'Parts') +
                         statCard((m.drawingsIssued || 0) + ' / ' + (m.drawingsTotal || 0), 'Drawings') +
@@ -273,6 +297,52 @@
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);
+    };
+
+    // ── Plan targets (COO/Director): planned tonnage + target drawings ─────
+    window._teklaSetPlan = function (projectNumber) {
+        if (!projectNumber) { alert('This report has no project number, so a plan cannot be attached.'); return; }
+        var plan = planFor(projectNumber) || {};
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+        overlay.innerHTML =
+            '<div class="modal-content" style="max-width:460px;">' +
+                '<div class="modal-header"><h2>🎯 Plan — ' + esc(projectNumber) + '</h2>' +
+                '<span class="close-modal" onclick="this.closest(\'.modal-overlay\').remove()">&times;</span></div>' +
+                '<div style="padding:1.25rem;">' +
+                    '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">These are the contract targets that the Tekla actuals are measured against. Only COO/Director can set them.</p>' +
+                    '<div class="form-group"><label>Planned Tonnage (T)</label>' +
+                        '<input id="tkPlanTonnage" type="number" min="0" step="0.1" class="form-control" value="' + (Number(plan.plannedTonnage) > 0 ? plan.plannedTonnage : '') + '" placeholder="e.g. 4500"></div>' +
+                    '<div class="form-group"><label>Target Drawings (count)</label>' +
+                        '<input id="tkPlanDrawings" type="number" min="0" step="1" class="form-control" value="' + (Number(plan.targetDrawings) > 0 ? plan.targetDrawings : '') + '" placeholder="e.g. 120"></div>' +
+                    '<div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.25rem;">' +
+                        '<button class="btn btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button>' +
+                        '<button class="btn btn-success" onclick="window._teklaSubmitPlan(this, \'' + esc(projectNumber) + '\')">Save Plan</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+    };
+
+    window._teklaSubmitPlan = async function (btn, projectNumber) {
+        var tEl = document.getElementById('tkPlanTonnage');
+        var dEl = document.getElementById('tkPlanDrawings');
+        btn.disabled = true;
+        try {
+            var resp = await window.apiCall('tekla-reports', {
+                method: 'PUT',
+                body: JSON.stringify({
+                    projectNumber: projectNumber,
+                    plannedTonnage: tEl ? tEl.value : 0,
+                    targetDrawings: dEl ? dEl.value : 0
+                })
+            });
+            if (resp && resp.success) {
+                btn.closest('.modal-overlay').remove();
+                window.showTeklaReports();
+            } else { alert('Save failed: ' + ((resp && resp.error) || 'unknown')); btn.disabled = false; }
+        } catch (e) { alert('Save failed: ' + e.message); btn.disabled = false; }
     };
 
     window._teklaDelete = async function (id) {

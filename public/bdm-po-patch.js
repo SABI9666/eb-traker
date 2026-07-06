@@ -271,7 +271,9 @@
         { id: '_accountVariationPatchScript', src: 'account-variation-patch.js' },
         // Tekla Structures model reports for COO/Director portal.
         // Companion to api/tekla-reports.js (see TEKLA_INTEGRATION.md).
-        { id: '_teklaReportsPatchScript', src: 'tekla-reports-patch.js' }
+        { id: '_teklaReportsPatchScript', src: 'tekla-reports-patch.js' },
+        // Executive Command Center landing hub for COO/Director.
+        { id: '_managementHubPatchScript', src: 'management-hub-patch.js' }
     ];
     patches.forEach(function (p) {
         if (document.getElementById(p.id)) return;

@@ -1756,7 +1756,18 @@ function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManag
         showITDashboard();
     } else if (roleForCheck === 'accounts') {
         showPayments();
-    } else if (isBDM || isManagement) {
+    } else if (isManagement) {
+        // COO/Director land on the Command Center hub (management-hub-patch.js).
+        // The patch loads async, so retry briefly before falling back.
+        if (typeof window.showManagementHub === 'function') {
+            window.showManagementHub();
+        } else {
+            setTimeout(() => {
+                if (typeof window.showManagementHub === 'function') window.showManagementHub();
+                else showProposals();
+            }, 600);
+        }
+    } else if (isBDM) {
         showProposals();
     } else {
         showProposals();

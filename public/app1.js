@@ -43,7 +43,10 @@
         // ============================================
 
         // FIXED: Direct backend URL configuration
-        const API_BASE = 'https://eb-backend-rxu6.onrender.com';
+        // Backend migrated from Render to Google Cloud Run (always-warm, same
+        // network as Firebase). Old Render URL kept for reference:
+        // https://eb-backend-rxu6.onrender.com
+        const API_BASE = 'https://west-epcm-backend-854824137821.us-central1.run.app';
 
 
         console.log('🔧 Backend URL configured:', API_BASE);

@@ -125,7 +125,7 @@
     // app1.js holds the backend URL as a closure-scoped const, not on window.
     // Fall back to the known production backend host so direct fetches don't
     // hit the Vercel frontend (which has no /api routes and returns 404).
-    var DEFAULT_API_BASE = 'https://eb-backend-rxu6.onrender.com';
+    var DEFAULT_API_BASE = 'https://west-epcm-backend-854824137821.us-central1.run.app';
     function apiBase() {
         return (window.API_BASE_URL || window.apiBaseUrl || window.API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
     }

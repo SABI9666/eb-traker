@@ -2574,6 +2574,11 @@ body.modal-open {
     overflow: visible;
 }
 
+/* Hide the top division bar for COO/Director — navigation is via the EPCM
+   hub (management-hub-patch.js) + the header logo (home). The nav elements
+   stay in the DOM (hidden) so the hub can still read/click them. */
+.top-menu-mode .sidebar { display: none !important; }
+
 /* --- COO/Director drill-down menu: mobile (Android + iOS Safari) --- */
 @media (max-width: 768px) {
     .top-menu-mode .main-layout { flex-direction: column; }

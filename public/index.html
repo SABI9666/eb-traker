@@ -2407,6 +2407,169 @@ body.modal-open {
 }
 
 /* ===================================================== */
+/* COO / DIRECTOR — PREMIUM "GLASS" COMMAND CENTER        */
+/* Frosted-glass hub surfaces on an ambient brand stage.  */
+/* Used only by the management hub (management-hub-patch). */
+/* ===================================================== */
+.mgmt-hub {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    padding: 2.4rem 2.2rem 2.8rem;
+    background:
+        radial-gradient(760px 460px at 6% -10%, rgba(34,199,240,0.18), transparent 60%),
+        radial-gradient(720px 520px at 104% 112%, rgba(201,162,39,0.13), transparent 58%),
+        linear-gradient(162deg, #0d1826 0%, #12212f 55%, #0b1420 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 40px 90px -42px rgba(4,10,18,0.92), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+@media (max-width: 768px) {
+    .mgmt-hub { border-radius: 20px; padding: 1.5rem 1.15rem 2rem; }
+}
+.mgmt-hub::before,
+.mgmt-hub::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    pointer-events: none;
+    z-index: 0;
+}
+.mgmt-hub::before {
+    width: 380px; height: 380px; top: -110px; left: -70px;
+    background: radial-gradient(circle, rgba(34,199,240,0.22), transparent 70%);
+    animation: hubFloatA 18s ease-in-out infinite;
+}
+.mgmt-hub::after {
+    width: 440px; height: 440px; bottom: -150px; right: -110px;
+    background: radial-gradient(circle, rgba(201,162,39,0.16), transparent 70%);
+    animation: hubFloatB 22s ease-in-out infinite;
+}
+@keyframes hubFloatA { 0%,100% { transform: translate(0,0); } 50% { transform: translate(36px,26px); } }
+@keyframes hubFloatB { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-36px,-26px); } }
+@media (prefers-reduced-motion: reduce) {
+    .mgmt-hub::before, .mgmt-hub::after { animation: none; }
+}
+.mgmt-hub__inner { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; }
+
+/* Frosted-glass surface (shared base) */
+.glass-surface {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(155deg, rgba(58,76,101,0.44), rgba(19,29,43,0.30));
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 24px 50px -28px rgba(3,9,17,0.85), inset 0 1px 0 rgba(255,255,255,0.10);
+}
+/* Top light-refraction sheen */
+.glass-surface::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    z-index: 2;
+}
+
+/* Hub eyebrow / section rule */
+.hub-eyebrow {
+    display: flex; align-items: center; gap: 0.7rem; margin: 0 0 0.9rem;
+}
+.hub-eyebrow span.label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 1.6px;
+    text-transform: uppercase; color: #7f93aa;
+}
+.hub-eyebrow span.rule {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02));
+}
+
+/* Phase cards */
+.hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1.2rem; }
+.hub-phase {
+    cursor: pointer; border-radius: 22px; padding: 1.6rem;
+    transition: transform 0.28s cubic-bezier(.2,.7,.3,1), box-shadow 0.28s ease, border-color 0.28s ease;
+}
+.hub-phase:hover {
+    transform: translateY(-6px);
+    border-color: rgba(34,199,240,0.55);
+    box-shadow: 0 34px 64px -28px rgba(34,199,240,0.42), inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.hub-phase__icon {
+    width: 58px; height: 58px; border-radius: 16px;
+    background: linear-gradient(135deg, #22c7f0, #0e9ed1);
+    display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+    box-shadow: 0 12px 26px -8px rgba(34,199,240,0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.hub-badge {
+    background: linear-gradient(135deg, #f43f5e, #e11d48); color: #fff;
+    font-size: 0.72rem; font-weight: 800; padding: 2px 10px; border-radius: 12px;
+    box-shadow: 0 6px 14px -4px rgba(225,29,72,0.6);
+}
+.hub-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.72rem; color: #b9c7d8;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 3px 9px; border-radius: 20px;
+}
+
+/* Tool / report tiles */
+.hub-tilegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.9rem; }
+.hub-tile {
+    position: relative; cursor: pointer; border-radius: 16px;
+    padding: 1.25rem 1rem; text-align: center;
+    transition: transform 0.24s cubic-bezier(.2,.7,.3,1), box-shadow 0.24s ease, border-color 0.24s ease;
+}
+.hub-tile:hover {
+    transform: translateY(-5px);
+    border-color: rgba(34,199,240,0.55);
+    box-shadow: 0 26px 46px -22px rgba(34,199,240,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.hub-tile__icon {
+    width: 50px; height: 50px; margin: 0 auto; border-radius: 13px;
+    background: linear-gradient(135deg, rgba(34,199,240,0.24), rgba(14,158,209,0.10));
+    border: 1px solid rgba(34,199,240,0.28);
+    display: flex; align-items: center; justify-content: center; font-size: 1.45rem;
+}
+.hub-tile__label { margin-top: 0.7rem; font-size: 0.86rem; font-weight: 700; color: #e8eef6; line-height: 1.25; }
+
+/* Reports banner */
+.hub-banner {
+    cursor: pointer; display: flex; align-items: center; gap: 1.2rem;
+    padding: 1.3rem 1.6rem; margin-bottom: 1.5rem; border-radius: 20px;
+    transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+}
+.hub-banner:hover {
+    transform: translateY(-4px);
+    border-color: rgba(34,199,240,0.55);
+    box-shadow: 0 30px 56px -26px rgba(34,199,240,0.4), inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.hub-banner__icon {
+    width: 56px; height: 56px; flex: none; border-radius: 15px;
+    background: linear-gradient(135deg, #f4c04e, #e0932a);
+    display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+    box-shadow: 0 12px 24px -8px rgba(224,147,42,0.55), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
+/* Glass back button */
+.hub-back {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.5rem 1rem; border-radius: 12px; cursor: pointer;
+    font-size: 0.85rem; font-weight: 600; white-space: nowrap;
+    color: #cfe9f5;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.hub-back:hover {
+    background: rgba(34,199,240,0.14);
+    border-color: rgba(34,199,240,0.5);
+    transform: translateX(-2px);
+}
+
+/* ===================================================== */
 /* COO / DIRECTOR — TWO-LEVEL DRILL-DOWN TOP MENU         */
 /* Level 1: department category tiles only.              */
 /* Level 2: click a category -> mega-dropdown of its      */

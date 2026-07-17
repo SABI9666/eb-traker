@@ -225,13 +225,15 @@
         var n = reportCount();
         if (!n) return '';
         return '<div class="glass-surface hub-banner" onclick="window.showReportsCenter()">' +
-            '<div class="hub-banner__icon">📊</div>' +
-            '<div style="flex:1; min-width:0;">' +
-                '<div style="color:#f5f8fc; font-size:1.25rem; font-weight:800;">Reports Center</div>' +
-                '<div style="color:#9fb0c4; font-size:0.82rem; margin-top:0.15rem;">All analytics &amp; reports across every phase — in one place.</div>' +
+            '<div class="hub-banner__lead">' +
+                '<div class="hub-banner__icon">📊</div>' +
+                '<div style="min-width:0;">' +
+                    '<div style="color:#f5f8fc; font-size:1.25rem; font-weight:800;">Reports Center</div>' +
+                    '<div style="color:#9fb0c4; font-size:0.82rem; margin-top:0.15rem;">All analytics &amp; reports across every phase — in one place.</div>' +
+                '</div>' +
             '</div>' +
-            '<div style="flex:none; display:flex; align-items:center; gap:0.9rem;">' +
-                '<span style="background:rgba(34,199,240,0.15); border:1px solid rgba(34,199,240,0.35); color:#22c7f0; font-size:0.78rem; font-weight:700; padding:4px 12px; border-radius:20px;">' + n + ' reports</span>' +
+            '<div class="hub-banner__meta">' +
+                '<span style="background:rgba(34,199,240,0.15); border:1px solid rgba(34,199,240,0.35); color:#22c7f0; font-size:0.78rem; font-weight:700; padding:4px 12px; border-radius:20px; white-space:nowrap;">' + n + ' reports</span>' +
                 '<span style="color:#22c7f0; font-size:0.95rem; font-weight:700; white-space:nowrap;">Open →</span>' +
             '</div>' +
         '</div>';

@@ -2484,8 +2484,10 @@ body.modal-open {
     background: linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02));
 }
 
-/* Phase cards */
-.hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1.2rem; }
+/* Phase cards — balanced 4 / 2 / 1 responsive grid (never orphans) */
+.hub-grid { display: grid; gap: 1.2rem; grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1080px) { .hub-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 680px)  { .hub-grid { grid-template-columns: 1fr; gap: 0.9rem; } }
 .hub-phase {
     cursor: pointer; border-radius: 22px; padding: 1.6rem;
     transition: transform 0.28s cubic-bezier(.2,.7,.3,1), box-shadow 0.28s ease, border-color 0.28s ease;
@@ -2514,8 +2516,9 @@ body.modal-open {
     padding: 3px 9px; border-radius: 20px;
 }
 
-/* Tool / report tiles */
-.hub-tilegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.9rem; }
+/* Tool / report tiles — app-launcher grid; 2 across on phones */
+.hub-tilegrid { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
+@media (max-width: 680px) { .hub-tilegrid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; } }
 .hub-tile {
     position: relative; cursor: pointer; border-radius: 16px;
     padding: 1.25rem 1rem; text-align: center;
@@ -2550,6 +2553,22 @@ body.modal-open {
     background: linear-gradient(135deg, #f4c04e, #e0932a);
     display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
     box-shadow: 0 12px 24px -8px rgba(224,147,42,0.55), inset 0 1px 0 rgba(255,255,255,0.4);
+}
+.hub-banner__lead { display: flex; align-items: center; gap: 1.1rem; flex: 1 1 260px; min-width: 0; }
+.hub-banner__meta { flex: none; display: flex; align-items: center; gap: 0.9rem; }
+@media (max-width: 680px) {
+    .hub-banner { flex-wrap: wrap; gap: 0.9rem; padding: 1.15rem 1.15rem; }
+    .hub-banner__meta { width: 100%; justify-content: space-between; }
+    .hub-banner__icon { width: 48px; height: 48px; font-size: 1.45rem; }
+}
+
+/* Mobile compaction for phase cards + tiles */
+@media (max-width: 680px) {
+    .hub-phase { padding: 1.25rem; }
+    .hub-tile { padding: 1rem 0.7rem; }
+    .hub-tile__icon { width: 46px; height: 46px; font-size: 1.3rem; }
+    .hub-tile__label { font-size: 0.8rem; }
+    .mgmt-hub__inner h2 { font-size: 1.5rem !important; }
 }
 
 /* Glass back button */

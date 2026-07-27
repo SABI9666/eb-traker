@@ -143,6 +143,9 @@
                 statCard(drawings, '📄 Drawings Issued / Total') +
             '</div>' +
 
+            statusBuilderHtml() +
+            '<div id="teklaStatusOut"></div>' +
+
             renderModelProgress(models) +
 
             '<div class="card" style="padding:1.25rem;">' +
@@ -163,6 +166,211 @@
 
         renderRows(_cache.reports);
     }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // PROJECT STATUS REPORT BUILDER
+    // Pick a project → work type (Steel / Rebar) → activities → generate a
+    // per-activity status report. UI phase: Modeling & Drawing status come
+    // from the live Tekla push; other activities show as awaiting data until
+    // the per-activity backend feed is enabled.
+    // ═════════════════════════════════════════════════════════════════════
+    var ACTIVITIES = {
+        steel: [
+            { key: 'modeling',   icon: '🧩', label: '3D Modeling' },
+            { key: 'connection', icon: '🔩', label: 'Connection Design' },
+            { key: 'detailing',  icon: '📐', label: 'Detailing' },
+            { key: 'drafting',   icon: '📄', label: 'Drawing Production' },
+            { key: 'checking',   icon: '✅', label: 'Checking' },
+            { key: 'revisions',  icon: '♻️', label: 'Revisions' },
+            { key: 'nc',         icon: '⚙️', label: 'NC / DSTV Files' },
+            { key: 'ifc',        icon: '📤', label: 'IFC / Issue' }
+        ],
+        rebar: [
+            { key: 'modeling',  icon: '🧩', label: '3D Modeling' },
+            { key: 'detailing', icon: '📐', label: 'Detailing' },
+            { key: 'bbs',       icon: '🧾', label: 'Bar Bending Schedule' },
+            { key: 'drafting',  icon: '📄', label: 'Drawing Production' },
+            { key: 'checking',  icon: '✅', label: 'Checking' },
+            { key: 'revisions', icon: '♻️', label: 'Revisions' },
+            { key: 'ifc',       icon: '📤', label: 'IFC / Issue' }
+        ]
+    };
+    var _sel = { workType: 'steel' };
+
+    function distinctProjects() {
+        var seen = {}, out = [];
+        (_cache.reports || []).forEach(function (r) {
+            var pn = String(r.projectNumber || '').trim();
+            if (!pn || seen[pn]) return;
+            seen[pn] = 1;
+            out.push({ number: pn, name: String(r.projectName || '').trim() });
+        });
+        return out;
+    }
+
+    function statusBuilderHtml() {
+        var projects = distinctProjects();
+        var opts = projects.length
+            ? '<option value="">Select a project…</option>' + projects.map(function (p) {
+                return '<option value="' + esc(p.number) + '">' + esc(p.number) + (p.name ? ' — ' + esc(p.name) : '') + '</option>';
+              }).join('')
+            : '<option value="">No projects reported yet</option>';
+
+        return '<div class="card" style="padding:1.4rem 1.5rem; margin-bottom:1.25rem; border-top:3px solid ' + ACCENT + ';">' +
+            '<div style="display:flex; align-items:center; gap:0.7rem; margin-bottom:0.35rem;">' +
+                '<div style="width:40px; height:40px; border-radius:11px; background:linear-gradient(135deg,#22c7f0,#0e9ed1); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#fff;">📋</div>' +
+                '<div><h3 style="margin:0; font-size:1.1rem;">Project Status Report</h3>' +
+                '<div style="color:#64748b; font-size:0.78rem;">Select project → work type → activities, then generate the status report.</div></div>' +
+            '</div>' +
+            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.9rem; margin-top:1rem; align-items:end;">' +
+                '<div><label style="display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#64748b; margin-bottom:0.35rem;">1 · Project</label>' +
+                    '<select id="tkStProject" class="form-control">' + opts + '</select></div>' +
+                '<div><label style="display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#64748b; margin-bottom:0.35rem;">2 · Work Type</label>' +
+                    '<div style="display:flex; border:1px solid #e6ebf2; border-radius:10px; overflow:hidden;">' +
+                        workTypeBtn('steel', '🏗️ Steel') + workTypeBtn('rebar', '🧱 Rebar') +
+                    '</div></div>' +
+            '</div>' +
+            '<div style="margin-top:1rem;">' +
+                '<div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:0.45rem;">' +
+                    '<label style="font-size:0.7rem; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#64748b;">3 · Activities</label>' +
+                    '<a href="#" onclick="window._tkStAll(true); return false;" style="font-size:0.72rem; color:' + ACCENT + '; font-weight:600;">Select all</a>' +
+                    '<a href="#" onclick="window._tkStAll(false); return false;" style="font-size:0.72rem; color:#94a3b8; font-weight:600;">Clear</a>' +
+                '</div>' +
+                '<div id="tkStActs" style="display:flex; flex-wrap:wrap; gap:0.45rem;">' + actChipsHtml() + '</div>' +
+            '</div>' +
+            '<div style="margin-top:1.15rem; display:flex; gap:0.7rem; flex-wrap:wrap;">' +
+                '<button class="btn btn-primary" onclick="window._tkStGenerate()">📊 Generate Status Report</button>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function workTypeBtn(type, label) {
+        var on = _sel.workType === type;
+        return '<button type="button" onclick="window._tkStType(\'' + type + '\')" style="flex:1; padding:0.62rem 0.6rem; border:none; cursor:pointer; font-weight:700; font-size:0.85rem; ' +
+            (on ? 'background:linear-gradient(135deg,#22c7f0,#0e9ed1); color:#fff;' : 'background:#f5f8fb; color:#475569;') + '">' + label + '</button>';
+    }
+
+    function actChipsHtml() {
+        return ACTIVITIES[_sel.workType].map(function (a) {
+            return '<div data-act="' + a.key + '" data-on="1" onclick="window._tkStToggle(this)" style="' + chipStyle(true) + '">' +
+                a.icon + ' ' + a.label + '</div>';
+        }).join('');
+    }
+    function chipStyle(on) {
+        return 'cursor:pointer; user-select:none; font-size:0.8rem; font-weight:600; padding:0.42rem 0.8rem; border-radius:20px; transition:all .15s;' +
+            (on ? 'background:rgba(34,199,240,0.12); border:1.5px solid ' + ACCENT + '; color:#0e7490;'
+                : 'background:#f5f8fb; border:1.5px solid #e6ebf2; color:#7c8aa0;');
+    }
+
+    window._tkStType = function (type) {
+        _sel.workType = type;
+        var host = document.getElementById('tkStActs');
+        if (host) host.innerHTML = actChipsHtml();
+        // re-render the two segment buttons
+        var seg = host && host.closest('.card').querySelectorAll('button[onclick^="window._tkStType"]');
+        if (seg && seg.length === 2) {
+            seg[0].outerHTML = workTypeBtn('steel', '🏗️ Steel');
+            seg[1].outerHTML = workTypeBtn('rebar', '🧱 Rebar');
+        }
+    };
+    window._tkStToggle = function (el) {
+        var on = el.getAttribute('data-on') === '1' ? '0' : '1';
+        el.setAttribute('data-on', on);
+        el.style.cssText = chipStyle(on === '1');
+    };
+    window._tkStAll = function (on) {
+        document.querySelectorAll('#tkStActs [data-act]').forEach(function (el) {
+            el.setAttribute('data-on', on ? '1' : '0');
+            el.style.cssText = chipStyle(on);
+        });
+    };
+
+    function latestForProject(pn) {
+        var hit = null;
+        (_cache.reports || []).forEach(function (r) {
+            if (hit) return;
+            if (String(r.projectNumber || '').trim() === pn) hit = r; // list is newest-first
+        });
+        return hit;
+    }
+
+    // Map an activity to live data where the Tekla push already provides it.
+    function activityStatus(key, rep) {
+        var pr = (rep && rep.progress) || {};
+        var m = (rep && rep.metrics) || {};
+        if (key === 'modeling') {
+            return { pct: pr.modelingPercent, meta: (m.tonnage ? fmtTon(m.tonnage) + ' modeled' : null), live: true };
+        }
+        if (key === 'drafting') {
+            var dr = (m.drawingsTotal || m.drawingsIssued) ? ((m.drawingsIssued || 0) + ' / ' + (m.drawingsTotal || 0) + ' drawings issued') : null;
+            return { pct: pr.drawingPercent, meta: dr, live: true };
+        }
+        return { pct: null, meta: null, live: false };
+    }
+
+    window._tkStGenerate = function () {
+        var out = document.getElementById('teklaStatusOut');
+        var sel = document.getElementById('tkStProject');
+        if (!out) return;
+        var pn = sel ? sel.value : '';
+        if (!pn) { alert('Please select a project first.'); return; }
+
+        var acts = [];
+        document.querySelectorAll('#tkStActs [data-act]').forEach(function (el) {
+            if (el.getAttribute('data-on') === '1') acts.push(el.getAttribute('data-act'));
+        });
+        if (!acts.length) { alert('Select at least one activity.'); return; }
+
+        var defs = ACTIVITIES[_sel.workType].filter(function (a) { return acts.indexOf(a.key) !== -1; });
+        var rep = latestForProject(pn);
+        var pname = rep && rep.projectName ? rep.projectName : '';
+        var wt = _sel.workType === 'steel' ? '🏗️ Steel' : '🧱 Rebar';
+
+        var doneCt = 0, progCt = 0, waitCt = 0;
+        var rows = defs.map(function (a) {
+            var st = activityStatus(a.key, rep);
+            var pill, pillStyle;
+            if (st.pct !== null && st.pct !== undefined) {
+                if (st.pct >= 100) { pill = 'COMPLETE'; pillStyle = 'background:rgba(16,185,129,0.14); color:#059669;'; doneCt++; }
+                else if (st.pct > 0) { pill = 'IN PROGRESS'; pillStyle = 'background:rgba(245,158,11,0.16); color:#b45309;'; progCt++; }
+                else { pill = 'NOT STARTED'; pillStyle = 'background:rgba(239,68,68,0.12); color:#dc2626;'; waitCt++; }
+            } else {
+                pill = 'AWAITING DATA'; pillStyle = 'background:#eef2f7; color:#94a3b8;'; waitCt++;
+            }
+            return '<div style="display:grid; grid-template-columns:minmax(170px,220px) 110px 1fr minmax(140px,200px); gap:0.9rem; align-items:center; padding:0.85rem 1.1rem; background:#fff; border:1px solid #e6ebf2; border-radius:12px;">' +
+                '<div style="font-weight:700; color:#0f172a; font-size:0.9rem;">' + a.icon + ' ' + a.label + '</div>' +
+                '<span style="justify-self:start; font-size:0.62rem; font-weight:800; letter-spacing:0.6px; padding:3px 9px; border-radius:10px; ' + pillStyle + '">' + pill + '</span>' +
+                progressBar(st.pct, 140) +
+                '<div style="font-size:0.74rem; color:#64748b; text-align:right;">' +
+                    (st.meta ? esc(st.meta) : (st.live ? '—' : 'Awaiting workstation data')) +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        out.innerHTML =
+            '<div class="card" style="padding:1.4rem 1.5rem; margin-bottom:1.25rem;" id="tkStReport">' +
+                '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">' +
+                    '<div>' +
+                        '<div style="font-size:0.68rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:#94a3b8;">Status Report · ' + wt + '</div>' +
+                        '<h3 style="margin:0.15rem 0 0.1rem; font-size:1.25rem;">' + esc(pn) + (pname ? ' — ' + esc(pname) : '') + '</h3>' +
+                        '<div style="color:#64748b; font-size:0.78rem;">Generated ' + fmtDate(new Date().toISOString()) +
+                            (rep ? ' · latest Tekla push ' + fmtDate(rep.createdAt) : ' · no Tekla data received for this project yet') + '</div>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.5rem;">' +
+                        '<button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print / PDF</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.7rem; margin-bottom:1.1rem;">' +
+                    statCard(defs.length, 'Activities') +
+                    statCard(doneCt, '✔ Complete') +
+                    statCard(progCt, '⏳ In Progress') +
+                    statCard(waitCt, '○ Pending / No Data') +
+                '</div>' +
+                '<div style="display:flex; flex-direction:column; gap:0.55rem; overflow-x:auto;">' + rows + '</div>' +
+                '<div style="margin-top:0.9rem; font-size:0.72rem; color:#94a3b8;">Modeling and Drawing Production are live from the Tekla workstation push. Remaining activities will populate automatically once per-activity reporting is enabled on the workstations.</div>' +
+            '</div>';
+        out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     // Model progress board: one card per model (latest report) with modeling %,
     // drawing % and the outstanding work list — the "what's pending" view.

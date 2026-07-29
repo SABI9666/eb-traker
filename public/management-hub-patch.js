@@ -305,9 +305,11 @@
     // ═══════════════════════════════════════════════════════════════════
     var _nav = { level: 'hub', phaseKey: null, phaseName: null, phaseIcon: null, label: null };
     var _suppressPush = false;
+    var _navSeq = 0;   // bumped on every navigation; guards the back fallback
 
     function setNav(level, opts) {
         opts = opts || {};
+        _navSeq++;
         if (level === 'hub') {
             _nav = { level: 'hub', phaseKey: null, phaseName: null, phaseIcon: null, label: null };
         } else if (level === 'phase') {
@@ -365,10 +367,16 @@
         var t = backTarget();
         if (!t) return;
         // Prefer the real history entry so the URL stack stays in sync.
+        var seq = _navSeq;
         try { history.back(); } catch (e) { t.run(); }
-        // Fallback: if popstate didn't fire (some in-app browsers), render directly.
-        var before = _nav.level;
-        setTimeout(function () { if (_nav.level === before) { _suppressPush = true; t.run(); _suppressPush = false; } }, 220);
+        // Fallback for in-app browsers where popstate never fires. Guarded by
+        // the navigation token: if ANY navigation happened meanwhile (popstate
+        // landing, or the user tapping another tool), this must not fire —
+        // otherwise it would yank them back off the page they just opened.
+        setTimeout(function () {
+            if (_navSeq !== seq) return;          // something already navigated
+            _suppressPush = true; t.run(); _suppressPush = false;
+        }, 220);
     };
 
     function ensureBackBar() {

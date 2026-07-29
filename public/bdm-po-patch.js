@@ -279,7 +279,9 @@
         if (document.getElementById(p.id)) return;
         var s = document.createElement('script');
         s.id  = p.id;
-        var APP_PATCH_VERSION = 'v58';
+        // Bump on every change to any *-patch.js so browsers fetch a fresh
+        // copy instead of serving the previously cached ?v= URL.
+        var APP_PATCH_VERSION = 'v59';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

@@ -183,7 +183,7 @@
                 '<div class="hub-eyebrow"><span class="label">EPCM Phases</span><span class="rule"></span></div>' +
                 '<div class="hub-grid">' + cards + '</div>' +
             '</div></div>';
-        main.setAttribute('data-hub-view', 'hub');
+        if (main.firstElementChild) main.firstElementChild.setAttribute('data-hub-view', 'hub');
         main.scrollTop = 0;
     };
 
@@ -211,7 +211,7 @@
                 '</div>' +
                 '<div class="hub-tilegrid">' + tiles + '</div>' +
             '</div></div>';
-        main.setAttribute('data-hub-view', 'phase');
+        if (main.firstElementChild) main.firstElementChild.setAttribute('data-hub-view', 'phase');
         main.scrollTop = 0;
     };
 
@@ -275,7 +275,7 @@
                 '</div>' +
                 (sections || '<div class="glass-surface" style="padding:2rem; text-align:center; color:#9fb0c4; border-radius:18px;">No reports available for your role.</div>') +
             '</div></div>';
-        main.setAttribute('data-hub-view', 'reports');
+        if (main.firstElementChild) main.firstElementChild.setAttribute('data-hub-view', 'reports');
         main.scrollTop = 0;
     };
 
@@ -327,9 +327,8 @@
         // Tag the DOM immediately so state and view agree with no flicker.
         // (Each render re-applies the tag after its innerHTML wipe.)
         var _m = document.getElementById('mainContent');
-        if (_m) {
-            if (level === 'tool') _m.removeAttribute('data-hub-view');
-            else _m.setAttribute('data-hub-view', level);
+        if (_m && level === 'tool' && _m.firstElementChild) {
+            _m.firstElementChild.removeAttribute('data-hub-view');
         }
         syncBackBar();
         if (!_suppressPush) {
@@ -338,26 +337,36 @@
     }
 
     // The rendered DOM is the source of truth. Hub views tag #mainContent with
-    // data-hub-view; any other render (a tool page) clears it via innerHTML.
-    // This way the pill also appears for pages reached WITHOUT a hub tile —
-    // deep links from email, in-page buttons, role routing, etc.
+    // data-hub-view. The marker lives on the hub's own RENDERED CONTENT
+    // (the first child), never on #mainContent itself: innerHTML replaces
+    // children but leaves the container's attributes untouched, so a marker
+    // on the container would survive tool renders and report a stale level.
+    // On the first child, any tool render destroys it automatically — the
+    // pill therefore appears however the page was reached: hub tile,
+    // notification click, in-page button, or email deep link.
     function currentLevel() {
         var main = document.getElementById('mainContent');
-        var v = main && main.getAttribute('data-hub-view');
+        var fc = main && main.firstElementChild;
+        var v = fc && fc.getAttribute('data-hub-view');
         if (v === 'hub' || v === 'phase' || v === 'reports') return v;
         return 'tool';
     }
 
     // Where does "back" go from here, and what should it be called?
     function backTarget() {
+        // READ-ONLY: the level comes from the DOM each time, and _nav is
+        // never mutated here. setNav runs before its view renders, so at
+        // that instant the DOM still shows the previous screen — mutating
+        // _nav from it corrupted the state (and the history entries pushed
+        // right after). _nav supplies only the remembered context (which
+        // phase / Reports Center the user came through) for the label.
         var lvl = currentLevel();
-        if (lvl !== _nav.level) { _nav.level = lvl; }   // reconcile with reality
-        if (_nav.level === 'tool') {
+        if (lvl === 'tool') {
             if (_nav.fromReports) return { text: 'Reports Center', icon: '📊', run: function () { window.showReportsCenter(); } };
             if (_nav.phaseKey)   return { text: _nav.phaseName, icon: _nav.phaseIcon, run: function () { window._hubOpenPhase(_nav.phaseKey); } };
             return { text: 'Home', icon: '⌂', run: function () { window.showManagementHub(); } };
         }
-        if (_nav.level === 'phase' || _nav.level === 'reports') {
+        if (lvl === 'phase' || lvl === 'reports') {
             return { text: 'Home', icon: '⌂', run: function () { window.showManagementHub(); } };
         }
         return null; // on the hub — nothing to go back to

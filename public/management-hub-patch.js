@@ -147,6 +147,7 @@
         var main = document.getElementById('mainContent');
         if (!main) return;
         if (!isTopMode()) { if (typeof window.showProposals === 'function') window.showProposals(); return; }
+        setNav('hub');
 
         var phases = buildPhases();
         var today = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -193,6 +194,7 @@
         var p = null;
         phases.forEach(function (x) { if (x.key === key) p = x; });
         if (!p) { window.showManagementHub(); return; }
+        setNav('phase', { key: p.key, name: p.name, icon: p.icon });
 
         var tiles = p.items.map(function (it) { return hubTile(it); }).join('');
 
@@ -244,6 +246,7 @@
         var main = document.getElementById('mainContent');
         if (!main) return;
         if (!isTopMode()) { if (typeof window.showProposals === 'function') window.showProposals(); return; }
+        setNav('reports');
         var groups = buildReports();
 
         var sections = groups.map(function (g) {
@@ -273,10 +276,173 @@
         main.scrollTop = 0;
     };
 
-    window._hubGo = function (di, ii) { clickItem(di, ii); };
+    window._hubGo = function (di, ii) {
+        var label = null;
+        try {
+            var depts = document.querySelectorAll('.sidebar .nav-department');
+            var lis = depts[di] && depts[di].querySelectorAll('.nav-dept-items > li');
+            var a = lis && lis[ii] && lis[ii].querySelector('a');
+            if (a) {
+                label = '';
+                a.childNodes.forEach(function (n) { if (n.nodeType === 3) label += n.textContent; });
+                label = label.trim() || a.textContent.trim();
+            }
+        } catch (e) {}
+        setNav('tool', { label: label });
+        clickItem(di, ii);
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BACK NAVIGATION
+    // A fixed "back" pill lives outside #mainContent, so tool pages that
+    // replace innerHTML can never wipe it. Level is tracked so Back always
+    // returns one step up (tool → phase → hub). Browser/OS back is wired
+    // through the History API, which also enables the iOS Safari swipe-back
+    // gesture and the Android hardware back button.
+    // ═══════════════════════════════════════════════════════════════════
+    var _nav = { level: 'hub', phaseKey: null, phaseName: null, phaseIcon: null, label: null };
+    var _suppressPush = false;
+
+    function setNav(level, opts) {
+        opts = opts || {};
+        if (level === 'hub') {
+            _nav = { level: 'hub', phaseKey: null, phaseName: null, phaseIcon: null, label: null };
+        } else if (level === 'phase') {
+            _nav = { level: 'phase', phaseKey: opts.key, phaseName: opts.name, phaseIcon: opts.icon, label: null };
+        } else if (level === 'reports') {
+            _nav = { level: 'reports', phaseKey: null, phaseName: 'Reports Center', phaseIcon: '📊', label: null };
+        } else if (level === 'tool') {
+            _nav = {
+                level: 'tool',
+                phaseKey: _nav.phaseKey, phaseName: _nav.phaseName, phaseIcon: _nav.phaseIcon,
+                fromReports: _nav.level === 'reports',
+                label: opts.label || null
+            };
+        }
+        syncBackBar();
+        if (!_suppressPush) {
+            try { history.pushState({ hubLevel: _nav.level, hubNav: JSON.parse(JSON.stringify(_nav)) }, ''); } catch (e) {}
+        }
+    }
+
+    // Where does "back" go from here, and what should it be called?
+    function backTarget() {
+        if (_nav.level === 'tool') {
+            if (_nav.fromReports) return { text: 'Reports Center', icon: '📊', run: function () { window.showReportsCenter(); } };
+            if (_nav.phaseKey)   return { text: _nav.phaseName, icon: _nav.phaseIcon, run: function () { window._hubOpenPhase(_nav.phaseKey); } };
+            return { text: 'Home', icon: '⌂', run: function () { window.showManagementHub(); } };
+        }
+        if (_nav.level === 'phase' || _nav.level === 'reports') {
+            return { text: 'Home', icon: '⌂', run: function () { window.showManagementHub(); } };
+        }
+        return null; // on the hub — nothing to go back to
+    }
+
+    window._hubBack = function () {
+        var t = backTarget();
+        if (!t) return;
+        // Prefer the real history entry so the URL stack stays in sync.
+        try { history.back(); } catch (e) { t.run(); }
+        // Fallback: if popstate didn't fire (some in-app browsers), render directly.
+        var before = _nav.level;
+        setTimeout(function () { if (_nav.level === before) { _suppressPush = true; t.run(); _suppressPush = false; } }, 220);
+    };
+
+    function ensureBackBar() {
+        var el = document.getElementById('hubBackBar');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'hubBackBar';
+        el.setAttribute('role', 'navigation');
+        el.innerHTML =
+            '<button type="button" id="hubBackBtn" aria-label="Go back">' +
+                '<span class="hb-ar" aria-hidden="true">‹</span>' +
+                '<span class="hb-tx"></span>' +
+            '</button>';
+        (document.body || document.documentElement).appendChild(el);
+        el.querySelector('#hubBackBtn').addEventListener('click', function (e) {
+            e.preventDefault(); window._hubBack();
+        });
+        injectBackStyles();
+        return el;
+    }
+
+    function syncBackBar() {
+        var el = ensureBackBar();
+        var t = (isTopMode() ? backTarget() : null);
+        var app = document.getElementById('appContainer');
+        if (!t) {
+            el.classList.remove('show');
+            if (app) app.classList.remove('hub-back-on');
+            return;
+        }
+        el.querySelector('.hb-tx').textContent = 'Back to ' + t.text;
+        el.classList.add('show');
+        if (app) app.classList.add('hub-back-on');
+    }
+
+    function injectBackStyles() {
+        if (document.getElementById('hubBackStyles')) return;
+        var s = document.createElement('style');
+        s.id = 'hubBackStyles';
+        s.textContent =
+            '#hubBackBar{position:fixed;z-index:1200;left:max(1rem,env(safe-area-inset-left));' +
+            'top:calc(var(--hub-header-h,86px) + 0.7rem);opacity:0;visibility:hidden;transform:translateY(-6px);' +
+            'transition:opacity .18s ease,transform .18s ease,visibility .18s;pointer-events:none;}' +
+            '#hubBackBar.show{opacity:1;visibility:visible;transform:none;pointer-events:auto;}' +
+            '#hubBackBtn{display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;' +
+            'padding:.6rem 1.05rem .6rem .85rem;border-radius:999px;border:1px solid rgba(34,199,240,.35);' +
+            'background:linear-gradient(180deg,#1f2a39,#18212e);color:#e9f2f8;font-weight:700;font-size:.85rem;' +
+            'font-family:inherit;box-shadow:0 10px 26px -12px rgba(0,0,0,.65);' +
+            '-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;' +
+            'transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;}' +
+            '#hubBackBtn:hover{transform:translateX(-2px);border-color:rgba(34,199,240,.75);' +
+            'box-shadow:0 14px 30px -12px rgba(34,199,240,.5);}' +
+            '#hubBackBtn:active{transform:scale(.97);}' +
+            '#hubBackBtn:focus-visible{outline:2px solid #22c7f0;outline-offset:3px;}' +
+            '#hubBackBtn .hb-ar{font-size:1.25rem;line-height:1;color:#22c7f0;margin-top:-2px;}' +
+            /* Mobile / iOS Safari: move to the thumb zone, clear the home bar */
+            '@media (max-width:768px){' +
+            '#hubBackBar{top:auto;bottom:calc(1rem + env(safe-area-inset-bottom));' +
+            'left:50%;transform:translate(-50%,8px);}' +
+            '#hubBackBar.show{transform:translate(-50%,0);}' +
+            '#hubBackBtn{padding:.72rem 1.25rem .72rem 1rem;font-size:.9rem;' +
+            'box-shadow:0 12px 30px -8px rgba(0,0,0,.55);}' +
+            '#hubBackBtn:hover{transform:none;}}' +
+            /* Give the page room so the pill never covers content */
+            '.hub-back-on .main-content{padding-top:4.2rem;}' +
+            '@media (max-width:768px){.hub-back-on .main-content{padding-top:1rem;' +
+            'padding-bottom:calc(5.5rem + env(safe-area-inset-bottom));}}' +
+            '@media (prefers-reduced-motion:reduce){#hubBackBar,#hubBackBtn{transition:none;}}' +
+            '@media print{#hubBackBar{display:none !important;}' +
+            '.hub-back-on .main-content{padding-top:0;padding-bottom:0;}}';
+        (document.head || document.documentElement).appendChild(s);
+    }
+
+    // Keep the desktop pill clear of the sticky header, whatever its height.
+    function measureHeader() {
+        var h = document.querySelector('.header');
+        if (h) document.documentElement.style.setProperty('--hub-header-h', h.offsetHeight + 'px');
+    }
+
+    window.addEventListener('popstate', function (ev) {
+        if (!isTopMode()) return;
+        var st = ev.state && ev.state.hubNav;
+        _suppressPush = true;
+        try {
+            if (!st || st.level === 'hub') { _nav = { level: 'hub' }; window.showManagementHub(); }
+            else if (st.level === 'reports') { _nav = st; window.showReportsCenter(); }
+            else if (st.level === 'phase' && st.phaseKey) { _nav = st; window._hubOpenPhase(st.phaseKey); }
+            else { _nav = st; syncBackBar(); }
+        } finally { _suppressPush = false; }
+    });
 
     // Header logo -> home (management mode only). Bind once.
     function bindLogoHome() {
+        measureHeader();
+        window.addEventListener('resize', measureHeader);
+        ensureBackBar();
+        syncBackBar();
         var logo = document.querySelector('.header .logo');
         if (!logo || logo._hubBound) return;
         logo._hubBound = true;

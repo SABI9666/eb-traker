@@ -183,6 +183,7 @@
                 '<div class="hub-eyebrow"><span class="label">EPCM Phases</span><span class="rule"></span></div>' +
                 '<div class="hub-grid">' + cards + '</div>' +
             '</div></div>';
+        main.setAttribute('data-hub-view', 'hub');
         main.scrollTop = 0;
     };
 
@@ -210,6 +211,7 @@
                 '</div>' +
                 '<div class="hub-tilegrid">' + tiles + '</div>' +
             '</div></div>';
+        main.setAttribute('data-hub-view', 'phase');
         main.scrollTop = 0;
     };
 
@@ -273,6 +275,7 @@
                 '</div>' +
                 (sections || '<div class="glass-surface" style="padding:2rem; text-align:center; color:#9fb0c4; border-radius:18px;">No reports available for your role.</div>') +
             '</div></div>';
+        main.setAttribute('data-hub-view', 'reports');
         main.scrollTop = 0;
     };
 
@@ -319,14 +322,34 @@
                 label: opts.label || null
             };
         }
+        // Tag the DOM immediately so state and view agree with no flicker.
+        // (Each render re-applies the tag after its innerHTML wipe.)
+        var _m = document.getElementById('mainContent');
+        if (_m) {
+            if (level === 'tool') _m.removeAttribute('data-hub-view');
+            else _m.setAttribute('data-hub-view', level);
+        }
         syncBackBar();
         if (!_suppressPush) {
             try { history.pushState({ hubLevel: _nav.level, hubNav: JSON.parse(JSON.stringify(_nav)) }, ''); } catch (e) {}
         }
     }
 
+    // The rendered DOM is the source of truth. Hub views tag #mainContent with
+    // data-hub-view; any other render (a tool page) clears it via innerHTML.
+    // This way the pill also appears for pages reached WITHOUT a hub tile —
+    // deep links from email, in-page buttons, role routing, etc.
+    function currentLevel() {
+        var main = document.getElementById('mainContent');
+        var v = main && main.getAttribute('data-hub-view');
+        if (v === 'hub' || v === 'phase' || v === 'reports') return v;
+        return 'tool';
+    }
+
     // Where does "back" go from here, and what should it be called?
     function backTarget() {
+        var lvl = currentLevel();
+        if (lvl !== _nav.level) { _nav.level = lvl; }   // reconcile with reality
         if (_nav.level === 'tool') {
             if (_nav.fromReports) return { text: 'Reports Center', icon: '📊', run: function () { window.showReportsCenter(); } };
             if (_nav.phaseKey)   return { text: _nav.phaseName, icon: _nav.phaseIcon, run: function () { window._hubOpenPhase(_nav.phaseKey); } };
@@ -419,6 +442,19 @@
         (document.head || document.documentElement).appendChild(s);
     }
 
+    // Re-evaluate whenever #mainContent is re-rendered by ANY view, so the
+    // pill is correct on every page without each view having to call us.
+    function watchMain() {
+        var main = document.getElementById('mainContent');
+        if (!main || main._hubWatched || typeof MutationObserver === 'undefined') return;
+        main._hubWatched = true;
+        var pending = null;
+        new MutationObserver(function () {
+            clearTimeout(pending);
+            pending = setTimeout(syncBackBar, 60);   // coalesce burst re-renders
+        }).observe(main, { childList: true });
+    }
+
     // Keep the desktop pill clear of the sticky header, whatever its height.
     function measureHeader() {
         var h = document.querySelector('.header');
@@ -442,7 +478,12 @@
         measureHeader();
         window.addEventListener('resize', measureHeader);
         ensureBackBar();
+        watchMain();
         syncBackBar();
+        // Role/mode is applied asynchronously after login — re-check briefly.
+        [400, 1200, 2500].forEach(function (ms) {
+            setTimeout(function () { watchMain(); syncBackBar(); measureHeader(); }, ms);
+        });
         var logo = document.querySelector('.header .logo');
         if (!logo || logo._hubBound) return;
         logo._hubBound = true;

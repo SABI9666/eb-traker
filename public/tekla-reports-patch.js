@@ -298,6 +298,20 @@
     function activityStatus(key, rep) {
         var pr = (rep && rep.progress) || {};
         var m = (rep && rep.metrics) || {};
+        var acts = (rep && rep.activities) || {};
+        var a = acts[key];
+
+        // 1) Per-activity figures pushed from the Tekla workstation (daily
+        //    status push) — the authoritative source for every process.
+        if (a && a.percent !== null && a.percent !== undefined) {
+            var bits = [];
+            if (a.total > 0) bits.push(a.done + ' / ' + a.total + (a.unit ? ' ' + a.unit : ''));
+            if (a.note) bits.push(a.note);
+            if (!bits.length && key === 'modeling' && m.tonnage) bits.push(fmtTon(m.tonnage) + ' modeled');
+            return { pct: a.percent, meta: bits.join(' · ') || null, live: true };
+        }
+
+        // 2) Fall back to figures derived from the raw model metrics.
         if (key === 'modeling') {
             return { pct: pr.modelingPercent, meta: (m.tonnage ? fmtTon(m.tonnage) + ' modeled' : null), live: true };
         }

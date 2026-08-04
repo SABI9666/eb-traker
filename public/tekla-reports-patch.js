@@ -294,6 +294,18 @@
         return hit;
     }
 
+    // Computed by the macro from the model vs. typed by the designer —
+    // management asked to be able to tell the two apart at a glance.
+    function srcTag(src) {
+        if (src === 'auto') {
+            return '<span title="Calculated from the model by the Tekla macro" style="margin-left:0.45rem; font-size:0.55rem; font-weight:800; letter-spacing:0.7px; padding:2px 6px; border-radius:8px; background:rgba(6,182,212,0.14); color:#0e7490; vertical-align:middle;">AUTO</span>';
+        }
+        if (src === 'manual') {
+            return '<span title="Entered by the designer" style="margin-left:0.45rem; font-size:0.55rem; font-weight:800; letter-spacing:0.7px; padding:2px 6px; border-radius:8px; background:#eef2f7; color:#94a3b8; vertical-align:middle;">TYPED</span>';
+        }
+        return '';
+    }
+
     // Map an activity to live data where the Tekla push already provides it.
     function activityStatus(key, rep) {
         var pr = (rep && rep.progress) || {};
@@ -308,7 +320,7 @@
             if (a.total > 0) bits.push(a.done + ' / ' + a.total + (a.unit ? ' ' + a.unit : ''));
             if (a.note) bits.push(a.note);
             if (!bits.length && key === 'modeling' && m.tonnage) bits.push(fmtTon(m.tonnage) + ' modeled');
-            return { pct: a.percent, meta: bits.join(' · ') || null, live: true };
+            return { pct: a.percent, meta: bits.join(' · ') || null, live: true, src: a.source || 'manual' };
         }
 
         // 2) Fall back to figures derived from the raw model metrics.
@@ -352,7 +364,7 @@
                 pill = 'AWAITING DATA'; pillStyle = 'background:#eef2f7; color:#94a3b8;'; waitCt++;
             }
             return '<div style="display:grid; grid-template-columns:minmax(170px,220px) 110px 1fr minmax(140px,200px); gap:0.9rem; align-items:center; padding:0.85rem 1.1rem; background:#fff; border:1px solid #e6ebf2; border-radius:12px;">' +
-                '<div style="font-weight:700; color:#0f172a; font-size:0.9rem;">' + a.icon + ' ' + a.label + '</div>' +
+                '<div style="font-weight:700; color:#0f172a; font-size:0.9rem;">' + a.icon + ' ' + a.label + srcTag(st.src) + '</div>' +
                 '<span style="justify-self:start; font-size:0.62rem; font-weight:800; letter-spacing:0.6px; padding:3px 9px; border-radius:10px; ' + pillStyle + '">' + pill + '</span>' +
                 progressBar(st.pct, 140) +
                 '<div style="font-size:0.74rem; color:#64748b; text-align:right;">' +

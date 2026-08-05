@@ -294,6 +294,22 @@
         return hit;
     }
 
+    // The macro always sends an `activities` block. A stored report without
+    // one means the API that received the push predates per-process support,
+    // so it silently dropped the figures. Say so instead of showing eight
+    // "awaiting data" rows that look like the designer never pushed.
+    function staleBackendWarning(rep) {
+        if (!rep) return '';
+        var acts = rep.activities || {};
+        if (Object.keys(acts).length) return '';
+        return '<div style="margin-bottom:0.9rem; padding:0.85rem 1.05rem; border-radius:12px; background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.35); color:#92400e; font-size:0.8rem; line-height:1.5;">' +
+            '<strong>⚠️ This push contains no per-process data.</strong><br>' +
+            'Model totals arrived (tonnage, parts, assemblies) but the per-process percentages did not. ' +
+            'The Tekla macro does send them, so the backend receiving the push is running an older revision — ' +
+            'redeploy the <code>west-epcm-backend</code> Cloud Run service from the latest <code>main</code>, then push once more from Tekla.' +
+        '</div>';
+    }
+
     // Computed by the macro from the model vs. typed by the designer —
     // management asked to be able to tell the two apart at a glance.
     function srcTag(src) {
@@ -392,8 +408,9 @@
                     statCard(progCt, '⏳ In Progress') +
                     statCard(waitCt, '○ Pending / No Data') +
                 '</div>' +
+                staleBackendWarning(rep) +
                 '<div style="display:flex; flex-direction:column; gap:0.55rem; overflow-x:auto;">' + rows + '</div>' +
-                '<div style="margin-top:0.9rem; font-size:0.72rem; color:#94a3b8;">Modeling and Drawing Production are live from the Tekla workstation push. Remaining activities will populate automatically once per-activity reporting is enabled on the workstations.</div>' +
+                '<div style="margin-top:0.9rem; font-size:0.72rem; color:#94a3b8;">Percentages marked AUTO are calculated by the macro from the model itself. Processes with no reliable signal in the model (checking, revisions, connection design) are reported by the designer.</div>' +
             '</div>';
         out.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
@@ -478,6 +495,34 @@
         }));
     };
 
+    // Exactly what the workstation reported, process by process — the place
+    // to look when a figure in the status report is questioned.
+    function activityTableHtml(r) {
+        var acts = (r && r.activities) || {};
+        var keys = Object.keys(acts);
+        if (!keys.length) {
+            return '<h4 style="margin:0.5rem 0;">🧩 Process Progress</h4>' +
+                '<p style="color:#b45309; font-size:0.85rem; margin:0 0 1rem;">This push carried no per-process data — see the warning in the status report.</p>';
+        }
+        var labelOf = {};
+        ['steel', 'rebar'].forEach(function (t) {
+            ACTIVITIES[t].forEach(function (a) { labelOf[a.key] = a.icon + ' ' + a.label; });
+        });
+        var body = keys.map(function (k) {
+            var a = acts[k] || {};
+            return '<tr>' +
+                '<td>' + esc(labelOf[k] || k) + srcTag(a.source) + '</td>' +
+                '<td style="min-width:150px;">' + progressBar(a.percent, 130) + '</td>' +
+                '<td style="text-align:right;">' + (a.total > 0 ? esc(a.done + ' / ' + a.total + (a.unit ? ' ' + a.unit : '')) : '—') + '</td>' +
+                '<td style="font-size:0.78rem; color:#64748b;">' + esc(a.note || '') + '</td>' +
+            '</tr>';
+        }).join('');
+        return '<h4 style="margin:0.5rem 0;">🧩 Process Progress</h4>' +
+            '<div style="overflow-x:auto; margin-bottom:1rem;"><table class="data-table"><thead><tr>' +
+            '<th>Process</th><th>Complete</th><th style="text-align:right;">Done / Total</th><th>Basis</th>' +
+            '</tr></thead><tbody>' + body + '</tbody></table></div>';
+    }
+
     // ── Detail modal ────────────────────────────────────────────────────────
     window._teklaDetail = async function (id) {
         var resp;
@@ -519,6 +564,7 @@
                         statCard(m.parts || 0, 'Parts') +
                         statCard((m.drawingsIssued || 0) + ' / ' + (m.drawingsTotal || 0), 'Drawings') +
                     '</div>' +
+                    activityTableHtml(r) +
                     (pend.length
                         ? '<h4 style="margin:0.5rem 0;">⏳ Pending Work</h4><ul style="margin:0 0 1rem; padding-left:1.2rem; color:#b45309;">' +
                             pend.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>'

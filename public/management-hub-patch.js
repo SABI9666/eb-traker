@@ -30,7 +30,7 @@
     ];
     // Move a specific tool to a phase regardless of which division it lives in.
     var ITEM_OVERRIDES = {
-        'Tekla Reports': 'engineering'   // engineering progress belongs under Engineering
+        'Software Report': 'engineering'   // engineering progress belongs under Engineering
     };
 
     // Tools that are reports/analytics — surfaced together in the Reports
@@ -38,7 +38,7 @@
     var REPORT_LABELS = {
         'Analytics': 1, 'BDM Analytics': 1, 'Project Dashboard': 1,
         'Designer Hours': 1, 'File Analytics': 1, 'Reports': 1,
-        'Tekla Reports': 1, 'Leave Reports': 1, 'IT Overview': 1, 'Activities': 1
+        'Software Report': 1, 'Leave Reports': 1, 'IT Overview': 1, 'Activities': 1
     };
     function isReport(label) {
         return !!REPORT_LABELS[label] || /report|analytic|dashboard/i.test(label);

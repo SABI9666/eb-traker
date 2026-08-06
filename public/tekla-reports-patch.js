@@ -1,5 +1,5 @@
 // tekla-reports-patch.js
-// COO / Director "Tekla Reports" view — model progress pushed automatically
+// COO / Director "Software Report" view — model progress pushed automatically
 // from Tekla Structures workstations (see EB-Backend/TEKLA_INTEGRATION.md).
 //
 // STRICT BY DESIGN:
@@ -89,17 +89,17 @@
 
         if (!isMgmt()) {
             main.innerHTML =
-                '<div class="page-header"><h2>📐 Tekla Reports</h2></div>' +
-                '<div class="card" style="padding:2rem; text-align:center; color:#b91c1c;">🔒 Tekla Reports are visible to COO and Director only.</div>';
+                '<div class="page-header"><h2>📐 Software Report</h2></div>' +
+                '<div class="card" style="padding:2rem; text-align:center; color:#b91c1c;">🔒 The Software Report is visible to COO and Director only.</div>';
             return;
         }
 
         main.innerHTML =
             '<div class="page-header">' +
-                '<h2>📐 Tekla Reports</h2>' +
+                '<h2>📐 Software Report</h2>' +
                 '<p class="subtitle">Live modeling progress from Tekla Structures workstations — automated push only, no manual entry.</p>' +
             '</div>' +
-            '<div class="card" style="text-align:center; padding:2.5rem;">⏳ Loading Tekla reports…</div>';
+            '<div class="card" style="text-align:center; padding:2.5rem;">⏳ Loading software report…</div>';
 
         var resp;
         try {
@@ -113,7 +113,7 @@
 
     function renderError(main, msg) {
         main.innerHTML =
-            '<div class="page-header"><h2>📐 Tekla Reports</h2></div>' +
+            '<div class="page-header"><h2>📐 Software Report</h2></div>' +
             '<div class="card" style="padding:2rem; text-align:center;">' +
                 '<p style="color:#b91c1c; margin-bottom:1rem;">⚠️ ' + esc(msg) + '</p>' +
                 '<button class="btn btn-primary" onclick="showTeklaReports()">🔄 Retry</button>' +
@@ -129,7 +129,7 @@
         main.innerHTML =
             '<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">' +
                 '<div>' +
-                    '<h2>📐 Tekla Reports</h2>' +
+                    '<h2>📐 Software Report</h2>' +
                     '<p class="subtitle">Live modeling progress pushed automatically from Tekla Structures. Latest report per model drives the totals.</p>' +
                     '<div style="margin-top:0.45rem;">' + capabilityChip() + '</div>' +
                 '</div>' +

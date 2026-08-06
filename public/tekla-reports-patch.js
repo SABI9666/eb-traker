@@ -131,6 +131,7 @@
                 '<div>' +
                     '<h2>📐 Tekla Reports</h2>' +
                     '<p class="subtitle">Live modeling progress pushed automatically from Tekla Structures. Latest report per model drives the totals.</p>' +
+                    '<div style="margin-top:0.45rem;">' + capabilityChip() + '</div>' +
                 '</div>' +
                 '<button class="btn btn-outline btn-sm" onclick="showTeklaReports()">🔄 Refresh</button>' +
             '</div>' +
@@ -294,20 +295,47 @@
         return hit;
     }
 
+    // Does the DEPLOYED api accept per-process figures? It says so on every
+    // GET; an older revision sends no capabilities block at all.
+    function backendSupportsActivities() {
+        var c = _cache.capabilities;
+        return !!(c && c.activities);
+    }
+
     // The macro always sends an `activities` block. A stored report without
-    // one means the API that received the push predates per-process support,
-    // so it silently dropped the figures. Say so instead of showing eight
-    // "awaiting data" rows that look like the designer never pushed.
+    // one has exactly two causes, and they need different fixes — so name
+    // which one it is rather than showing eight "awaiting data" rows that
+    // look like the designer never pushed.
     function staleBackendWarning(rep) {
         if (!rep) return '';
-        var acts = rep.activities || {};
-        if (Object.keys(acts).length) return '';
-        return '<div style="margin-bottom:0.9rem; padding:0.85rem 1.05rem; border-radius:12px; background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.35); color:#92400e; font-size:0.8rem; line-height:1.5;">' +
-            '<strong>⚠️ This push contains no per-process data.</strong><br>' +
-            'Model totals arrived (tonnage, parts, assemblies) but the per-process percentages did not. ' +
-            'The Tekla macro does send them, so the backend receiving the push is running an older revision — ' +
-            'redeploy the <code>west-epcm-backend</code> Cloud Run service from the latest <code>main</code>, then push once more from Tekla.' +
+        if (Object.keys(rep.activities || {}).length) return '';
+
+        var box = 'margin-bottom:0.9rem; padding:0.85rem 1.05rem; border-radius:12px; font-size:0.8rem; line-height:1.5;';
+
+        if (!backendSupportsActivities()) {
+            // Cause 1: the running API cannot store per-process data at all.
+            return '<div style="' + box + ' background:rgba(239,68,68,0.09); border:1px solid rgba(239,68,68,0.35); color:#b91c1c;">' +
+                '<strong>⚠️ The backend cannot store per-process data yet.</strong><br>' +
+                'The deployed API is an older revision — it keeps model totals (tonnage, parts, assemblies) but discards the ' +
+                'per-process percentages the macro sends. Redeploy <code>west-epcm-backend</code> from the latest <code>main</code>, ' +
+                'then push again from Tekla. <b>Reports already stored cannot be repaired</b> — the figures were dropped on arrival.' +
+            '</div>';
+        }
+        // Cause 2: backend is current; this report was written before it was.
+        return '<div style="' + box + ' background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.35); color:#92400e;">' +
+            '<strong>⚠️ This report predates the per-process update.</strong><br>' +
+            'The backend now accepts per-process figures, but this push was stored before it did, so its percentages are gone for good. ' +
+            'Open the model in Tekla and run <b>PushDailyStatus</b> once more — the next push will carry every process.' +
         '</div>';
+    }
+
+    // Header chip: is per-process reporting live end to end, right now?
+    function capabilityChip() {
+        var ok = backendSupportsActivities();
+        var style = 'display:inline-flex; align-items:center; gap:6px; font-size:0.7rem; font-weight:700; letter-spacing:0.4px; padding:4px 10px; border-radius:20px;';
+        return ok
+            ? '<span title="The deployed API accepts per-process percentages from the Tekla macro" style="' + style + ' background:rgba(16,185,129,0.13); color:#059669;">● Per-process reporting live</span>'
+            : '<span title="The deployed API is an older revision and discards per-process percentages" style="' + style + ' background:rgba(239,68,68,0.11); color:#b91c1c;">● Backend needs redeploy</span>';
     }
 
     // Computed by the macro from the model vs. typed by the designer —

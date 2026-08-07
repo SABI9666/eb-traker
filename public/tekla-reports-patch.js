@@ -371,6 +371,28 @@
                 '</div></div>';
         }
 
+        // Designers have booked nothing: every derived figure would be a
+        // silent zero pretending to be information. Say it once, loudly.
+        var noHours = (h.hoursEntered === false) || (num(h.actualHours) <= 0);
+        if (noHours) {
+            return '<div style="' + box + ' border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.07);">' +
+                '<div style="font-weight:800; color:#92400e; margin-bottom:0.3rem;">⏱️ Working Hours — no hours entered by designers</div>' +
+                '<div style="font-size:0.8rem; color:#92400e; line-height:1.55;">' +
+                    'This project is linked, but <b>no designer has entered working hours in their timesheet</b>. ' +
+                    'Hours worked, efficiency and the hours forecast cannot be produced until time is booked. ' +
+                    'Hours Required from tonnage is still shown below.' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.7rem; margin-top:0.9rem;">' +
+                    statCard(fmtHrs(h.budgetHours), 'Hours Required (tonnage)') +
+                    statCard('0 h', 'Hours Worked') +
+                    statCard('—', 'Hours Forecast') +
+                '</div>' +
+                '<div style="font-size:0.74rem; color:#92400e; margin-top:0.7rem;">Budget = ' +
+                    num(h.basisTonnage).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' T × ' + num(h.hoursPerTonne) + ' h/T' +
+                    (h.usingPlannedTonnage ? ' (planned tonnage)' : ' (modelled tonnage so far)') + '</div>' +
+            '</div>';
+        }
+
         var eff = h.efficiencyPercent;
         var ec = hoursColor(eff);
         var over = (h.varianceHours !== null && h.varianceHours > 0);
@@ -378,14 +400,27 @@
         var varLabel = h.varianceHours === null ? 'Variance'
             : (over ? '🔺 Hours Over Earned' : '🔻 Hours Under Earned');
 
+        // Forecast = designer-entered hours ÷ modelled tonnage, projected
+        // over the full tonnage — both inputs observed, neither self-rated.
+        var forecastLine;
+        if (h.forecastBasis === 'tonnage' && h.forecastHours !== null) {
+            forecastLine = 'Hours forecast <b>' + fmtHrs(h.forecastHours) + '</b> = entered hours ÷ modelled tonnage (<b>' +
+                num(h.actualHoursPerTonne) + ' h/T</b>) × ' +
+                num(h.basisTonnage).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' T' +
+                (h.usingPlannedTonnage ? ' planned' : ' modelled so far');
+        } else if (h.forecastBasis === 'no_tonnage') {
+            forecastLine = '<span style="color:#b45309;">Hours forecast unavailable — the model reports no tonnage yet.</span>';
+        } else {
+            forecastLine = '<span style="color:#b45309;">Hours forecast unavailable — no working hours entered by designers.</span>';
+        }
+
         var basis = '<div style="font-size:0.74rem; color:#64748b; margin-top:0.7rem; line-height:1.6;">' +
             'Budget = <b>' + num(h.basisTonnage).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' T</b> × ' +
             '<b>' + num(h.hoursPerTonne) + ' h/T</b>' +
             (h.usingPlannedTonnage ? ' (planned tonnage)' : ' (modelled tonnage so far — set a plan tonnage for a firm budget)') +
             (h.hoursPerTonneIsDefault ? ' · rate is the ' + num(h.hoursPerTonne) + ' h/T default, set it per project in the plan' : '') +
-            (h.actualHoursPerTonne !== null ? ' · running at <b>' + num(h.actualHoursPerTonne) + ' h/T</b>' : '') +
-            (h.forecastHours !== null ? ' · forecast at this rate <b>' + fmtHrs(h.forecastHours) + '</b>' : '') +
             (h.allocatedHours > 0 ? ' · allocated ' + fmtHrs(h.allocatedHours) : '') +
+            '<br>' + forecastLine +
         '</div>';
 
         var rows = (h.designers || []).map(function (d) {
@@ -413,9 +448,11 @@
                     (h.lastEntry ? ' · last booked ' + fmtDate(h.lastEntry) : '') + '</span>' +
             '</div>' +
             '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.7rem; margin-top:0.9rem;">' +
-                statCard(fmtHrs(h.actualHours), 'Hours Worked') +
+                statCard(fmtHrs(h.actualHours), 'Hours Worked (designers)') +
                 statCard(fmtHrs(h.budgetHours), 'Hours Required (tonnage)') +
                 statCard(fmtHrs(h.earnedHours), 'Hours Earned (progress)') +
+                statCard(h.forecastBasis === 'tonnage' ? fmtHrs(h.forecastHours) : '—',
+                    'Hours Forecast', 'Entered hours ÷ modelled tonnage, projected over the full tonnage') +
                 '<div style="border-top:3px solid ' + varColor + '; padding:1.15rem 1.1rem; background:#fff; border:1px solid #e6ebf2; border-radius:14px;">' +
                     '<div style="color:' + varColor + '; font-size:1.5rem; font-weight:800;">' +
                         (h.varianceHours === null ? '—' : fmtHrs(Math.abs(h.varianceHours))) + '</div>' +

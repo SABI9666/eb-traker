@@ -65,6 +65,17 @@
         '</div>';
     }
 
+    function fmtHrs(v) {
+        if (v === null || v === undefined) return '—';
+        return num(v).toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' h';
+    }
+    // Under budget / ahead reads green, over reads red — same language as
+    // the progress bars so the page has one visual grammar.
+    function hoursColor(efficiency) {
+        if (efficiency === null || efficiency === undefined) return '#64748b';
+        return efficiency >= 100 ? '#059669' : (efficiency >= 90 ? '#b45309' : '#dc2626');
+    }
+
     function pendingSummary(r) {
         var items = [];
         if (Array.isArray(r.pendingItems)) items = items.concat(r.pendingItems);
@@ -142,6 +153,10 @@
                 statCard((s.pendingModels || 0), '⏳ Models With Pending Work') +
                 statCard(fmtTon(s.totalTonnage), '⚖️ Modeled Tonnage', (s.totalTonnage || 0) + ' tonnes') +
                 statCard(drawings, '📄 Drawings Issued / Total') +
+                statCard(fmtHrs(s.totalLoggedHours), '⏱️ Hours Worked', 'Booked in timesheets against projects that have Tekla data') +
+                statCard(fmtHrs(s.totalBudgetHours), '🎯 Hours Required', 'Tonnage × hours-per-tonne across those projects') +
+                statCard(s.hoursEfficiencyPercent === null || s.hoursEfficiencyPercent === undefined ? '—' : s.hoursEfficiencyPercent + '%',
+                    '⚡ Hours Efficiency', 'Hours earned by reported progress ÷ hours actually worked') +
             '</div>' +
 
             statusBuilderHtml() +
@@ -329,6 +344,130 @@
         '</div>';
     }
 
+    function hoursFor(projectNumber) {
+        return (_cache.hours || {})[String(projectNumber || '').trim()] || null;
+    }
+
+    // ── Working hours for one project ───────────────────────────────────
+    // Budget comes from tonnage × the project's hours-per-tonne rate.
+    // EARNED (budget × % complete) is what actual hours are judged against —
+    // budget vs actual alone only says how much is left in the pot, not
+    // whether the team is ahead or behind for the work truly finished.
+    function hoursSectionHtml(pn) {
+        var h = hoursFor(pn);
+        var box = 'padding:1.15rem 1.3rem; border-radius:14px; background:#fff; border:1px solid #e6ebf2; margin:1.1rem 0;';
+
+        if (!h) {
+            return '<div style="' + box + ' color:#64748b; font-size:0.82rem;">' +
+                '<strong>⏱️ Working Hours</strong><br>Hours are not available for this project yet.</div>';
+        }
+
+        if (!h.matched) {
+            return '<div style="' + box + ' border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.07);">' +
+                '<div style="font-weight:800; color:#92400e; margin-bottom:0.3rem;">⏱️ Working Hours — not linked</div>' +
+                '<div style="font-size:0.8rem; color:#92400e; line-height:1.55;">' +
+                    'No portal project matches the Tekla project number <b>' + esc(pn) + '</b>, so booked hours cannot be attributed to it. ' +
+                    'Open the project record and set its <b>Project Number</b> to exactly what Tekla reports, then refresh.' +
+                '</div></div>';
+        }
+
+        // Designers have booked nothing: every derived figure would be a
+        // silent zero pretending to be information. Say it once, loudly.
+        var noHours = (h.hoursEntered === false) || (num(h.actualHours) <= 0);
+        if (noHours) {
+            return '<div style="' + box + ' border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.07);">' +
+                '<div style="font-weight:800; color:#92400e; margin-bottom:0.3rem;">⏱️ Working Hours — no hours entered by designers</div>' +
+                '<div style="font-size:0.8rem; color:#92400e; line-height:1.55;">' +
+                    'This project is linked, but <b>no designer has entered working hours in their timesheet</b>. ' +
+                    'Hours worked, efficiency and the hours forecast cannot be produced until time is booked. ' +
+                    'Hours Required from tonnage is still shown below.' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.7rem; margin-top:0.9rem;">' +
+                    statCard(fmtHrs(h.budgetHours), 'Hours Required (tonnage)') +
+                    statCard('0 h', 'Hours Worked') +
+                    statCard('—', 'Hours Forecast') +
+                '</div>' +
+                '<div style="font-size:0.74rem; color:#92400e; margin-top:0.7rem;">Budget = ' +
+                    num(h.basisTonnage).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' T × ' + num(h.hoursPerTonne) + ' h/T' +
+                    (h.usingPlannedTonnage ? ' (planned tonnage)' : ' (modelled tonnage so far)') + '</div>' +
+            '</div>';
+        }
+
+        var eff = h.efficiencyPercent;
+        var ec = hoursColor(eff);
+        var over = (h.varianceHours !== null && h.varianceHours > 0);
+        var varColor = h.varianceHours === null ? '#64748b' : (over ? '#dc2626' : '#059669');
+        var varLabel = h.varianceHours === null ? 'Variance'
+            : (over ? '🔺 Hours Over Earned' : '🔻 Hours Under Earned');
+
+        // Forecast = designer-entered hours ÷ modelled tonnage, projected
+        // over the full tonnage — both inputs observed, neither self-rated.
+        var forecastLine;
+        if (h.forecastBasis === 'tonnage' && h.forecastHours !== null) {
+            forecastLine = 'Hours forecast <b>' + fmtHrs(h.forecastHours) + '</b> = entered hours ÷ modelled tonnage (<b>' +
+                num(h.actualHoursPerTonne) + ' h/T</b>) × ' +
+                num(h.basisTonnage).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' T' +
+                (h.usingPlannedTonnage ? ' planned' : ' modelled so far');
+        } else if (h.forecastBasis === 'no_tonnage') {
+            forecastLine = '<span style="color:#b45309;">Hours forecast unavailable — the model reports no tonnage yet.</span>';
+        } else {
+            forecastLine = '<span style="color:#b45309;">Hours forecast unavailable — no working hours entered by designers.</span>';
+        }
+
+        var basis = '<div style="font-size:0.74rem; color:#64748b; margin-top:0.7rem; line-height:1.6;">' +
+            'Budget = <b>' + num(h.basisTonnage).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' T</b> × ' +
+            '<b>' + num(h.hoursPerTonne) + ' h/T</b>' +
+            (h.usingPlannedTonnage ? ' (planned tonnage)' : ' (modelled tonnage so far — set a plan tonnage for a firm budget)') +
+            (h.hoursPerTonneIsDefault ? ' · rate is the ' + num(h.hoursPerTonne) + ' h/T default, set it per project in the plan' : '') +
+            (h.allocatedHours > 0 ? ' · allocated ' + fmtHrs(h.allocatedHours) : '') +
+            '<br>' + forecastLine +
+        '</div>';
+
+        var rows = (h.designers || []).map(function (d) {
+            var share = num(h.actualHours) > 0 ? (num(d.hours) / num(h.actualHours)) * 100 : 0;
+            return '<tr>' +
+                '<td><strong>' + esc(d.name) + '</strong></td>' +
+                '<td style="text-align:right; font-weight:700;">' + fmtHrs(d.hours) + '</td>' +
+                '<td style="min-width:130px;">' + progressBar(share, 110) + '</td>' +
+                '<td style="text-align:right; color:#64748b;">' + (d.entries || 0) + '</td>' +
+                '<td style="white-space:nowrap; color:#64748b;">' + fmtDate(d.lastEntry) + '</td>' +
+            '</tr>';
+        }).join('');
+
+        var table = rows
+            ? '<div style="overflow-x:auto; margin-top:1rem;"><table class="data-table"><thead><tr>' +
+                '<th>Designer</th><th style="text-align:right;">Hours</th><th>Share</th>' +
+                '<th style="text-align:right;">Entries</th><th>Last Entry</th>' +
+              '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+            : '<div style="margin-top:0.9rem; font-size:0.8rem; color:#b45309;">No time has been booked against this project yet.</div>';
+
+        return '<div style="' + box + ' border-top:3px solid ' + ACCENT + ';">' +
+            '<div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap;">' +
+                '<h4 style="margin:0; font-size:1.02rem;">⏱️ Working Hours</h4>' +
+                '<span style="font-size:0.72rem; color:#94a3b8;">' + (h.entryCount || 0) + ' timesheet entries' +
+                    (h.lastEntry ? ' · last booked ' + fmtDate(h.lastEntry) : '') + '</span>' +
+            '</div>' +
+            '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.7rem; margin-top:0.9rem;">' +
+                statCard(fmtHrs(h.actualHours), 'Hours Worked (designers)') +
+                statCard(fmtHrs(h.budgetHours), 'Hours Required (tonnage)') +
+                statCard(fmtHrs(h.earnedHours), 'Hours Earned (progress)') +
+                statCard(h.forecastBasis === 'tonnage' ? fmtHrs(h.forecastHours) : '—',
+                    'Hours Forecast', 'Entered hours ÷ modelled tonnage, projected over the full tonnage') +
+                '<div style="border-top:3px solid ' + varColor + '; padding:1.15rem 1.1rem; background:#fff; border:1px solid #e6ebf2; border-radius:14px;">' +
+                    '<div style="color:' + varColor + '; font-size:1.5rem; font-weight:800;">' +
+                        (h.varianceHours === null ? '—' : fmtHrs(Math.abs(h.varianceHours))) + '</div>' +
+                    '<div style="font-size:0.72rem; letter-spacing:0.6px; text-transform:uppercase; color:#64748b; margin-top:0.4rem; font-weight:600;">' + varLabel + '</div>' +
+                '</div>' +
+                '<div style="border-top:3px solid ' + ec + '; padding:1.15rem 1.1rem; background:#fff; border:1px solid #e6ebf2; border-radius:14px;">' +
+                    '<div style="color:' + ec + '; font-size:1.5rem; font-weight:800;">' + (eff === null ? '—' : eff + '%') + '</div>' +
+                    '<div style="font-size:0.72rem; letter-spacing:0.6px; text-transform:uppercase; color:#64748b; margin-top:0.4rem; font-weight:600;">Efficiency</div>' +
+                '</div>' +
+            '</div>' +
+            basis +
+            table +
+        '</div>';
+    }
+
     // Header chip: is per-process reporting live end to end, right now?
     function capabilityChip() {
         var ok = backendSupportsActivities();
@@ -438,6 +577,7 @@
                 '</div>' +
                 staleBackendWarning(rep) +
                 '<div style="display:flex; flex-direction:column; gap:0.55rem; overflow-x:auto;">' + rows + '</div>' +
+                hoursSectionHtml(pn) +
                 '<div style="margin-top:0.9rem; font-size:0.72rem; color:#94a3b8;">Percentages marked AUTO are calculated by the macro from the model itself. Processes with no reliable signal in the model (checking, revisions, connection design) are reported by the designer.</div>' +
             '</div>';
         out.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -624,6 +764,9 @@
                         '<input id="tkPlanTonnage" type="number" min="0" step="0.1" class="form-control" value="' + (Number(plan.plannedTonnage) > 0 ? plan.plannedTonnage : '') + '" placeholder="e.g. 4500"></div>' +
                     '<div class="form-group"><label>Target Drawings (count)</label>' +
                         '<input id="tkPlanDrawings" type="number" min="0" step="1" class="form-control" value="' + (Number(plan.targetDrawings) > 0 ? plan.targetDrawings : '') + '" placeholder="e.g. 120"></div>' +
+                    '<div class="form-group"><label>Hours per Tonne</label>' +
+                        '<input id="tkPlanHpt" type="number" min="0" step="0.5" class="form-control" value="' + (Number(plan.hoursPerTonne) > 0 ? plan.hoursPerTonne : '') + '" placeholder="blank = 12 h/T default">' +
+                        '<small style="color:#94a3b8;">Hours Required = tonnage × this rate. Leave blank to use the 12 h/T default.</small></div>' +
                     '<div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.25rem;">' +
                         '<button class="btn btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">Cancel</button>' +
                         '<button class="btn btn-success" onclick="window._teklaSubmitPlan(this, \'' + esc(projectNumber) + '\')">Save Plan</button>' +
@@ -643,7 +786,8 @@
                 body: JSON.stringify({
                     projectNumber: projectNumber,
                     plannedTonnage: tEl ? tEl.value : 0,
-                    targetDrawings: dEl ? dEl.value : 0
+                    targetDrawings: dEl ? dEl.value : 0,
+                    hoursPerTonne: (document.getElementById('tkPlanHpt') || {}).value || 0
                 })
             });
             if (resp && resp.success) {

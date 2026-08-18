@@ -44,6 +44,19 @@
         return !!REPORT_LABELS[label] || /report|analytic|dashboard/i.test(label);
     }
 
+    // Reports that must ALWAYS be in the Reports Center, even when their
+    // sidebar item is hidden for this role or injected after the hub read
+    // the menu. Deduplicated against the live sidebar by label.
+    var GUARANTEED_REPORTS = {
+        'Lead Reports': { icon: '🎯', group: 'Business Development', groupIcon: '💼', fn: 'showBdmLeads' }
+    };
+    window._hubRun = function (label) {
+        var t = GUARANTEED_REPORTS[label];
+        if (!t || typeof window[t.fn] !== 'function') return;
+        setNav('tool', { label: label });
+        window[t.fn]();
+    };
+
     function esc(v) {
         return String(v == null ? '' : v)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -121,6 +134,18 @@
         menu.forEach(function (d) {
             var items = d.items.filter(function (it) { return isReport(it.label); });
             if (items.length) groups.push({ name: d.name, icon: d.icon, items: items });
+        });
+        Object.keys(GUARANTEED_REPORTS).forEach(function (label) {
+            var present = groups.some(function (g) {
+                return g.items.some(function (it) { return it.label === label; });
+            });
+            if (present) return;
+            var t = GUARANTEED_REPORTS[label];
+            if (typeof window[t.fn] !== 'function') return; // its patch not loaded
+            var g = null;
+            groups.forEach(function (x) { if (x.name === t.group) g = x; });
+            if (!g) { g = { name: t.group, icon: t.groupIcon, items: [] }; groups.push(g); }
+            g.items.push({ icon: t.icon, label: label, badge: '', run: true });
         });
         return groups;
     }
@@ -217,7 +242,10 @@
 
     // Shared frosted-glass tool tile (drill-down + reports center).
     function hubTile(it) {
-        return '<div class="glass-surface hub-tile" onclick="window._hubGo(' + it.di + ',' + it.ii + ')">' +
+        var go = it.run
+            ? 'window._hubRun(\'' + esc(it.label).replace(/'/g, "\\'") + '\')'
+            : 'window._hubGo(' + it.di + ',' + it.ii + ')';
+        return '<div class="glass-surface hub-tile" onclick="' + go + '">' +
             (it.badge ? '<span class="hub-badge" style="position:absolute; top:10px; right:10px;">' + esc(it.badge) + '</span>' : '') +
             '<div class="hub-tile__icon">' + esc(it.icon) + '</div>' +
             '<div class="hub-tile__label">' + esc(it.label) + '</div>' +

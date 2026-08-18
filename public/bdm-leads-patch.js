@@ -130,10 +130,11 @@
         var isBdm = role() === 'bdm';
         main.innerHTML =
             '<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">' +
-                '<div><h2>🎯 Leads</h2>' +
-                '<p class="subtitle">Prospects and follow-ups' + (isBdm ? '' : ' — all BDMs (management view)') + '.</p></div>' +
-                '<div style="display:flex; gap:0.6rem;">' +
+                '<div><h2>' + (isBdm ? '🎯 Leads' : '📊 Lead Reports') + '</h2>' +
+                '<p class="subtitle">' + (isBdm ? 'Prospects and follow-ups.' : 'Every lead recorded by the BDM team, with follow-up status.') + '</p></div>' +
+                '<div style="display:flex; gap:0.6rem; flex-wrap:wrap;">' +
                     '<button class="btn btn-outline btn-sm" onclick="showBdmLeads()">🔄 Refresh</button>' +
+                    '<button class="btn btn-outline btn-sm" onclick="window._leadExcel()">📥 Download Excel</button>' +
                     (isBdm ? '<button class="btn btn-primary" onclick="window._leadForm()">➕ Add Lead</button>' : '') +
                 '</div>' +
             '</div>' +
@@ -147,9 +148,11 @@
             '<div class="card" style="padding:1.25rem;">' +
                 '<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;">' +
                     '<input id="leadFilter" class="form-control" placeholder="🔍 Filter by name / company / country…" style="max-width:300px;" oninput="window._leadFilter()">' +
+                    (isBdm ? '' : bdmFilterHtml()) +
                 '</div>' +
                 '<div style="overflow-x:auto;">' +
                     '<table class="data-table"><thead><tr>' +
+                        (isBdm ? '' : '<th>BDM</th>') +
                         '<th>Lead</th><th>Country</th><th>Company</th><th>Work Profile</th>' +
                         '<th>Status</th><th>Follow-up</th><th>Remarks</th><th></th>' +
                     '</tr></thead><tbody id="leadRows"></tbody></table>' +
@@ -162,7 +165,8 @@
         var tbody = document.getElementById('leadRows');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#64748b; padding:2rem;">No leads yet. Click ➕ Add Lead to record your first prospect.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="' + (role() === 'bdm' ? 8 : 9) + '" style="text-align:center; color:#64748b; padding:2rem;">' +
+                (role() === 'bdm' ? 'No leads yet. Click ➕ Add Lead to record your first prospect.' : 'No leads recorded by the BDM team yet.') + '</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(function (l) {
@@ -177,10 +181,12 @@
                 fu = '<span style="color:#94a3b8;">—</span>';
             }
             return '<tr' + (l.followUpDue ? ' style="background:rgba(245,158,11,0.05);"' : '') + '>' +
+                (role() === 'bdm' ? '' : '<td style="font-size:0.82rem; font-weight:600;">' + esc(l.createdByName || '—') + '</td>') +
                 '<td><strong>' + esc(l.leadName) + '</strong>' +
-                    '<div style="font-size:0.72rem; color:#94a3b8;">' + fmtDate(l.createdAt) + (l.createdByName && role() !== 'bdm' ? ' · ' + esc(l.createdByName) : '') + '</div></td>' +
+                    '<div style="font-size:0.72rem; color:#94a3b8;">' + fmtDate(l.createdAt) + '</div></td>' +
                 '<td>' + esc(l.country || '—') + '</td>' +
-                '<td>' + esc(l.company || '—') + '</td>' +
+                '<td>' + esc(l.company || '—') +
+                    (l.phone ? '<div style="font-size:0.74rem; color:#64748b;">📞 ' + esc(l.phone) + '</div>' : '') + '</td>' +
                 '<td style="font-size:0.82rem;">' + esc(l.workProfile || '—') + '</td>' +
                 '<td>' + statusPill(l.status) + '</td>' +
                 '<td style="white-space:nowrap;">' + fu + '</td>' +
@@ -194,11 +200,71 @@
         }).join('');
     }
 
-    window._leadFilter = function () {
+    function bdmFilterHtml() {
+        var names = {};
+        (_cache.leads || []).forEach(function (l) { if (l.createdByName) names[l.createdByName] = 1; });
+        var opts = Object.keys(names).sort().map(function (n) {
+            return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+        }).join('');
+        return '<select id="leadBdmFilter" class="form-control" style="max-width:220px;" onchange="window._leadFilter()">' +
+            '<option value="">All BDMs</option>' + opts + '</select>';
+    }
+
+    function filteredLeads() {
         var q = ((document.getElementById('leadFilter') || {}).value || '').toLowerCase();
-        renderRows((_cache.leads || []).filter(function (l) {
+        var bdm = ((document.getElementById('leadBdmFilter') || {}).value || '');
+        return (_cache.leads || []).filter(function (l) {
+            if (bdm && l.createdByName !== bdm) return false;
             return !q || (l.leadName + ' ' + l.company + ' ' + l.country + ' ' + l.workProfile).toLowerCase().indexOf(q) !== -1;
-        }));
+        });
+    }
+
+    window._leadFilter = function () { renderRows(filteredLeads()); };
+
+    // ── Excel download — the rows currently visible (filters applied) ──
+    // Uses the SheetJS build the app already ships for BDM Analytics;
+    // falls back to CSV (which Excel opens) if it ever fails to load.
+    window._leadExcel = function () {
+        var list = filteredLeads();
+        if (!list.length) { alert('No leads to export.'); return; }
+        var mgmt = role() !== 'bdm';
+        var header = (mgmt ? ['BDM'] : []).concat([
+            'Lead Name', 'Country', 'Company', 'Phone', 'Work Profile',
+            'Status', 'Follow-up Date', 'Follow-up State', 'Remarks', 'Created'
+        ]);
+        var rows = list.map(function (l) {
+            var fu = l.followUpDue ? 'DUE' : (l.followUpDone ? 'Done' : (l.followUpAt ? 'Scheduled' : '—'));
+            var meta = STATUS_META[l.status] || STATUS_META.new;
+            return (mgmt ? [l.createdByName || ''] : []).concat([
+                l.leadName || '', l.country || '', l.company || '', l.phone || '',
+                l.workProfile || '', meta.label,
+                l.followUpAt ? fmtDate(l.followUpAt) : '', fu,
+                l.remarks || '', fmtDate(l.createdAt)
+            ]);
+        });
+        var fname = (mgmt ? 'West-EPCM_Lead-Report_' : 'West-EPCM_My-Leads_') +
+            new Date().toISOString().split('T')[0];
+        try {
+            if (typeof XLSX === 'undefined') throw new Error('XLSX not loaded');
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.aoa_to_sheet([header].concat(rows));
+            ws['!cols'] = header.map(function (h, i) {
+                var w = h.length;
+                rows.forEach(function (r) { w = Math.max(w, String(r[i] || '').length); });
+                return { wch: Math.min(w + 2, 50) };
+            });
+            XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+            XLSX.writeFile(wb, fname + '.xlsx');
+        } catch (err) {
+            console.warn(TAG, 'xlsx failed, falling back to CSV:', err.message);
+            var csv = [header].concat(rows).map(function (r) {
+                return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+            }).join('\r\n');
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+            a.download = fname + '.csv';
+            document.body.appendChild(a); a.click(); a.remove();
+        }
     };
 
     // ── Add / edit modal ────────────────────────────────────────────────
@@ -224,8 +290,12 @@
                         '<div class="form-group"><label>Work Profile</label>' +
                             selectHtml('leadProfile', WORK_PROFILES, lead ? lead.workProfile : '', 'Select profile…') + '</div>' +
                     '</div>' +
-                    '<div class="form-group"><label>Company</label>' +
-                        '<input id="leadCompany" class="form-control" maxlength="160" value="' + esc(lead ? lead.company : '') + '" placeholder="Company / organisation"></div>' +
+                    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.9rem;">' +
+                        '<div class="form-group"><label>Company</label>' +
+                            '<input id="leadCompany" class="form-control" maxlength="160" value="' + esc(lead ? lead.company : '') + '" placeholder="Company / organisation"></div>' +
+                        '<div class="form-group"><label>Phone Number</label>' +
+                            '<input id="leadPhone" class="form-control" type="tel" maxlength="40" value="' + esc(lead ? lead.phone : '') + '" placeholder="+91 98765 43210"></div>' +
+                    '</div>' +
                     (lead ? '<div class="form-group"><label>Status</label>' +
                         '<select id="leadStatus" class="form-control">' +
                             Object.keys(STATUS_META).map(function (k) {
@@ -261,6 +331,7 @@
             leadName: val('leadName').trim(),
             country: val('leadCountry'),
             company: val('leadCompany').trim(),
+            phone: val('leadPhone').trim(),
             workProfile: val('leadProfile'),
             remarks: val('leadRemarks').trim()
         };
@@ -372,8 +443,9 @@
         var li = document.createElement('li');
         li.id = 'bdmLeadsNavItem';
         li.style.display = 'block';
+        var navLabel = role() === 'bdm' ? 'Leads' : 'Lead Reports';
         li.innerHTML = '<a href="#" id="nav-bdm-leads" onclick="showBdmLeads(); return false;">' +
-            '<span class="nav-icon">🎯</span>Leads</a>';
+            '<span class="nav-icon">🎯</span>' + navLabel + '</a>';
         ul.appendChild(li);
         console.log(TAG, 'nav injected');
         return true;

@@ -134,7 +134,7 @@
                 '<p class="subtitle">' + (isBdm ? 'Prospects and follow-ups.' : 'Every lead recorded by the BDM team, with follow-up status.') + '</p></div>' +
                 '<div style="display:flex; gap:0.6rem; flex-wrap:wrap;">' +
                     '<button class="btn btn-outline btn-sm" onclick="showBdmLeads()">🔄 Refresh</button>' +
-                    '<button class="btn btn-outline btn-sm" onclick="window._leadExcel()">📥 Download Excel</button>' +
+                    (isBdm ? '' : '<button class="btn btn-outline btn-sm" onclick="window._leadExcel()">📥 Download Excel</button>') +
                     (isBdm ? '<button class="btn btn-primary" onclick="window._leadForm()">➕ Add Lead</button>' : '') +
                 '</div>' +
             '</div>' +
@@ -145,58 +145,118 @@
                 statCard(s.open || 0, '📂 Open') +
                 statCard(s.won || 0, '🏆 Won', '#059669') +
             '</div>' +
-            '<div class="card" style="padding:1.25rem;">' +
-                '<div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;">' +
+            '<div class="card" style="padding:1.25rem 1.25rem 0.6rem;">' +
+                '<div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.6rem;">' +
                     '<input id="leadFilter" class="form-control" placeholder="🔍 Filter by name / company / country…" style="max-width:300px;" oninput="window._leadFilter()">' +
                     (isBdm ? '' : bdmFilterHtml()) +
                 '</div>' +
-                '<div style="overflow-x:auto;">' +
-                    '<table class="data-table"><thead><tr>' +
-                        (isBdm ? '' : '<th>BDM</th>') +
-                        '<th>Lead</th><th>Country</th><th>Company</th><th>Work Profile</th>' +
-                        '<th>Status</th><th>Follow-up</th><th>Remarks</th><th></th>' +
-                    '</tr></thead><tbody id="leadRows"></tbody></table>' +
-                '</div>' +
-            '</div>';
-        renderRows(_cache.leads || []);
+            '</div>' +
+            '<div id="leadTableArea" style="margin-top:1rem;"></div>';
+        renderTables();
     }
 
-    function renderRows(list) {
-        var tbody = document.getElementById('leadRows');
-        if (!tbody) return;
+    function leadTableHtml(list, withEmptyText) {
+        var head = '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>' +
+            '<th>Lead</th><th>Country</th><th>Company</th><th>Work Profile</th>' +
+            '<th>Status</th><th>Follow-up</th><th>📎 Files</th><th>Remarks</th><th></th>' +
+            '</tr></thead><tbody>';
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="' + (role() === 'bdm' ? 8 : 9) + '" style="text-align:center; color:#64748b; padding:2rem;">' +
-                (role() === 'bdm' ? 'No leads yet. Click ➕ Add Lead to record your first prospect.' : 'No leads recorded by the BDM team yet.') + '</td></tr>';
+            return head + '<tr><td colspan="9" style="text-align:center; color:#64748b; padding:1.6rem;">' +
+                esc(withEmptyText) + '</td></tr></tbody></table></div>';
+        }
+        return head + list.map(leadRowHtml).join('') + '</tbody></table></div>';
+    }
+
+    // Attachment / share-link cell: everything the BDM uploaded with the
+    // entry, viewable by management with one click.
+    function leadFilesHtml(l) {
+        var bits = [];
+        if (l.fileUrl) {
+            bits.push('<a href="' + esc(l.fileUrl) + '" target="_blank" rel="noopener" title="' + esc(l.fileName || 'Attached file') + '" ' +
+                'style="display:inline-flex; align-items:center; gap:4px; font-size:0.74rem; font-weight:700; color:#0e7490; text-decoration:none; background:rgba(34,199,240,0.10); padding:3px 9px; border-radius:10px;">📎 ' +
+                esc((l.fileName || 'File').length > 18 ? (l.fileName || 'File').slice(0, 16) + '…' : (l.fileName || 'File')) + '</a>');
+        }
+        if (l.shareLink) {
+            bits.push('<a href="' + esc(l.shareLink) + '" target="_blank" rel="noopener" title="' + esc(l.shareLink) + '" ' +
+                'style="display:inline-flex; align-items:center; gap:4px; font-size:0.74rem; font-weight:700; color:#7e22ce; text-decoration:none; background:rgba(168,85,247,0.10); padding:3px 9px; border-radius:10px;">🔗 Link</a>');
+        }
+        return bits.length ? '<div style="display:flex; flex-direction:column; gap:4px;">' + bits.join('') + '</div>' : '<span style="color:#94a3b8;">—</span>';
+    }
+
+    function leadRowHtml(l) {
+        var fu;
+        if (l.followUpDue) {
+            fu = '<span style="font-size:0.62rem; font-weight:800; letter-spacing:0.6px; padding:3px 9px; border-radius:10px; background:rgba(239,68,68,0.12); color:#dc2626;">🔔 DUE ' + fmtDate(l.followUpAt) + '</span>';
+        } else if (l.followUpAt && !l.followUpDone) {
+            fu = '<span style="color:#64748b; font-size:0.78rem;">⏳ ' + fmtDate(l.followUpAt) + '</span>';
+        } else if (l.followUpDone) {
+            fu = '<span style="color:#059669; font-size:0.78rem;">✔ done</span>';
+        } else {
+            fu = '<span style="color:#94a3b8;">—</span>';
+        }
+        return '<tr' + (l.followUpDue ? ' style="background:rgba(245,158,11,0.05);"' : '') + '>' +
+            '<td><strong>' + esc(l.leadName) + '</strong>' +
+                '<div style="font-size:0.72rem; color:#94a3b8;">' + fmtDate(l.createdAt) + '</div></td>' +
+            '<td>' + esc(l.country || '—') + '</td>' +
+            '<td>' + esc(l.company || '—') +
+                (l.phone ? '<div style="font-size:0.74rem; color:#64748b;">📞 ' + esc(l.phone) + '</div>' : '') + '</td>' +
+            '<td style="font-size:0.82rem;">' + esc(l.workProfile || '—') + '</td>' +
+            '<td>' + statusPill(l.status) + '</td>' +
+            '<td style="white-space:nowrap;">' + fu + '</td>' +
+            '<td>' + leadFilesHtml(l) + '</td>' +
+            '<td style="max-width:200px;"><div style="font-size:0.78rem; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + esc(l.remarks) + '">' + esc(l.remarks || '—') + '</div></td>' +
+            '<td style="white-space:nowrap;">' +
+                (l.followUpDue ? '<button class="btn btn-success btn-sm" title="Mark follow-up done" onclick="window._leadDone(\'' + esc(l.id) + '\')">✔</button> ' : '') +
+                '<button class="btn btn-outline btn-sm" title="Edit" onclick="window._leadForm(\'' + esc(l.id) + '\')">✏️</button> ' +
+                '<button class="btn btn-danger btn-sm" title="Delete" onclick="window._leadDelete(\'' + esc(l.id) + '\')">🗑️</button>' +
+            '</td>' +
+        '</tr>';
+    }
+
+    // BDM: one table. Management: one professional section per BDM —
+    // header strip with the BDM's name, lead count and due count, then
+    // that BDM's own table underneath.
+    function renderTables() {
+        var area = document.getElementById('leadTableArea');
+        if (!area) return;
+        var list = filteredLeads();
+
+        if (role() === 'bdm') {
+            area.innerHTML = '<div class="card" style="padding:1.25rem;">' +
+                leadTableHtml(list, 'No leads yet. Click ➕ Add Lead to record your first prospect.') + '</div>';
             return;
         }
-        tbody.innerHTML = list.map(function (l) {
-            var fu;
-            if (l.followUpDue) {
-                fu = '<span style="font-size:0.62rem; font-weight:800; letter-spacing:0.6px; padding:3px 9px; border-radius:10px; background:rgba(239,68,68,0.12); color:#dc2626;">🔔 DUE ' + fmtDate(l.followUpAt) + '</span>';
-            } else if (l.followUpAt && !l.followUpDone) {
-                fu = '<span style="color:#64748b; font-size:0.78rem;">⏳ ' + fmtDate(l.followUpAt) + '</span>';
-            } else if (l.followUpDone) {
-                fu = '<span style="color:#059669; font-size:0.78rem;">✔ done</span>';
-            } else {
-                fu = '<span style="color:#94a3b8;">—</span>';
-            }
-            return '<tr' + (l.followUpDue ? ' style="background:rgba(245,158,11,0.05);"' : '') + '>' +
-                (role() === 'bdm' ? '' : '<td style="font-size:0.82rem; font-weight:600;">' + esc(l.createdByName || '—') + '</td>') +
-                '<td><strong>' + esc(l.leadName) + '</strong>' +
-                    '<div style="font-size:0.72rem; color:#94a3b8;">' + fmtDate(l.createdAt) + '</div></td>' +
-                '<td>' + esc(l.country || '—') + '</td>' +
-                '<td>' + esc(l.company || '—') +
-                    (l.phone ? '<div style="font-size:0.74rem; color:#64748b;">📞 ' + esc(l.phone) + '</div>' : '') + '</td>' +
-                '<td style="font-size:0.82rem;">' + esc(l.workProfile || '—') + '</td>' +
-                '<td>' + statusPill(l.status) + '</td>' +
-                '<td style="white-space:nowrap;">' + fu + '</td>' +
-                '<td style="max-width:220px;"><div style="font-size:0.78rem; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + esc(l.remarks) + '">' + esc(l.remarks || '—') + '</div></td>' +
-                '<td style="white-space:nowrap;">' +
-                    (l.followUpDue ? '<button class="btn btn-success btn-sm" title="Mark follow-up done" onclick="window._leadDone(\'' + esc(l.id) + '\')">✔</button> ' : '') +
-                    '<button class="btn btn-outline btn-sm" title="Edit" onclick="window._leadForm(\'' + esc(l.id) + '\')">✏️</button> ' +
-                    '<button class="btn btn-danger btn-sm" title="Delete" onclick="window._leadDelete(\'' + esc(l.id) + '\')">🗑️</button>' +
-                '</td>' +
-            '</tr>';
+
+        if (!list.length) {
+            area.innerHTML = '<div class="card" style="padding:2rem; text-align:center; color:#64748b;">No leads recorded by the BDM team yet.</div>';
+            return;
+        }
+        var byBdm = {};
+        var order = [];
+        list.forEach(function (l) {
+            var n = l.createdByName || 'Unknown BDM';
+            if (!byBdm[n]) { byBdm[n] = []; order.push(n); }
+            byBdm[n].push(l);
+        });
+        order.sort();
+        area.innerHTML = order.map(function (n) {
+            var rows = byBdm[n];
+            var due = rows.filter(function (l) { return l.followUpDue; }).length;
+            var won = rows.filter(function (l) { return l.status === 'won'; }).length;
+            return '<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.25rem;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; padding:0.9rem 1.25rem; background:linear-gradient(135deg, rgba(14,116,144,0.08), rgba(34,199,240,0.05)); border-bottom:1px solid #e6ebf2;">' +
+                    '<div style="display:flex; align-items:center; gap:0.7rem;">' +
+                        '<div style="width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#22c7f0,#0e9ed1); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;">' + esc(n.charAt(0).toUpperCase()) + '</div>' +
+                        '<div><div style="font-weight:800; color:#0f172a;">' + esc(n) + '</div>' +
+                        '<div style="font-size:0.72rem; color:#64748b;">' + rows.length + ' lead' + (rows.length === 1 ? '' : 's') + '</div></div>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.5rem;">' +
+                        (due ? '<span style="font-size:0.66rem; font-weight:800; padding:3px 10px; border-radius:10px; background:rgba(239,68,68,0.12); color:#dc2626;">🔔 ' + due + ' DUE</span>' : '') +
+                        (won ? '<span style="font-size:0.66rem; font-weight:800; padding:3px 10px; border-radius:10px; background:rgba(16,185,129,0.14); color:#059669;">🏆 ' + won + ' WON</span>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div style="padding:0.8rem 1.25rem 1.1rem;">' + leadTableHtml(rows, '') + '</div>' +
+            '</div>';
         }).join('');
     }
 
@@ -219,7 +279,7 @@
         });
     }
 
-    window._leadFilter = function () { renderRows(filteredLeads()); };
+    window._leadFilter = function () { renderTables(); };
 
     // ── Excel download — the rows currently visible (filters applied) ──
     // Uses the SheetJS build the app already ships for BDM Analytics;
@@ -230,7 +290,8 @@
         var mgmt = role() !== 'bdm';
         var header = (mgmt ? ['BDM'] : []).concat([
             'Lead Name', 'Country', 'Company', 'Phone', 'Work Profile',
-            'Status', 'Follow-up Date', 'Follow-up State', 'Remarks', 'Created'
+            'Status', 'Follow-up Date', 'Follow-up State', 'Remarks',
+            'Attached File', 'Share Link', 'Created'
         ]);
         var rows = list.map(function (l) {
             var fu = l.followUpDue ? 'DUE' : (l.followUpDone ? 'Done' : (l.followUpAt ? 'Scheduled' : '—'));
@@ -239,7 +300,7 @@
                 l.leadName || '', l.country || '', l.company || '', l.phone || '',
                 l.workProfile || '', meta.label,
                 l.followUpAt ? fmtDate(l.followUpAt) : '', fu,
-                l.remarks || '', fmtDate(l.createdAt)
+                l.remarks || '', l.fileUrl || '', l.shareLink || '', fmtDate(l.createdAt)
             ]);
         });
         var fname = (mgmt ? 'West-EPCM_Lead-Report_' : 'West-EPCM_My-Leads_') +
@@ -304,6 +365,15 @@
                         '</select></div>' : '') +
                     '<div class="form-group"><label>Remarks</label>' +
                         '<textarea id="leadRemarks" class="form-control" rows="3" maxlength="2000" placeholder="Discussion notes, requirements, next steps…">' + esc(lead ? lead.remarks : '') + '</textarea></div>' +
+                    '<div class="form-group"><label>🔗 Share Link (optional)</label>' +
+                        '<input id="leadShareLink" class="form-control" type="url" maxlength="500" value="' + esc(lead ? lead.shareLink : '') + '" placeholder="https://drive.google.com/… or any document link">' +
+                        '<div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem;">Paste a Drive / OneDrive / SharePoint link — COO &amp; Director can open it from Lead Reports.</div></div>' +
+                    '<div class="form-group"><label>📎 Attach Excel (optional)</label>' +
+                        '<input id="leadFile" class="form-control" type="file" accept=".xls,.xlsx,.csv,.pdf">' +
+                        (lead && lead.fileName
+                            ? '<div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem;">Current file: <b>' + esc(lead.fileName) + '</b> — choose a new file to replace it.</div>'
+                            : '<div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem;">Excel, CSV or PDF up to 20 MB. Viewable by COO &amp; Director alongside this lead.</div>') +
+                    '</div>' +
                     '<div class="form-group"><label>🔔 Follow-up Reminder</label>' +
                         '<select id="leadFollowUp" class="form-control">' +
                             '<option value="0">No reminder</option>' +
@@ -333,9 +403,13 @@
             company: val('leadCompany').trim(),
             phone: val('leadPhone').trim(),
             workProfile: val('leadProfile'),
-            remarks: val('leadRemarks').trim()
+            remarks: val('leadRemarks').trim(),
+            shareLink: val('leadShareLink').trim()
         };
         if (!body.leadName) { alert('Please enter the lead name.'); return; }
+        if (body.shareLink && !/^https?:\/\//i.test(body.shareLink)) {
+            alert('The share link must start with http:// or https://'); return;
+        }
         var st = document.getElementById('leadStatus');
         if (st) body.status = st.value;
         var fu = parseInt(val('leadFollowUp'), 10) || 0;
@@ -343,11 +417,23 @@
         // sending 0 would clear an existing reminder they didn't touch.
         if (!id || fu > 0) body.followUpWeeks = fu;
 
+        // A picked file switches the request to multipart; apiCall already
+        // leaves Content-Type alone for FormData so the boundary survives.
+        var fileEl = document.getElementById('leadFile');
+        var payload;
+        if (fileEl && fileEl.files && fileEl.files.length) {
+            payload = new FormData();
+            Object.keys(body).forEach(function (k) { payload.append(k, body[k]); });
+            payload.append('leadFile', fileEl.files[0]);
+        } else {
+            payload = JSON.stringify(body);
+        }
+
         btn.disabled = true;
         try {
             var resp = await window.apiCall('leads' + (id ? '?id=' + encodeURIComponent(id) : ''), {
                 method: id ? 'PUT' : 'POST',
-                body: JSON.stringify(body)
+                body: payload
             });
             if (resp && resp.success) {
                 btn.closest('.modal-overlay').remove();

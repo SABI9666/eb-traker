@@ -199,7 +199,8 @@
                 '<div style="font-size:0.72rem; color:#94a3b8;">' + fmtDate(l.createdAt) + '</div></td>' +
             '<td>' + esc(l.country || '—') + '</td>' +
             '<td>' + esc(l.company || '—') +
-                (l.phone ? '<div style="font-size:0.74rem; color:#64748b;">📞 ' + esc(l.phone) + '</div>' : '') + '</td>' +
+                (l.phone ? '<div style="font-size:0.74rem; color:#64748b;">📞 ' + esc(l.phone) + '</div>' : '') +
+                (l.email ? '<div style="font-size:0.74rem;"><a href="mailto:' + esc(l.email) + '" style="color:#0e7490; text-decoration:none;">✉️ ' + esc(l.email) + '</a></div>' : '') + '</td>' +
             '<td style="font-size:0.82rem;">' + esc(l.workProfile || '—') + '</td>' +
             '<td>' + statusPill(l.status) + '</td>' +
             '<td style="white-space:nowrap;">' + fu + '</td>' +
@@ -289,7 +290,7 @@
         if (!list.length) { alert('No leads to export.'); return; }
         var mgmt = role() !== 'bdm';
         var header = (mgmt ? ['BDM'] : []).concat([
-            'Lead Name', 'Country', 'Company', 'Phone', 'Work Profile',
+            'Lead Name', 'Country', 'Company', 'Phone', 'Email', 'Work Profile',
             'Status', 'Follow-up Date', 'Follow-up State', 'Remarks',
             'Attached File', 'Share Link', 'Created'
         ]);
@@ -298,7 +299,7 @@
             var meta = STATUS_META[l.status] || STATUS_META.new;
             return (mgmt ? [l.createdByName || ''] : []).concat([
                 l.leadName || '', l.country || '', l.company || '', l.phone || '',
-                l.workProfile || '', meta.label,
+                l.email || '', l.workProfile || '', meta.label,
                 l.followUpAt ? fmtDate(l.followUpAt) : '', fu,
                 l.remarks || '', l.fileUrl || '', l.shareLink || '', fmtDate(l.createdAt)
             ]);
@@ -357,6 +358,8 @@
                         '<div class="form-group"><label>Phone Number</label>' +
                             '<input id="leadPhone" class="form-control" type="tel" maxlength="40" value="' + esc(lead ? lead.phone : '') + '" placeholder="+91 98765 43210"></div>' +
                     '</div>' +
+                    '<div class="form-group"><label>✉️ Email ID</label>' +
+                        '<input id="leadEmail" class="form-control" type="email" maxlength="160" value="' + esc(lead ? lead.email : '') + '" placeholder="contact@company.com"></div>' +
                     (lead ? '<div class="form-group"><label>Status</label>' +
                         '<select id="leadStatus" class="form-control">' +
                             Object.keys(STATUS_META).map(function (k) {
@@ -402,11 +405,15 @@
             country: val('leadCountry'),
             company: val('leadCompany').trim(),
             phone: val('leadPhone').trim(),
+            email: val('leadEmail').trim(),
             workProfile: val('leadProfile'),
             remarks: val('leadRemarks').trim(),
             shareLink: val('leadShareLink').trim()
         };
         if (!body.leadName) { alert('Please enter the lead name.'); return; }
+        if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+            alert('Please enter a valid email address (e.g. contact@company.com).'); return;
+        }
         if (body.shareLink && !/^https?:\/\//i.test(body.shareLink)) {
             alert('The share link must start with http:// or https://'); return;
         }

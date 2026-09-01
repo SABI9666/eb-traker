@@ -50,8 +50,21 @@
     var GUARANTEED_REPORTS = {
         'Lead Reports': { icon: '🎯', group: 'Business Development', groupIcon: '💼', fn: 'showBdmLeads' }
     };
+    // Same guarantee for ordinary phase tools (not reports): rendered as a
+    // first-class tile in their phase even when the sidebar item is hidden
+    // for this role or injected after the hub read the menu.
+    var GUARANTEED_PHASE_TOOLS = {
+        corporate: [
+            { label: 'Sample Projects', icon: '🖼️', fn: 'showSampleProjects' }
+        ]
+    };
     window._hubRun = function (label) {
         var t = GUARANTEED_REPORTS[label];
+        if (!t) {
+            Object.keys(GUARANTEED_PHASE_TOOLS).forEach(function (k) {
+                GUARANTEED_PHASE_TOOLS[k].forEach(function (x) { if (x.label === label) t = x; });
+            });
+        }
         if (!t || typeof window[t.fn] !== 'function') return;
         setNav('tool', { label: label });
         window[t.fn]();
@@ -122,6 +135,11 @@
                 d.items.forEach(function (it) {
                     if (ITEM_OVERRIDES[it.label] === p.key) items.push(it);
                 });
+            });
+            (GUARANTEED_PHASE_TOOLS[p.key] || []).forEach(function (t) {
+                if (typeof window[t.fn] !== 'function') return; // its patch not loaded
+                var present = items.some(function (it) { return it.label === t.label; });
+                if (!present) items.push({ icon: t.icon, label: t.label, badge: '', run: true });
             });
             return { key: p.key, name: p.name, icon: p.icon, tag: p.tag, items: items };
         }).filter(function (p) { return p.items.length; });

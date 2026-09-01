@@ -271,6 +271,8 @@
         { id: '_accountVariationPatchScript', src: 'account-variation-patch.js' },
         // BDM lead register with follow-up reminders (api/leads.js).
         { id: '_bdmLeadsPatchScript', src: 'bdm-leads-patch.js' },
+        // Sample project HTML showcase gallery (api/sample-projects.js).
+        { id: '_sampleProjectsPatchScript', src: 'sample-projects-patch.js' },
         // Tekla Structures model reports for COO/Director portal.
         // Companion to api/tekla-reports.js (see TEKLA_INTEGRATION.md).
         { id: '_teklaReportsPatchScript', src: 'tekla-reports-patch.js' },
@@ -283,7 +285,7 @@
         s.id  = p.id;
         // Bump on every change to any *-patch.js so browsers fetch a fresh
         // copy instead of serving the previously cached ?v= URL.
-        var APP_PATCH_VERSION = 'v72';
+        var APP_PATCH_VERSION = 'v73';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

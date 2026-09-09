@@ -8,21 +8,24 @@
     if (window._managementHubSalesWrapperLoaded) return;
     window._managementHubSalesWrapperLoaded = true;
 
-    var CORE_SRC = 'management-hub-core.js?v=corporate-sales-v1';
+    var CORE_SRC = 'management-hub-core.js?v=corporate-sales-v2';
     var SALES_LABELS = {
-        'BDM Analytics': { key: 'analytics', display: 'BDM Analytics', icon: '📊', fn: 'showBdmAnalytics' },
+        'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
+        'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },
+        'BDM Analytics': { key: 'bdmAnalytics', display: 'BDM Analytics', icon: '📊', fn: 'showBdmAnalytics' },
         'Upload Quote / Won': { key: 'quotes', display: 'Upload Quotes', icon: '📝', fn: 'showBdmEntries' },
         'Upload Quote Entry': { key: 'quotes', display: 'Upload Quotes', icon: '📝', fn: 'showBdmEntries' },
         'Lead Reports': { key: 'leads', display: 'Lead Reports', icon: '🎯', fn: 'showBdmLeads' },
         'Sample Projects': { key: 'samples', display: 'Sample Projects', icon: '🖼️', fn: 'showSampleProjects' }
     };
 
+    var SALES_ORDER = ['proposals', 'quotes', 'analytics', 'bdmAnalytics', 'leads', 'samples'];
     var salesState = { tiles: [] };
 
     function esc(v) {
         return String(v == null ? '' : v)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+            .replace(/\"/g, '&quot;');
     }
 
     function tileLabel(tile) {
@@ -90,12 +93,12 @@
             tile.remove();
         });
 
-        // Always expose the four requested Sales tools. If an asynchronously
+        // Always expose the requested Sales tools. If an asynchronously
         // injected sidebar item is not ready yet, use its direct view function.
-        ['analytics', 'quotes', 'leads', 'samples'].forEach(function (key) {
+        SALES_ORDER.forEach(function (key) {
             if (!found[key]) found[key] = fallbackTile(metaByKey(key));
         });
-        salesState.tiles = ['analytics', 'quotes', 'leads', 'samples'].map(function (key) { return found[key]; });
+        salesState.tiles = SALES_ORDER.map(function (key) { return found[key]; });
 
         var salesTile = document.createElement('div');
         salesTile.className = 'glass-surface hub-tile';
@@ -103,7 +106,7 @@
         salesTile.innerHTML =
             '<div class="hub-tile__icon">💼</div>' +
             '<div class="hub-tile__label">Sales</div>' +
-            '<div style="margin-top:0.35rem;color:#9fb0c4;font-size:0.72rem;">4 tools</div>';
+            '<div style="margin-top:0.35rem;color:#9fb0c4;font-size:0.72rem;">6 tools</div>';
 
         // Sales appears first in Corporate, followed by the remaining HR/IT/Admin tools.
         if (grid.firstChild) grid.insertBefore(salesTile, grid.firstChild);

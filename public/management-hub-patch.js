@@ -1,15 +1,16 @@
 // management-hub-patch.js
 // Compatibility loader for the original COO/Director management hub plus
-// Corporate > Sales and Corporate > People grouping. The original
-// implementation is preserved in management-hub-core.js; this wrapper only
-// changes the Corporate drill-down.
+// Corporate > Sales and Corporate > People grouping, and the frontend-only
+// Procurement > Purchase Management prototype. The original implementation
+// is preserved in management-hub-core.js.
 (function () {
     'use strict';
 
     if (window._managementHubSalesWrapperLoaded) return;
     window._managementHubSalesWrapperLoaded = true;
 
-    var CORE_SRC = 'management-hub-core.js?v=corporate-groups-v3';
+    var CORE_SRC = 'management-hub-core.js?v=corporate-groups-v4';
+    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-ui-v1';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
         'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },
@@ -134,6 +135,26 @@
         }
     }
 
+    function ensurePurchaseTile() {
+        var main = document.getElementById('mainContent');
+        var grid = main && main.querySelector('.hub-tilegrid');
+        if (!grid || typeof window.showPurchaseManagement !== 'function') return;
+        var exists = false;
+        Array.prototype.slice.call(grid.children).forEach(function (tile) {
+            if (tileLabel(tile) === 'Purchase Management') exists = true;
+        });
+        if (exists) return;
+        var tile = document.createElement('div');
+        tile.className = 'glass-surface hub-tile';
+        tile.setAttribute('onclick', 'window.showPurchaseManagement()');
+        tile.innerHTML =
+            '<div class="hub-tile__icon">🛒</div>' +
+            '<div class="hub-tile__label">Purchase Management</div>' +
+            '<div style="margin-top:0.35rem;color:#9fb0c4;font-size:0.72rem;">RFQ · Vendors · PO · Delivery</div>';
+        if (grid.firstChild) grid.insertBefore(tile, grid.firstChild);
+        else grid.appendChild(tile);
+    }
+
     function renderGroup(title, icon, subtitle, tiles, marker) {
         var main = document.getElementById('mainContent');
         if (!main) return;
@@ -159,6 +180,10 @@
         var wrapped = function (key) {
             var result = originalOpenPhase.apply(this, arguments);
             if (key === 'corporate') groupCorporateTools();
+            if (key === 'procurement') {
+                ensurePurchaseTile();
+                setTimeout(ensurePurchaseTile, 250);
+            }
             return result;
         };
         wrapped._corporateSalesWrapped = true;
@@ -179,7 +204,23 @@
         return true;
     }
 
+    function loadPurchasePrototype() {
+        if (document.getElementById('_purchaseManagementPatchScript')) return;
+        var s = document.createElement('script');
+        s.id = '_purchaseManagementPatchScript';
+        s.src = PURCHASE_SRC;
+        s.async = true;
+        s.onload = function () {
+            var fc = document.getElementById('mainContent');
+            fc = fc && fc.firstElementChild;
+            if (fc && fc.getAttribute('data-hub-view') === 'phase') setTimeout(ensurePurchaseTile, 50);
+        };
+        s.onerror = function () { console.warn('[management-hub] Purchase prototype failed to load'); };
+        (document.head || document.documentElement).appendChild(s);
+    }
+
     function loadCore() {
+        loadPurchasePrototype();
         if (window._managementHubCoreLoading) return;
         window._managementHubCoreLoading = true;
         var s = document.createElement('script');

@@ -9,7 +9,7 @@
     if (window._managementHubSalesWrapperLoaded) return;
     window._managementHubSalesWrapperLoaded = true;
 
-    var CORE_SRC = 'management-hub-core.js?v=corporate-groups-v4';
+    var CORE_SRC = 'management-hub-core.js?v=estimation-report-v1';
     var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-ui-v1';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
@@ -219,10 +219,22 @@
         (document.head || document.documentElement).appendChild(s);
     }
 
+    function loadEstimationReportUI() {
+        if (document.getElementById('_estimationReportUIScript')) return;
+        var s = document.createElement('script');
+        s.id = '_estimationReportUIScript';
+        s.src = 'estimation-report-patch.js?v=1';
+        // Ordered with the core script so its report tiles are ready on first render.
+        s.async = false;
+        s.onerror = function () { console.warn('[management-hub] Estimation report UI failed to load'); };
+        (document.head || document.documentElement).appendChild(s);
+    }
+
     function loadCore() {
         loadPurchasePrototype();
         if (window._managementHubCoreLoading) return;
         window._managementHubCoreLoading = true;
+        loadEstimationReportUI();
         var s = document.createElement('script');
         s.id = '_managementHubCoreScript';
         s.src = CORE_SRC;

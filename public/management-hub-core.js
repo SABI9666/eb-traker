@@ -48,12 +48,16 @@
     // sidebar item is hidden for this role or injected after the hub read
     // the menu. Deduplicated against the live sidebar by label.
     var GUARANTEED_REPORTS = {
+        'Estimation Report Generation': { icon: '📑', group: 'Estimation & Workflow', groupIcon: '📐', fn: 'showEstimationReportGeneration', allowed: 'canSeeEstimationReports' },
         'Lead Reports': { icon: '🎯', group: 'Business Development', groupIcon: '💼', fn: 'showBdmLeads' }
     };
     // Same guarantee for ordinary phase tools (not reports): rendered as a
     // first-class tile in their phase even when the sidebar item is hidden
     // for this role or injected after the hub read the menu.
     var GUARANTEED_PHASE_TOOLS = {
+        engineering: [
+            { label: 'Estimation Report Generation', icon: '📑', fn: 'showEstimationReportGeneration', allowed: 'canSeeEstimationReports' }
+        ],
         corporate: [
             { label: 'Sample Projects', icon: '🖼️', fn: 'showSampleProjects' }
         ]
@@ -66,6 +70,7 @@
             });
         }
         if (!t || typeof window[t.fn] !== 'function') return;
+        if (t.allowed && (typeof window[t.allowed] !== 'function' || !window[t.allowed]())) return;
         setNav('tool', { label: label });
         window[t.fn]();
     };
@@ -137,6 +142,7 @@
                 });
             });
             (GUARANTEED_PHASE_TOOLS[p.key] || []).forEach(function (t) {
+                if (t.allowed && (typeof window[t.allowed] !== 'function' || !window[t.allowed]())) return;
                 if (typeof window[t.fn] !== 'function') return; // its patch not loaded
                 var present = items.some(function (it) { return it.label === t.label; });
                 if (!present) items.push({ icon: t.icon, label: t.label, badge: '', run: true });
@@ -159,6 +165,7 @@
             });
             if (present) return;
             var t = GUARANTEED_REPORTS[label];
+            if (t.allowed && (typeof window[t.allowed] !== 'function' || !window[t.allowed]())) return;
             if (typeof window[t.fn] !== 'function') return; // its patch not loaded
             var g = null;
             groups.forEach(function (x) { if (x.name === t.group) g = x; });

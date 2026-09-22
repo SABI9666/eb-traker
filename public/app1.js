@@ -54,6 +54,7 @@
 
 
         const authorizedUsers = {
+            purchase: ["anwar@edanbrook.in", "anwar1@edanbrook.in"],
             estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
             coo: ["coo@edanbrook.com", "coo2@edanbrook.com"],
             director: ["director@edanbrook.com", "ajit@edanbrook.com"],
@@ -1116,7 +1117,7 @@
                         const userDoc = await db.collection('users').doc(user.uid).get();
 
                         if (userDoc.exists) {
-                            currentUserRole = userDoc.data().role;
+                            currentUserRole = authorizedUsers.purchase.includes((user.email || '').toLowerCase()) ? 'purchase' : userDoc.data().role;
                             console.log('✅ User role:', currentUserRole);
                             console.log('🚀 Calling showApp()...');
                             showApp();
@@ -1233,7 +1234,8 @@
                     name, email, role, status: 'active',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                showMessage('Account created! Please log in.', 'success');
+                if (role === 'purchase') await cred.user.sendEmailVerification();
+                showMessage(role === 'purchase' ? 'Account created. Verify the link in your email, then log in.' : 'Account created! Please log in.', 'success');
                 showTab('login');
             } catch (error) {
                 showMessage(error.code.includes('in-use') ? 'An account with this email already exists.' : 'Registration failed.', 'error');
@@ -1456,9 +1458,20 @@
             userWelcome.textContent = `Welcome back, ${currentUser.displayName || currentUser.email}`;
             userRoleDisplay.textContent = roleForCheck.replace('_', ' ').toUpperCase();
 
+            if (authorizedUsers.purchase.includes(userEmail)) { roleForCheck = 'purchase'; currentUserRole = 'purchase'; userRoleDisplay.textContent = 'PURCHASE'; }
+            appContainer.classList.toggle('purchase-portal', roleForCheck === 'purchase');
+
             // 2. Switch Views
             loginPage.style.display = 'none';
             appContainer.style.display = 'block';
+
+            // Purchase accounts have their own workspace, not the management hub.
+            if (roleForCheck === 'purchase') {
+                appContainer.classList.remove('top-menu-mode');
+                window._pendingDeepLink = null;
+                window.showPurchaseManagement();
+                return;
+            }
 
             // 3. Set Nav Visibility based on Role
             const setDisplay = (id, visible) => {
@@ -1747,7 +1760,9 @@ showApp.retried = false;
  * Routes to the default view based on the user's role.
  */
 function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement) {
-    if (roleForCheck === 'design_lead') {
+    if (roleForCheck === 'purchase') {
+        window.showPurchaseManagement();
+    } else if (roleForCheck === 'design_lead') {
         showDesignLeadPortal();
     } else if (isDesigner) {
         showDesignerAllocations();

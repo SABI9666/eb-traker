@@ -1,7 +1,7 @@
 // management-hub-patch.js
 // Compatibility loader for the original COO/Director management hub plus
-// Corporate > Sales and Corporate > People grouping, and the frontend-only
-// Procurement > Purchase Management prototype. The original implementation
+// Corporate > Sales and Corporate > People grouping, and the persisted
+// Procurement > Purchase Management workspace. The original implementation
 // is preserved in management-hub-core.js.
 (function () {
     'use strict';
@@ -10,7 +10,7 @@
     window._managementHubSalesWrapperLoaded = true;
 
     var CORE_SRC = 'management-hub-core.js?v=estimation-report-v1';
-    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-ui-v1';
+    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-approval-v3';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
         'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },

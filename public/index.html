@@ -5692,6 +5692,7 @@ body.is-ios .nav-menu {
                                 <div class="role-btn" data-role="designer">Designer</div>
                                 <div class="role-btn" data-role="document_controller">Doc Controller</div>
                                 <div class="role-btn" data-role="accounts">Accounts</div>
+                                <div class="role-btn" data-role="purchase">Purchase</div>
                                 <div class="role-btn" data-role="hr">HR</div>
                                 <div class="role-btn" data-role="it">IT Helpdesk</div>
                             </div>
@@ -7920,6 +7921,14 @@ body.is-ios .nav-menu {
 
 
 
+    <style>
+      #appContainer.purchase-portal .sidebar,
+      #appContainer.purchase-portal .notification-bell,
+      #appContainer.purchase-portal .notification-panel { display: none !important; }
+      #appContainer.purchase-portal .main-layout { display: block; }
+      #appContainer.purchase-portal .main-content { width: 100%; margin-left: 0; box-sizing: border-box; }
+    </style>
+    <script src="/purchase-management-patch.js?v=purchase-approval-v3"></script>
     <script src="/app1.js"></script>
     <script src="/app2.js"></script>
 </body>

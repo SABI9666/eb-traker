@@ -5763,6 +5763,15 @@ body.is-ios .nav-menu {
         <div class="main-layout">
             <nav class="sidebar">
             <ul class="nav-menu">
+                <li class="nav-department" id="purchasePortalNavItem" style="display:none;">
+                    <div class="nav-dept-header"><span class="dept-icon">🛒</span>Purchase</div>
+                    <ul class="nav-dept-items">
+                        <li><a href="#purchase-management" id="nav-purchase-management">
+                            <span class="nav-icon">🛒</span>Purchase Management
+                        </a></li>
+                    </ul>
+                </li>
+
 
                 <!-- ========== BUSINESS DEVELOPMENT ========== -->
                 <li class="nav-department" id="deptBDM">
@@ -7922,14 +7931,23 @@ body.is-ios .nav-menu {
 
 
     <style>
-      #appContainer.purchase-portal .sidebar,
+      #appContainer.purchase-portal .nav-menu > :not(#purchasePortalNavItem),
       #appContainer.purchase-portal .notification-bell,
       #appContainer.purchase-portal .notification-panel { display: none !important; }
-      #appContainer.purchase-portal .main-layout { display: block; }
-      #appContainer.purchase-portal .main-content { width: 100%; margin-left: 0; box-sizing: border-box; }
+      #appContainer:not(.purchase-portal) #purchasePortalNavItem { display:none !important; }
+      #appContainer.purchase-portal #purchasePortalNavItem,
+      #appContainer.purchase-portal .sidebar { display:block !important; }
+      #appContainer.purchase-portal #purchasePortalNavItem .nav-dept-items { display:block !important; max-height:none; }
+      #appContainer.purchase-portal .main-content { min-width:0; }
+      #appContainer.purchase-portal .sidebar { flex-shrink:0; }
+      @media (max-width:768px) {
+        #appContainer.purchase-portal .main-layout { flex-direction:column; }
+        #appContainer.purchase-portal .sidebar { width:100%; min-height:0; }
+      }
     </style>
     <script src="/purchase-management-patch.js?v=purchase-approval-v3"></script>
-    <script src="/app1.js"></script>
-    <script src="/app2.js"></script>
+    <script src="/app1.js?v=purchase-nav-v4"></script>
+    <script src="/app2.js?v=purchase-nav-v4"></script>
+    <script src="/purchase-portal-navigation.js?v=purchase-nav-v4"></script>
 </body>
 </html>

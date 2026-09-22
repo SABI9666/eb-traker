@@ -64,6 +64,7 @@
             bdm: [],
             it: ["ithelpdesk@edanbrook.com","ithelpdesk1@edanbrook.com"]
         };
+        let registrationInProgress = false;
         let currentUser = null;
         let currentUserRole = '';
         let authToken = '';
@@ -1104,6 +1105,8 @@
                     }
                 }
 
+                // Firebase signs in before registration has written the user profile.
+                if (user && registrationInProgress) return;
                 if (user) {
                     currentUser = user;
                     try {
@@ -1117,7 +1120,7 @@
                         const userDoc = await db.collection('users').doc(user.uid).get();
 
                         if (userDoc.exists) {
-                            currentUserRole = authorizedUsers.purchase.includes((user.email || '').toLowerCase()) ? 'purchase' : userDoc.data().role;
+                            currentUserRole = authorizedUsers.purchase.includes((user.email || '').trim().toLowerCase()) ? 'purchase' : userDoc.data().role;
                             console.log('✅ User role:', currentUserRole);
                             console.log('🚀 Calling showApp()...');
                             showApp();
@@ -1217,10 +1220,11 @@
 
         async function handleRegister(e) {
             e.preventDefault();
+            if (registrationInProgress) return;
             const name = document.getElementById('registerName').value;
-            const email = document.getElementById('registerEmail').value.toLowerCase();
+            const email = document.getElementById('registerEmail').value.trim().toLowerCase();
             const password = document.getElementById('registerPassword').value;
-            const role = document.getElementById('selectedRole').value;
+            const role = authorizedUsers.purchase.includes(email) ? 'purchase' : document.getElementById('selectedRole').value;
 
             try {
                 clearMessages();
@@ -1228,17 +1232,20 @@
                     return showMessage(`Your email is not authorized for the ${role.replace('_', ' ').toUpperCase()} role.`, 'error');
                 }
                 showMessage('Creating account...', 'info');
+                registrationInProgress = true;
                 const cred = await auth.createUserWithEmailAndPassword(email, password);
                 await cred.user.updateProfile({ displayName: name });
                 await db.collection('users').doc(cred.user.uid).set({
                     name, email, role, status: 'active',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                if (role === 'purchase') await cred.user.sendEmailVerification();
-                showMessage(role === 'purchase' ? 'Account created. Verify the link in your email, then log in.' : 'Account created! Please log in.', 'success');
+                await auth.signOut();
+                showMessage('Account created! Please log in.', 'success');
                 showTab('login');
             } catch (error) {
-                showMessage(error.code.includes('in-use') ? 'An account with this email already exists.' : 'Registration failed.', 'error');
+                showMessage((error.code || '').includes('in-use') ? 'An account with this email already exists. Please log in.' : 'Registration failed.', 'error');
+            } finally {
+                registrationInProgress = false;
             }
         }
 

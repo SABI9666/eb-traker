@@ -128,21 +128,6 @@ async function open(id) {
 }
 window.showPurchaseManagement = () => {
     css();
-    const user = firebase.auth().currentUser;
-    if (user && ['anwar@edanbrook.in','anwar1@edanbrook.in'].includes((user.email || '').toLowerCase()) && user.emailVerified === false) {
-        const main = document.getElementById('mainContent');
-        main.innerHTML = '<div class="pm"><div class="pm-panel"><h2>Purchase portal</h2><p>Please verify your email to activate purchase access.</p><div class="pm-actions"><button class="pm-btn" id="pmVerify">Send verification email</button><button class="pm-btn primary" id="pmVerified">I have verified my email</button></div><p id="pmVerificationStatus" role="status"></p></div></div>';
-        document.getElementById('pmVerify').onclick = async e => {
-            e.target.disabled = true;
-            try { await user.sendEmailVerification(); message(document.getElementById('pmVerificationStatus'),'Verification email sent. Open its link, then click “I have verified my email”.'); }
-            catch (error) { message(document.getElementById('pmVerificationStatus'),error.message); e.target.disabled = false; }
-        };
-        document.getElementById('pmVerified').onclick = async () => {
-            try { await user.reload(); await user.getIdToken(true); if (user.emailVerified) load(); else message(document.getElementById('pmVerificationStatus'),'Email is not verified yet. Please open the verification link first.'); }
-            catch (error) { message(document.getElementById('pmVerificationStatus'),error.message); }
-        };
-        return;
-    }
     load();
 };
 window.openPurchaseRequestPreview = () => { if (role === 'purchase') open(); };

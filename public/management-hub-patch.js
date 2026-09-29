@@ -223,7 +223,7 @@
         if (document.getElementById('_estimationReportUIScript')) return;
         var s = document.createElement('script');
         s.id = '_estimationReportUIScript';
-        s.src = 'estimation-report-patch.js?v=1';
+        s.src = 'estimation-report-patch.js?v=2-extract';
         // Ordered with the core script so its report tiles are ready on first render.
         s.async = false;
         s.onerror = function () { console.warn('[management-hub] Estimation report UI failed to load'); };

@@ -1,6 +1,7 @@
 // COO/Director estimation report workspace.
-// Selected PDFs are read and parsed in the browser with pdf.js (loaded on demand
-// from cdnjs). Nothing is uploaded or stored; extraction results live only on screen.
+// Selected PDFs are read in the browser with pdf.js (loaded on demand from cdnjs).
+// If that engine cannot load, each PDF is sent to POST /api/estimation-reports/extract,
+// which extracts text in memory on the server. Nothing is stored; results live only on screen.
 (function () {
     'use strict';
     if (window._estimationReportUIReady) return;
@@ -112,6 +113,29 @@
         } finally {
             try { doc.destroy(); } catch (e) { /* ignore */ }
         }
+    }
+
+    // Server fallback: the backend returns positioned text runs as
+    // [text, x, y, width, height] tuples, rebuilt here into the same page shape.
+    async function extractFileOnServer(file, onPage) {
+        var call = typeof apiCall === 'function' ? apiCall : window.apiCall;
+        if (typeof call !== 'function') throw new Error('The PDF engine could not load and the server is unavailable.');
+        var form = new FormData();
+        form.append('file', file, file.name);
+        var resp = await call('estimation-reports/extract', { method: 'POST', body: form });
+        var data = resp && resp.data ? resp.data : resp;
+        if (!data || !Array.isArray(data.pages)) throw new Error((resp && resp.error) || 'Server extraction failed.');
+        var pages = data.pages.map(function (pg) {
+            var rows = itemsToRows((pg.items || []).map(function (i) {
+                return { str: String(i[0] || ''), transform: [i[4], 0, 0, i[4], i[1], i[2]], width: i[3] };
+            }));
+            var lines = rows.map(function (r) { return r.text; });
+            var text = lines.join('\n');
+            if (text.length > MAX_TEXT_PER_PAGE) text = text.slice(0, MAX_TEXT_PER_PAGE);
+            return { number: pg.number, widthPt: pg.widthPt, heightPt: pg.heightPt, rows: rows, lines: lines, text: text };
+        });
+        onPage(pages.length, pages.length || 1);
+        return { name: file.name, size: file.size, totalPages: data.totalPages || pages.length, truncated: !!data.truncated, meta: data.meta || {}, pages: pages, viaServer: true };
     }
 
     // ---------- parsing ----------
@@ -420,7 +444,7 @@
 </form>
 <aside class="erg-card" aria-labelledby="ergSummaryTitle">
     <h3 id="ergSummaryTitle">Report workspace</h3>
-    <div id="ergLocal" class="erg-note">PDFs are read securely in your browser. Nothing is uploaded or saved; leaving this screen clears the results.</div>
+    <div id="ergLocal" class="erg-note">PDFs are read in your browser; if the browser PDF engine is unavailable they are processed in memory by the EB server. Nothing is saved, and leaving this screen clears the results.</div>
     <dl class="erg-summary"><dt>Selected PDFs</dt><dd id="ergCount">0</dd><dt>Total size</dt><dd id="ergSize">0 MB</dd><dt>Pages analysed</dt><dd id="ergPages">0</dd></dl>
     <h3>Extracted report sections</h3>
     <ol class="erg-outline"><li>Drawing register (no., title, rev, scale, date)</li><li>Member size schedule</li><li>Reinforcement &amp; material grades</li><li>Connections, notes &amp; page text</li></ol>
@@ -516,7 +540,12 @@
             setProgress(2, 'Preparing…');
             function stale() { return !active() || token !== epoch || myRun !== runId; }
             try {
-                var lib = await loadPdfJs();
+                var lib = await loadPdfJs().catch(function (err) {
+                    console.warn('[estimation-report] Browser PDF engine unavailable, using server extraction:', err && err.message);
+                    return null;
+                });
+                if (stale()) return;
+                if (!lib) status.textContent = 'Browser PDF engine unavailable. Extracting on the server…';
                 for (var i = 0; i < todo.length; i++) {
                     if (stale()) return;
                     var file = todo[i];
@@ -524,7 +553,7 @@
                     renderFiles();
                     status.textContent = 'Extracting ' + file.name + '…';
                     try {
-                        var res = await extractFile(lib, file, function (pg, count) {
+                        var res = await (lib ? extractFile.bind(null, lib) : extractFileOnServer)(file, function (pg, count) {
                             if (stale()) return;
                             var pct = ((i + pg / count) / todo.length) * 100;
                             setProgress(pct, 'File ' + (i + 1) + ' of ' + todo.length + ' · page ' + pg + ' of ' + count);

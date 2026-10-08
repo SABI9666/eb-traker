@@ -54,6 +54,7 @@
 
 
         const authorizedUsers = {
+            sales_monitor: ["sales.edanbrook@outlook.com"],
             purchase: ["anwar@edanbrook.in", "anwar1@edanbrook.in"],
             estimator: ["estimator@edanbrook.com", "max@edanbrook.com"],
             coo: ["coo@edanbrook.com", "coo2@edanbrook.com"],
@@ -1120,7 +1121,7 @@
                         const userDoc = await db.collection('users').doc(user.uid).get();
 
                         if (userDoc.exists) {
-                            currentUserRole = authorizedUsers.purchase.includes((user.email || '').trim().toLowerCase()) ? 'purchase' : userDoc.data().role;
+                            currentUserRole = authorizedUsers.sales_monitor.includes((user.email || '').trim().toLowerCase()) ? 'sales_monitor' : authorizedUsers.purchase.includes((user.email || '').trim().toLowerCase()) ? 'purchase' : userDoc.data().role;
                             console.log('✅ User role:', currentUserRole);
                             console.log('🚀 Calling showApp()...');
                             showApp();
@@ -1224,7 +1225,7 @@
             const name = document.getElementById('registerName').value;
             const email = document.getElementById('registerEmail').value.trim().toLowerCase();
             const password = document.getElementById('registerPassword').value;
-            const role = authorizedUsers.purchase.includes(email) ? 'purchase' : document.getElementById('selectedRole').value;
+            const role = authorizedUsers.sales_monitor.includes(email) ? 'sales_monitor' : authorizedUsers.purchase.includes(email) ? 'purchase' : document.getElementById('selectedRole').value;
 
             try {
                 clearMessages();
@@ -1343,7 +1344,7 @@
         console.log('--- showApp() EXECUTING ---');
         try {
             // Preload announcements from Firestore
-            await preloadAnnouncements();
+            if (!authorizedUsers.sales_monitor.includes((currentUser?.email || '').trim().toLowerCase())) await preloadAnnouncements();
             
             const loginPage = document.getElementById('loginPage');
             const appContainer = document.getElementById('appContainer');
@@ -1466,11 +1467,20 @@
             userRoleDisplay.textContent = roleForCheck.replace('_', ' ').toUpperCase();
 
             if (authorizedUsers.purchase.includes(userEmail)) { roleForCheck = 'purchase'; currentUserRole = 'purchase'; userRoleDisplay.textContent = 'PURCHASE'; }
+            if (authorizedUsers.sales_monitor.includes(userEmail.trim())) { roleForCheck = 'sales_monitor'; currentUserRole = 'sales_monitor'; userRoleDisplay.textContent = 'SALES · READ ONLY'; }
+            appContainer.classList.toggle('sales-portal', roleForCheck === 'sales_monitor');
             appContainer.classList.toggle('purchase-portal', roleForCheck === 'purchase');
 
             // 2. Switch Views
             loginPage.style.display = 'none';
             appContainer.style.display = 'block';
+
+            if (roleForCheck === 'sales_monitor') {
+                appContainer.classList.remove('top-menu-mode');
+                window._pendingDeepLink = null;
+                window.showSalesMonitor();
+                return;
+            }
 
             // Purchase accounts have their own workspace, not the management hub.
             if (roleForCheck === 'purchase') {
@@ -1767,7 +1777,9 @@ showApp.retried = false;
  * Routes to the default view based on the user's role.
  */
 function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManagement) {
-    if (roleForCheck === 'purchase') {
+    if (roleForCheck === 'sales_monitor') {
+        window.showSalesMonitor();
+    } else if (roleForCheck === 'purchase') {
         window.showPurchaseManagement();
     } else if (roleForCheck === 'design_lead') {
         showDesignLeadPortal();

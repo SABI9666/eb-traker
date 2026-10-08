@@ -5632,6 +5632,7 @@ body.is-ios .nav-menu {
     
     <script src="analytics.js"></script>
     <script src="bdm-po-patch.js"></script>
+<link rel="stylesheet" href="/sales-monitor.css?v=1">
 </head>
 <body>
     <div id="loginPage" class="login-page">
@@ -5693,6 +5694,7 @@ body.is-ios .nav-menu {
                                 <div class="role-btn" data-role="document_controller">Doc Controller</div>
                                 <div class="role-btn" data-role="accounts">Accounts</div>
                                 <div class="role-btn" data-role="purchase">Purchase</div>
+                                <div class="role-btn" data-role="sales_monitor">Sales Monitor</div>
                                 <div class="role-btn" data-role="hr">HR</div>
                                 <div class="role-btn" data-role="it">IT Helpdesk</div>
                             </div>
@@ -5763,6 +5765,7 @@ body.is-ios .nav-menu {
         <div class="main-layout">
             <nav class="sidebar">
             <ul class="nav-menu">
+                <li class="nav-department" id="salesPortalNavItem"><div class="nav-dept-header">Sales</div><ul class="nav-dept-items"><li><a href="#sales-monitor" class="active" aria-current="page" onclick="event.preventDefault();showSalesMonitor()">Sales Revenue Monitor</a></li></ul></li>
                 <li class="nav-department" id="purchasePortalNavItem" style="display:none;">
                     <div class="nav-dept-header"><span class="dept-icon">🛒</span>Purchase</div>
                     <ul class="nav-dept-items">
@@ -7946,7 +7949,8 @@ body.is-ios .nav-menu {
       }
     </style>
     <script src="/purchase-management-patch.js?v=purchase-step-approval-v6"></script>
-    <script src="/app1.js?v=purchase-access-v5"></script>
+    <script src="/sales-monitor-patch.js?v=1"></script>
+    <script src="/app1.js?v=sales-monitor-v1"></script>
     <script src="/app2.js?v=purchase-nav-v4"></script>
     <script src="/purchase-portal-navigation.js?v=purchase-nav-v4"></script>
 </body>

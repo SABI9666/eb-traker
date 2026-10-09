@@ -32,6 +32,13 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.addScriptTag({ content: script });
         await page.evaluate(() => { document.dispatchEvent(new Event('DOMContentLoaded')); showSalesMonitor(); });
         await page.waitForSelector('.sm-card');
+        // Default matches the COO BDM analysis: every source, converted to INR.
+        assert.equal(await page.locator('#sm-currency').inputValue(), 'ALL_INR');
+        assert.equal(await page.locator('.sm-card strong').first().textContent(), '23,68,500.00');
+        assert.equal(await page.locator('.sm-card', { hasText: 'Open pipeline' }).locator('strong').textContent(), '6,10,000.00');
+        await page.screenshot({ path: path.join(screenshotDir, 'sales-all.png'), fullPage: true });
+        await page.selectOption('#sm-source', 'projects');
+        await page.selectOption('#sm-currency', 'CAD');
         assert.equal(await page.locator('.sm-card strong').first().textContent(), '28,500.00');
         assert.equal(await page.locator('.sm img').count(), 0, 'HTML data is escaped');
         const cardText = label => page.locator('.sm-card', { hasText: label }).locator('strong').textContent();
@@ -53,7 +60,7 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.click('#sm-reset');
         await page.screenshot({ path: path.join(screenshotDir, 'sales-desktop.png'), fullPage: true });
         await page.selectOption('#sm-source', 'manual');
-        assert.equal(await page.locator('#sm-currency').inputValue(), 'USD');
+        await page.selectOption('#sm-currency', 'USD');
         assert.equal(await page.locator('.sm-card strong').first().textContent(), '7,000.00');
         await page.fill('#sm-search', 'no match');
         assert.match(await page.locator('#sm-results').textContent(), /No records match/);
@@ -72,6 +79,6 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.evaluate(() => { window.currentUser = null; window.authListeners.forEach(fn => fn(null)); });
         assert.equal(await page.locator('.sm').count(), 0, 'Logout clears sales data');
         assert.deepEqual(errors, []);
-        console.log('PASS: totals, win rate, pipeline, quarterly, CSV export, BDM/date/source/search filters, empty/error states, XSS escaping, mobile overflow.');
+        console.log('PASS: combined INR view, totals, win rate, pipeline, quarterly, CSV export, BDM/date/source/search filters, empty/error states, XSS escaping, mobile overflow.');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

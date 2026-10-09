@@ -16,24 +16,31 @@
     const LOST = ['lost', 'rejected'], CLOSED = ['won', 'lost', 'rejected', 'subcontracted', 'cancelled'];
     const pct = (part, whole) => whole ? (part / whole * 100).toFixed(1) + '%' : '—';
     const quarter = date => date.slice(0, 4) + ' Q' + (Math.floor((Number(date.slice(5, 7)) - 1) / 3) + 1);
+    // Same fixed rates as the COO BDM analysis (EB-Backend api/bdm-analytics.js), so combined totals match it.
+    const TO_INR = { INR: 1, USD: 90.0, AUD: 55.0, NZD: 51.0, EUR: 90.0, GBP: 105.0, SGD: 62.0, AED: 22.7, CAD: 61.0, JPY: 0.55 };
+    const ALL = 'ALL_INR';
+    const inr = r => r.value == null ? null : r.value * (TO_INR[r.currency] ?? 1);
     let filtered = [];
     function render() {
         const output = document.getElementById('sm-results');
         if (!output || !report || !isSales()) return;
         const f = filters();
         if (f.from && f.to && f.from > f.to) { output.innerHTML = '<p class="sm-alert" role="alert">The start date must be on or before the end date.</p>'; return; }
-        const sourceRows = report.rows.filter(r => r.source === f.source);
-        const rows = sourceRows.filter(r => r.currency === f.currency && (!f.bdm || r.bdmUid === f.bdm) &&
+        const sourceRows = report.rows.filter(r => f.source === 'all' || r.source === f.source);
+        const rows = sourceRows.filter(r => (f.currency === ALL || r.currency === f.currency) && (!f.bdm || r.bdmUid === f.bdm) &&
             (!f.from || (r.date && r.date >= f.from)) && (!f.to || (r.date && r.date <= f.to)) &&
-            (!f.search || `${r.projectName} ${r.projectNumber} ${r.client}`.toLowerCase().includes(f.search.toLowerCase())));
-        const tracksOutcome = f.source === 'projects';
+            (!f.search || `${r.projectName} ${r.projectNumber} ${r.client}`.toLowerCase().includes(f.search.toLowerCase())))
+            .map(r => f.currency === ALL ? { ...r, value: inr(r), currency: 'INR' } : r);
+        // Only project-record quotes carry a proposal won/lost outcome.
+        const tracksOutcome = f.source !== 'manual';
+        const outcome = r => r.source === 'projects';
         const of = kind => rows.filter(r => r.kind === kind);
         const total = list => list.reduce((v, r) => v + (r.value || 0), 0);
         const wonRows = of('won'), quoteRows = of('quote');
         const wins = total(wonRows), variations = total(of('variation')), booked = wins + variations;
         const pricedWins = wonRows.filter(r => r.value != null);
-        const decided = quoteRows.filter(r => r.status === 'won' || LOST.includes(r.status));
-        const openQuotes = quoteRows.filter(r => !CLOSED.includes(r.status));
+        const decided = quoteRows.filter(r => outcome(r) && (r.status === 'won' || LOST.includes(r.status)));
+        const openQuotes = quoteRows.filter(r => outcome(r) && !CLOSED.includes(r.status));
         const winRate = tracksOutcome ? pct(decided.filter(r => r.status === 'won').length, decided.length) : 'Not tracked';
         const bdms = new Map();
         const blank = name => ({ name, won: 0, quote: 0, variation: 0, count: 0, quotes: 0, decided: 0, wonQuotes: 0, pipeline: 0 });
@@ -46,8 +53,8 @@
             if (r.kind === 'won') b.count++;
             if (r.kind === 'quote') {
                 b.quotes++;
-                if (r.status === 'won' || LOST.includes(r.status)) { b.decided++; if (r.status === 'won') b.wonQuotes++; }
-                if (!CLOSED.includes(r.status)) b.pipeline += r.value || 0;
+                if (outcome(r) && (r.status === 'won' || LOST.includes(r.status))) { b.decided++; if (r.status === 'won') b.wonQuotes++; }
+                if (outcome(r) && !CLOSED.includes(r.status)) b.pipeline += r.value || 0;
             }
             if (r.kind !== 'quote' && r.date) { const key = r.date.slice(0, 7); months.set(key, (months.get(key) || 0) + (r.value || 0)); }
             if (r.date) {
@@ -72,12 +79,12 @@
         const pages = Math.max(1, Math.ceil(details.length / 25)); page = Math.min(page, pages);
         const missingDates = sourceRows.filter(r => !r.date).length;
         const missingValues = rows.filter(r => r.value == null).length;
-        const cur = esc(f.currency);
+        const cur = f.currency === ALL ? 'INR (all currencies converted)' : esc(f.currency);
         const card = (label, value, caption) => `<article class="sm-card"><span>${label}</span><strong>${value}</strong><small>${caption}</small></article>`;
         const period = f.from || f.to ? `${esc(f.from || 'start')} to ${esc(f.to || 'today')}` : 'All dates';
         const scope = [period, f.bdm ? esc(ranking[0]?.name || '') : 'All BDMs', f.search ? `“${esc(f.search)}”` : ''].filter(Boolean).join(' · ');
         output.innerHTML = `${missingDates || missingValues || f.currency === 'UNSPECIFIED' ? `<p class="sm-alert">${missingDates ? `${missingDates} source record(s) have no event date and are excluded when dates are filtered. ` : ''}${missingValues ? `${missingValues} matching record(s) have no value and are excluded from monetary totals. ` : ''}${f.currency === 'UNSPECIFIED' ? 'Currency is not recorded for this group; do not compare this total with other currencies.' : ''}</p>` : ''}
-            <div class="sm-report-head"><div><h2>Sales performance report</h2><span>${f.source === 'manual' ? 'Manual BDM uploads' : 'Project records'} · ${cur} · ${scope}</span></div><div class="sm-actions"><button type="button" id="sm-csv">Export CSV</button><button type="button" id="sm-print">Print / Save PDF</button></div></div>
+            <div class="sm-report-head"><div><h2>Sales performance report</h2><span>${{ all: 'All sources', manual: 'Manual BDM uploads', projects: 'Project records' }[f.source]} · ${cur} · ${scope}</span></div><div class="sm-actions"><button type="button" id="sm-csv">Export CSV</button><button type="button" id="sm-print">Print / Save PDF</button></div></div>
             <div class="sm-cards">${card('Booked sales', money(booked), cur + ' · wins + variations')}${card('Won project value', money(wins), wonRows.length + ' won records')}${card('Approved / recorded variations', money(variations), of('variation').length + ' variations · ' + cur)}${card('Quoted value', money(total(quoteRows)), quoteRows.length + ' quotes · separate from booked sales')}
             ${card('Average deal size', pricedWins.length ? money(total(pricedWins) / pricedWins.length) : '—', 'Won value ÷ priced wins')}${card('Win rate', winRate, tracksOutcome ? `${decided.filter(r => r.status === 'won').length} won of ${decided.length} decided quotes` : 'Manual uploads have no won/lost outcome')}${card('Open pipeline', tracksOutcome ? money(total(openQuotes)) : 'Not tracked', tracksOutcome ? openQuotes.length + ' quotes awaiting a decision' : 'Use project records for pipeline')}${card('Variation share', pct(variations, booked), 'Of booked sales')}</div>
             <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance</h2><span>${cur} · ${ranking.length} BDMs · ranked by booked sales</span></div>${table(['Rank', 'BDM', 'Won', 'Won value', 'Variations', 'Booked sales', 'Share', 'Avg deal', 'Quotes', 'Quoted value', 'Win rate', 'Open pipeline'], ranking.map((b, i) => `<tr><td>${i + 1}</td><td><strong>${esc(b.name)}</strong></td><td>${b.count}</td><td>${money(b.won)}</td><td>${money(b.variation)}</td><td class="sm-total">${money(b.won + b.variation)}</td><td>${pct(b.won + b.variation, booked)}</td><td>${b.count ? money(b.won / b.count) : '—'}</td><td>${b.quotes}</td><td>${money(b.quote)}</td><td>${tracksOutcome ? pct(b.wonQuotes, b.decided) : '—'}</td><td>${tracksOutcome ? money(b.pipeline) : '—'}</td></tr>`))}</section>
@@ -85,8 +92,8 @@
             <section class="sm-panel"><div class="sm-section-title"><h2>Monthly booked sales</h2><span>${cur} · dated records</span></div><div class="sm-trend">${monthly.length ? monthly.map(([month, value]) => `<div class="sm-bar-row"><span>${esc(month)}</span><div class="sm-bar-track"><div class="sm-bar" style="width:${Math.min(100, Math.abs(value) / max * 100)}%"></div></div><strong>${money(value)}</strong></div>`).join('') : '<p class="sm-empty">No dated sales in this selection.</p>'}</div></section>
             <div class="sm-split"><section class="sm-panel"><div class="sm-section-title"><h2>Top clients</h2><span>${cur} · by booked sales</span></div>${table(['Client', 'Projects', 'Booked sales', 'Share'], topClients.map(c => `<tr><td><strong>${esc(c.name)}</strong></td><td>${c.projects.size}</td><td class="sm-total">${money(c.booked)}</td><td>${pct(c.booked, booked)}</td></tr>`))}</section>
             <section class="sm-panel"><div class="sm-section-title"><h2>Open pipeline</h2><span>${tracksOutcome ? `${cur} · top ${pipeline.length} quotes awaiting decision` : 'Not tracked for manual uploads'}</span></div>${table(['Quoted', 'Project', 'BDM', 'Stage', 'Value'], tracksOutcome ? pipeline.map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.client || '')}</small></td><td>${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(String(r.status).replace(/_/g, ' '))}</span></td><td class="sm-total">${money(r.value)}</td></tr>`) : [])}</section></div>
-            <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Project revenue details</h2><span>${details.length} matching records</span></div>${table(['Date', 'Project / reference', 'Client', 'BDM', 'Type', 'Status', 'Value (' + f.currency + ')'], details.slice((page - 1) * 25, page * 25).map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.projectNumber)}</small></td><td>${esc(r.client || '—')}</td><td>${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.kind)}</span></td><td>${esc(String(r.status).replace(/_/g, ' '))}</td><td class="sm-total">${money(r.value)}</td></tr>`))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
-            <p class="sm-note">Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Win rate counts priced proposals already marked won or lost/rejected; open pipeline is priced proposals not yet decided. Figures are booked sales, not invoiced revenue or cash received.</p>`;
+            <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Project revenue details</h2><span>${details.length} matching records</span></div>${table(['Date', 'Project / reference', 'Client', 'BDM', 'Type', 'Status', 'Value (' + (f.currency === ALL ? 'INR' : f.currency) + ')'], details.slice((page - 1) * 25, page * 25).map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.projectNumber)}</small></td><td>${esc(r.client || '—')}</td><td>${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.kind)}</span>${f.source === 'all' ? `<small>${r.source === 'manual' ? 'BDM upload' : 'Project record'}</small>` : ''}</td><td>${esc(String(r.status).replace(/_/g, ' '))}</td><td class="sm-total">${money(r.value)}</td></tr>`))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
+            <p class="sm-note">${f.currency === ALL ? 'Converted to INR at the fixed rates used by the COO BDM analysis (USD 90, AUD 55, NZD 51, EUR 90, GBP 105, SGD 62, AED 22.7, CAD 61, JPY 0.55); unrecorded currencies are counted as INR. ' : ''}${f.source === 'all' ? 'All sources adds project records and manual BDM uploads together, as the COO BDM analysis does; a win entered in both places is counted twice. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Win rate counts priced proposals already marked won or lost/rejected; open pipeline is priced proposals not yet decided. Figures are booked sales, not invoiced revenue or cash received.</p>`;
         document.getElementById('sm-prev').onclick = () => { page--; render(); };
         document.getElementById('sm-next').onclick = () => { page++; render(); };
         document.getElementById('sm-csv').onclick = exportCsv;
@@ -103,10 +110,11 @@
         setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     }
     function populate() {
-        const currencies = [...new Set(report.rows.filter(r => r.source === document.getElementById('sm-source').value).map(r => r.currency))].sort();
+        const source = document.getElementById('sm-source').value;
+        const currencies = [...new Set(report.rows.filter(r => source === 'all' || r.source === source).map(r => r.currency))].sort();
         const selector = document.getElementById('sm-currency'); const previous = selector.value;
-        selector.innerHTML = (currencies.length ? currencies : ['INR']).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-        selector.value = currencies.includes(previous) ? previous : currencies.includes('INR') ? 'INR' : currencies[0] || 'INR';
+        selector.innerHTML = `<option value="${ALL}">All currencies (in INR)</option>` + currencies.map(c => `<option value="${esc(c)}">${esc(c)} only</option>`).join('');
+        selector.value = currencies.includes(previous) ? previous : ALL;
         const bdmSelector = document.getElementById('sm-bdm'), selectedBdm = bdmSelector.value;
         const bdms = new Map(report.bdms.map(b => [b.id, b.name])); report.rows.forEach(r => bdms.set(r.bdmUid, r.bdmName));
         bdmSelector.innerHTML = '<option value="">All BDMs</option>' + [...bdms.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('');
@@ -138,14 +146,14 @@
         main.innerHTML = `<div class="sm"><header class="sm-hero"><div><div class="sm-eyebrow">WEST EPCM · SALES INTELLIGENCE</div><h1>Sales revenue monitor</h1><p>A clear view of sales performance across BDMs and projects.</p></div><span class="sm-readonly">Read-only access</span></header>
             <div class="sm-toolbar"><span id="sm-updated" aria-live="polite">Waiting for data</span><button type="button" id="sm-refresh">Refresh data</button></div>
             <section class="sm-panel sm-filters" aria-label="Sales filters">
-            <label>Data source<select id="sm-source"><option value="projects">Project records</option><option value="manual">Manual BDM uploads</option></select></label>
-            <label>Currency<select id="sm-currency"><option>INR</option></select></label>
+            <label>Data source<select id="sm-source"><option value="all">All sources (as COO BDM analysis)</option><option value="projects">Project records</option><option value="manual">Manual BDM uploads</option></select></label>
+            <label>Currency<select id="sm-currency"><option value="ALL_INR">All currencies (in INR)</option></select></label>
             <label>BDM<select id="sm-bdm"><option value="">All BDMs</option></select></label>
             <label>From date<input type="date" id="sm-from"></label><label>To date<input type="date" id="sm-to"></label>
             <label>Project / client<input type="search" id="sm-search" placeholder="Search projects or clients"></label>
             <label>Detail rows<select id="sm-kind"><option value="">All types</option><option value="won">Won projects</option><option value="quote">Quotes</option><option value="variation">Variations</option></select></label>
             <button type="button" id="sm-reset">Reset filters</button></section>
-            <p class="sm-note">Booked sales = won project / PO value + approved variations. Manual uploads use the values recorded by BDMs and are shown separately to avoid overlap. Quotes are separate from booked sales. Amounts stay in their original currency; these figures do not represent invoices or payments received. Date filters use the win, quote, or variation event date. “Detail rows” filters only the final table.</p>
+            <p class="sm-note">Booked sales = won project / PO value + approved variations. Quotes are reported separately from booked sales. The default view combines project records and manual BDM uploads in INR, like the COO BDM analysis; pick a single source or currency to see original amounts without conversion. These figures are not invoices or payments received. Date filters use the win, quote, or variation event date. “Detail rows” filters only the final table.</p>
             <div id="sm-results" aria-live="polite"></div></div>`;
         document.getElementById('sm-refresh').onclick = refresh;
         document.getElementById('sm-reset').onclick = () => { ['bdm', 'from', 'to', 'search', 'kind'].forEach(k => document.getElementById('sm-' + k).value = ''); page = 1; render(); };

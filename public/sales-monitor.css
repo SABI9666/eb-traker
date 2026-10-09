@@ -73,3 +73,6 @@
     .sm-scroll { overflow:visible; } .sm table { min-width:0!important; } .sm td, .sm th { padding:6px 8px; }
     .sm-trend { max-height:none; }
 }
+/* Keep amounts on one line; let names and project titles wrap. */
+.sm td { white-space:nowrap; }
+.sm td strong, .sm td small { white-space:normal; }

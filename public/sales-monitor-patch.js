@@ -71,7 +71,7 @@
         const blank = name => ({ name, won: 0, quote: 0, variation: 0, count: 0, quotes: 0, decided: 0, wonQuotes: 0, pipeline: 0 });
         // Show zero-activity BDMs, too, when no individual BDM is selected.
         report.bdms.filter(b => !f.bdm || b.id === f.bdm).forEach(b => bdms.set(b.id, blank(b.name)));
-        const months = new Map(), quarters = new Map(), clients = new Map();
+        const months = new Map(), quarters = new Map();
         for (const r of rows) {
             if (!bdms.has(r.bdmUid)) bdms.set(r.bdmUid, blank(r.bdmName));
             const b = bdms.get(r.bdmUid); b[r.kind] += r.value || 0;
@@ -92,18 +92,12 @@
                 q[r.kind] += r.value || 0; if (r.kind === 'won') q.wonCount++; if (r.kind === 'quote') q.quoteCount++;
                 quarters.set(quarter(r.date), q);
             }
-            if (r.kind !== 'quote') {
-                const name = r.client || 'Client not recorded';
-                const c = clients.get(name) || { name, booked: 0, projects: new Set() };
-                c.booked += r.value || 0; c.projects.add(r.projectId); clients.set(name, c);
-            }
         }
         const ranking = [...bdms.values()].sort((a, b) => (b.won + b.variation) - (a.won + a.variation));
         const last = rows.reduce((m, r) => r.date > m ? r.date : m, '');
         const end = f.to || [day(new Date()), last].sort()[1];
         const series = periods(f.from, end).map(p => ({ ...p, ...(months.get(p.key) || { won: 0, wonCount: 0, variation: 0, quote: 0, quoteCount: 0 }) })).reverse();
         const quarterly = [...quarters.entries()].sort(([a], [b]) => b.localeCompare(a));
-        const topClients = [...clients.values()].sort((a, b) => b.booked - a.booked).slice(0, 10);
         const pipeline = [...openQuotes].sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, 10);
         const max = Math.max(1, ...series.map(p => Math.abs(p.won + p.variation)));
         const details = rows.filter(r => !f.kind || r.kind === f.kind).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -124,8 +118,7 @@
             <section class="sm-panel"><div class="sm-section-title"><h2>Quarterly summary</h2><span>${cur} · dated records</span></div>${table(['Quarter', 'Won', 'Won value', 'Variations', 'Booked sales', 'Quotes issued', 'Quoted value'], quarterly.map(([q, v]) => `<tr><td><strong>${esc(q)}</strong></td><td>${v.wonCount}</td><td>${money(v.won)}</td><td>${money(v.variation)}</td><td class="sm-total">${money(v.won + v.variation)}</td><td>${v.quoteCount}</td><td>${money(v.quote)}</td></tr>`))}</section>
             <section class="sm-panel"><div class="sm-section-title"><h2>${trend === 'week' ? 'Weekly' : 'Monthly'} sales</h2><div class="sm-toggle" role="group" aria-label="Sales period"><button type="button" data-trend="week" aria-pressed="${trend === 'week'}">Weekly</button><button type="button" data-trend="month" aria-pressed="${trend === 'month'}">Monthly</button></div></div>
             <div class="sm-scroll sm-trend-table">${table([trend === 'week' ? 'Week (Mon – Sun)' : 'Month', 'Won', 'Won value', 'Variations', 'Booked sales', '', 'Quotes', 'Quoted value'], series.map(p => `<tr><td><strong>${esc(p.label)}</strong></td><td>${p.wonCount}</td><td>${money(p.won)}</td><td>${money(p.variation)}</td><td class="sm-total">${money(p.won + p.variation)}</td><td class="sm-bar-cell"><div class="sm-bar-track"><div class="sm-bar" style="width:${Math.min(100, Math.abs(p.won + p.variation) / max * 100)}%"></div></div></td><td>${p.quoteCount}</td><td>${money(p.quote)}</td></tr>`))}</div></section>
-            <div class="sm-split"><section class="sm-panel"><div class="sm-section-title"><h2>Top clients</h2><span>${cur} · by booked sales</span></div>${table(['Client', 'Projects', 'Booked sales', 'Share'], topClients.map(c => `<tr><td><strong>${esc(c.name)}</strong></td><td>${c.projects.size}</td><td class="sm-total">${money(c.booked)}</td><td>${pct(c.booked, booked)}</td></tr>`))}</section>
-            <section class="sm-panel"><div class="sm-section-title"><h2>Open pipeline</h2><span>${tracksOutcome ? `${cur} · top ${pipeline.length} quotes awaiting decision` : 'Not tracked for manual uploads'}</span></div>${table(['Quoted', 'Project', 'BDM', 'Stage', 'Value'], tracksOutcome ? pipeline.map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.client || '')}</small></td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(String(r.status).replace(/_/g, ' '))}</span></td><td class="sm-total">${money(r.value)}</td></tr>`) : [])}</section></div>
+            <section class="sm-panel"><div class="sm-section-title"><h2>Open pipeline</h2><span>${tracksOutcome ? `${cur} · top ${pipeline.length} quotes awaiting decision` : 'Not tracked for manual uploads'}</span></div>${table(['Quoted', 'Project', 'BDM', 'Stage', 'Value'], tracksOutcome ? pipeline.map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.client || '')}</small></td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(String(r.status).replace(/_/g, ' '))}</span></td><td class="sm-total">${money(r.value)}</td></tr>`) : [])}</section>
             <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Project revenue details</h2><span>${details.length} matching records</span></div>${table(['Date', 'Project / reference', 'Client', 'BDM', 'Type', 'Status', 'Value (' + (f.currency === ALL ? 'INR' : f.currency) + ')'], details.slice((page - 1) * 25, page * 25).map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.projectNumber)}</small></td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.kind)}</span>${f.source === 'all' ? `<small>${r.source === 'manual' ? 'BDM upload' : 'Project record'}</small>` : ''}</td><td>${esc(String(r.status).replace(/_/g, ' '))}</td><td class="sm-total">${money(r.value)}</td></tr>`))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
             <p class="sm-note">Report period starts 1 Jan 2026${before ? ` (${before} earlier record(s) not shown)` : ''}. ${f.currency === ALL ? 'Converted to INR at the fixed rates used by the COO BDM analysis (USD 90, AUD 55, NZD 51, EUR 90, GBP 105, SGD 62, AED 22.7, CAD 61, JPY 0.55); unrecorded currencies are counted as INR. ' : ''}${f.source === 'all' ? 'All sources adds project records and manual BDM uploads together, as the COO BDM analysis does; a win entered in both places is counted twice. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Win rate counts priced proposals already marked won or lost/rejected; open pipeline is priced proposals not yet decided. Figures are booked sales, not invoiced revenue or cash received.</p>`;
         document.getElementById('sm-prev').onclick = () => { page--; render(); };

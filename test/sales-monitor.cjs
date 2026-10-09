@@ -15,6 +15,8 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
             { id: '1', source: 'projects', kind: 'won', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', projectNumber: 'P-101', client: 'Client A', value: 25000, currency: 'CAD', date: '2026-10-01', status: 'in_progress' },
             { id: '2', source: 'projects', kind: 'variation', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', client: 'Client A', value: 3500, currency: 'CAD', date: '2026-10-02', status: 'approved' },
             { id: '3', source: 'projects', kind: 'quote', bdmUid: 'b', bdmName: 'Bob', projectName: '<img src=x onerror=alert(1)>', client: 'Client B', value: 10000, currency: 'CAD', date: '2026-09-10', status: 'priced' },
+            { id: '5', source: 'projects', kind: 'quote', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', client: 'Client A', value: 26000, currency: 'CAD', date: '2026-08-20', status: 'won' },
+            { id: '6', source: 'projects', kind: 'quote', bdmUid: 'b', bdmName: 'Bob', projectName: 'Depot', client: '=cmd', value: 4000, currency: 'CAD', date: '2026-08-21', status: 'lost' },
             { id: '4', source: 'manual', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Warehouse', client: 'Client B', value: 7000, currency: 'USD', date: '2026-10-03', status: 'won' }
         ];
         const css = fs.readFileSync(path.join(__dirname, '../public/sales-monitor.css'), 'utf8');
@@ -32,6 +34,15 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.waitForSelector('.sm-card');
         assert.equal(await page.locator('.sm-card strong').first().textContent(), '28,500.00');
         assert.equal(await page.locator('.sm img').count(), 0, 'HTML data is escaped');
+        const cardText = label => page.locator('.sm-card', { hasText: label }).locator('strong').textContent();
+        assert.equal(await cardText('Win rate'), '50.0%');
+        assert.equal(await cardText('Open pipeline'), '10,000.00');
+        assert.equal(await cardText('Average deal size'), '25,000.00');
+        assert.match(await page.locator('#sm-results').textContent(), /2026 Q4[\s\S]*2026 Q3/);
+        const [download] = await Promise.all([page.waitForEvent('download'), page.click('#sm-csv')]);
+        const csv = fs.readFileSync(await download.path(), 'utf8');
+        assert.match(csv, /"'=cmd"/, 'CSV neutralises formulas');
+        assert.equal(csv.trim().split('\r\n').length, 6, 'CSV has header + filtered rows');
         await page.selectOption('#sm-bdm', 'b');
         assert.equal(await page.locator('.sm-card strong').first().textContent(), '0.00');
         await page.click('#sm-reset');
@@ -61,6 +72,6 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.evaluate(() => { window.currentUser = null; window.authListeners.forEach(fn => fn(null)); });
         assert.equal(await page.locator('.sm').count(), 0, 'Logout clears sales data');
         assert.deepEqual(errors, []);
-        console.log('PASS: totals, BDM/date/source/search filters, empty/error states, XSS escaping, mobile overflow.');
+        console.log('PASS: totals, win rate, pipeline, quarterly, CSV export, BDM/date/source/search filters, empty/error states, XSS escaping, mobile overflow.');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

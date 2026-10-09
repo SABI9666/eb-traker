@@ -76,3 +76,11 @@
 /* Keep amounts on one line; let names and project titles wrap. */
 .sm td { white-space:nowrap; }
 .sm td strong, .sm td small { white-space:normal; }
+.sm td.sm-name, .sm td.sm-name strong { white-space:nowrap; overflow-wrap:normal; }
+.sm-toggle { display:inline-flex; border:1px solid #c5d2e1; border-radius:8px; overflow:hidden; }
+.sm .sm-toggle button { border:0; border-radius:0; padding:7px 16px; }
+.sm .sm-toggle button[aria-pressed="true"] { background:#176174; color:white; }
+.sm-trend-table { max-height:520px; }
+.sm-trend-table th { position:sticky; top:0; z-index:1; }
+.sm td.sm-bar-cell { width:22%; min-width:140px; }
+@media print { .sm-toggle { display:none!important; } .sm-trend-table { max-height:none; } }

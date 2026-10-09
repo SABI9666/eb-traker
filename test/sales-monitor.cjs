@@ -17,7 +17,8 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
             { id: '3', source: 'projects', kind: 'quote', bdmUid: 'b', bdmName: 'Bob', projectName: '<img src=x onerror=alert(1)>', client: 'Client B', value: 10000, currency: 'CAD', date: '2026-09-10', status: 'priced' },
             { id: '5', source: 'projects', kind: 'quote', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', client: 'Client A', value: 26000, currency: 'CAD', date: '2026-08-20', status: 'won' },
             { id: '6', source: 'projects', kind: 'quote', bdmUid: 'b', bdmName: 'Bob', projectName: 'Depot', client: '=cmd', value: 4000, currency: 'CAD', date: '2026-08-21', status: 'lost' },
-            { id: '4', source: 'manual', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Warehouse', client: 'Client B', value: 7000, currency: 'USD', date: '2026-10-03', status: 'won' }
+            { id: '4', source: 'manual', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Warehouse', client: 'Client B', value: 7000, currency: 'USD', date: '2026-10-03', status: 'won' },
+            { id: '7', source: 'manual', kind: 'won', bdmUid: 'c', bdmName: 'GERARD MOSS', projectName: 'Old job', client: 'Client C', value: 999, currency: 'INR', date: '2025-12-15', status: 'won' }
         ];
         const css = fs.readFileSync(path.join(__dirname, '../public/sales-monitor.css'), 'utf8');
         const script = fs.readFileSync(path.join(__dirname, '../public/sales-monitor-patch.js'), 'utf8');
@@ -28,7 +29,7 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
             window.firebase = { auth: () => ({ onAuthStateChanged: fn => window.authListeners.push(fn) }) };
             window.currentUser = { uid: 'sales', email: 'sales.edanbrook@outlook.com' };
             window.apiCall = async endpoint => { if (endpoint !== 'sales-monitor') throw new Error('Unexpected API'); return { success: true, data }; };
-        }, { rows, bdms: [{ id: 'a', name: 'Alice' }, { id: 'b', name: 'Bob' }], generatedAt: '2026-10-08T12:00:00Z' });
+        }, { rows, bdms: [{ id: 'a', name: 'Alice' }, { id: 'b', name: 'Bob' }, { id: 'c', name: 'GERARD MOSS' }], generatedAt: '2026-10-08T12:00:00Z' });
         await page.addScriptTag({ content: script });
         await page.evaluate(() => { document.dispatchEvent(new Event('DOMContentLoaded')); showSalesMonitor(); });
         await page.waitForSelector('.sm-card');
@@ -36,7 +37,16 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         assert.equal(await page.locator('#sm-currency').inputValue(), 'ALL_INR');
         assert.equal(await page.locator('.sm-card strong').first().textContent(), '23,68,500.00');
         assert.equal(await page.locator('.sm-card', { hasText: 'Open pipeline' }).locator('strong').textContent(), '6,10,000.00');
+        assert.equal(await page.locator('#sm-from').inputValue(), '2026-01-01', 'Report starts in January 2026');
+        assert.match(await page.locator('#sm-results').textContent(), /Gerard Moss/, 'Capitalised names are title-cased');
+        assert.match(await page.locator('#sm-results').textContent(), /1 earlier record/);
+        assert.match(await page.locator('.sm-trend-table').textContent(), /Oct 2026[\s\S]*Jan 2026/, 'Monthly periods from Jan 2026');
+        await page.click('[data-trend="week"]');
+        const week = page.locator('.sm-trend-table tr', { hasText: '28 Sep – 4 Oct 2026' });
+        assert.equal(await week.locator('.sm-total').textContent(), '23,68,500.00');
+        assert.match(await page.locator('.sm-trend-table').textContent(), /29 Dec – 4 Jan 2026/, 'Weekly periods start at the first January week');
         await page.screenshot({ path: path.join(screenshotDir, 'sales-all.png'), fullPage: true });
+        await page.click('[data-trend="month"]');
         await page.selectOption('#sm-source', 'projects');
         await page.selectOption('#sm-currency', 'CAD');
         assert.equal(await page.locator('.sm-card strong').first().textContent(), '28,500.00');

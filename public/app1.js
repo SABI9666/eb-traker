@@ -10525,18 +10525,19 @@ async function showSubventors() {
 
         const rows = subs.length > 0 ? subs.map(s => `
             <tr>
-                <td><strong>${s.vendorCompany||'N/A'}</strong><br><span style="font-size:0.75rem;color:#64748b">${s.vendorName||''}</span></td>
-                <td>${s.projectName||'N/A'}</td>
-                <td>${s.poNumber||'N/A'}</td>
-                <td>${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</td>
-                <td>${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</td>
-                <td>${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</td>
-                <td><span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></td>
+                <td><strong>${svEsc(s.vendorCompany||'N/A')}</strong><br><span style="font-size:0.75rem;color:#64748b">${svEsc(s.vendorName||'')}</span></td>
+                <td>${svEsc(s.projectName||'N/A')}</td>
+                <td>${svEsc(s.poNumber||'N/A')}</td>
+                <td>${svEsc(s.poCurrency||'INR')} ${(parseFloat(s.poAmount)||0).toLocaleString()}</td>
+                <td>${svEsc(s.poCurrency||'INR')} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</td>
+                <td>${svEsc(s.poCurrency||'INR')} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</td>
+                <td><span class="proposal-status status-${svEsc(s.paymentStatus||'pending')}">${svEsc(s.paymentStatus||'pending')}</span></td>
                 <td>${s.poFileUrl ? '<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm">View P.O.</a>' : '<span style="color:#94a3b8;font-size:0.8rem">No P.O.</span>'}</td>
                 <td>
                     <div style="display:flex;gap:4px;flex-wrap:wrap;">
                         <button class="btn btn-outline btn-sm" onclick="viewSubventor('${s.id}')">View</button>
-                        ${isAcct ? `<button class="btn btn-primary btn-sm" onclick="showRecordSubventorPaymentModal('${s.id}')">Pay</button>
+                        ${isAcct ? `<button class="btn btn-outline btn-sm" onclick="showEditSubventorModal('${s.id}')">Edit</button>
+                        <button class="btn btn-primary btn-sm" onclick="showRecordSubventorPaymentModal('${s.id}')">Pay</button>
                         <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none;" onclick="showUploadPOModal('${s.id}')">P.O.</button>` : ''}
                     </div>
                 </td>
@@ -10658,35 +10659,42 @@ async function viewSubventor(id) {
         const res = await apiCall('subventors/'+id);
         if(!res.success) throw new Error(res.error);
         const s = res.data;
-        const history = (s.paymentHistory||[]).map(p=>`
-            <tr><td>${p.paymentDate||'N/A'}</td><td>${s.poCurrency||'INR'} ${parseFloat(p.amount).toLocaleString()}</td><td>${p.paymentMethod||'N/A'}</td><td>${p.referenceNo||'-'}</td><td>${p.recordedBy||'N/A'}</td></tr>
-        `).join('')||'<tr><td colspan="5" class="text-center">No payments recorded yet.</td></tr>';
+        const canEdit = currentUserRole === 'accounts' || currentUserRole === 'it';
+        window._subventorPayments = s.paymentHistory || [];
+        const history = (s.paymentHistory||[]).map((p, i)=>`
+            <tr><td>${svEsc(p.paymentDate||'N/A')}</td><td>${svEsc(s.poCurrency||'INR')} ${parseFloat(p.amount).toLocaleString()}</td><td>${svEsc(p.paymentMethod||'N/A')}</td><td>${svEsc(p.referenceNo||'-')}</td><td>${svEsc(p.recordedBy||'N/A')}${p.editedBy ? `<br><span style="font-size:0.72rem;color:#64748b">Edited by ${svEsc(p.editedBy)}</span>` : ''}</td>
+            ${canEdit ? `<td style="white-space:nowrap"><button class="btn btn-outline btn-sm" onclick="showEditSubventorPaymentModal('${id}',${i})">Edit</button> <button class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;" onclick="deleteSubventorPayment('${id}',${i})">Remove</button></td>` : ''}</tr>
+        `).join('')||`<tr><td colspan="${canEdit ? 6 : 5}" class="text-center">No payments recorded yet.</td></tr>`;
 
         const modalHtml = `
             <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
                 <div class="modal-content" style="max-width:750px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
                     <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
-                        <div><h2 style="margin:0;font-size:1.2rem;">Subvendor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${s.vendorCompany}</p></div>
+                        <div><h2 style="margin:0;font-size:1.2rem;">Subvendor Details</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${svEsc(s.vendorCompany)}</p></div>
                         <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
                     </div>
                     <div style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
-                            <div><strong>Vendor:</strong> ${s.vendorName}</div>
-                            <div><strong>Company:</strong> ${s.vendorCompany}</div>
-                            <div><strong>Email:</strong> ${s.vendorEmail||'N/A'}</div>
-                            <div><strong>Phone:</strong> ${s.vendorPhone||'N/A'}</div>
-                            <div><strong>GST:</strong> ${s.vendorGST||'N/A'}</div>
-                            <div><strong>PAN:</strong> ${s.vendorPAN||'N/A'}</div>
-                            <div><strong>Project:</strong> ${s.projectName||'N/A'}</div>
-                            <div><strong>P.O. #:</strong> ${s.poNumber||'N/A'}</div>
-                            <div><strong>P.O. Amount:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.poAmount)||0).toLocaleString()}</div>
-                            <div><strong>Total Paid:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</div>
-                            <div><strong>Balance:</strong> ${s.poCurrency||'INR'} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</div>
-                            <div><strong>Status:</strong> <span class="proposal-status status-${s.paymentStatus||'pending'}">${s.paymentStatus||'pending'}</span></div>
+                            <div><strong>Vendor:</strong> ${svEsc(s.vendorName)}</div>
+                            <div><strong>Company:</strong> ${svEsc(s.vendorCompany)}</div>
+                            <div><strong>Email:</strong> ${svEsc(s.vendorEmail||'N/A')}</div>
+                            <div><strong>Phone:</strong> ${svEsc(s.vendorPhone||'N/A')}</div>
+                            <div><strong>GST:</strong> ${svEsc(s.vendorGST||'N/A')}</div>
+                            <div><strong>PAN:</strong> ${svEsc(s.vendorPAN||'N/A')}</div>
+                            <div><strong>Project:</strong> ${svEsc(s.projectName||'N/A')}</div>
+                            <div><strong>P.O. #:</strong> ${svEsc(s.poNumber||'N/A')}</div>
+                            <div><strong>P.O. Amount:</strong> ${svEsc(s.poCurrency||'INR')} ${(parseFloat(s.poAmount)||0).toLocaleString()}</div>
+                            <div><strong>Total Paid:</strong> ${svEsc(s.poCurrency||'INR')} ${(parseFloat(s.totalPaid)||0).toLocaleString()}</div>
+                            <div><strong>Balance:</strong> ${svEsc(s.poCurrency||'INR')} ${(parseFloat(s.balanceDue)||0).toLocaleString()}</div>
+                            <div><strong>Status:</strong> <span class="proposal-status status-${svEsc(s.paymentStatus||'pending')}">${svEsc(s.paymentStatus||'pending')}</span></div>
                         </div>
-                        ${s.poFileUrl?'<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm" style="margin-bottom:1rem;">Download P.O. Document</a>':''}
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+                            ${s.poFileUrl?'<a href="'+s.poFileUrl+'" target="_blank" class="btn btn-outline btn-sm">Download P.O. Document</a>':''}
+                            ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="showEditSubventorModal('${id}')">Edit Details</button>` : ''}
+                        </div>
+                        ${s.lastEditedBy ? `<div style="font-size:0.75rem;color:#64748b;margin-bottom:0.5rem;">Last edited by ${svEsc(s.lastEditedBy)}${s.lastEditedAt ? ' on ' + new Date(s.lastEditedAt).toLocaleString() : ''}</div>` : ''}
                         <h4 style="margin:1rem 0 0.5rem;">Payment History</h4>
-                        <table class="data-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Ref #</th><th>Recorded By</th></tr></thead><tbody>${history}</tbody></table>
+                        <table class="data-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Ref #</th><th>Recorded By</th>${canEdit ? '<th>Actions</th>' : ''}</tr></thead><tbody>${history}</tbody></table>
                     </div>
                 </div>
             </div>`;
@@ -10764,6 +10772,140 @@ async function submitUploadPO(e, id) {
         if(!resp.success) throw new Error(resp.error);
         closeModal(); showNotification('P.O. uploaded!','success'); showSubventors();
     } catch(err){ alert('Error: '+err.message); } finally{ hideLoading(); }
+}
+
+// --- Edit subvendor (all entered details) and correct recorded payments ---
+function svEsc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function svModal(title, subtitle, color, body) {
+    return `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div class="modal-content" style="max-width:720px;width:95%;border-radius:16px;overflow:hidden;background:#fff;max-height:90vh;">
+                <div class="modal-header" style="background:${color};padding:1.5rem 2rem;border-radius:16px 16px 0 0;">
+                    <div><h2 style="margin:0;font-size:1.2rem;font-weight:700;">${title}</h2><p style="margin:0;font-size:0.8rem;opacity:0.8;">${subtitle}</p></div>
+                    <span class="close" onclick="closeModal()" style="cursor:pointer;font-size:1.5rem;">&times;</span>
+                </div>
+                ${body}
+            </div>
+        </div>`;
+}
+
+async function showEditSubventorModal(id) {
+    showLoading();
+    try {
+        const [res, pr] = await Promise.all([apiCall('subventors/' + id), apiCall('projects').catch(() => ({ success: false }))]);
+        if (!res.success) throw new Error(res.error);
+        const s = res.data;
+        const projects = pr.success ? pr.data : [];
+        let projectOptions = '<option value="">-- None --</option>' + projects.map(p =>
+            `<option value="${svEsc(p.id)}" data-name="${svEsc(p.projectName)}" data-code="${svEsc(p.projectCode || '')}" ${p.id === s.projectId ? 'selected' : ''}>${svEsc(p.projectName)} (${svEsc(p.projectCode || 'N/A')})</option>`).join('');
+        if (s.projectId && !projects.some(p => p.id === s.projectId)) {
+            projectOptions += `<option value="${svEsc(s.projectId)}" data-name="${svEsc(s.projectName)}" data-code="${svEsc(s.projectCode || '')}" selected>${svEsc(s.projectName || s.projectId)} (current)</option>`;
+        }
+        const currencies = ['INR', 'USD', 'AUD', 'GBP', 'EUR', 'NZD', 'CAD', 'SGD', 'AED'];
+        if (s.poCurrency && !currencies.includes(s.poCurrency)) currencies.push(s.poCurrency);
+        const field = (label, key, attrs = '') => `<div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">${label}</label><input id="sve_${key}" class="form-control" value="${svEsc(s[key])}" ${attrs}></div>`;
+        const area = (label, key) => `<div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">${label}</label><textarea id="sve_${key}" class="form-control" rows="2">${svEsc(s[key])}</textarea></div>`;
+        const section = text => `<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin:0.25rem 0 0.5rem;">${text}</div>`;
+        const grid = html => `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;margin-bottom:1rem;">${html}</div>`;
+        const cur = svEsc(s.poCurrency || 'INR');
+        closeModal();
+        document.body.insertAdjacentHTML('beforeend', svModal('Edit Subvendor', svEsc(s.vendorCompany), 'linear-gradient(135deg,#1e3a5f,#2563eb)', `
+            <form onsubmit="submitEditSubventor(event,'${id}')" style="padding:1.5rem 2rem;overflow-y:auto;max-height:calc(85vh - 80px);">
+                ${section('Vendor Information')}
+                ${grid(field('Vendor Name *', 'vendorName', 'required') + field('Company *', 'vendorCompany', 'required') + field('Email', 'vendorEmail', 'type="email"') + field('Phone', 'vendorPhone') + field('GST Number', 'vendorGST') + field('PAN', 'vendorPAN'))}
+                ${area('Address', 'vendorAddress')}
+                ${area('Bank Details', 'vendorBankDetails')}
+                <div style="height:1px;background:#e2e8f0;margin-bottom:1rem;"></div>
+                ${section('Project')}
+                ${grid(`<div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Linked Project</label><select id="sve_project" class="form-control">${projectOptions}</select></div>` + field('Client Company', 'clientCompany'))}
+                <div style="height:1px;background:#e2e8f0;margin-bottom:1rem;"></div>
+                ${section('Purchase Order')}
+                ${grid(field('P.O. Number', 'poNumber') + field('P.O. Date', 'poDate', 'type="date"') + field('P.O. Amount', 'poAmount', 'type="number" step="0.01" min="0"') +
+                    `<div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Currency</label><select id="sve_poCurrency" class="form-control">${currencies.map(c => `<option value="${svEsc(c)}" ${c === (s.poCurrency || 'INR') ? 'selected' : ''}>${svEsc(c)}</option>`).join('')}</select></div>`)}
+                ${area('P.O. Description', 'poDescription')}
+                ${area('Scope of Work', 'scopeOfWork')}
+                ${grid(field('Payment Terms', 'paymentTerms') + field('Remarks', 'remarks'))}
+                <div class="form-group" style="margin-bottom:0.75rem;"><label style="font-size:0.85rem;font-weight:600;">Replace P.O. Document (PDF)</label><input id="sve_poFile" type="file" accept=".pdf" class="form-control">
+                    <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;">${s.poFileUrl ? `Current: <a href="${svEsc(s.poFileUrl)}" target="_blank">${svEsc(s.poFileName || 'P.O. document')}</a> — leave empty to keep it.` : 'No P.O. document uploaded yet.'}</div></div>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0.75rem;font-size:0.8rem;color:#475569;margin-bottom:1rem;">
+                    Paid so far: <strong>${cur} ${(parseFloat(s.totalPaid) || 0).toLocaleString()}</strong>. Balance and payment status are recalculated from the P.O. amount when you save. To correct a payment, use Edit on the payment in View.
+                </div>
+                <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;font-size:1rem;">Save Changes</button>
+            </form>`));
+    } catch (err) { alert('Error: ' + err.message); }
+    finally { hideLoading(); }
+}
+
+async function submitEditSubventor(e, id) {
+    e.preventDefault(); showLoading();
+    try {
+        const val = key => document.getElementById('sve_' + key).value;
+        const opt = document.getElementById('sve_project').selectedOptions[0];
+        const data = {};
+        ['vendorName', 'vendorCompany', 'vendorEmail', 'vendorPhone', 'vendorGST', 'vendorPAN', 'vendorAddress', 'vendorBankDetails',
+         'clientCompany', 'poNumber', 'poDate', 'poAmount', 'poCurrency', 'poDescription', 'scopeOfWork', 'paymentTerms', 'remarks'].forEach(k => data[k] = val(k));
+        data.projectId = opt?.value || '';
+        data.projectName = opt?.value ? opt.dataset.name || '' : '';
+        data.projectCode = opt?.value ? opt.dataset.code || '' : '';
+        const file = document.getElementById('sve_poFile').files[0];
+        if (file) {
+            data.poFileName = file.name;
+            data.poFileBase64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+        }
+        const resp = await apiCall('subventors/' + id, { method: 'PUT', body: JSON.stringify({ action: 'edit_details', data }) });
+        if (!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Subvendor updated!', 'success'); showSubventors();
+    } catch (err) { alert('Error: ' + err.message); } finally { hideLoading(); }
+}
+
+function showEditSubventorPaymentModal(id, index) {
+    const p = (window._subventorPayments || [])[index];
+    if (!p) return;
+    const methods = { bank_transfer: 'Bank Transfer', cheque: 'Cheque', upi: 'UPI', cash: 'Cash' };
+    if (p.paymentMethod && !methods[p.paymentMethod]) methods[p.paymentMethod] = p.paymentMethod;
+    closeModal();
+    document.body.insertAdjacentHTML('beforeend', svModal('Edit Payment', 'Correct a recorded payment; totals are recalculated', 'linear-gradient(135deg,#059669,#10b981)', `
+        <form onsubmit="submitEditSubventorPayment(event,'${id}',${index})" style="padding:1.5rem 2rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Amount *</label><input id="spe_amount" class="form-control" type="number" step="0.01" min="0.01" value="${svEsc(p.amount)}" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Date *</label><input id="spe_date" class="form-control" type="date" value="${svEsc(String(p.paymentDate || '').slice(0, 10))}" required></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Payment Method</label><select id="spe_method" class="form-control">${Object.entries(methods).map(([v, l]) => `<option value="${svEsc(v)}" ${v === p.paymentMethod ? 'selected' : ''}>${svEsc(l)}</option>`).join('')}</select></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:0.85rem;font-weight:600;">Reference No.</label><input id="spe_ref" class="form-control" value="${svEsc(p.referenceNo)}"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem;"><label style="font-size:0.85rem;font-weight:600;">Notes</label><input id="spe_notes" class="form-control" value="${svEsc(p.notes)}"></div>
+            <button type="submit" class="btn btn-success" style="width:100%;padding:0.75rem;">Save Payment</button>
+        </form>`));
+}
+
+async function submitEditSubventorPayment(e, id, index) {
+    e.preventDefault(); showLoading();
+    try {
+        const p = window._subventorPayments[index];
+        const resp = await apiCall('subventors/' + id, { method: 'PUT', body: JSON.stringify({ action: 'edit_payment', data: {
+            index, recordedAt: p.recordedAt || '',
+            amount: document.getElementById('spe_amount').value,
+            paymentDate: document.getElementById('spe_date').value,
+            paymentMethod: document.getElementById('spe_method').value,
+            referenceNo: document.getElementById('spe_ref').value,
+            notes: document.getElementById('spe_notes').value
+        } }) });
+        if (!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Payment updated!', 'success'); showSubventors(); viewSubventor(id);
+    } catch (err) { alert('Error: ' + err.message); } finally { hideLoading(); }
+}
+
+async function deleteSubventorPayment(id, index) {
+    const p = (window._subventorPayments || [])[index];
+    if (!p || !confirm(`Remove the payment of ${(parseFloat(p.amount) || 0).toLocaleString()} dated ${p.paymentDate || 'N/A'}? Paid and balance will be recalculated.`)) return;
+    showLoading();
+    try {
+        const resp = await apiCall('subventors/' + id, { method: 'PUT', body: JSON.stringify({ action: 'delete_payment', data: { index, recordedAt: p.recordedAt || '' } }) });
+        if (!resp.success) throw new Error(resp.error);
+        closeModal(); showNotification('Payment removed.', 'success'); showSubventors(); viewSubventor(id);
+    } catch (err) { alert('Error: ' + err.message); } finally { hideLoading(); }
 }
 
 // ============================================

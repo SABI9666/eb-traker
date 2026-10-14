@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales Portal Demo</title>
+<meta name="description" content="West EPCM Technologies — Sales / Business Development portal demo with sample data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --brand-ink: #18212e;
+  --brand-surface: #222e3e;
+  --brand-cyan: #22c7f0;
+  --brand-cyan-strong: #0e9ed1;
+  --brand-gold: #c9a227;
+  --side-text: #f5f8fc;
+  --side-muted: #93a1b5;
+
+  --bg: #eef2f7;
+  --card: #ffffff;
+  --card-2: #f7f9fc;
+  --border: #e6ebf2;
+  --text: #0f172a;
+  --text-2: #475569;
+  --muted: #64748b;
+  --accent: #0e7490;
+  --accent-soft: #cffafe;
+  --grid: #e8ecf2;
+  --axis: #94a3b8;
+
+  --good: #0f9d58;   --good-bg: #e3f6ec;
+  --warn: #b26b00;   --warn-bg: #fff3d6;
+  --bad: #c62828;    --bad-bg: #fde7e7;
+  --info: #1d63b8;   --info-bg: #e3eefc;
+  --neutral-bg: #eef1f5;
+
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --seq1: #cde2fb; --seq2: #86b6ef; --seq3: #3987e5; --seq4: #1c5cab; --seq5: #0d366b;
+
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 4px 16px rgba(15, 23, 42, .05);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111821; --card: #1a2330; --card-2: #202b3a; --border: #2c3848;
+    --text: #e8edf4; --text-2: #b8c3d1; --muted: #8b98aa; --accent: #22c7f0; --accent-soft: #123947;
+    --grid: #263243; --axis: #5b6a7e;
+    --good: #4cc98a; --good-bg: #133526; --warn: #f0b44c; --warn-bg: #3a2c10;
+    --bad: #f07575; --bad-bg: #3d1a1d; --info: #6ea8f0; --info-bg: #15294a; --neutral-bg: #253041;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --seq1: #184f95; --seq2: #256abf; --seq3: #3987e5; --seq4: #6da7ec; --seq5: #b7d3f6;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111821; --card: #1a2330; --card-2: #202b3a; --border: #2c3848;
+  --text: #e8edf4; --text-2: #b8c3d1; --muted: #8b98aa; --accent: #22c7f0; --accent-soft: #123947;
+  --grid: #263243; --axis: #5b6a7e;
+  --good: #4cc98a; --good-bg: #133526; --warn: #f0b44c; --warn-bg: #3a2c10;
+  --bad: #f07575; --bad-bg: #3d1a1d; --info: #6ea8f0; --info-bg: #15294a; --neutral-bg: #253041;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --seq1: #184f95; --seq2: #256abf; --seq3: #3987e5; --seq4: #6da7ec; --seq5: #b7d3f6;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Shell ---------- */
+.app { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
+.sidebar {
+  background: var(--brand-ink); color: var(--side-text); padding: 18px 14px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.logo { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--brand-cyan), var(--brand-cyan-strong)); color: #fff; flex: none; }
+.logo svg { width: 62%; height: 62%; }
+.brand b { display: block; font-size: 14px; letter-spacing: .2px; }
+.brand small { color: var(--side-muted); font-size: 11.5px; }
+.nav-group h6 { margin: 0 0 6px 8px; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--side-muted); font-weight: 600; }
+.nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none;
+  border-radius: 9px; color: #cfd8e3; cursor: pointer; text-align: left; font-size: 13.5px; }
+.nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+.nav-item.active { background: rgba(34,199,240,.14); color: #fff; box-shadow: inset 3px 0 0 var(--brand-cyan); }
+.nav-item .ico { width: 18px; text-align: center; opacity: .9; }
+.nav-item .badge { margin-left: auto; background: var(--brand-gold); color: #1b1b1b; border-radius: 999px; font-size: 11px; padding: 1px 7px; font-weight: 700; }
+.side-foot { margin-top: auto; font-size: 12px; color: var(--side-muted); padding: 10px 8px 0; border-top: 1px solid rgba(255,255,255,.08); }
+.side-foot a { color: var(--brand-cyan); text-decoration: none; display: block; padding: 3px 0; }
+.side-foot a:hover { text-decoration: underline; }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 14px 28px; background: var(--card); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5; }
+.topbar h1 { font-size: 18px; margin: 0; font-weight: 700; }
+.topbar .crumb { color: var(--muted); font-size: 12.5px; }
+.topbar .spacer { flex: 1; }
+.search { display: flex; align-items: center; gap: 8px; background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; width: 260px; color: var(--muted); }
+.search input { border: 0; outline: 0; background: transparent; width: 100%; }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); cursor: pointer; display: grid; place-items: center; position: relative; }
+.icon-btn .dot { position: absolute; top: 6px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); border: 2px solid var(--card); }
+.user { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff;
+  background: linear-gradient(135deg, #0e7490, #1d4ed8); }
+.user small { display: block; color: var(--muted); font-size: 11.5px; }
+.menu-btn { display: none; }
+
+.demo-banner { background: linear-gradient(90deg, rgba(34,199,240,.12), rgba(201,162,39,.12)); border-bottom: 1px solid var(--border);
+  padding: 7px 28px; font-size: 12.5px; color: var(--text-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.demo-banner b { color: var(--accent); }
+
+.content { padding: 24px 28px 48px; display: flex; flex-direction: column; gap: 20px; }
+.view { display: none; flex-direction: column; gap: 20px; }
+.view.active { display: flex; }
+
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-head h2 { margin: 0; font-size: 22px; }
+.page-head p { margin: 4px 0 0; color: var(--muted); }
+
+/* ---------- Filters ---------- */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--text-2); font-size: 13px; }
+.seg button.on { background: var(--accent); color: #fff; }
+:root[data-theme="dark"] .seg button.on { color: #0b1220; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button.on { color: #0b1220; } }
+.select { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; font-size: 13px; }
+.btn { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #0b1220; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0b1220; } }
+.btn.sm { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.btn.ok { color: var(--good); }
+.btn.no { color: var(--bad); }
+.btn:hover { filter: brightness(.97); }
+
+/* ---------- KPI tiles ---------- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.kpi .lbl { color: var(--muted); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.kpi .lbl .chip-ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); font-size: 14px; }
+.kpi .val { font-size: 26px; font-weight: 750; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.kpi .val small { font-size: 13px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+.kpi .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.delta { font-weight: 700; font-size: 12px; }
+.delta.up { color: var(--good); } .delta.down { color: var(--bad); }
+.kpi svg.spark { width: 84px; height: 26px; flex: none; }
+
+/* ---------- Cards / grid ---------- */
+.grid { display: grid; gap: 20px; }
+.g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g-3-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.g-1-1-1 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; min-width: 0; }
+.card-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.card-h h3 { margin: 0; font-size: 15px; }
+.card-h p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .baseline { stroke: var(--axis); stroke-width: 1; }
+.chart .hit { fill: transparent; cursor: crosshair; }
+.chart .cross { stroke: var(--axis); stroke-dasharray: 3 3; }
+.chart .dlabel { fill: var(--text-2); font-weight: 600; }
+
+.tip { position: fixed; pointer-events: none; z-index: 50; background: var(--card); border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  border-radius: 10px; padding: 9px 11px; font-size: 12px; min-width: 150px; opacity: 0; transition: opacity .08s; color: var(--text); }
+.tip.show { opacity: 1; }
+.tip .t-h { font-weight: 700; margin-bottom: 5px; }
+.tip .t-r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .t-r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.tip i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+/* ---------- Bars list / meters ---------- */
+.hlist { display: flex; flex-direction: column; gap: 12px; }
+.hrow { display: grid; grid-template-columns: 130px 1fr 72px; gap: 10px; align-items: center; font-size: 13px; }
+.hrow .name { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrow .v { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.track { height: 10px; border-radius: 6px; background: var(--neutral-bg); overflow: hidden; }
+.track > b { display: block; height: 100%; border-radius: 6px; background: var(--s1); }
+.progress { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.progress .track { flex: 1; height: 7px; }
+.progress span { font-size: 12px; color: var(--muted); width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Tables ---------- */
+.table-wrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 650; padding: 10px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--card-2); }
+td { padding: 11px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--card-2); }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.cell-main { font-weight: 650; }
+.cell-sub { color: var(--muted); font-size: 12px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad  { background: var(--bad-bg);  color: var(--bad); }
+.pill.info { background: var(--info-bg); color: var(--info); }
+.pill.neutral { background: var(--neutral-bg); color: var(--text-2); }
+
+/* ---------- Feed ---------- */
+.feed { display: flex; flex-direction: column; }
+.feed-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.feed-item:last-child { border-bottom: 0; }
+.feed-ico { width: 32px; height: 32px; border-radius: 9px; background: var(--card-2); display: grid; place-items: center; flex: none; border: 1px solid var(--border); }
+.feed-item b { font-weight: 650; }
+.feed-item small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+
+.toast { position: fixed; bottom: 22px; right: 22px; background: var(--brand-ink); color: #fff; padding: 11px 16px; border-radius: 10px; font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); transform: translateY(20px); opacity: 0; transition: .2s; z-index: 60; }
+.toast.show { transform: none; opacity: 1; }
+
+.empty-note { color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 1180px) {
+  .g-3-1, .g-1-1-1 { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: 260px; z-index: 40; transform: translateX(-100%); transition: transform .2s; }
+  .sidebar.open { transform: none; box-shadow: 0 0 0 100vmax rgba(0,0,0,.4); }
+  .menu-btn { display: grid; }
+  .search { display: none; }
+  .g-2 { grid-template-columns: 1fr; }
+  .topbar, .content, .demo-banner { padding-left: 16px; padding-right: 16px; }
+  .user .who { display: none; }
+  .hrow { grid-template-columns: 100px 1fr 64px; }
+}
+
+.funnel { display: flex; flex-direction: column; gap: 8px; }
+.f-step { display: grid; grid-template-columns: 110px 1fr 90px; align-items: center; gap: 10px; font-size: 13px; }
+.f-bar { height: 30px; border-radius: 6px; background: var(--s1); margin: 0 auto; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12.5px; min-width: 44px; }
+.f-step .conv { color: var(--muted); font-size: 12px; text-align: right; }
+.cur-note { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="14,26 33,76 50,46 67,76 86,26"/></svg></div>
+      <div><b>West EPCM</b><small>Sales Portal</small></div>
+    </div>
+    <div class="nav-group">
+      <h6>Business Development</h6>
+      <button class="nav-item active" data-view="v-dash" data-title="Sales Dashboard"><span class="ico">📈</span>Dashboard</button>
+      <button class="nav-item" data-view="v-pipe" data-title="All Proposals"><span class="ico">📋</span>All Proposals</button>
+      <button class="nav-item" data-view="v-leads" data-title="Lead Reports"><span class="ico">🎯</span>Lead Reports<span class="badge">5</span></button>
+      <button class="nav-item" data-view="v-bdm" data-title="BDM Analytics"><span class="ico">📊</span>BDM Analytics</button>
+    </div>
+    <div class="side-foot">
+      Other demos
+      <a href="construction-portal.html">🏗️ Construction Portal</a>
+      <a href="accounts-portal.html">💰 Accounts Portal</a>
+      <a href="index.html">← All demos</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" aria-label="Open menu">☰</button>
+      <div>
+        <div class="crumb">Corporate · Business Development</div>
+        <h1 id="pageTitle">Sales Dashboard</h1>
+      </div>
+      <div class="spacer"></div>
+      <label class="search"><span>🔎</span><input placeholder="Search proposals, clients…" aria-label="Search"></label>
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark">🌓</button>
+      <button class="icon-btn" aria-label="Notifications">🔔<span class="dot"></span></button>
+      <div class="user"><div class="avatar">SM</div><div class="who"><b>Sales Monitor</b><small>Read-only</small></div></div>
+    </header>
+    <div class="demo-banner"><b>DEMO</b> Sample data. As in the live Sales Monitor, values are reported per currency and never converted or added across currencies.</div>
+
+    <main class="content">
+      <!-- ================= DASHBOARD ================= -->
+      <section class="view active" id="v-dash">
+        <div class="page-head">
+          <div><h2>Booked sales overview</h2><p>Won projects + approved variations · FY 2026–27 to date</p></div>
+          <div class="filters">
+            <div class="seg" id="curSeg"></div>
+            <select class="select" id="bdmSel" aria-label="BDM"><option value="all">All BDMs</option></select>
+            <button class="btn primary" onclick="Demo.toast('Sales report exported (demo)')">⤓ Export</button>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis"></div>
+
+        <div class="grid g-3-1">
+          <div class="card">
+            <div class="card-h">
+              <div><h3>Monthly booked sales</h3><p id="monthlySub">Won value and approved variations</p></div>
+              <div class="legend"><span><i style="background:var(--s1)"></i>Won projects</span><span><i style="background:var(--s3)"></i>Variations</span></div>
+            </div>
+            <div class="chart" id="monthlyChart"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div><h3>Proposal funnel</h3><p>All currencies · count of records</p></div></div>
+            <div class="funnel" id="funnel"></div>
+          </div>
+        </div>
+
+        <div class="grid g-2">
+          <div class="card">
+            <div class="card-h">
+              <div><h3>Quotes issued vs. won</h3><p id="qwSub">Value per month</p></div>
+              <div class="legend"><span><i style="background:var(--s7)"></i>Quoted</span><span><i style="background:var(--s1)"></i>Won</span></div>
+            </div>
+            <div class="chart" id="qwChart"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div><h3>Booked sales by BDM</h3><p id="bdmSub">Selected currency</p></div></div>
+            <div id="bdmBars"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <div><h3>Recent wins</h3><p>Latest won proposals and approved variations</p></div>
+            <button class="btn sm" data-view="v-pipe">View pipeline →</button>
+          </div>
+          <div class="table-wrap"><table id="winsTable"></table></div>
+        </div>
+      </section>
+
+      <!-- ================= PIPELINE ================= -->
+      <section class="view" id="v-pipe">
+        <div class="page-head">
+          <div><h2>All Proposals</h2><p>Every proposal from enquiry to win</p></div>
+          <div class="filters">
+            <div class="seg" id="stSeg"><button class="on" data-f="all">All</button><button data-f="Estimating">Estimating</button><button data-f="Quoted">Quoted</button><button data-f="Won">Won</button><button data-f="Lost">Lost</button></div>
+            <button class="btn primary" onclick="Demo.toast('New proposal form (demo)')">＋ New proposal</button>
+          </div>
+        </div>
+        <div class="card"><div class="table-wrap"><table id="pipeTable"></table></div></div>
+      </section>
+
+      <!-- ================= LEADS ================= -->
+      <section class="view" id="v-leads">
+        <div class="page-head"><div><h2>Lead Reports</h2><p>New enquiries captured by BDMs this month</p></div></div>
+        <div class="kpis" id="leadKpis"></div>
+        <div class="grid g-2">
+          <div class="card"><div class="card-h"><div><h3>Leads by source</h3><p>Last 90 days</p></div></div><div id="srcBars"></div></div>
+          <div class="card"><div class="card-h"><div><h3>Leads by region</h3><p>Last 90 days</p></div></div><div id="regBars"></div></div>
+        </div>
+        <div class="card"><div class="table-wrap"><table id="leadTable"></table></div></div>
+      </section>
+
+      <!-- ================= BDM ANALYTICS ================= -->
+      <section class="view" id="v-bdm">
+        <div class="page-head"><div><h2>BDM Analytics</h2><p>Activity and conversion per business development manager</p></div></div>
+        <div class="card"><div class="table-wrap"><table id="bdmTable"></table></div></div>
+        <div class="card">
+          <div class="card-h">
+            <div><h3>Win rate trend</h3><p>Rolling 3-month win rate by count</p></div>
+            <div class="legend"><span><i style="background:var(--s1)"></i>Win rate</span></div>
+          </div>
+          <div class="chart" id="wrChart"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+// ---- Shared demo helpers: navigation, theme, tooltips, SVG charts ----
+(function () {
+  'use strict';
+  var NS = 'http://www.w3.org/2000/svg';
+  var css = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+
+  function col(c) { return c && c.indexOf('var(') === 0 ? css(c.slice(4, -1)) : c; }
+  function el(tag, attrs, parent) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  // ---------- tooltip ----------
+  var tip = document.createElement('div');
+  tip.className = 'tip';
+  document.body.appendChild(tip);
+  function showTip(evt, title, rows) {
+    tip.innerHTML = '<div class="t-h">' + title + '</div>' + rows.map(function (r) {
+      return '<div class="t-r"><span>' + (r.color ? '<i style="background:' + r.color + '"></i>' : '') + r.name + '</span><b class="num">' + r.value + '</b></div>';
+    }).join('');
+    tip.classList.add('show');
+    var x = evt.clientX + 14, y = evt.clientY + 14;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    if (x + w > innerWidth - 8) x = evt.clientX - w - 14;
+    if (y + h > innerHeight - 8) y = evt.clientY - h - 14;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip() { tip.classList.remove('show'); }
+
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(v)));
+    var n = v / p;
+    var steps = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10];
+    var s = steps.filter(function (x) { return x >= n; })[0];
+    return s * p;
+  }
+  function roundedTop(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h);
+    if (h <= 0) return '';
+    return 'M' + x + ',' + (y + h) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y +
+      'H' + (x + w - r) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (y + h) + 'Z';
+  }
+
+  // ---------- vertical bar chart (grouped or stacked) ----------
+  // opts: { labels, series:[{name, values, color}], stacked, fmt, height, axisFmt }
+  function barChart(host, opts) {
+    function draw() {
+      host.innerHTML = '';
+      var W = Math.max(host.clientWidth, 280), H = opts.height || 260;
+      var m = { t: 12, r: 8, b: 28, l: 48 };
+      var iw = W - m.l - m.r, ih = H - m.t - m.b;
+      var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': opts.aria || '' }, host);
+      var n = opts.labels.length, S = opts.series;
+      var totals = opts.labels.map(function (_, i) {
+        return opts.stacked ? S.reduce(function (a, s) { return a + s.values[i]; }, 0) : Math.max.apply(null, S.map(function (s) { return s.values[i]; }));
+      });
+      var max = niceMax(Math.max.apply(null, totals) * 1.05);
+      var fmtA = opts.axisFmt || opts.fmt || String;
+      for (var g = 0; g <= 4; g++) {
+        var gy = m.t + ih - ih * g / 4;
+        el('line', { x1: m.l, x2: W - m.r, y1: gy, y2: gy, class: g === 0 ? 'baseline' : 'gridline' }, svg);
+        var t = el('text', { x: m.l - 8, y: gy + 4, 'text-anchor': 'end' }, svg); t.textContent = fmtA(max * g / 4);
+      }
+      var band = iw / n, groupW = Math.min(band * 0.68, opts.stacked ? 34 : 18 * S.length + 2 * (S.length - 1));
+      var bw = opts.stacked ? groupW : (groupW - 2 * (S.length - 1)) / S.length;
+      var step = Math.max(1, Math.ceil(n / Math.floor(iw / 46)));
+      opts.labels.forEach(function (lab, i) {
+        var cx = m.l + band * i + band / 2, x0 = cx - groupW / 2;
+        if (i % step === 0) { var tl = el('text', { x: cx, y: H - 8, 'text-anchor': 'middle' }, svg); tl.textContent = lab; }
+        var acc = 0;
+        S.forEach(function (s, si) {
+          var v = s.values[i], h = ih * v / max;
+          var x = opts.stacked ? x0 : x0 + si * (bw + 2);
+          var y = m.t + ih - (opts.stacked ? ih * acc / max : 0) - h;
+          var isTop = !opts.stacked || si === S.length - 1;
+          if (h > 0) {
+            if (isTop) el('path', { d: roundedTop(x, y, bw, h, 4), fill: col(s.color) }, svg);
+            else el('rect', { x: x, y: y + 1, width: bw, height: Math.max(h - 2, 0), fill: col(s.color) }, svg);
+          }
+          acc += v;
+        });
+        var hit = el('rect', { x: m.l + band * i, y: m.t, width: band, height: ih, class: 'hit' }, svg);
+        hit.addEventListener('mousemove', function (e) {
+          var rows = S.map(function (s) { return { name: s.name, value: (opts.fmt || String)(s.values[i]), color: s.color }; });
+          if (opts.stacked && S.length > 1) rows.push({ name: 'Total', value: (opts.fmt || String)(totals[i]) });
+          showTip(e, lab, rows);
+        });
+        hit.addEventListener('mouseleave', hideTip);
+      });
+    }
+    draw();
+    observe(host, draw);
+  }
+
+  // ---------- line / area chart with crosshair ----------
+  // opts: { labels, series:[{name, values, color, area}], fmt, height, target }
+  function lineChart(host, opts) {
+    function draw() {
+      host.innerHTML = '';
+      var W = Math.max(host.clientWidth, 280), H = opts.height || 260;
+      var m = { t: 14, r: 12, b: 28, l: 48 };
+      var iw = W - m.l - m.r, ih = H - m.t - m.b;
+      var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': opts.aria || '' }, host);
+      var all = []; opts.series.forEach(function (s) { all = all.concat(s.values); });
+      if (opts.target) all.push(opts.target.value);
+      var max = niceMax(Math.max.apply(null, all) * 1.05), n = opts.labels.length;
+      var fmt = opts.fmt || String, fmtA = opts.axisFmt || fmt;
+      var X = function (i) { return m.l + (n === 1 ? iw / 2 : iw * i / (n - 1)); };
+      var Y = function (v) { return m.t + ih - ih * v / max; };
+      for (var g = 0; g <= 4; g++) {
+        var gy = m.t + ih - ih * g / 4;
+        el('line', { x1: m.l, x2: W - m.r, y1: gy, y2: gy, class: g === 0 ? 'baseline' : 'gridline' }, svg);
+        var t = el('text', { x: m.l - 8, y: gy + 4, 'text-anchor': 'end' }, svg); t.textContent = fmtA(max * g / 4);
+      }
+      var step = Math.max(1, Math.ceil(n / Math.floor(iw / 52)));
+      opts.labels.forEach(function (lab, i) {
+        if ((i % step === 0 && (i === n - 1 || n - 1 - i >= step)) || i === n - 1) { var tl = el('text', { x: X(i), y: H - 8, 'text-anchor': i === n - 1 ? 'end' : 'middle' }, svg); tl.textContent = lab; }
+      });
+      if (opts.target) {
+        el('line', { x1: m.l, x2: W - m.r, y1: Y(opts.target.value), y2: Y(opts.target.value), stroke: css('--axis'), 'stroke-dasharray': '5 4' }, svg);
+        var tt = el('text', { x: W - m.r, y: Y(opts.target.value) - 6, 'text-anchor': 'end' }, svg); tt.textContent = opts.target.label;
+      }
+      opts.series.forEach(function (s, si) {
+        var pts = s.values.map(function (v, i) { return X(i) + ',' + Y(v); });
+        if (s.area) {
+          var gid = 'g' + Math.random().toString(36).slice(2);
+          var defs = el('defs', {}, svg), lg = el('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+          el('stop', { offset: '0%', 'stop-color': col(s.color), 'stop-opacity': .22 }, lg);
+          el('stop', { offset: '100%', 'stop-color': col(s.color), 'stop-opacity': 0 }, lg);
+          el('path', { d: 'M' + X(0) + ',' + Y(0) + 'L' + pts.join('L') + 'L' + X(n - 1) + ',' + Y(0) + 'Z', fill: 'url(#' + gid + ')' }, svg);
+        }
+        el('polyline', { points: pts.join(' '), fill: 'none', stroke: col(s.color), 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': s.dash || '' }, svg);
+        // direct end label
+        if (opts.series.length > 1 && opts.series.length <= 4 && opts.endLabels) {
+          var lt = el('text', { x: X(n - 1) - 4, y: Y(s.values[n - 1]) - 8, 'text-anchor': 'end', class: 'dlabel' }, svg); lt.textContent = s.name;
+        }
+      });
+      var cross = el('line', { y1: m.t, y2: m.t + ih, class: 'cross', visibility: 'hidden' }, svg);
+      var dots = opts.series.map(function (s) { return el('circle', { r: 4.5, fill: col(s.color), stroke: css('--card'), 'stroke-width': 2, visibility: 'hidden' }, svg); });
+      var hit = el('rect', { x: m.l, y: m.t, width: iw, height: ih, class: 'hit' }, svg);
+      hit.addEventListener('mousemove', function (e) {
+        var r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width;
+        var i = Math.max(0, Math.min(n - 1, Math.round((sx - m.l) / (n === 1 ? 1 : iw / (n - 1)))));
+        cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('visibility', 'visible');
+        dots.forEach(function (d, si) { d.setAttribute('cx', X(i)); d.setAttribute('cy', Y(opts.series[si].values[i])); d.setAttribute('visibility', 'visible'); });
+        showTip(e, opts.labels[i], opts.series.map(function (s) { return { name: s.name, value: fmt(s.values[i]), color: s.color }; }));
+      });
+      hit.addEventListener('mouseleave', function () {
+        hideTip(); cross.setAttribute('visibility', 'hidden');
+        dots.forEach(function (d) { d.setAttribute('visibility', 'hidden'); });
+      });
+    }
+    draw();
+    observe(host, draw);
+  }
+
+  // ---------- sparkline ----------
+  function spark(host, values, color) {
+    var W = 84, H = 26, max = Math.max.apply(null, values), min = Math.min.apply(null, values), n = values.length;
+    var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'spark', 'aria-hidden': 'true' }, host);
+    var pts = values.map(function (v, i) { return (2 + (W - 4) * i / (n - 1)) + ',' + (H - 3 - (H - 6) * (v - min) / ((max - min) || 1)); });
+    el('polyline', { points: pts.join(' '), fill: 'none', style: 'stroke:' + color, 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+    var last = pts[n - 1].split(',');
+    el('circle', { cx: last[0], cy: last[1], r: 2.8, style: 'fill:' + color }, svg);
+  }
+
+  // ---------- horizontal bar list (HTML) with tooltip ----------
+  // rows: [{name, value, color?, note?}]
+  function hbars(host, rows, fmt, max) {
+    fmt = fmt || String;
+    max = max || Math.max.apply(null, rows.map(function (r) { return r.value; }));
+    host.innerHTML = '';
+    host.className = 'hlist';
+    rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'hrow';
+      row.innerHTML = '<span class="name" title="' + r.name + '">' + r.name + '</span><div class="track"><b style="width:' +
+        (100 * r.value / max).toFixed(1) + '%;background:' + (r.color || 'var(--s1)') + '"></b></div><span class="v">' + fmt(r.value) + '</span>';
+      row.addEventListener('mousemove', function (e) { showTip(e, r.name, [{ name: r.note || 'Value', value: fmt(r.value), color: r.color || css('--s1') }]); });
+      row.addEventListener('mouseleave', hideTip);
+      host.appendChild(row);
+    });
+  }
+
+  // One observer per host; re-rendering a chart just swaps its draw function.
+  var hosts = [];
+  function observe(host, fn) {
+    host._draw = fn;
+    if (host._observed) return;
+    host._observed = true;
+    hosts.push(host);
+    var last = host.clientWidth, t;
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        if (Math.abs(host.clientWidth - last) < 4) return;
+        last = host.clientWidth; clearTimeout(t); t = setTimeout(function () { host._draw(); }, 60);
+      }).observe(host);
+    }
+  }
+  function redrawAll() { hosts.forEach(function (h) { if (h.offsetParent !== null) h._draw(); }); }
+
+  // ---------- shell: navigation, theme, mobile menu, toast ----------
+  function initShell() {
+    document.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () { go(b.getAttribute('data-view')); });
+    });
+    function go(id) {
+      document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === id); });
+      document.querySelectorAll('.nav-item[data-view]').forEach(function (n) { n.classList.toggle('active', n.getAttribute('data-view') === id); });
+      var active = document.querySelector('.nav-item[data-view="' + id + '"]');
+      var title = document.getElementById('pageTitle');
+      if (active && title) title.textContent = active.getAttribute('data-title') || active.textContent.trim();
+      document.querySelector('.sidebar').classList.remove('open');
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      window.scrollTo(0, 0);
+      requestAnimationFrame(redrawAll);
+    }
+    var start = location.hash.slice(1);
+    if (start && document.getElementById(start)) go(start);
+
+    var mb = document.querySelector('.menu-btn');
+    if (mb) mb.addEventListener('click', function (e) { e.stopPropagation(); document.querySelector('.sidebar').classList.toggle('open'); });
+    document.addEventListener('click', function (e) {
+      var sb = document.querySelector('.sidebar');
+      if (sb.classList.contains('open') && !sb.contains(e.target)) sb.classList.remove('open');
+    });
+
+    var tb = document.getElementById('themeBtn');
+    var saved = null;
+    try { saved = localStorage.getItem('wepcm-demo-theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    if (tb) tb.addEventListener('click', function () {
+      var cur = document.documentElement.getAttribute('data-theme') ||
+        (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('wepcm-demo-theme', next); } catch (e) {}
+      redrawAll();
+    });
+    var mq = matchMedia('(prefers-color-scheme: dark)');
+    if (mq.addEventListener) mq.addEventListener('change', redrawAll);
+  }
+
+  var toastEl;
+  function toast(msg) {
+    if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'toast'; document.body.appendChild(toastEl); }
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastEl._t); toastEl._t = setTimeout(function () { toastEl.classList.remove('show'); }, 2400);
+  }
+
+  function pill(kind, text) {
+    var ico = { good: '✓', warn: '◷', bad: '!', info: '•', neutral: '–' }[kind] || '';
+    return '<span class="pill ' + kind + '">' + ico + ' ' + text + '</span>';
+  }
+  function progress(p, color) {
+    return '<div class="progress"><div class="track"><b style="width:' + p + '%;background:' + (color || 'var(--s1)') + '"></b></div><span>' + p + '%</span></div>';
+  }
+
+  // KPI tiles: [{lbl, ico, val, unit, d, up (true/false/null), note, sp:[...], c}]
+  function kpis(host, list) {
+    host.innerHTML = '';
+    list.forEach(function (k) {
+      var div = document.createElement('div'); div.className = 'kpi';
+      var delta = k.up === null || k.up === undefined ? '<span class="delta">' + k.d + '</span>'
+        : '<span class="delta ' + (k.up ? 'up' : 'down') + '">' + (/^[−-]/.test(k.d) ? '▼ ' : '▲ ') + k.d + '</span> ' + (k.note || '');
+      div.innerHTML = '<div class="lbl"><span class="chip-ico">' + k.ico + '</span>' + k.lbl + '</div>' +
+        '<div class="val">' + k.val + (k.unit ? '<small>' + k.unit + '</small>' : '') + '</div>' +
+        '<div class="foot"><span>' + delta + '</span><span class="sp"></span></div>';
+      host.appendChild(div);
+      if (k.sp) spark(div.querySelector('.sp'), k.sp, k.c || 'var(--s1)');
+    });
+  }
+
+  window.Demo = { kpis: kpis, barChart: barChart, lineChart: lineChart, spark: spark, hbars: hbars, initShell: initShell,
+    toast: toast, pill: pill, progress: progress, css: css, redrawAll: redrawAll, showTip: showTip, hideTip: hideTip };
+})();
+
+</script>
+<script>
+(function () {
+  var D = Demo, P = D.pill;
+  var months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+  var CUR = {
+    USD: { won: [182, 214, 168, 246, 198, 271, 156], vari: [12, 18, 9, 22, 15, 26, 11], quoted: [420, 465, 398, 512, 488, 540, 310], pipe: 1840, wr: 34 },
+    AUD: { won: [96, 120, 88, 132, 141, 118, 74], vari: [6, 9, 4, 12, 8, 10, 5], quoted: [240, 268, 230, 290, 305, 276, 168], pipe: 980, wr: 39 },
+    CAD: { won: [44, 58, 61, 39, 72, 66, 28], vari: [3, 4, 6, 2, 5, 7, 2], quoted: [128, 140, 152, 118, 170, 160, 82], pipe: 410, wr: 31 },
+    GBP: { won: [22, 18, 31, 26, 34, 29, 12], vari: [1, 2, 3, 2, 4, 2, 1], quoted: [70, 64, 82, 76, 90, 84, 38], pipe: 214, wr: 28 }
+  };
+  var SYM = { USD: 'US$', AUD: 'A$', CAD: 'C$', GBP: '£' };
+  var BDMS = [['Rohan Mathew', 0.34], ['Neha Pillai', 0.27], ['Kevin Joseph', 0.22], ['Fathima Rasheed', 0.17]];
+  var cur = 'USD', bdm = 'all';
+  var money = function (v) { return SYM[cur] + (v >= 1000 ? (v / 1000).toFixed(2) + 'M' : Math.round(v) + 'K'); };
+  var axisK = function (v) { return Math.round(v) + 'K'; };
+  var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+
+  // currency + BDM filters
+  var seg = document.getElementById('curSeg');
+  Object.keys(CUR).forEach(function (c) {
+    var b = document.createElement('button'); b.textContent = c; if (c === cur) b.className = 'on';
+    b.addEventListener('click', function () { cur = c; seg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); render(); });
+    seg.appendChild(b);
+  });
+  var sel = document.getElementById('bdmSel');
+  BDMS.forEach(function (b) { var o = document.createElement('option'); o.value = b[0]; o.textContent = b[0]; sel.appendChild(o); });
+  sel.addEventListener('change', function () { bdm = sel.value; render(); });
+
+  function scaled(arr) {
+    if (bdm === 'all') return arr;
+    var share = BDMS.filter(function (b) { return b[0] === bdm; })[0][1];
+    return arr.map(function (v) { return Math.round(v * share); });
+  }
+
+  function render() {
+    var d = CUR[cur], won = scaled(d.won), vari = scaled(d.vari), quoted = scaled(d.quoted);
+    var booked = sum(won) + sum(vari);
+    var share = bdm === 'all' ? 1 : BDMS.filter(function (b) { return b[0] === bdm; })[0][1];
+    D.kpis(document.getElementById('kpis'), [
+      { lbl: 'Booked sales (' + cur + ')', ico: '🏆', val: money(booked), d: '+14.8%', up: true, note: 'vs same period LY', sp: won.map(function (v, i) { return v + vari[i]; }), c: 'var(--s1)' },
+      { lbl: 'Quotes issued (' + cur + ')', ico: '🧾', val: money(sum(quoted)), d: '+9.1%', up: true, note: 'vs same period LY', sp: quoted, c: 'var(--s7)' },
+      { lbl: 'Open pipeline (' + cur + ')', ico: '🔭', val: money(d.pipe * share), d: '42 proposals', up: null },
+      { lbl: 'Win rate', ico: '🎯', val: d.wr, unit: '%', d: '+3 pts', up: true, note: 'by count, YTD' },
+      { lbl: 'Avg. turnaround', ico: '⚡', val: '3.4', unit: 'days', d: '−0.6 d', up: true, note: 'enquiry → quote' }
+    ]);
+    document.getElementById('monthlySub').textContent = 'Won value and approved variations · ' + cur + ' (thousands)';
+    document.getElementById('qwSub').textContent = 'Value per month · ' + cur + ' (thousands)';
+    document.getElementById('bdmSub').textContent = 'Won + variations YTD · ' + cur;
+    D.barChart(document.getElementById('monthlyChart'), {
+      labels: months, stacked: true, fmt: money, axisFmt: axisK, height: 270,
+      series: [{ name: 'Won projects', values: won, color: 'var(--s1)' }, { name: 'Variations', values: vari, color: 'var(--s3)' }]
+    });
+    D.lineChart(document.getElementById('qwChart'), {
+      labels: months, fmt: money, axisFmt: axisK,
+      series: [{ name: 'Quoted', values: quoted, color: 'var(--s7)' }, { name: 'Won', values: won, color: 'var(--s1)', area: true }]
+    });
+    var tot = sum(d.won) + sum(d.vari);
+    D.hbars(document.getElementById('bdmBars'), BDMS.map(function (b) {
+      return { name: b[0], value: Math.round(tot * b[1]), note: 'Booked ' + cur, color: bdm === 'all' || bdm === b[0] ? 'var(--s1)' : 'var(--neutral-bg)' };
+    }), money);
+  }
+  render();
+
+  // funnel (counts, currency-independent)
+  var fun = [['Enquiries', 186], ['Estimated', 142], ['Quoted', 118], ['Negotiation', 61], ['Won', 40]];
+  document.getElementById('funnel').innerHTML = fun.map(function (f, i) {
+    var w = Math.max(18, 100 * f[1] / fun[0][1]);
+    var conv = i === 0 ? '' : Math.round(100 * f[1] / fun[i - 1][1]) + '% of prev';
+    return '<div class="f-step"><span>' + f[0] + '</span><div class="f-bar" style="width:' + w + '%">' + f[1] + '</div><span class="conv">' + conv + '</span></div>';
+  }).join('');
+
+  // proposals
+  var props = [
+    ['PR-26-188', 'Cedar Valley Data Centre', 'Atlas Fabrication', 'USA', 'Rohan Mathew', 'USD', 186000, 'Won', '08 Oct'],
+    ['PR-26-187', 'Harbour Point Tower — Stage 2', 'Northline Structures', 'Canada', 'Kevin Joseph', 'CAD', 142000, 'Quoted', '07 Oct'],
+    ['PR-26-185', 'Gold Coast Aquatic Centre', 'Southern Cross Steel', 'Australia', 'Neha Pillai', 'AUD', 98500, 'Negotiation', '05 Oct'],
+    ['PR-26-184', 'Manchester Rail Depot Canopy', 'Pennine Steelwork', 'UK', 'Fathima Rasheed', 'GBP', 41200, 'Quoted', '03 Oct'],
+    ['PR-26-182', 'Phoenix Distribution Centre', 'Pacific Steel Fabricators', 'USA', 'Rohan Mathew', 'USD', 74800, 'Estimating', '02 Oct'],
+    ['PR-26-180', 'Perth Mining Conveyor Gallery', 'Southern Cross Steel', 'Australia', 'Neha Pillai', 'AUD', 121000, 'Won', '29 Sep'],
+    ['PR-26-177', 'Dallas Hospital Expansion', 'Meridian Steel Works', 'USA', 'Kevin Joseph', 'USD', 58200, 'Lost', '25 Sep'],
+    ['PR-26-176', 'Toronto Arena Roof Trusses', 'Northline Structures', 'Canada', 'Kevin Joseph', 'CAD', 66000, 'Won', '22 Sep'],
+    ['PR-26-174', 'Austin Tech Campus Bldg C', 'BlueRidge Steel', 'USA', 'Rohan Mathew', 'USD', 112400, 'Negotiation', '19 Sep']
+  ];
+  var stKind = { Estimating: 'neutral', Quoted: 'info', Negotiation: 'warn', Won: 'good', Lost: 'bad' };
+  var fmtCur = function (c, v) { return c + ' ' + v.toLocaleString('en-US'); };
+  function row(p) {
+    return '<tr><td><div class="cell-main">' + p[1] + '</div><div class="cell-sub">' + p[0] + ' · ' + p[2] + '</div></td><td>' + p[3] + '</td><td>' + p[4] + '</td><td class="r">' + fmtCur(p[5], p[6]) + '</td><td>' + P(stKind[p[7]], p[7]) + '</td><td>' + p[8] + '</td></tr>';
+  }
+  var head = '<thead><tr><th>Proposal</th><th>Region</th><th>BDM</th><th class="r">Value</th><th>Status</th><th>Updated</th></tr></thead>';
+  document.getElementById('winsTable').innerHTML = head + '<tbody>' + props.filter(function (p) { return p[7] === 'Won'; }).map(row).join('') +
+    '<tr><td><div class="cell-main">Variation VO-031 — Riverside Logistics Hub</div><div class="cell-sub">Approved variation · Pacific Steel Fabricators</div></td><td>USA</td><td>Rohan Mathew</td><td class="r">USD 6,400</td><td>' + P('good', 'Approved') + '</td><td>06 Oct</td></tr></tbody>';
+  function renderPipe(f) {
+    document.getElementById('pipeTable').innerHTML = head + '<tbody>' + props.filter(function (p) { return f === 'all' || p[7] === f || (f === 'Quoted' && p[7] === 'Negotiation'); }).map(row).join('') + '</tbody>';
+  }
+  renderPipe('all');
+  document.querySelectorAll('#stSeg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#stSeg button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      renderPipe(b.getAttribute('data-f'));
+    });
+  });
+
+  // leads
+  D.kpis(document.getElementById('leadKpis'), [
+    { lbl: 'New leads (Oct)', ico: '🎯', val: '27', d: '+8', up: true, note: 'vs Sep', sp: [14, 18, 17, 21, 19, 22, 27], c: 'var(--s1)' },
+    { lbl: 'Qualified', ico: '✔️', val: '19', d: '70% of new', up: null },
+    { lbl: 'Follow-ups due', ico: '📞', val: '5', d: 'this week', up: null }
+  ]);
+  D.hbars(document.getElementById('srcBars'), [['Repeat client', 31], ['Referral', 22], ['LinkedIn', 17], ['Website', 12], ['Trade show', 6]].map(function (r) { return { name: r[0], value: r[1], note: 'Leads' }; }), String);
+  D.hbars(document.getElementById('regBars'), [['USA', 38], ['Australia', 21], ['Canada', 17], ['UK', 9], ['Middle East', 3]].map(function (r) { return { name: r[0], value: r[1], note: 'Leads' }; }), String);
+  document.getElementById('leadTable').innerHTML = '<thead><tr><th>Lead</th><th>Source</th><th>BDM</th><th>Next action</th><th>Status</th></tr></thead><tbody>' +
+    [['Orlando Convention Centre — Ph 2', 'Referral', 'Rohan Mathew', 'Scope call 16 Oct', 'Qualified'], ['Brisbane Bus Depot', 'Repeat client', 'Neha Pillai', 'Send capability deck', 'New'], ['Calgary Cold Store', 'LinkedIn', 'Kevin Joseph', 'Await drawings', 'Qualified'], ['Leeds Warehouse Mezz.', 'Website', 'Fathima Rasheed', 'Intro call 17 Oct', 'New'], ['Dubai Logistics Park', 'Trade show', 'Fathima Rasheed', 'NDA pending', 'On hold']]
+      .map(function (l) { return '<tr><td class="cell-main">' + l[0] + '</td><td>' + l[1] + '</td><td>' + l[2] + '</td><td>' + l[3] + '</td><td>' + P(l[4] === 'Qualified' ? 'good' : l[4] === 'New' ? 'info' : 'neutral', l[4]) + '</td></tr>'; }).join('') + '</tbody>';
+
+  // BDM analytics
+  document.getElementById('bdmTable').innerHTML = '<thead><tr><th>BDM</th><th class="r">Leads</th><th class="r">Proposals</th><th class="r">Won</th><th>Win rate</th><th class="r">Avg. response</th></tr></thead><tbody>' +
+    [['Rohan Mathew', 48, 39, 15, 38, '2.9 d'], ['Neha Pillai', 41, 33, 13, 39, '3.1 d'], ['Kevin Joseph', 36, 28, 8, 29, '3.8 d'], ['Fathima Rasheed', 29, 18, 4, 22, '4.2 d']]
+      .map(function (b) { return '<tr><td class="cell-main">' + b[0] + '</td><td class="r">' + b[1] + '</td><td class="r">' + b[2] + '</td><td class="r">' + b[3] + '</td><td>' + D.progress(b[4]) + '</td><td class="r">' + b[5] + '</td></tr>'; }).join('') + '</tbody>';
+  D.lineChart(document.getElementById('wrChart'), {
+    labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+    fmt: function (v) { return v + '%'; }, target: { value: 35, label: 'Target 35%' },
+    series: [{ name: 'Win rate', values: [27, 29, 28, 30, 31, 30, 32, 33, 31, 34, 36, 34], color: 'var(--s1)', area: true }]
+  });
+
+  D.initShell();
+})();
+</script>
+</body>
+</html>

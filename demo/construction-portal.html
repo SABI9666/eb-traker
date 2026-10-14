@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Construction Portal Demo</title>
+<meta name="description" content="West EPCM Technologies — Construction / Operations portal demo with sample data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --brand-ink: #18212e;
+  --brand-surface: #222e3e;
+  --brand-cyan: #22c7f0;
+  --brand-cyan-strong: #0e9ed1;
+  --brand-gold: #c9a227;
+  --side-text: #f5f8fc;
+  --side-muted: #93a1b5;
+
+  --bg: #eef2f7;
+  --card: #ffffff;
+  --card-2: #f7f9fc;
+  --border: #e6ebf2;
+  --text: #0f172a;
+  --text-2: #475569;
+  --muted: #64748b;
+  --accent: #0e7490;
+  --accent-soft: #cffafe;
+  --grid: #e8ecf2;
+  --axis: #94a3b8;
+
+  --good: #0f9d58;   --good-bg: #e3f6ec;
+  --warn: #b26b00;   --warn-bg: #fff3d6;
+  --bad: #c62828;    --bad-bg: #fde7e7;
+  --info: #1d63b8;   --info-bg: #e3eefc;
+  --neutral-bg: #eef1f5;
+
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --seq1: #cde2fb; --seq2: #86b6ef; --seq3: #3987e5; --seq4: #1c5cab; --seq5: #0d366b;
+
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 4px 16px rgba(15, 23, 42, .05);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111821; --card: #1a2330; --card-2: #202b3a; --border: #2c3848;
+    --text: #e8edf4; --text-2: #b8c3d1; --muted: #8b98aa; --accent: #22c7f0; --accent-soft: #123947;
+    --grid: #263243; --axis: #5b6a7e;
+    --good: #4cc98a; --good-bg: #133526; --warn: #f0b44c; --warn-bg: #3a2c10;
+    --bad: #f07575; --bad-bg: #3d1a1d; --info: #6ea8f0; --info-bg: #15294a; --neutral-bg: #253041;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --seq1: #184f95; --seq2: #256abf; --seq3: #3987e5; --seq4: #6da7ec; --seq5: #b7d3f6;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111821; --card: #1a2330; --card-2: #202b3a; --border: #2c3848;
+  --text: #e8edf4; --text-2: #b8c3d1; --muted: #8b98aa; --accent: #22c7f0; --accent-soft: #123947;
+  --grid: #263243; --axis: #5b6a7e;
+  --good: #4cc98a; --good-bg: #133526; --warn: #f0b44c; --warn-bg: #3a2c10;
+  --bad: #f07575; --bad-bg: #3d1a1d; --info: #6ea8f0; --info-bg: #15294a; --neutral-bg: #253041;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --seq1: #184f95; --seq2: #256abf; --seq3: #3987e5; --seq4: #6da7ec; --seq5: #b7d3f6;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Shell ---------- */
+.app { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
+.sidebar {
+  background: var(--brand-ink); color: var(--side-text); padding: 18px 14px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.logo { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--brand-cyan), var(--brand-cyan-strong)); color: #fff; flex: none; }
+.logo svg { width: 62%; height: 62%; }
+.brand b { display: block; font-size: 14px; letter-spacing: .2px; }
+.brand small { color: var(--side-muted); font-size: 11.5px; }
+.nav-group h6 { margin: 0 0 6px 8px; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--side-muted); font-weight: 600; }
+.nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none;
+  border-radius: 9px; color: #cfd8e3; cursor: pointer; text-align: left; font-size: 13.5px; }
+.nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+.nav-item.active { background: rgba(34,199,240,.14); color: #fff; box-shadow: inset 3px 0 0 var(--brand-cyan); }
+.nav-item .ico { width: 18px; text-align: center; opacity: .9; }
+.nav-item .badge { margin-left: auto; background: var(--brand-gold); color: #1b1b1b; border-radius: 999px; font-size: 11px; padding: 1px 7px; font-weight: 700; }
+.side-foot { margin-top: auto; font-size: 12px; color: var(--side-muted); padding: 10px 8px 0; border-top: 1px solid rgba(255,255,255,.08); }
+.side-foot a { color: var(--brand-cyan); text-decoration: none; display: block; padding: 3px 0; }
+.side-foot a:hover { text-decoration: underline; }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 14px 28px; background: var(--card); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5; }
+.topbar h1 { font-size: 18px; margin: 0; font-weight: 700; }
+.topbar .crumb { color: var(--muted); font-size: 12.5px; }
+.topbar .spacer { flex: 1; }
+.search { display: flex; align-items: center; gap: 8px; background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; width: 260px; color: var(--muted); }
+.search input { border: 0; outline: 0; background: transparent; width: 100%; }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); cursor: pointer; display: grid; place-items: center; position: relative; }
+.icon-btn .dot { position: absolute; top: 6px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); border: 2px solid var(--card); }
+.user { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff;
+  background: linear-gradient(135deg, #0e7490, #1d4ed8); }
+.user small { display: block; color: var(--muted); font-size: 11.5px; }
+.menu-btn { display: none; }
+
+.demo-banner { background: linear-gradient(90deg, rgba(34,199,240,.12), rgba(201,162,39,.12)); border-bottom: 1px solid var(--border);
+  padding: 7px 28px; font-size: 12.5px; color: var(--text-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.demo-banner b { color: var(--accent); }
+
+.content { padding: 24px 28px 48px; display: flex; flex-direction: column; gap: 20px; }
+.view { display: none; flex-direction: column; gap: 20px; }
+.view.active { display: flex; }
+
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-head h2 { margin: 0; font-size: 22px; }
+.page-head p { margin: 4px 0 0; color: var(--muted); }
+
+/* ---------- Filters ---------- */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--text-2); font-size: 13px; }
+.seg button.on { background: var(--accent); color: #fff; }
+:root[data-theme="dark"] .seg button.on { color: #0b1220; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button.on { color: #0b1220; } }
+.select { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; font-size: 13px; }
+.btn { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #0b1220; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0b1220; } }
+.btn.sm { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.btn.ok { color: var(--good); }
+.btn.no { color: var(--bad); }
+.btn:hover { filter: brightness(.97); }
+
+/* ---------- KPI tiles ---------- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.kpi .lbl { color: var(--muted); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.kpi .lbl .chip-ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); font-size: 14px; }
+.kpi .val { font-size: 26px; font-weight: 750; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.kpi .val small { font-size: 13px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+.kpi .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.delta { font-weight: 700; font-size: 12px; }
+.delta.up { color: var(--good); } .delta.down { color: var(--bad); }
+.kpi svg.spark { width: 84px; height: 26px; flex: none; }
+
+/* ---------- Cards / grid ---------- */
+.grid { display: grid; gap: 20px; }
+.g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g-3-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.g-1-1-1 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; min-width: 0; }
+.card-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.card-h h3 { margin: 0; font-size: 15px; }
+.card-h p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .baseline { stroke: var(--axis); stroke-width: 1; }
+.chart .hit { fill: transparent; cursor: crosshair; }
+.chart .cross { stroke: var(--axis); stroke-dasharray: 3 3; }
+.chart .dlabel { fill: var(--text-2); font-weight: 600; }
+
+.tip { position: fixed; pointer-events: none; z-index: 50; background: var(--card); border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  border-radius: 10px; padding: 9px 11px; font-size: 12px; min-width: 150px; opacity: 0; transition: opacity .08s; color: var(--text); }
+.tip.show { opacity: 1; }
+.tip .t-h { font-weight: 700; margin-bottom: 5px; }
+.tip .t-r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .t-r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.tip i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+/* ---------- Bars list / meters ---------- */
+.hlist { display: flex; flex-direction: column; gap: 12px; }
+.hrow { display: grid; grid-template-columns: 130px 1fr 72px; gap: 10px; align-items: center; font-size: 13px; }
+.hrow .name { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrow .v { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.track { height: 10px; border-radius: 6px; background: var(--neutral-bg); overflow: hidden; }
+.track > b { display: block; height: 100%; border-radius: 6px; background: var(--s1); }
+.progress { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.progress .track { flex: 1; height: 7px; }
+.progress span { font-size: 12px; color: var(--muted); width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Tables ---------- */
+.table-wrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 650; padding: 10px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--card-2); }
+td { padding: 11px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--card-2); }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.cell-main { font-weight: 650; }
+.cell-sub { color: var(--muted); font-size: 12px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad  { background: var(--bad-bg);  color: var(--bad); }
+.pill.info { background: var(--info-bg); color: var(--info); }
+.pill.neutral { background: var(--neutral-bg); color: var(--text-2); }
+
+/* ---------- Feed ---------- */
+.feed { display: flex; flex-direction: column; }
+.feed-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.feed-item:last-child { border-bottom: 0; }
+.feed-ico { width: 32px; height: 32px; border-radius: 9px; background: var(--card-2); display: grid; place-items: center; flex: none; border: 1px solid var(--border); }
+.feed-item b { font-weight: 650; }
+.feed-item small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+
+.toast { position: fixed; bottom: 22px; right: 22px; background: var(--brand-ink); color: #fff; padding: 11px 16px; border-radius: 10px; font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); transform: translateY(20px); opacity: 0; transition: .2s; z-index: 60; }
+.toast.show { transform: none; opacity: 1; }
+
+.empty-note { color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 1180px) {
+  .g-3-1, .g-1-1-1 { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: 260px; z-index: 40; transform: translateX(-100%); transition: transform .2s; }
+  .sidebar.open { transform: none; box-shadow: 0 0 0 100vmax rgba(0,0,0,.4); }
+  .menu-btn { display: grid; }
+  .search { display: none; }
+  .g-2 { grid-template-columns: 1fr; }
+  .topbar, .content, .demo-banner { padding-left: 16px; padding-right: 16px; }
+  .user .who { display: none; }
+  .hrow { grid-template-columns: 100px 1fr 64px; }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="14,26 33,76 50,46 67,76 86,26"/></svg></div>
+      <div><b>West EPCM</b><small>Construction Portal</small></div>
+    </div>
+    <div class="nav-group">
+      <h6>Operations &amp; Management</h6>
+      <button class="nav-item active" data-view="v-dash" data-title="Construction Dashboard"><span class="ico">📊</span>Dashboard</button>
+      <button class="nav-item" data-view="v-projects" data-title="Projects"><span class="ico">🏗️</span>Projects</button>
+      <button class="nav-item" data-view="v-time" data-title="Time Requests"><span class="ico">⏰</span>Time Requests<span class="badge" id="timeBadge">4</span></button>
+      <button class="nav-item" data-view="v-var" data-title="Variation Tracking"><span class="ico">📑</span>Variation Tracking<span class="badge">3</span></button>
+      <button class="nav-item" data-view="v-alloc" data-title="Allocation Requests"><span class="ico">📋</span>Allocation Requests</button>
+      <button class="nav-item" data-view="v-tekla" data-title="Software Report"><span class="ico">📐</span>Software Report</button>
+    </div>
+    <div class="side-foot">
+      Other demos
+      <a href="sales-portal.html">💼 Sales Portal</a>
+      <a href="accounts-portal.html">💰 Accounts Portal</a>
+      <a href="index.html">← All demos</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" aria-label="Open menu">☰</button>
+      <div>
+        <div class="crumb">Construction · Operations</div>
+        <h1 id="pageTitle">Construction Dashboard</h1>
+      </div>
+      <div class="spacer"></div>
+      <label class="search"><span>🔎</span><input placeholder="Search projects, clients, drawings…" aria-label="Search"></label>
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark">🌓</button>
+      <button class="icon-btn" aria-label="Notifications">🔔<span class="dot"></span></button>
+      <div class="user"><div class="avatar">AK</div><div class="who"><b>Arun K.</b><small>COO</small></div></div>
+    </header>
+    <div class="demo-banner"><b>DEMO</b> Sample data for presentation only — mirrors the Projects, Time Requests, Variation Tracking, Allocation and Tekla report modules of the live portal.</div>
+
+    <main class="content">
+      <!-- ================= DASHBOARD ================= -->
+      <section class="view active" id="v-dash">
+        <div class="page-head">
+          <div><h2>Good morning, Arun</h2><p>Delivery health across 18 active detailing projects · week 42, 2026</p></div>
+          <div class="filters">
+            <div class="seg" id="rangeSeg"><button>4W</button><button class="on">12W</button><button>YTD</button></div>
+            <select class="select" aria-label="Design lead"><option>All design leads</option><option>R. Menon</option><option>S. Thomas</option><option>P. Nair</option></select>
+            <button class="btn primary" onclick="Demo.toast('Report exported (demo)')">⤓ Export</button>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis"></div>
+
+        <div class="grid g-3-1">
+          <div class="card">
+            <div class="card-h">
+              <div><h3>Designer hours — logged vs. capacity</h3><p>Timesheet hours per week across all designers</p></div>
+              <div class="legend"><span><i style="background:var(--s1)"></i>Logged</span><span><i style="background:var(--s3)"></i>Billable</span><span><i style="background:var(--axis);height:2px"></i>Capacity</span></div>
+            </div>
+            <div class="chart" id="hoursChart"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div><h3>Projects by stage</h3><p>Drawing issue status</p></div></div>
+            <div id="stageBars"></div>
+          </div>
+        </div>
+
+        <div class="grid g-2">
+          <div class="card">
+            <div class="card-h">
+              <div><h3>Allocated vs. consumed hours</h3><p>Top 8 projects by allocation</p></div>
+              <div class="legend"><span><i style="background:var(--s1)"></i>Allocated</span><span><i style="background:var(--s2)"></i>Consumed</span></div>
+            </div>
+            <div class="chart" id="allocChart"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div><h3>Designer utilisation</h3><p>This week · target 85%</p></div></div>
+            <div id="utilBars"></div>
+          </div>
+        </div>
+
+        <div class="grid g-3-1">
+          <div class="card">
+            <div class="card-h">
+              <div><h3>Upcoming submissions</h3><p>Due in the next 21 days</p></div>
+              <button class="btn sm" data-view="v-projects">View all projects →</button>
+            </div>
+            <div class="table-wrap"><table id="dueTable"></table></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><div><h3>Recent activity</h3><p>Across the team</p></div></div>
+            <div class="feed" id="feed"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PROJECTS ================= -->
+      <section class="view" id="v-projects">
+        <div class="page-head">
+          <div><h2>Projects</h2><p>All active and recently delivered projects</p></div>
+          <div class="filters">
+            <div class="seg" id="projSeg"><button class="on" data-f="all">All</button><button data-f="On track">On track</button><button data-f="At risk">At risk</button><button data-f="Delayed">Delayed</button></div>
+            <button class="btn primary" onclick="Demo.toast('New project form (demo)')">＋ New project</button>
+          </div>
+        </div>
+        <div class="card"><div class="table-wrap"><table id="projTable"></table></div></div>
+      </section>
+
+      <!-- ================= TIME REQUESTS ================= -->
+      <section class="view" id="v-time">
+        <div class="page-head"><div><h2>Time Requests</h2><p>Additional hours requested by design leads — approve or reject</p></div></div>
+        <div class="card"><div class="table-wrap"><table id="timeTable"></table></div></div>
+      </section>
+
+      <!-- ================= VARIATIONS ================= -->
+      <section class="view" id="v-var">
+        <div class="page-head"><div><h2>Variation Tracking</h2><p>Scope changes raised against active projects</p></div></div>
+        <div class="kpis" id="varKpis"></div>
+        <div class="card"><div class="table-wrap"><table id="varTable"></table></div></div>
+      </section>
+
+      <!-- ================= ALLOCATION ================= -->
+      <section class="view" id="v-alloc">
+        <div class="page-head"><div><h2>Allocation Requests</h2><p>Designer allocation proposals awaiting Director sign-off</p></div></div>
+        <div class="card"><div class="table-wrap"><table id="allocTable"></table></div></div>
+      </section>
+
+      <!-- ================= TEKLA ================= -->
+      <section class="view" id="v-tekla">
+        <div class="page-head"><div><h2>Software Report</h2><p>Tekla Structures model progress, synced from the model CSV export</p></div></div>
+        <div class="kpis" id="teklaKpis"></div>
+        <div class="grid g-2">
+          <div class="card">
+            <div class="card-h"><div><h3>Modelled tonnage by project</h3><p>Tonnes, latest sync</p></div></div>
+            <div id="tonBars"></div>
+          </div>
+          <div class="card">
+            <div class="card-h">
+              <div><h3>Cumulative tonnage modelled</h3><p>All projects, by week</p></div>
+            </div>
+            <div class="chart" id="tonChart"></div>
+          </div>
+        </div>
+        <div class="card"><div class="table-wrap"><table id="teklaTable"></table></div></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+// ---- Shared demo helpers: navigation, theme, tooltips, SVG charts ----
+(function () {
+  'use strict';
+  var NS = 'http://www.w3.org/2000/svg';
+  var css = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+
+  function col(c) { return c && c.indexOf('var(') === 0 ? css(c.slice(4, -1)) : c; }
+  function el(tag, attrs, parent) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  // ---------- tooltip ----------
+  var tip = document.createElement('div');
+  tip.className = 'tip';
+  document.body.appendChild(tip);
+  function showTip(evt, title, rows) {
+    tip.innerHTML = '<div class="t-h">' + title + '</div>' + rows.map(function (r) {
+      return '<div class="t-r"><span>' + (r.color ? '<i style="background:' + r.color + '"></i>' : '') + r.name + '</span><b class="num">' + r.value + '</b></div>';
+    }).join('');
+    tip.classList.add('show');
+    var x = evt.clientX + 14, y = evt.clientY + 14;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    if (x + w > innerWidth - 8) x = evt.clientX - w - 14;
+    if (y + h > innerHeight - 8) y = evt.clientY - h - 14;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip() { tip.classList.remove('show'); }
+
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(v)));
+    var n = v / p;
+    var steps = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10];
+    var s = steps.filter(function (x) { return x >= n; })[0];
+    return s * p;
+  }
+  function roundedTop(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h);
+    if (h <= 0) return '';
+    return 'M' + x + ',' + (y + h) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y +
+      'H' + (x + w - r) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (y + h) + 'Z';
+  }
+
+  // ---------- vertical bar chart (grouped or stacked) ----------
+  // opts: { labels, series:[{name, values, color}], stacked, fmt, height, axisFmt }
+  function barChart(host, opts) {
+    function draw() {
+      host.innerHTML = '';
+      var W = Math.max(host.clientWidth, 280), H = opts.height || 260;
+      var m = { t: 12, r: 8, b: 28, l: 48 };
+      var iw = W - m.l - m.r, ih = H - m.t - m.b;
+      var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': opts.aria || '' }, host);
+      var n = opts.labels.length, S = opts.series;
+      var totals = opts.labels.map(function (_, i) {
+        return opts.stacked ? S.reduce(function (a, s) { return a + s.values[i]; }, 0) : Math.max.apply(null, S.map(function (s) { return s.values[i]; }));
+      });
+      var max = niceMax(Math.max.apply(null, totals) * 1.05);
+      var fmtA = opts.axisFmt || opts.fmt || String;
+      for (var g = 0; g <= 4; g++) {
+        var gy = m.t + ih - ih * g / 4;
+        el('line', { x1: m.l, x2: W - m.r, y1: gy, y2: gy, class: g === 0 ? 'baseline' : 'gridline' }, svg);
+        var t = el('text', { x: m.l - 8, y: gy + 4, 'text-anchor': 'end' }, svg); t.textContent = fmtA(max * g / 4);
+      }
+      var band = iw / n, groupW = Math.min(band * 0.68, opts.stacked ? 34 : 18 * S.length + 2 * (S.length - 1));
+      var bw = opts.stacked ? groupW : (groupW - 2 * (S.length - 1)) / S.length;
+      var step = Math.max(1, Math.ceil(n / Math.floor(iw / 46)));
+      opts.labels.forEach(function (lab, i) {
+        var cx = m.l + band * i + band / 2, x0 = cx - groupW / 2;
+        if (i % step === 0) { var tl = el('text', { x: cx, y: H - 8, 'text-anchor': 'middle' }, svg); tl.textContent = lab; }
+        var acc = 0;
+        S.forEach(function (s, si) {
+          var v = s.values[i], h = ih * v / max;
+          var x = opts.stacked ? x0 : x0 + si * (bw + 2);
+          var y = m.t + ih - (opts.stacked ? ih * acc / max : 0) - h;
+          var isTop = !opts.stacked || si === S.length - 1;
+          if (h > 0) {
+            if (isTop) el('path', { d: roundedTop(x, y, bw, h, 4), fill: col(s.color) }, svg);
+            else el('rect', { x: x, y: y + 1, width: bw, height: Math.max(h - 2, 0), fill: col(s.color) }, svg);
+          }
+          acc += v;
+        });
+        var hit = el('rect', { x: m.l + band * i, y: m.t, width: band, height: ih, class: 'hit' }, svg);
+        hit.addEventListener('mousemove', function (e) {
+          var rows = S.map(function (s) { return { name: s.name, value: (opts.fmt || String)(s.values[i]), color: s.color }; });
+          if (opts.stacked && S.length > 1) rows.push({ name: 'Total', value: (opts.fmt || String)(totals[i]) });
+          showTip(e, lab, rows);
+        });
+        hit.addEventListener('mouseleave', hideTip);
+      });
+    }
+    draw();
+    observe(host, draw);
+  }
+
+  // ---------- line / area chart with crosshair ----------
+  // opts: { labels, series:[{name, values, color, area}], fmt, height, target }
+  function lineChart(host, opts) {
+    function draw() {
+      host.innerHTML = '';
+      var W = Math.max(host.clientWidth, 280), H = opts.height || 260;
+      var m = { t: 14, r: 12, b: 28, l: 48 };
+      var iw = W - m.l - m.r, ih = H - m.t - m.b;
+      var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': opts.aria || '' }, host);
+      var all = []; opts.series.forEach(function (s) { all = all.concat(s.values); });
+      if (opts.target) all.push(opts.target.value);
+      var max = niceMax(Math.max.apply(null, all) * 1.05), n = opts.labels.length;
+      var fmt = opts.fmt || String, fmtA = opts.axisFmt || fmt;
+      var X = function (i) { return m.l + (n === 1 ? iw / 2 : iw * i / (n - 1)); };
+      var Y = function (v) { return m.t + ih - ih * v / max; };
+      for (var g = 0; g <= 4; g++) {
+        var gy = m.t + ih - ih * g / 4;
+        el('line', { x1: m.l, x2: W - m.r, y1: gy, y2: gy, class: g === 0 ? 'baseline' : 'gridline' }, svg);
+        var t = el('text', { x: m.l - 8, y: gy + 4, 'text-anchor': 'end' }, svg); t.textContent = fmtA(max * g / 4);
+      }
+      var step = Math.max(1, Math.ceil(n / Math.floor(iw / 52)));
+      opts.labels.forEach(function (lab, i) {
+        if ((i % step === 0 && (i === n - 1 || n - 1 - i >= step)) || i === n - 1) { var tl = el('text', { x: X(i), y: H - 8, 'text-anchor': i === n - 1 ? 'end' : 'middle' }, svg); tl.textContent = lab; }
+      });
+      if (opts.target) {
+        el('line', { x1: m.l, x2: W - m.r, y1: Y(opts.target.value), y2: Y(opts.target.value), stroke: css('--axis'), 'stroke-dasharray': '5 4' }, svg);
+        var tt = el('text', { x: W - m.r, y: Y(opts.target.value) - 6, 'text-anchor': 'end' }, svg); tt.textContent = opts.target.label;
+      }
+      opts.series.forEach(function (s, si) {
+        var pts = s.values.map(function (v, i) { return X(i) + ',' + Y(v); });
+        if (s.area) {
+          var gid = 'g' + Math.random().toString(36).slice(2);
+          var defs = el('defs', {}, svg), lg = el('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+          el('stop', { offset: '0%', 'stop-color': col(s.color), 'stop-opacity': .22 }, lg);
+          el('stop', { offset: '100%', 'stop-color': col(s.color), 'stop-opacity': 0 }, lg);
+          el('path', { d: 'M' + X(0) + ',' + Y(0) + 'L' + pts.join('L') + 'L' + X(n - 1) + ',' + Y(0) + 'Z', fill: 'url(#' + gid + ')' }, svg);
+        }
+        el('polyline', { points: pts.join(' '), fill: 'none', stroke: col(s.color), 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': s.dash || '' }, svg);
+        // direct end label
+        if (opts.series.length > 1 && opts.series.length <= 4 && opts.endLabels) {
+          var lt = el('text', { x: X(n - 1) - 4, y: Y(s.values[n - 1]) - 8, 'text-anchor': 'end', class: 'dlabel' }, svg); lt.textContent = s.name;
+        }
+      });
+      var cross = el('line', { y1: m.t, y2: m.t + ih, class: 'cross', visibility: 'hidden' }, svg);
+      var dots = opts.series.map(function (s) { return el('circle', { r: 4.5, fill: col(s.color), stroke: css('--card'), 'stroke-width': 2, visibility: 'hidden' }, svg); });
+      var hit = el('rect', { x: m.l, y: m.t, width: iw, height: ih, class: 'hit' }, svg);
+      hit.addEventListener('mousemove', function (e) {
+        var r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width;
+        var i = Math.max(0, Math.min(n - 1, Math.round((sx - m.l) / (n === 1 ? 1 : iw / (n - 1)))));
+        cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('visibility', 'visible');
+        dots.forEach(function (d, si) { d.setAttribute('cx', X(i)); d.setAttribute('cy', Y(opts.series[si].values[i])); d.setAttribute('visibility', 'visible'); });
+        showTip(e, opts.labels[i], opts.series.map(function (s) { return { name: s.name, value: fmt(s.values[i]), color: s.color }; }));
+      });
+      hit.addEventListener('mouseleave', function () {
+        hideTip(); cross.setAttribute('visibility', 'hidden');
+        dots.forEach(function (d) { d.setAttribute('visibility', 'hidden'); });
+      });
+    }
+    draw();
+    observe(host, draw);
+  }
+
+  // ---------- sparkline ----------
+  function spark(host, values, color) {
+    var W = 84, H = 26, max = Math.max.apply(null, values), min = Math.min.apply(null, values), n = values.length;
+    var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'spark', 'aria-hidden': 'true' }, host);
+    var pts = values.map(function (v, i) { return (2 + (W - 4) * i / (n - 1)) + ',' + (H - 3 - (H - 6) * (v - min) / ((max - min) || 1)); });
+    el('polyline', { points: pts.join(' '), fill: 'none', style: 'stroke:' + color, 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+    var last = pts[n - 1].split(',');
+    el('circle', { cx: last[0], cy: last[1], r: 2.8, style: 'fill:' + color }, svg);
+  }
+
+  // ---------- horizontal bar list (HTML) with tooltip ----------
+  // rows: [{name, value, color?, note?}]
+  function hbars(host, rows, fmt, max) {
+    fmt = fmt || String;
+    max = max || Math.max.apply(null, rows.map(function (r) { return r.value; }));
+    host.innerHTML = '';
+    host.className = 'hlist';
+    rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'hrow';
+      row.innerHTML = '<span class="name" title="' + r.name + '">' + r.name + '</span><div class="track"><b style="width:' +
+        (100 * r.value / max).toFixed(1) + '%;background:' + (r.color || 'var(--s1)') + '"></b></div><span class="v">' + fmt(r.value) + '</span>';
+      row.addEventListener('mousemove', function (e) { showTip(e, r.name, [{ name: r.note || 'Value', value: fmt(r.value), color: r.color || css('--s1') }]); });
+      row.addEventListener('mouseleave', hideTip);
+      host.appendChild(row);
+    });
+  }
+
+  // One observer per host; re-rendering a chart just swaps its draw function.
+  var hosts = [];
+  function observe(host, fn) {
+    host._draw = fn;
+    if (host._observed) return;
+    host._observed = true;
+    hosts.push(host);
+    var last = host.clientWidth, t;
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        if (Math.abs(host.clientWidth - last) < 4) return;
+        last = host.clientWidth; clearTimeout(t); t = setTimeout(function () { host._draw(); }, 60);
+      }).observe(host);
+    }
+  }
+  function redrawAll() { hosts.forEach(function (h) { if (h.offsetParent !== null) h._draw(); }); }
+
+  // ---------- shell: navigation, theme, mobile menu, toast ----------
+  function initShell() {
+    document.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () { go(b.getAttribute('data-view')); });
+    });
+    function go(id) {
+      document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === id); });
+      document.querySelectorAll('.nav-item[data-view]').forEach(function (n) { n.classList.toggle('active', n.getAttribute('data-view') === id); });
+      var active = document.querySelector('.nav-item[data-view="' + id + '"]');
+      var title = document.getElementById('pageTitle');
+      if (active && title) title.textContent = active.getAttribute('data-title') || active.textContent.trim();
+      document.querySelector('.sidebar').classList.remove('open');
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      window.scrollTo(0, 0);
+      requestAnimationFrame(redrawAll);
+    }
+    var start = location.hash.slice(1);
+    if (start && document.getElementById(start)) go(start);
+
+    var mb = document.querySelector('.menu-btn');
+    if (mb) mb.addEventListener('click', function (e) { e.stopPropagation(); document.querySelector('.sidebar').classList.toggle('open'); });
+    document.addEventListener('click', function (e) {
+      var sb = document.querySelector('.sidebar');
+      if (sb.classList.contains('open') && !sb.contains(e.target)) sb.classList.remove('open');
+    });
+
+    var tb = document.getElementById('themeBtn');
+    var saved = null;
+    try { saved = localStorage.getItem('wepcm-demo-theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    if (tb) tb.addEventListener('click', function () {
+      var cur = document.documentElement.getAttribute('data-theme') ||
+        (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('wepcm-demo-theme', next); } catch (e) {}
+      redrawAll();
+    });
+    var mq = matchMedia('(prefers-color-scheme: dark)');
+    if (mq.addEventListener) mq.addEventListener('change', redrawAll);
+  }
+
+  var toastEl;
+  function toast(msg) {
+    if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'toast'; document.body.appendChild(toastEl); }
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastEl._t); toastEl._t = setTimeout(function () { toastEl.classList.remove('show'); }, 2400);
+  }
+
+  function pill(kind, text) {
+    var ico = { good: '✓', warn: '◷', bad: '!', info: '•', neutral: '–' }[kind] || '';
+    return '<span class="pill ' + kind + '">' + ico + ' ' + text + '</span>';
+  }
+  function progress(p, color) {
+    return '<div class="progress"><div class="track"><b style="width:' + p + '%;background:' + (color || 'var(--s1)') + '"></b></div><span>' + p + '%</span></div>';
+  }
+
+  // KPI tiles: [{lbl, ico, val, unit, d, up (true/false/null), note, sp:[...], c}]
+  function kpis(host, list) {
+    host.innerHTML = '';
+    list.forEach(function (k) {
+      var div = document.createElement('div'); div.className = 'kpi';
+      var delta = k.up === null || k.up === undefined ? '<span class="delta">' + k.d + '</span>'
+        : '<span class="delta ' + (k.up ? 'up' : 'down') + '">' + (/^[−-]/.test(k.d) ? '▼ ' : '▲ ') + k.d + '</span> ' + (k.note || '');
+      div.innerHTML = '<div class="lbl"><span class="chip-ico">' + k.ico + '</span>' + k.lbl + '</div>' +
+        '<div class="val">' + k.val + (k.unit ? '<small>' + k.unit + '</small>' : '') + '</div>' +
+        '<div class="foot"><span>' + delta + '</span><span class="sp"></span></div>';
+      host.appendChild(div);
+      if (k.sp) spark(div.querySelector('.sp'), k.sp, k.c || 'var(--s1)');
+    });
+  }
+
+  window.Demo = { kpis: kpis, barChart: barChart, lineChart: lineChart, spark: spark, hbars: hbars, initShell: initShell,
+    toast: toast, pill: pill, progress: progress, css: css, redrawAll: redrawAll, showTip: showTip, hideTip: hideTip };
+})();
+
+</script>
+<script>
+(function () {
+  var D = Demo, P = D.pill;
+  var nf = new Intl.NumberFormat('en-IN');
+  var h = function (v) { return nf.format(Math.round(v)) + ' h'; };
+
+  // ---------- data ----------
+  var projects = [
+    { no: 'WE-2611', name: 'Riverside Logistics Hub', client: 'Pacific Steel Fabricators', lead: 'R. Menon', stage: 'IFC', progress: 86, alloc: 1500, used: 1290, due: '2026-10-22', status: 'On track' },
+    { no: 'WE-2614', name: 'Harbour Point Tower — Podium', client: 'Northline Structures', lead: 'S. Thomas', stage: 'IFA', progress: 64, alloc: 2100, used: 1640, due: '2026-10-27', status: 'At risk' },
+    { no: 'WE-2618', name: 'Kingsway School Gymnasium', client: 'Meridian Steel Works', lead: 'P. Nair', stage: 'Checking', progress: 52, alloc: 820, used: 410, due: '2026-11-04', status: 'On track' },
+    { no: 'WE-2620', name: 'Cedar Valley Data Centre', client: 'Atlas Fabrication', lead: 'R. Menon', stage: 'Modelling', progress: 31, alloc: 2600, used: 980, due: '2026-12-15', status: 'On track' },
+    { no: 'WE-2622', name: 'Metro Line 4 — Station Canopy', client: 'Northline Structures', lead: 'A. George', stage: 'Modelling', progress: 24, alloc: 1750, used: 720, due: '2026-12-02', status: 'Delayed' },
+    { no: 'WE-2623', name: 'Lakeside Retail Mezzanine', client: 'BlueRidge Steel', lead: 'S. Thomas', stage: 'IFC', progress: 94, alloc: 460, used: 438, due: '2026-10-17', status: 'On track' },
+    { no: 'WE-2625', name: 'Westfield Cold Storage', client: 'Pacific Steel Fabricators', lead: 'P. Nair', stage: 'IFA', progress: 71, alloc: 1180, used: 905, due: '2026-10-30', status: 'On track' },
+    { no: 'WE-2627', name: 'Airport Hangar Bay 3', client: 'Atlas Fabrication', lead: 'A. George', stage: 'Checking', progress: 47, alloc: 1960, used: 1120, due: '2026-11-18', status: 'At risk' },
+    { no: 'WE-2630', name: 'Greenfield Pharma Plant — Pipe Racks', client: 'Meridian Steel Works', lead: 'R. Menon', stage: 'Modelling', progress: 18, alloc: 1420, used: 260, due: '2027-01-12', status: 'On track' },
+    { no: 'WE-2631', name: 'Summit Office Stair Cores', client: 'BlueRidge Steel', lead: 'S. Thomas', stage: 'RFI', progress: 12, alloc: 380, used: 46, due: '2026-11-26', status: 'On track' }
+  ];
+  var statusKind = { 'On track': 'good', 'At risk': 'warn', 'Delayed': 'bad', 'Delivered': 'info' };
+  var stageKind = { RFI: 'neutral', Modelling: 'info', Checking: 'info', IFA: 'warn', IFC: 'good' };
+  var fmtDate = function (s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }); };
+  var daysTo = function (s) { return Math.round((new Date(s + 'T00:00:00') - new Date('2026-10-14T00:00:00')) / 864e5); };
+
+  // ---------- KPIs ----------
+  var kpis = [
+    { lbl: 'Active projects', ico: '🏗️', val: '18', d: '+3', up: true, note: 'vs last month', sp: [12, 13, 13, 14, 15, 15, 16, 18], c: 'var(--s1)' },
+    { lbl: 'Hours logged (wk)', ico: '⏱️', val: '1,846', unit: 'h', d: '+6.2%', up: true, note: 'vs prior week', sp: [1610, 1700, 1655, 1720, 1690, 1760, 1738, 1846], c: 'var(--s1)' },
+    { lbl: 'On-time submissions', ico: '✅', val: '92', unit: '%', d: '+4 pts', up: true, note: 'last 90 days', sp: [84, 86, 85, 88, 87, 90, 89, 92], c: 'var(--s3)' },
+    { lbl: 'Budget burn', ico: '🔥', val: '71', unit: '%', d: '+2 pts', up: false, note: 'hours used / allocated', sp: [58, 60, 62, 64, 66, 67, 69, 71], c: 'var(--s2)' },
+    { lbl: 'Pending approvals', ico: '⏳', val: '9', d: '4 time · 3 var · 2 alloc', up: null, note: '', sp: [6, 7, 5, 8, 7, 10, 8, 9], c: 'var(--s7)' }
+  ];
+  D.kpis(document.getElementById('kpis'), kpis);
+
+  // ---------- charts ----------
+  var weeks = ['W31', 'W32', 'W33', 'W34', 'W35', 'W36', 'W37', 'W38', 'W39', 'W40', 'W41', 'W42'];
+  var logged = [1580, 1622, 1540, 1690, 1705, 1655, 1720, 1690, 1760, 1738, 1738, 1846];
+  var billable = [1390, 1430, 1350, 1505, 1520, 1468, 1540, 1502, 1580, 1560, 1566, 1672];
+  D.lineChart(document.getElementById('hoursChart'), {
+    labels: weeks, fmt: h, axisFmt: function (v) { return nf.format(v); }, height: 270,
+    target: { value: 1980, label: 'Capacity 1,980 h' },
+    series: [{ name: 'Logged', values: logged, color: 'var(--s1)', area: true }, { name: 'Billable', values: billable, color: 'var(--s3)' }]
+  });
+
+  var stages = ['RFI', 'Modelling', 'Checking', 'IFA', 'IFC'];
+  var stageCounts = [2, 6, 4, 3, 3];
+  D.hbars(document.getElementById('stageBars'), stages.map(function (s, i) {
+    return { name: s, value: stageCounts[i], note: 'Projects' };
+  }), function (v) { return v + ' proj'; });
+
+  var top = projects.slice().sort(function (a, b) { return b.alloc - a.alloc; }).slice(0, 8);
+  D.barChart(document.getElementById('allocChart'), {
+    labels: top.map(function (p) { return p.no.replace('WE-', ''); }), fmt: h, axisFmt: function (v) { return nf.format(v); },
+    series: [{ name: 'Allocated', values: top.map(function (p) { return p.alloc; }), color: 'var(--s1)' },
+             { name: 'Consumed', values: top.map(function (p) { return p.used; }), color: 'var(--s2)' }]
+  });
+
+  var util = [['Anjali V.', 96], ['Rahul P.', 91], ['Meera S.', 88], ['Vishnu K.', 86], ['Divya R.', 79], ['Jithin M.', 74], ['Nikhil B.', 62]];
+  D.hbars(document.getElementById('utilBars'), util.map(function (u) {
+    return { name: u[0], value: u[1], color: u[1] >= 85 ? 'var(--s3)' : u[1] >= 70 ? 'var(--s4)' : 'var(--s8)', note: 'Utilisation' };
+  }), function (v) { return v + '%'; }, 100);
+
+  // ---------- tables ----------
+  function projRow(p, compact) {
+    var burn = Math.round(100 * p.used / p.alloc);
+    return '<tr><td><div class="cell-main">' + p.name + '</div><div class="cell-sub">' + p.no + ' · ' + p.client + '</div></td>' +
+      (compact ? '' : '<td>' + p.lead + '</td>') +
+      '<td>' + P(stageKind[p.stage], p.stage) + '</td>' +
+      '<td>' + D.progress(p.progress, p.status === 'Delayed' ? 'var(--s8)' : 'var(--s1)') + '</td>' +
+      (compact ? '' : '<td class="r">' + nf.format(p.used) + ' / ' + nf.format(p.alloc) + '<div class="cell-sub">' + burn + '% burn</div></td>') +
+      '<td>' + fmtDate(p.due) + '<div class="cell-sub">' + (daysTo(p.due) >= 0 ? 'in ' + daysTo(p.due) + ' d' : Math.abs(daysTo(p.due)) + ' d late') + '</div></td>' +
+      '<td>' + P(statusKind[p.status], p.status) + '</td></tr>';
+  }
+  var due = projects.filter(function (p) { var d = daysTo(p.due); return d >= 0 && d <= 21; }).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+  document.getElementById('dueTable').innerHTML = '<thead><tr><th>Project</th><th>Stage</th><th>Progress</th><th>Due</th><th>Status</th></tr></thead><tbody>' +
+    due.map(function (p) { return projRow(p, true); }).join('') + '</tbody>';
+
+  function renderProjects(filter) {
+    var rows = projects.filter(function (p) { return filter === 'all' || p.status === filter; });
+    document.getElementById('projTable').innerHTML = '<thead><tr><th>Project</th><th>Design lead</th><th>Stage</th><th>Progress</th><th class="r">Hours used / alloc.</th><th>Due</th><th>Status</th></tr></thead><tbody>' +
+      rows.map(function (p) { return projRow(p, false); }).join('') + '</tbody>';
+  }
+  renderProjects('all');
+  document.querySelectorAll('#projSeg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#projSeg button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      renderProjects(b.getAttribute('data-f'));
+    });
+  });
+  document.querySelectorAll('#rangeSeg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#rangeSeg button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      D.toast('Range set to ' + b.textContent + ' (demo data)');
+    });
+  });
+
+  var feed = [
+    ['📤', '<b>Meera S.</b> submitted IFC set for WE-2623 Lakeside Retail', '12 min ago'],
+    ['⏰', '<b>S. Thomas</b> requested +120 h on WE-2614 Harbour Point', '48 min ago'],
+    ['📑', 'Variation <b>VO-031</b> approved by client — WE-2611', '2 h ago'],
+    ['🧮', 'Tekla sync: <b>WE-2620</b> now 412 t modelled', '3 h ago'],
+    ['👥', '<b>Divya R.</b> allocated to WE-2630 pipe racks', 'Yesterday'],
+    ['✅', 'Checker sign-off on WE-2618 gymnasium GA drawings', 'Yesterday']
+  ];
+  document.getElementById('feed').innerHTML = feed.map(function (f) {
+    return '<div class="feed-item"><div class="feed-ico">' + f[0] + '</div><div>' + f[1] + '<small>' + f[2] + '</small></div></div>';
+  }).join('');
+
+  // time requests (interactive approve / reject)
+  var timeReq = [
+    { id: 'TR-118', proj: 'WE-2614 Harbour Point Tower', by: 'S. Thomas', hours: 120, reason: 'Revised architectural grid — re-model level 3 transfer beams', on: '13 Oct' },
+    { id: 'TR-117', proj: 'WE-2627 Airport Hangar Bay 3', by: 'A. George', hours: 80, reason: 'Additional bracing connections per EOR RFI-14 response', on: '12 Oct' },
+    { id: 'TR-116', proj: 'WE-2622 Metro Line 4 Canopy', by: 'A. George', hours: 160, reason: 'Curved roof members — late geometry from architect', on: '11 Oct' },
+    { id: 'TR-115', proj: 'WE-2625 Westfield Cold Storage', by: 'P. Nair', hours: 40, reason: 'Embed plate schedule added to scope', on: '10 Oct' }
+  ];
+  function renderTime() {
+    document.getElementById('timeTable').innerHTML = '<thead><tr><th>Request</th><th>Project</th><th>Requested by</th><th class="r">Hours</th><th>Reason</th><th>Status</th><th></th></tr></thead><tbody>' +
+      timeReq.map(function (t, i) {
+        var st = t.st ? P(t.st === 'Approved' ? 'good' : 'bad', t.st) : P('warn', 'Pending');
+        var act = t.st ? '' : '<button class="btn sm ok" data-a="Approved" data-i="' + i + '">Approve</button> <button class="btn sm no" data-a="Rejected" data-i="' + i + '">Reject</button>';
+        return '<tr><td class="cell-main">' + t.id + '<div class="cell-sub">' + t.on + '</div></td><td>' + t.proj + '</td><td>' + t.by + '</td><td class="r">+' + t.hours + ' h</td><td style="white-space:normal;min-width:240px">' + t.reason + '</td><td>' + st + '</td><td>' + act + '</td></tr>';
+      }).join('') + '</tbody>';
+    var pending = timeReq.filter(function (t) { return !t.st; }).length;
+    var b = document.getElementById('timeBadge'); b.textContent = pending; b.style.display = pending ? '' : 'none';
+  }
+  renderTime();
+  document.getElementById('timeTable').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-a]'); if (!b) return;
+    var t = timeReq[+b.getAttribute('data-i')]; t.st = b.getAttribute('data-a');
+    renderTime(); D.toast(t.id + ' ' + t.st.toLowerCase() + ' — design lead notified');
+  });
+
+  // variations
+  D.kpis(document.getElementById('varKpis'), [
+    { lbl: 'Open variations', ico: '📑', val: '7', d: '3 awaiting client', up: null },
+    { lbl: 'Approved (QTD)', ico: '✅', val: '12', d: '+5', up: true, note: 'vs last quarter' },
+    { lbl: 'Approved hours (QTD)', ico: '⏱️', val: '1,140', unit: 'h', d: '+18%', up: true, note: 'vs last quarter' }
+  ]);
+  var vars = [
+    ['VO-034', 'WE-2614 Harbour Point Tower', 'Level 3 transfer beam redesign', 120, 'Pending'],
+    ['VO-033', 'WE-2622 Metro Line 4 Canopy', 'Curved roof geometry change', 160, 'Pending'],
+    ['VO-032', 'WE-2627 Airport Hangar Bay 3', 'Extra bracing per RFI-14', 80, 'Pending'],
+    ['VO-031', 'WE-2611 Riverside Logistics Hub', 'Dock leveller pits added', 64, 'Approved'],
+    ['VO-030', 'WE-2625 Westfield Cold Storage', 'Embed plate schedule', 40, 'Approved'],
+    ['VO-029', 'WE-2618 Kingsway Gymnasium', 'Revised roof purlin spacing', 36, 'Rejected']
+  ];
+  document.getElementById('varTable').innerHTML = '<thead><tr><th>Code</th><th>Project</th><th>Description</th><th class="r">Hours</th><th>Status</th></tr></thead><tbody>' +
+    vars.map(function (v) { return '<tr><td class="cell-main">' + v[0] + '</td><td>' + v[1] + '</td><td>' + v[2] + '</td><td class="r">' + v[3] + ' h</td><td>' + P(v[4] === 'Approved' ? 'good' : v[4] === 'Rejected' ? 'bad' : 'warn', v[4]) + '</td></tr>'; }).join('') + '</tbody>';
+
+  // allocation
+  var allocs = [
+    ['AR-052', 'WE-2630 Greenfield Pharma Pipe Racks', 'R. Menon', 'Divya R., Nikhil B.', 640, 'Pending Director'],
+    ['AR-051', 'WE-2620 Cedar Valley Data Centre', 'R. Menon', 'Anjali V., Rahul P., Jithin M.', 1200, 'Pending Director'],
+    ['AR-050', 'WE-2631 Summit Office Stair Cores', 'S. Thomas', 'Meera S.', 380, 'Approved']
+  ];
+  document.getElementById('allocTable').innerHTML = '<thead><tr><th>Request</th><th>Project</th><th>Design lead</th><th>Designers</th><th class="r">Hours</th><th>Status</th></tr></thead><tbody>' +
+    allocs.map(function (a) { return '<tr><td class="cell-main">' + a[0] + '</td><td>' + a[1] + '</td><td>' + a[2] + '</td><td>' + a[3] + '</td><td class="r">' + nf.format(a[4]) + ' h</td><td>' + P(a[5] === 'Approved' ? 'good' : 'warn', a[5]) + '</td></tr>'; }).join('') + '</tbody>';
+
+  // tekla
+  D.kpis(document.getElementById('teklaKpis'), [
+    { lbl: 'Tonnage modelled', ico: '🧱', val: '2,318', unit: 't', d: '+164 t', up: true, note: 'this week', sp: [1620, 1740, 1850, 1930, 2040, 2110, 2154, 2318], c: 'var(--s1)' },
+    { lbl: 'Assemblies', ico: '🔩', val: '14,962', d: '+1,020', up: true, note: 'this week' },
+    { lbl: 'Drawings issued', ico: '📄', val: '3,407', d: '+212', up: true, note: 'this week' },
+    { lbl: 'Clash items open', ico: '⚠️', val: '23', d: '−9', up: true, note: 'vs last sync' }
+  ]);
+  var ton = [['WE-2620 Data Centre', 412], ['WE-2614 Harbour Point', 386], ['WE-2627 Hangar Bay 3', 344], ['WE-2611 Riverside Hub', 318], ['WE-2622 Metro Canopy', 226], ['WE-2625 Cold Storage', 198], ['WE-2630 Pipe Racks', 96]];
+  D.hbars(document.getElementById('tonBars'), ton.map(function (t) { return { name: t[0], value: t[1], note: 'Tonnes' }; }), function (v) { return v + ' t'; });
+  D.lineChart(document.getElementById('tonChart'), {
+    labels: weeks, fmt: function (v) { return nf.format(v) + ' t'; }, axisFmt: function (v) { return nf.format(v); },
+    series: [{ name: 'Tonnage', values: [1180, 1260, 1350, 1420, 1530, 1620, 1740, 1850, 1930, 2110, 2154, 2318], color: 'var(--s1)', area: true }]
+  });
+  document.getElementById('teklaTable').innerHTML = '<thead><tr><th>Project</th><th>Model</th><th class="r">Tonnes</th><th class="r">Assemblies</th><th class="r">Drawings</th><th>Last sync</th></tr></thead><tbody>' +
+    [['WE-2620 Cedar Valley Data Centre', 'CVDC_Main_v14', 412, 2810, 512, 'Today 09:12'], ['WE-2614 Harbour Point Tower', 'HPT_Podium_v22', 386, 2455, 640, 'Today 08:40'], ['WE-2627 Airport Hangar Bay 3', 'AHB3_v09', 344, 1980, 401, 'Yesterday'], ['WE-2611 Riverside Logistics Hub', 'RLH_IFC_v31', 318, 2204, 588, 'Yesterday']]
+      .map(function (r) { return '<tr><td class="cell-main">' + r[0] + '</td><td class="cell-sub">' + r[1] + '</td><td class="r">' + r[2] + '</td><td class="r">' + nf.format(r[3]) + '</td><td class="r">' + r[4] + '</td><td>' + r[5] + '</td></tr>'; }).join('') + '</tbody>';
+
+  D.initShell();
+})();
+</script>
+</body>
+</html>

@@ -678,7 +678,7 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
       }).observe(host);
     }
   }
-  function redrawAll() { hosts.forEach(function (h) { if (h.offsetParent !== null) h._draw(); }); }
+  function redrawAll() { hosts = hosts.filter(function (h) { return h.isConnected; }); hosts.forEach(function (h) { if (h.offsetParent !== null) h._draw(); }); }
 
   // ---------- shell: navigation, theme, mobile menu, toast ----------
   function initShell() {

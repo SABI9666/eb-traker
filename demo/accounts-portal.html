@@ -247,6 +247,56 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
   .hrow { grid-template-columns: 100px 1fr 64px; }
 }
 
+/* ---------- Entry forms (modal) ---------- */
+.modal-back { position: fixed; inset: 0; background: rgba(10, 16, 26, .55); z-index: 70; display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+.modal-back.show { display: flex; }
+.modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 640px; box-shadow: 0 24px 60px rgba(0,0,0,.3); animation: pop .16s ease-out; }
+@keyframes pop { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.modal-h .mi { width: 40px; height: 40px; border-radius: 11px; background: var(--accent-soft); display: grid; place-items: center; font-size: 20px; flex: none; }
+.modal-h h3 { margin: 0; font-size: 17px; }
+.modal-h p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.modal-h .x { margin-left: auto; border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); }
+.modal-flow { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 22px; background: var(--card-2); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-2); align-items: center; }
+.modal-flow b { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 9px; font-weight: 650; }
+.modal-b { padding: 18px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.fld { display: flex; flex-direction: column; gap: 5px; grid-column: span 2; min-width: 0; }
+.fld.half { grid-column: span 1; }
+.fld label { font-size: 12.5px; font-weight: 650; color: var(--text-2); }
+.fld label .req { color: var(--bad); }
+.fld input, .fld select, .fld textarea { width: 100%; border: 1px solid var(--border); background: var(--card); border-radius: 9px; padding: 9px 11px; font-size: 13.5px; outline: 0; }
+.fld textarea { min-height: 76px; resize: vertical; }
+.fld input:focus, .fld select:focus, .fld textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,199,240,.18); }
+.fld.err input, .fld.err select, .fld.err textarea { border-color: var(--bad); }
+.fld .hint { font-size: 11.5px; color: var(--muted); }
+.fld.err .hint { color: var(--bad); }
+.fld .info { border-radius: 9px; padding: 10px 12px; font-size: 12.5px; background: var(--info-bg); color: var(--info); }
+.fld .info.warn { background: var(--warn-bg); color: var(--warn); }
+.drop { border: 1.5px dashed var(--border); border-radius: 10px; padding: 16px; text-align: center; color: var(--muted); font-size: 12.5px; cursor: pointer; background: var(--card-2); }
+.drop:hover { border-color: var(--accent); color: var(--accent); }
+.drop.has { border-style: solid; color: var(--good); border-color: var(--good); }
+.modal-f { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 22px; border-top: 1px solid var(--border); }
+@media (max-width: 600px) { .fld.half { grid-column: span 2; } .modal-back { padding: 12px; } }
+
+/* ---------- Data-entry hub ---------- */
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.role-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.role-card .who { display: flex; align-items: center; gap: 10px; }
+.role-card .who .avatar { width: 34px; height: 34px; font-size: 12px; }
+.role-card .who b { display: block; }
+.role-card .who small { color: var(--muted); font-size: 12px; }
+.role-card .acts { display: flex; flex-direction: column; gap: 8px; }
+.role-card .acts .btn { justify-content: flex-start; width: 100%; }
+.role-card .acts .btn small { margin-left: auto; color: var(--muted); font-weight: 500; }
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.step { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; position: relative; }
+.step .n { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12.5px; margin-bottom: 8px; }
+.step b { display: block; font-size: 13.5px; }
+.step small { color: var(--muted); font-size: 12px; }
+@media (max-width: 900px) { .steps { grid-template-columns: 1fr 1fr; } }
+tr.fresh td { animation: fresh 2.4s ease-out; }
+@keyframes fresh { 0% { background: var(--accent-soft); } 100% { background: transparent; } }
+
 .aging { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .aging .b { border-radius: 10px; padding: 12px; border: 1px solid var(--border); background: var(--card-2); }
 .aging .b small { color: var(--muted); font-size: 12px; display: block; }
@@ -272,6 +322,7 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
     <div class="nav-group">
       <h6>Finance &amp; Accounts</h6>
       <button class="nav-item active" data-view="v-dash" data-title="Finance Dashboard"><span class="ico">📊</span>Dashboard</button>
+      <button class="nav-item" data-view="v-entry" data-title="Data Entry"><span class="ico">✍️</span>Data Entry</button>
       <button class="nav-item" data-view="v-pay" data-title="Payments"><span class="ico">💰</span>Payments<span class="badge">6</span></button>
       <button class="nav-item" data-view="v-sub" data-title="Subvendors"><span class="ico">🏗️</span>Subvendors</button>
       <button class="nav-item" data-view="v-gst" data-title="GST Filing"><span class="ico">📋</span>GST Filing</button>
@@ -356,13 +407,53 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
         </div>
       </section>
 
+      <!-- ================= DATA ENTRY ================= -->
+      <section class="view" id="v-entry">
+        <div class="page-head">
+          <div><h2>Data entry</h2><p>How accounts users record invoices, receipts, vendor bills, petty cash and GST returns. Submit a form and the entry appears in the tables straight away.</p></div>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="n">1</div><b>Raise the invoice</b><small>Against a project milestone, with payment terms</small></div>
+          <div class="step"><div class="n">2</div><b>Record the receipt</b><small>Amount, date, bank reference and proof</small></div>
+          <div class="step"><div class="n">3</div><b>Pay vendors &amp; expenses</b><small>Subvendor bills (with TDS) and petty cash</small></div>
+          <div class="step"><div class="n">4</div><b>File GST</b><small>Mark returns filed with their ARN</small></div>
+        </div>
+        <div class="roles">
+          <div class="role-card">
+            <div class="who"><div class="avatar">LJ</div><div><b>Receivables</b><small>Lekha J. · Accounts</small></div></div>
+            <div class="acts">
+              <button class="btn" data-form="invoice">🧾 Raise client invoice</button>
+              <button class="btn" data-form="receipt">💰 Record payment received</button>
+            </div>
+          </div>
+          <div class="role-card">
+            <div class="who"><div class="avatar">LJ</div><div><b>Payables</b><small>Subvendors &amp; office expenses</small></div></div>
+            <div class="acts">
+              <button class="btn" data-form="subvendor">🤝 Add subvendor work order</button>
+              <button class="btn" data-form="subpay">💸 Record subvendor payment</button>
+              <button class="btn" data-form="petty">💵 Add petty cash expense</button>
+            </div>
+          </div>
+          <div class="role-card">
+            <div class="who"><div class="avatar">LJ</div><div><b>Compliance</b><small>GST returns</small></div></div>
+            <div class="acts">
+              <button class="btn" data-form="gst">📋 Mark GST return filed</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><div><h3>Today's entries</h3><p>Everything recorded in this session</p></div></div>
+          <div class="table-wrap"><table id="logTable"><thead><tr><th>Time</th><th>Entry</th><th>Reference</th><th class="r">Amount</th></tr></thead><tbody><tr class="empty"><td colspan="4" class="empty-note">No entries yet. Use a form above.</td></tr></tbody></table></div>
+        </div>
+      </section>
+
       <!-- ================= PAYMENTS ================= -->
       <section class="view" id="v-pay">
         <div class="page-head">
           <div><h2>Payments</h2><p>Client invoices and milestone receipts</p></div>
           <div class="filters">
             <div class="seg" id="paySeg"><button class="on" data-f="all">All</button><button data-f="Received">Received</button><button data-f="Due">Due</button><button data-f="Overdue">Overdue</button></div>
-            <button class="btn primary" onclick="Demo.toast('Record payment form (demo)')">＋ Record payment</button>
+            <button class="btn" data-form="invoice">＋ Raise invoice</button><button class="btn primary" data-form="receipt">＋ Record payment</button>
           </div>
         </div>
         <div class="card"><div class="table-wrap"><table id="payTable"></table></div></div>
@@ -371,14 +462,14 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
       <!-- ================= SUBVENDORS ================= -->
       <section class="view" id="v-sub">
         <div class="page-head"><div><h2>Subvendors</h2><p>Outsourced detailing partners, work orders and payments</p></div>
-          <button class="btn primary" onclick="Demo.toast('Add subvendor form (demo)')">＋ Add subvendor</button></div>
+          <div class="filters"><button class="btn primary" data-form="subvendor">＋ Add subvendor</button> <button class="btn" data-form="subpay">＋ Record payment</button></div></div>
         <div class="kpis" id="subKpis"></div>
         <div class="card"><div class="table-wrap"><table id="subTable"></table></div></div>
       </section>
 
       <!-- ================= GST ================= -->
       <section class="view" id="v-gst">
-        <div class="page-head"><div><h2>GST Filing</h2><p>Return status by period</p></div></div>
+        <div class="page-head"><div><h2>GST Filing</h2><p>Return status by period</p></div><button class="btn primary" data-form="gst">✓ Mark return filed</button></div>
         <div class="kpis" id="gstKpis"></div>
         <div class="card"><div class="table-wrap"><table id="gstTable"></table></div></div>
       </section>
@@ -386,7 +477,7 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
       <!-- ================= PETTY CASH ================= -->
       <section class="view" id="v-petty">
         <div class="page-head"><div><h2>Petty Cash</h2><p>Office float and daily expense ledger</p></div>
-          <button class="btn primary" onclick="Demo.toast('Add expense form (demo)')">＋ Add expense</button></div>
+          <button class="btn primary" data-form="petty">＋ Add expense</button></div>
         <div class="kpis" id="pettyKpis"></div>
         <div class="card"><div class="table-wrap"><table id="pettyTable"></table></div></div>
       </section>
@@ -677,7 +768,93 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
     });
   }
 
-  window.Demo = { kpis: kpis, barChart: barChart, lineChart: lineChart, spark: spark, hbars: hbars, initShell: initShell,
+
+  // ---------- entry form modal ----------
+  // cfg: { icon, title, subtitle, flow:[..steps], submit, fields:[{name,label,type,options,required,half,placeholder,hint,value,min,step}],
+  //        onInput(values, form), onSubmit(values) -> string|void (toast) }
+  // field types: text, number, date, email, select, textarea, file, info (static note), computed via onInput.
+  var back;
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function openForm(cfg) {
+    if (!back) {
+      back = document.createElement('div'); back.className = 'modal-back';
+      back.addEventListener('mousedown', function (e) { if (e.target === back) closeForm(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeForm(); });
+      document.body.appendChild(back);
+    }
+    var html = '<form class="modal" novalidate><div class="modal-h"><div class="mi">' + (cfg.icon || '📝') + '</div><div><h3>' + cfg.title + '</h3><p>' + (cfg.subtitle || '') +
+      '</p></div><button type="button" class="x" aria-label="Close">×</button></div>';
+    if (cfg.flow) html += '<div class="modal-flow">' + cfg.flow.map(function (f, i) { return (i ? '→ ' : '') + (i === 0 ? '<b>' + f + '</b>' : f); }).join(' ') + '</div>';
+    html += '<div class="modal-b">';
+    cfg.fields.forEach(function (f) {
+      var id = 'f_' + f.name, cls = 'fld' + (f.half ? ' half' : '');
+      var lab = f.label ? '<label for="' + id + '">' + f.label + (f.required ? ' <span class="req">*</span>' : '') + '</label>' : '';
+      var ctl;
+      if (f.type === 'select') ctl = '<select id="' + id + '" name="' + f.name + '">' + (f.placeholder ? '<option value="">' + f.placeholder + '</option>' : '') +
+        f.options.map(function (o) { var v = typeof o === 'string' ? o : o.value, t = typeof o === 'string' ? o : o.label; return '<option value="' + esc(v) + '"' + (String(f.value) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>';
+      else if (f.type === 'textarea') ctl = '<textarea id="' + id + '" name="' + f.name + '" placeholder="' + esc(f.placeholder) + '">' + esc(f.value) + '</textarea>';
+      else if (f.type === 'file') ctl = '<div class="drop" tabindex="0" data-file="' + f.name + '">📎 ' + (f.placeholder || 'Click to attach a file (PDF, PNG, JPG · max 10 MB)') + '</div><input type="hidden" name="' + f.name + '">';
+      else if (f.type === 'info') ctl = '<div class="info" data-info="' + f.name + '">' + (f.value || '') + '</div>';
+      else ctl = '<input id="' + id + '" name="' + f.name + '" type="' + (f.type || 'text') + '" value="' + esc(f.value) + '" placeholder="' + esc(f.placeholder) + '"' +
+        (f.min != null ? ' min="' + f.min + '"' : '') + (f.step ? ' step="' + f.step + '"' : '') + (f.readonly ? ' readonly' : '') + '>';
+      html += '<div class="' + cls + '" data-f="' + f.name + '">' + lab + ctl + (f.hint ? '<span class="hint">' + f.hint + '</span>' : '<span class="hint"></span>') + '</div>';
+    });
+    html += '</div><div class="modal-f"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn primary">' + (cfg.submit || 'Submit') + '</button></div></form>';
+    back.innerHTML = html;
+    back.classList.add('show');
+    var form = back.querySelector('form');
+    var values = function () { var o = {}; new FormData(form).forEach(function (v, k) { o[k] = typeof v === 'string' ? v.trim() : v; }); return o; };
+    var api = {
+      set: function (name, v) { var n = form.elements[name]; if (n) n.value = v; },
+      info: function (name, text, warn) { var n = form.querySelector('[data-info="' + name + '"]'); if (n) { n.innerHTML = text; n.classList.toggle('warn', !!warn); } },
+      hint: function (name, text) { var n = form.querySelector('[data-f="' + name + '"] .hint'); if (n) n.textContent = text; },
+      error: function (name, text) { var w = form.querySelector('[data-f="' + name + '"]'); if (w) { w.classList.add('err'); w.querySelector('.hint').textContent = text; } }
+    };
+    form.querySelectorAll('.drop').forEach(function (d) {
+      var pick = function () {
+        var name = ['Drawing_set_Rev-B.pdf', 'Client_PO_scan.pdf', 'Receipt_photo.jpg', 'Quotation_v2.pdf'][Math.floor(Math.random() * 4)];
+        d.classList.add('has'); d.textContent = '✓ ' + name + ' attached (demo)';
+        form.elements[d.getAttribute('data-file')].value = name;
+      };
+      d.addEventListener('click', pick); d.addEventListener('keydown', function (e) { if (e.key === 'Enter') pick(); });
+    });
+    var onInput = function () { if (cfg.onInput) cfg.onInput(values(), api); };
+    form.addEventListener('input', function (e) {
+      var w = e.target.closest('.fld'); if (w && w.classList.contains('err')) { w.classList.remove('err'); var f = cfg.fields.filter(function (x) { return 'f_' + x.name === e.target.id; })[0]; w.querySelector('.hint').textContent = (f && f.hint) || ''; }
+      onInput();
+    });
+    form.addEventListener('change', onInput);
+    onInput();
+    form.querySelector('.x').addEventListener('click', closeForm);
+    form.querySelector('[data-cancel]').addEventListener('click', closeForm);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = values(), ok = true;
+      cfg.fields.forEach(function (f) {
+        if (f.required && !v[f.name]) { api.error(f.name, f.type === 'file' ? 'Please attach a file' : 'This field is required'); ok = false; }
+        else if (f.type === 'number' && v[f.name] !== '' && v[f.name] != null && (isNaN(+v[f.name]) || +v[f.name] < (f.min != null ? f.min : -Infinity))) { api.error(f.name, 'Enter a valid number'); ok = false; }
+      });
+      if (ok && cfg.validate) ok = cfg.validate(v, api) !== false;
+      if (!ok) { var first = form.querySelector('.fld.err input, .fld.err select, .fld.err textarea, .fld.err .drop'); if (first) first.focus(); return; }
+      var msg = cfg.onSubmit(v);
+      closeForm();
+      toast(msg || 'Saved');
+    });
+    var firstInput = form.querySelector('input:not([type=hidden]), select, textarea');
+    if (firstInput) firstInput.focus();
+  }
+  function closeForm() { if (back) back.classList.remove('show'); }
+
+  // Prepend a freshly entered row to a table body and flash it.
+  function addRow(tbody, html) {
+    if (typeof tbody === 'string') tbody = document.querySelector(tbody);
+    tbody.insertAdjacentHTML('afterbegin', html);
+    tbody.firstElementChild.classList.add('fresh');
+  }
+  var todayISO = '2026-10-14';
+  function shortDate(iso) { if (!iso) return '—'; return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }); }
+
+  window.Demo = { openForm: openForm, addRow: addRow, esc: esc, today: todayISO, shortDate: shortDate, kpis: kpis, barChart: barChart, lineChart: lineChart, spark: spark, hbars: hbars, initShell: initShell,
     toast: toast, pill: pill, progress: progress, css: css, redrawAll: redrawAll, showTip: showTip, hideTip: hideTip };
 })();
 
@@ -745,8 +922,13 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
   function payRow(p) {
     return '<tr><td><div class="cell-main">' + p[0] + '</div><div class="cell-sub">' + p[1] + '</div></td><td>' + p[2] + '</td><td>' + p[3] + '</td><td class="r">' + p[4] + '</td><td class="r">' + rs(p[5]) + '</td><td>' + p[7] + '<div class="cell-sub">inv. ' + p[6] + '</div></td><td>' + P(pk[p[8]], p[8]) + '</td></tr>';
   }
-  document.getElementById('dueTable').innerHTML = payHead + '<tbody>' + pays.filter(function (p) { return p[8] !== 'Received'; }).map(payRow).join('') + '</tbody>';
+  function renderDue() {
+    document.getElementById('dueTable').innerHTML = payHead + '<tbody>' + pays.filter(function (p) { return p[8] !== 'Received'; }).map(payRow).join('') + '</tbody>';
+  }
+  renderDue();
+  var payFilter = 'all';
   function renderPay(f) {
+    payFilter = f;
     document.getElementById('payTable').innerHTML = payHead + '<tbody>' + pays.filter(function (p) { return f === 'all' || p[8] === f; }).map(payRow).join('') + '</tbody>';
   }
   renderPay('all');
@@ -764,39 +946,252 @@ td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
   });
 
   // subvendors
-  D.kpis(document.getElementById('subKpis'), [
-    { lbl: 'Active subvendors', ico: '🤝', val: '6', d: '2 onboarding', up: null },
-    { lbl: 'Work orders (FYTD)', ico: '📄', val: '₹42.6', unit: 'L', d: '+18%', up: false, note: 'vs LY' },
-    { lbl: 'Payable now', ico: '💸', val: '₹7.9', unit: 'L', d: '4 bills', up: null }
-  ]);
-  document.getElementById('subTable').innerHTML = '<thead><tr><th>Subvendor</th><th>Project</th><th class="r">Work order</th><th class="r">Paid</th><th>Paid %</th><th>Status</th></tr></thead><tbody>' +
-    [['Precision Detailing LLP', 'WE-2620 Cedar Valley', 980000, 640000, 'Part paid'], ['Steelgrid CAD Services', 'WE-2627 Hangar Bay 3', 720000, 720000, 'Settled'], ['Axis Structural Drafting', 'WE-2614 Harbour Point', 860000, 310000, 'Part paid'], ['NovaBIM Solutions', 'WE-2630 Pipe Racks', 540000, 0, 'Bill pending'], ['Keystone Detailers', 'WE-2622 Metro Canopy', 610000, 180000, 'Part paid']]
-      .map(function (s) { var pct = Math.round(100 * s[3] / s[2]); return '<tr><td class="cell-main">' + s[0] + '</td><td>' + s[1] + '</td><td class="r">' + rs(s[2]) + '</td><td class="r">' + rs(s[3]) + '</td><td>' + D.progress(pct, pct === 100 ? 'var(--s3)' : 'var(--s1)') + '</td><td>' + P(s[4] === 'Settled' ? 'good' : s[4] === 'Bill pending' ? 'warn' : 'info', s[4]) + '</td></tr>'; }).join('') + '</tbody>';
+  var subs = [
+    ['Precision Detailing LLP', 'WE-2620 Cedar Valley', 980000, 640000],
+    ['Steelgrid CAD Services', 'WE-2627 Hangar Bay 3', 720000, 720000],
+    ['Axis Structural Drafting', 'WE-2614 Harbour Point', 860000, 310000],
+    ['NovaBIM Solutions', 'WE-2630 Pipe Racks', 540000, 0],
+    ['Keystone Detailers', 'WE-2622 Metro Canopy', 610000, 180000]
+  ];
+  function renderSubs(flashIdx) {
+    var woTot = subs.reduce(function (a, x) { return a + x[2]; }, 0), due = subs.reduce(function (a, x) { return a + x[2] - x[3]; }, 0);
+    D.kpis(document.getElementById('subKpis'), [
+      { lbl: 'Active subvendors', ico: '🤝', val: String(subs.length), d: subs.filter(function (x) { return x[3] < x[2]; }).length + ' with balance due', up: null },
+      { lbl: 'Work orders (FYTD)', ico: '📄', val: '₹' + (woTot / 1e5).toFixed(1), unit: 'L', d: '+18%', up: false, note: 'vs LY' },
+      { lbl: 'Balance payable', ico: '💸', val: '₹' + (due / 1e5).toFixed(1), unit: 'L', d: 'across all work orders', up: null }
+    ]);
+    document.getElementById('subTable').innerHTML = '<thead><tr><th>Subvendor</th><th>Project</th><th class="r">Work order</th><th class="r">Paid</th><th>Paid %</th><th>Status</th></tr></thead><tbody>' +
+      subs.map(function (s, i) {
+        var pct = Math.round(100 * s[3] / s[2]), st = pct >= 100 ? 'Settled' : pct === 0 ? 'Bill pending' : 'Part paid';
+        return '<tr' + (i === flashIdx ? ' class="fresh"' : '') + '><td class="cell-main">' + D.esc(s[0]) + '</td><td>' + D.esc(s[1]) + '</td><td class="r">' + rs(s[2]) + '</td><td class="r">' + rs(s[3]) + '</td><td>' + D.progress(Math.min(pct, 100), pct >= 100 ? 'var(--s3)' : 'var(--s1)') + '</td><td>' + P(st === 'Settled' ? 'good' : st === 'Bill pending' ? 'warn' : 'info', st) + '</td></tr>';
+      }).join('') + '</tbody>';
+  }
+  renderSubs();
 
   // GST
-  D.kpis(document.getElementById('gstKpis'), [
-    { lbl: 'Returns filed (FYTD)', ico: '✅', val: '12', unit: '/ 13', d: 'GSTR-3B Sep pending', up: null },
-    { lbl: 'ITC available', ico: '🔄', val: '₹3.84', unit: 'L', d: 'matched with 2B', up: null },
-    { lbl: 'Late fees paid', ico: '🛡️', val: '₹0', d: 'all on time', up: null }
-  ]);
-  document.getElementById('gstTable').innerHTML = '<thead><tr><th>Period</th><th>Return</th><th class="r">Taxable value</th><th class="r">Tax</th><th>Due date</th><th>Status</th></tr></thead><tbody>' +
-    [['Sep 2026', 'GSTR-3B', 2860000, 412000, '20 Oct 2026', 'Pending'], ['Sep 2026', 'GSTR-1', 2860000, 0, '11 Oct 2026', 'Filed'], ['Aug 2026', 'GSTR-3B', 2740000, 386000, '20 Sep 2026', 'Filed'], ['Aug 2026', 'GSTR-1', 2740000, 0, '11 Sep 2026', 'Filed'], ['Jul 2026', 'GSTR-3B', 2610000, 371000, '20 Aug 2026', 'Filed']]
-      .map(function (g) { return '<tr><td class="cell-main">' + g[0] + '</td><td>' + g[1] + '</td><td class="r">' + rs(g[2]) + '</td><td class="r">' + (g[3] ? rs(g[3]) : '—') + '</td><td>' + g[4] + '</td><td>' + P(g[5] === 'Filed' ? 'good' : 'warn', g[5]) + '</td></tr>'; }).join('') + '</tbody>';
+  var gst = [['Sep 2026', 'GSTR-3B', 2860000, 412000, '20 Oct 2026', 'Pending'], ['Sep 2026', 'GSTR-1', 2860000, 0, '11 Oct 2026', 'Filed'], ['Aug 2026', 'GSTR-3B', 2740000, 386000, '20 Sep 2026', 'Filed'], ['Aug 2026', 'GSTR-1', 2740000, 0, '11 Sep 2026', 'Filed'], ['Jul 2026', 'GSTR-3B', 2610000, 371000, '20 Aug 2026', 'Filed']];
+  function renderGst(flashIdx) {
+    var filed = gst.filter(function (g) { return g[5] === 'Filed'; }).length + 8, pend = gst.filter(function (g) { return g[5] !== 'Filed'; });
+    D.kpis(document.getElementById('gstKpis'), [
+      { lbl: 'Returns filed (FYTD)', ico: '✅', val: String(filed), unit: '/ ' + (8 + gst.length), d: pend.length ? pend.map(function (g) { return g[1] + ' ' + g[0].slice(0, 3); }).join(', ') + ' pending' : 'all filed', up: null },
+      { lbl: 'ITC available', ico: '🔄', val: '₹3.84', unit: 'L', d: 'matched with 2B', up: null },
+      { lbl: 'Late fees paid', ico: '🛡️', val: '₹0', d: 'all on time', up: null }
+    ]);
+    document.getElementById('gstTable').innerHTML = '<thead><tr><th>Period</th><th>Return</th><th class="r">Taxable value</th><th class="r">Tax</th><th>Due date</th><th>Status</th></tr></thead><tbody>' +
+      gst.map(function (g, i) { return '<tr' + (i === flashIdx ? ' class="fresh"' : '') + '><td class="cell-main">' + g[0] + '</td><td>' + g[1] + '</td><td class="r">' + rs(g[2]) + '</td><td class="r">' + (g[3] ? rs(g[3]) : '—') + '</td><td>' + g[4] + (g[6] ? '<div class="cell-sub">ARN ' + D.esc(g[6]) + '</div>' : '') + '</td><td>' + P(g[5] === 'Filed' ? 'good' : 'warn', g[5]) + '</td></tr>'; }).join('') + '</tbody>';
+  }
+  renderGst();
 
   // petty cash
-  D.kpis(document.getElementById('pettyKpis'), [
-    { lbl: 'Float balance', ico: '💵', val: '₹18,450', d: 'of ₹50,000 float', up: null },
-    { lbl: 'Spent this month', ico: '🧾', val: '₹31,550', d: '+₹4,200', up: false, note: 'vs Sep' },
-    { lbl: 'Awaiting approval', ico: '⏳', val: '3', d: '₹6,850 total', up: null }
-  ]);
-  document.getElementById('pettyTable').innerHTML = '<thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Requested by</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>' +
-    [['13 Oct', 'Courier — signed contracts to client', 'Courier', 'HR', 1250, 'Approved'], ['12 Oct', 'Pantry supplies', 'Office', 'Admin', 3400, 'Approved'], ['11 Oct', 'HDMI cables & adaptors', 'IT', 'IT', 2200, 'Pending'], ['10 Oct', 'Client visit — taxi fare', 'Travel', 'BDM', 1850, 'Pending'], ['09 Oct', 'Printer toner', 'Office', 'Admin', 2800, 'Pending'], ['07 Oct', 'Team lunch — IFC milestone', 'Staff welfare', 'COO', 6400, 'Approved']]
-      .map(function (p) { return '<tr><td>' + p[0] + '</td><td class="cell-main">' + p[1] + '</td><td>' + p[2] + '</td><td>' + p[3] + '</td><td class="r">' + rs(p[4]) + '</td><td>' + P(p[5] === 'Approved' ? 'good' : 'warn', p[5]) + '</td></tr>'; }).join('') + '</tbody>';
+  var FLOAT = 50000;
+  var petty = [['2026-10-13', 'Courier — signed contracts to client', 'Courier', 'HR', 1250, 'Approved'], ['2026-10-12', 'Pantry supplies', 'Office', 'Admin', 3400, 'Approved'], ['2026-10-11', 'HDMI cables & adaptors', 'IT', 'IT', 2200, 'Pending'], ['2026-10-10', 'Client visit — taxi fare', 'Travel', 'BDM', 1850, 'Pending'], ['2026-10-09', 'Printer toner', 'Office', 'Admin', 2800, 'Pending'], ['2026-10-07', 'Team lunch — IFC milestone', 'Staff welfare', 'COO', 6400, 'Approved'], ['2026-10-03', 'Office cleaning & sundries', 'Office', 'Admin', 13650, 'Approved']];
+  function renderPetty(flash) {
+    var spent = petty.reduce(function (a, p) { return a + p[4]; }, 0), pend = petty.filter(function (p) { return p[5] === 'Pending'; });
+    D.kpis(document.getElementById('pettyKpis'), [
+      { lbl: 'Float balance', ico: '💵', val: rs(FLOAT - spent), d: 'of ' + rs(FLOAT) + ' float', up: null },
+      { lbl: 'Spent this month', ico: '🧾', val: rs(spent), d: petty.length + ' expenses', up: null },
+      { lbl: 'Awaiting approval', ico: '⏳', val: String(pend.length), d: rs(pend.reduce(function (a, p) { return a + p[4]; }, 0)) + ' total', up: null }
+    ]);
+    document.getElementById('pettyTable').innerHTML = '<thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Requested by</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>' +
+      petty.map(function (p, i) { return '<tr' + (flash && i === 0 ? ' class="fresh"' : '') + '><td>' + D.shortDate(p[0]) + '</td><td class="cell-main">' + D.esc(p[1]) + (p[6] ? '<div class="cell-sub">📎 ' + D.esc(p[6]) + '</div>' : '') + '</td><td>' + p[2] + '</td><td>' + p[3] + '</td><td class="r">' + rs(p[4]) + '</td><td>' + P(p[5] === 'Approved' ? 'good' : 'warn', p[5]) + '</td></tr>'; }).join('') + '</tbody>';
+  }
+  renderPetty();
 
   // PO
   document.getElementById('poTable').innerHTML = '<thead><tr><th>P.O.</th><th>Project</th><th>Client</th><th class="r">PO value</th><th>Invoiced</th><th>Status</th></tr></thead><tbody>' +
     [['PO-AF-7781', 'WE-2620 Cedar Valley Data Centre', 'Atlas Fabrication', 'USD 114,000', 20, 'Active'], ['PO-NS-2219', 'WE-2614 Harbour Point Tower', 'Northline Structures', 'CAD 71,000', 50, 'Active'], ['PO-PSF-0912', 'WE-2611 Riverside Logistics Hub', 'Pacific Steel Fabricators', 'USD 46,000', 80, 'Active'], ['PO-BR-3308', 'WE-2623 Lakeside Retail Mezz.', 'BlueRidge Steel', 'USD 7,200', 100, 'Closed'], ['—', 'WE-2631 Summit Office Stair Cores', 'BlueRidge Steel', 'USD 9,400 (quoted)', 0, 'PO awaited']]
       .map(function (p) { return '<tr><td class="cell-main">' + p[0] + '</td><td>' + p[1] + '</td><td>' + p[2] + '</td><td class="r">' + p[3] + '</td><td>' + D.progress(p[4], p[4] === 100 ? 'var(--s3)' : 'var(--s1)') + '</td><td>' + P(p[5] === 'Closed' ? 'good' : p[5] === 'Active' ? 'info' : 'warn', p[5]) + '</td></tr>'; }).join('') + '</tbody>';
+
+
+  // ================= DATA ENTRY FORMS =================
+  var esc = D.esc, today = D.today;
+  var projects = ['WE-2611 Riverside Logistics Hub|Pacific Steel Fabricators', 'WE-2614 Harbour Point Tower|Northline Structures', 'WE-2618 Kingsway Gymnasium|Meridian Steel Works',
+    'WE-2620 Cedar Valley Data Centre|Atlas Fabrication', 'WE-2622 Metro Line 4 Canopy|Northline Structures', 'WE-2625 Westfield Cold Storage|Pacific Steel Fabricators', 'WE-2627 Airport Hangar Bay 3|Atlas Fabrication'];
+  var projOpts = projects.map(function (p) { return { value: p, label: p.split('|')[0] }; });
+  var addDays = function (iso, d) { var t = new Date(iso + 'T00:00:00'); t.setDate(t.getDate() + d); return t.toISOString().slice(0, 10); };
+  var nextInv = 143;
+  function log(entry, ref, amount) {
+    var tb = document.querySelector('#logTable tbody'), e = tb.querySelector('.empty'); if (e) e.remove();
+    var now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    D.addRow(tb, '<tr><td>' + now + '</td><td class="cell-main">' + entry + '</td><td>' + esc(ref) + '</td><td class="r">' + amount + '</td></tr>');
+  }
+  function refreshPays(flashInv) {
+    renderPay(payFilter); renderDue();
+    document.querySelectorAll('#payTable tbody tr, #dueTable tbody tr').forEach(function (r) { if (r.textContent.indexOf(flashInv) === 0) r.classList.add('fresh'); });
+  }
+
+  var FORMS = {
+    invoice: function () {
+      var no = 'INV/26-27/' + nextInv;
+      return {
+        icon: '🧾', title: 'Raise client invoice', subtitle: 'Accounts · bill a project milestone', submit: 'Save invoice',
+        flow: ['Accounts raises', 'Shows as Due', 'Overdue after the due date'],
+        fields: [
+          { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select a project…', options: projOpts },
+          { name: 'no', label: 'Invoice number', half: true, value: no, readonly: true, hint: 'Auto-generated' },
+          { name: 'date', label: 'Invoice date', type: 'date', required: true, half: true, value: today },
+          { name: 'milestone', label: 'Milestone description', required: true, placeholder: 'e.g. IFA submission (30%)' },
+          { name: 'currency', label: 'Invoice currency', type: 'select', half: true, options: ['USD', 'AUD', 'CAD', 'GBP', 'INR'], value: 'USD' },
+          { name: 'amount', label: 'Invoice amount', type: 'number', required: true, half: true, min: 1 },
+          { name: 'inr', label: 'INR equivalent', type: 'number', required: true, half: true, min: 1, hint: 'At the bank rate on the invoice date' },
+          { name: 'terms', label: 'Payment terms', type: 'select', half: true, options: [{ value: 15, label: 'Net 15' }, { value: 30, label: 'Net 30' }, { value: 45, label: 'Net 45' }, { value: 60, label: 'Net 60' }], value: 30 },
+          { name: 'due', type: 'info' },
+          { name: 'doc', label: 'Invoice PDF', type: 'file' },
+          { name: 'remarks', label: 'Remarks (optional)' }
+        ],
+        onInput: function (v, f) {
+          f.info('due', v.date ? 'Payment due on <b>' + D.shortDate(addDays(v.date, +v.terms)) + ' ' + addDays(v.date, +v.terms).slice(0, 4) + '</b> (' + v.terms + ' days from invoice date).' : 'Pick an invoice date.');
+          if (v.currency === 'INR' && v.amount && v.inr !== v.amount) f.set('inr', v.amount);
+        },
+        onSubmit: function (v) {
+          var pr = v.project.split('|'), dueIso = addDays(v.date, +v.terms);
+          nextInv++;
+          var cur = v.currency + ' ' + (+v.amount).toLocaleString('en-US');
+          pays.unshift([v.no, pr[0], pr[1], v.milestone, cur, +v.inr, D.shortDate(v.date), D.shortDate(dueIso), dueIso < today ? 'Overdue' : 'Due']);
+          refreshPays(v.no);
+          log('🧾 Invoice raised — ' + esc(pr[0]), v.no, cur);
+          return v.no + ' saved · due ' + D.shortDate(dueIso);
+        }
+      };
+    },
+    receipt: function () {
+      var open = pays.filter(function (p) { return p[8] !== 'Received'; });
+      return {
+        icon: '💰', title: 'Record payment received', subtitle: 'Accounts · match a client receipt to an invoice', submit: 'Record receipt',
+        flow: ['Accounts records', 'Invoice marked Received', 'Outstanding & DSO update'],
+        fields: [
+          { name: 'inv', label: 'Invoice', type: 'select', required: true, placeholder: 'Select an outstanding invoice…', options: open.map(function (p) { return { value: p[0], label: p[0] + ' — ' + p[2] + ' (' + p[4] + ', ' + p[8] + ')' }; }) },
+          { name: 'sum', type: 'info' },
+          { name: 'date', label: 'Received date', type: 'date', required: true, half: true, value: today },
+          { name: 'amount', label: 'Amount received (₹)', type: 'number', required: true, half: true, min: 1 },
+          { name: 'ref', label: 'Bank reference / UTR', required: true, half: true, placeholder: 'e.g. SWIFT 26X0412' },
+          { name: 'charges', label: 'Bank charges (₹)', type: 'number', half: true, min: 0, value: 0 },
+          { name: 'proof', label: 'Payment proof (remittance advice)', type: 'file', required: true },
+          { name: 'remarks', label: 'Remarks (optional)' }
+        ],
+        onInput: function (v, f) {
+          var p = pays.filter(function (x) { return x[0] === v.inv; })[0];
+          if (!p) { f.info('sum', 'Pick an invoice to see what is outstanding.'); return; }
+          f.info('sum', '<b>' + p[0] + '</b> · ' + p[3] + ' · ' + p[4] + ' (' + rs(p[5]) + ') · due ' + p[7], p[8] === 'Overdue');
+          if (f._last !== v.inv) { f._last = v.inv; f.set('amount', p[5]); }
+        },
+        onSubmit: function (v) {
+          var p = pays.filter(function (x) { return x[0] === v.inv; })[0];
+          var short = +v.amount + (+v.charges || 0) < p[5];
+          p[8] = 'Received';
+          refreshPays(p[0]);
+          log('💰 Payment received — ' + esc(p[2]), v.inv + ' · ' + v.ref, rs(+v.amount));
+          return p[0] + ' marked received' + (short ? ' (short by ' + rs(p[5] - v.amount - (+v.charges || 0)) + ')' : '');
+        }
+      };
+    },
+    subvendor: function () {
+      return {
+        icon: '🤝', title: 'Add subvendor work order', subtitle: 'Accounts · outsource part of a project', submit: 'Save work order',
+        flow: ['Accounts records the work order', 'Bills paid against it', 'Settled when fully paid'],
+        fields: [
+          { name: 'name', label: 'Subvendor name', required: true, placeholder: 'e.g. Precision Detailing LLP' },
+          { name: 'gstin', label: 'GSTIN', half: true, placeholder: '32ABCDE1234F1Z5' },
+          { name: 'pan', label: 'PAN', half: true, placeholder: 'ABCDE1234F' },
+          { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select a project…', options: projOpts },
+          { name: 'amount', label: 'Work order value (₹)', type: 'number', required: true, half: true, min: 1 },
+          { name: 'tds', label: 'TDS section', type: 'select', half: true, options: ['194C — 2%', '194J — 10%', 'Not applicable'] },
+          { name: 'scope', label: 'Scope', type: 'textarea', placeholder: 'e.g. Connection detailing for levels 3–5' },
+          { name: 'doc', label: 'Signed work order', type: 'file' }
+        ],
+        validate: function (v, f) { if (v.gstin && !/^[0-9]{2}[A-Z0-9]{13}$/i.test(v.gstin)) { f.error('gstin', 'GSTIN must be 15 characters'); return false; } },
+        onSubmit: function (v) {
+          var pr = v.project.split('|')[0].replace(/^(WE-\d+) (.*)$/, function (m, a, b) { return a + ' ' + b.split(' ').slice(0, 2).join(' '); });
+          subs.unshift([v.name, pr, +v.amount, 0]);
+          renderSubs(0);
+          log('🤝 Subvendor work order — ' + esc(v.name), pr, rs(+v.amount));
+          return 'Work order for ' + v.name + ' saved';
+        }
+      };
+    },
+    subpay: function () {
+      return {
+        icon: '💸', title: 'Record subvendor payment', subtitle: 'Accounts · pay a subvendor bill', submit: 'Record payment',
+        flow: ['Accounts pays the bill', 'TDS deducted', 'Paid % updates'],
+        fields: [
+          { name: 'sub', label: 'Subvendor / work order', type: 'select', required: true, placeholder: 'Select…', options: subs.map(function (s, i) { return { value: i, label: s[0] + ' — ' + s[1] + ' (balance ' + rs(s[2] - s[3]) + ')' }; }).filter(function (o, i) { return subs[i][3] < subs[i][2]; }) },
+          { name: 'bill', label: 'Bill amount (₹)', type: 'number', required: true, half: true, min: 1 },
+          { name: 'tdsPct', label: 'TDS %', type: 'select', half: true, options: [{ value: 2, label: '2% (194C)' }, { value: 10, label: '10% (194J)' }, { value: 0, label: 'None' }], value: 10 },
+          { name: 'calc', type: 'info' },
+          { name: 'date', label: 'Payment date', type: 'date', required: true, half: true, value: today },
+          { name: 'ref', label: 'Transaction reference', required: true, half: true, placeholder: 'e.g. NEFT N2871264' },
+          { name: 'billdoc', label: 'Subvendor bill', type: 'file', required: true }
+        ],
+        onInput: function (v, f) {
+          var b = +v.bill || 0, t = Math.round(b * (+v.tdsPct) / 100);
+          var s = subs[+v.sub];
+          f.info('calc', b ? 'Bill ' + rs(b) + ' − TDS ' + rs(t) + ' = <b>net payable ' + rs(b - t) + '</b>' + (s && b > s[2] - s[3] ? '<br>⚠ Bill exceeds the work-order balance of ' + rs(s[2] - s[3]) : '') : 'Enter the bill amount to calculate TDS and net payable.', s && b > s[2] - s[3]);
+        },
+        validate: function (v, f) { var s = subs[+v.sub]; if (s && +v.bill > s[2] - s[3]) { f.error('bill', 'More than the remaining work-order balance'); return false; } },
+        onSubmit: function (v) {
+          var s = subs[+v.sub], b = +v.bill, t = Math.round(b * (+v.tdsPct) / 100);
+          s[3] += b;
+          renderSubs(+v.sub);
+          log('💸 Subvendor payment — ' + esc(s[0]), v.ref + ' · TDS ' + rs(t), rs(b - t));
+          return 'Paid ' + rs(b - t) + ' to ' + s[0] + ' (TDS ' + rs(t) + ')';
+        }
+      };
+    },
+    petty: function () {
+      return {
+        icon: '💵', title: 'Add petty cash expense', subtitle: 'Any department · small office spend', submit: 'Submit expense',
+        flow: ['Staff submit', 'Accounts approve', 'Float balance reduces'],
+        fields: [
+          { name: 'date', label: 'Date', type: 'date', required: true, half: true, value: today },
+          { name: 'amount', label: 'Amount (₹)', type: 'number', required: true, half: true, min: 1 },
+          { name: 'desc', label: 'Description', required: true, placeholder: 'e.g. Courier — drawings to client' },
+          { name: 'cat', label: 'Category', type: 'select', required: true, half: true, placeholder: 'Select…', options: ['Office', 'Courier', 'Travel', 'IT', 'Staff welfare', 'Other'] },
+          { name: 'by', label: 'Requested by', type: 'select', half: true, options: ['Admin', 'HR', 'IT', 'BDM', 'COO', 'Accounts'] },
+          { name: 'bal', type: 'info' },
+          { name: 'receipt', label: 'Receipt / bill photo', type: 'file', required: true }
+        ],
+        onInput: function (v, f) {
+          var bal = FLOAT - petty.reduce(function (a, p) { return a + p[4]; }, 0), amt = +v.amount || 0;
+          f.info('bal', 'Float balance ' + rs(bal) + (amt ? ' → after this expense <b>' + rs(bal - amt) + '</b>' : '') + (amt > bal ? '<br>⚠ Exceeds the remaining float — top-up needed first.' : ''), amt > bal);
+        },
+        validate: function (v, f) { var bal = FLOAT - petty.reduce(function (a, p) { return a + p[4]; }, 0); if (+v.amount > bal) { f.error('amount', 'Exceeds the float balance'); return false; } },
+        onSubmit: function (v) {
+          petty.unshift([v.date, v.desc, v.cat, v.by, +v.amount, 'Pending', v.receipt]);
+          renderPetty(true);
+          log('💵 Petty cash — ' + esc(v.desc), v.cat + ' · ' + v.by, rs(+v.amount));
+          return 'Expense of ' + rs(+v.amount) + ' submitted for approval';
+        }
+      };
+    },
+    gst: function () {
+      var pend = gst.map(function (g, i) { return { g: g, i: i }; }).filter(function (x) { return x.g[5] !== 'Filed'; });
+      return {
+        icon: '📋', title: 'Mark GST return filed', subtitle: 'Accounts · record a filed return', submit: 'Mark as filed',
+        flow: ['File on the GST portal', 'Record the ARN here', 'Compliance calendar updates'],
+        fields: [
+          { name: 'ret', label: 'Return', type: 'select', required: true, placeholder: pend.length ? 'Select a pending return…' : 'No pending returns', options: pend.map(function (x) { return { value: x.i, label: x.g[1] + ' — ' + x.g[0] + ' (due ' + x.g[4] + ')' }; }) },
+          { name: 'date', label: 'Filing date', type: 'date', required: true, half: true, value: today },
+          { name: 'arn', label: 'ARN', required: true, half: true, placeholder: 'e.g. AA321026123456X' },
+          { name: 'tax', label: 'Tax paid (₹)', type: 'number', half: true, min: 0 },
+          { name: 'challan', label: 'Challan / CPIN', half: true },
+          { name: 'ack', label: 'Acknowledgement PDF', type: 'file' }
+        ],
+        onInput: function (v, f) { var g = gst[+v.ret]; if (g && v.ret !== '' && f._last !== v.ret) { f._last = v.ret; f.set('tax', g[3]); } },
+        onSubmit: function (v) {
+          var g = gst[+v.ret]; g[5] = 'Filed'; g[6] = v.arn; if (v.tax) g[3] = +v.tax;
+          renderGst(+v.ret);
+          var calRow = document.querySelector('#cal .cal-row');
+          if (calRow && g[1] === 'GSTR-3B' && g[0] === 'Sep 2026') calRow.querySelector('.pill').outerHTML = P('good', 'Filed');
+          log('📋 ' + g[1] + ' filed — ' + g[0], 'ARN ' + v.arn, g[3] ? rs(g[3]) : '—');
+          return g[1] + ' ' + g[0] + ' marked filed';
+        }
+      };
+    }
+  };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-form]'); if (!b) return;
+    D.openForm(FORMS[b.getAttribute('data-form')]());
+  });
 
   D.initShell();
 })();

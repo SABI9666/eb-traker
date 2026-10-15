@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>West EPCM Portal</title>
-<meta name="description" content="West EPCM Technologies — combined demo: sign in as a Construction, Sales or Accounts user to enter data and see personal analytics, or as a Manager to monitor every report.">
+<title>West EPCM Australia</title>
+<meta name="description" content="West EPCM Technologies Australia — demo portal for construction delivery, sales and accounts with an Operations Director dashboard.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -326,6 +326,7 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
 .acct b { display: block; font-size: 13px; }
 .acct small { color: var(--muted); font-size: 11.5px; }
 .acct.mgr { grid-column: span 2; }
+.acct-grid { max-height: 360px; overflow-y: auto; }
 .dept-tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; }
 .dt-construction { background: var(--info-bg); color: var(--info); }
 .dt-sales { background: var(--warn-bg); color: var(--warn); }
@@ -386,23 +387,23 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
   <div class="login-art">
     <div class="brand">
       <div class="logo"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="14,26 33,76 50,46 67,76 86,26"/></svg></div>
-      <div><b>West EPCM Technologies</b><small>Project Management Portal</small></div>
+      <div><b>West EPCM Technologies</b><small>Australia · Delivery &amp; Operations Portal</small></div>
     </div>
-    <h1>One portal for construction, sales and accounts.</h1>
-    <p>Each team member signs in to log their own work and see their own analytics. Managers see every report in one place and can drill into any department or person.</p>
+    <h1>Every site, every claim, every dollar — in one portal.</h1>
+    <p>Site teams record diaries, RFIs, inspections, safety and progress from the field. Sales and accounts track pipeline and cash. The Operations Director sees the whole portfolio live, by project or by person.</p>
     <div class="pillars">
-      <div class="pillar"><b>🏗️ Construction</b><small>Timesheets, time requests, variations</small></div>
-      <div class="pillar"><b>💼 Sales</b><small>Leads, proposals, quotes and wins</small></div>
-      <div class="pillar"><b>💰 Accounts</b><small>Invoices, receipts, vendor bills, petty cash</small></div>
-      <div class="pillar"><b>📊 Manager</b><small>All reports, approvals, per-user monitoring</small></div>
+      <div class="pillar"><b>🏗️ Construction</b><small>Site diaries, RFIs, ITPs, NCRs, safety, progress, claims</small></div>
+      <div class="pillar"><b>💼 Sales</b><small>Leads, proposals and awards across AU &amp; NZ</small></div>
+      <div class="pillar"><b>💰 Accounts</b><small>Tax invoices (GST), receipts, subcontractors, petty cash</small></div>
+      <div class="pillar"><b>📊 Operations Director</b><small>Portfolio dashboard, approvals, per-project &amp; per-person monitoring</small></div>
     </div>
-    <div class="foot">Demo build · sample data only · entries are kept in this browser</div>
+    <div class="foot">Demo build · fictional sample data · entries are kept in this browser</div>
   </div>
   <div class="login-form">
     <form class="login-card" id="loginForm" novalidate>
       <h2>Sign in</h2>
       <p>Pick a demo account below or type its email.</p>
-      <div class="fld"><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="name@westepcm.com"></div>
+      <div class="fld"><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="name@westepcm.com.au"></div>
       <div class="fld"><label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" placeholder="Password"></div>
       <div class="login-err" id="lgErr" role="alert"></div>
       <button class="btn primary" type="submit">Sign in →</button>
@@ -554,9 +555,9 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
       var m = { t: 14, r: 12, b: 28, l: 48 };
       var iw = W - m.l - m.r, ih = H - m.t - m.b;
       var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': opts.aria || '' }, host);
-      var all = []; opts.series.forEach(function (s) { all = all.concat(s.values); });
+      var all = []; opts.series.forEach(function (s) { all = all.concat(s.values.filter(function (v) { return v != null; })); });
       if (opts.target) all.push(opts.target.value);
-      var max = niceMax(Math.max.apply(null, all) * 1.05), n = opts.labels.length;
+      var max = opts.max || niceMax(Math.max.apply(null, all) * 1.05), n = opts.labels.length;
       var fmt = opts.fmt || String, fmtA = opts.axisFmt || fmt;
       var X = function (i) { return m.l + (n === 1 ? iw / 2 : iw * i / (n - 1)); };
       var Y = function (v) { return m.t + ih - ih * v / max; };
@@ -574,18 +575,22 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
         var tt = el('text', { x: W - m.r, y: Y(opts.target.value) - 6, 'text-anchor': 'end' }, svg); tt.textContent = opts.target.label;
       }
       opts.series.forEach(function (s, si) {
-        var pts = s.values.map(function (v, i) { return X(i) + ',' + Y(v); });
+        // null values end the line (e.g. 'actual' stops at today while 'planned' continues)
+        var idx = []; s.values.forEach(function (v, i) { if (v != null) idx.push(i); });
+        var pts = idx.map(function (i) { return X(i) + ',' + Y(s.values[i]); });
+        if (!pts.length) return;
+        var first = idx[0], last = idx[idx.length - 1];
         if (s.area) {
           var gid = 'g' + Math.random().toString(36).slice(2);
           var defs = el('defs', {}, svg), lg = el('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
           el('stop', { offset: '0%', 'stop-color': col(s.color), 'stop-opacity': .22 }, lg);
           el('stop', { offset: '100%', 'stop-color': col(s.color), 'stop-opacity': 0 }, lg);
-          el('path', { d: 'M' + X(0) + ',' + Y(0) + 'L' + pts.join('L') + 'L' + X(n - 1) + ',' + Y(0) + 'Z', fill: 'url(#' + gid + ')' }, svg);
+          el('path', { d: 'M' + X(first) + ',' + Y(0) + 'L' + pts.join('L') + 'L' + X(last) + ',' + Y(0) + 'Z', fill: 'url(#' + gid + ')' }, svg);
         }
         el('polyline', { points: pts.join(' '), fill: 'none', stroke: col(s.color), 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': s.dash || '' }, svg);
         // direct end label
         if (opts.series.length > 1 && opts.series.length <= 4 && opts.endLabels) {
-          var lt = el('text', { x: X(n - 1) - 4, y: Y(s.values[n - 1]) - 8, 'text-anchor': 'end', class: 'dlabel' }, svg); lt.textContent = s.name;
+          var lt = el('text', { x: X(last) - 4, y: Y(s.values[last]) - 8, 'text-anchor': 'end', class: 'dlabel' }, svg); lt.textContent = s.name;
         }
       });
       var cross = el('line', { y1: m.t, y2: m.t + ih, class: 'cross', visibility: 'hidden' }, svg);
@@ -595,8 +600,8 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
         var r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width;
         var i = Math.max(0, Math.min(n - 1, Math.round((sx - m.l) / (n === 1 ? 1 : iw / (n - 1)))));
         cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('visibility', 'visible');
-        dots.forEach(function (d, si) { d.setAttribute('cx', X(i)); d.setAttribute('cy', Y(opts.series[si].values[i])); d.setAttribute('visibility', 'visible'); });
-        showTip(e, opts.labels[i], opts.series.map(function (s) { return { name: s.name, value: fmt(s.values[i]), color: s.color }; }));
+        dots.forEach(function (d, si) { var v = opts.series[si].values[i]; d.setAttribute('cx', X(i)); d.setAttribute('cy', Y(v || 0)); d.setAttribute('visibility', v == null ? 'hidden' : 'visible'); });
+        showTip(e, opts.labels[i], opts.series.filter(function (s) { return s.values[i] != null; }).map(function (s) { return { name: s.name, value: fmt(s.values[i]), color: s.color }; }));
       });
       hit.addEventListener('mouseleave', function () {
         hideTip(); cross.setAttribute('visibility', 'hidden');
@@ -807,7 +812,7 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
     tbody.insertAdjacentHTML('afterbegin', html);
     tbody.firstElementChild.classList.add('fresh');
   }
-  var todayISO = '2026-10-14';
+  var todayISO = '2026-10-15';
   function shortDate(iso) { if (!iso) return '—'; return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }); }
 
   window.Demo = { openForm: openForm, addRow: addRow, esc: esc, today: todayISO, shortDate: shortDate, kpis: kpis, barChart: barChart, lineChart: lineChart, spark: spark, hbars: hbars, initShell: initShell,
@@ -819,42 +824,49 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
 (function () {
   'use strict';
   var D = Demo, P = D.pill, esc = D.esc;
-  var TODAY = D.today;                       // fixed demo "today": 2026-10-14
-  var STORE_KEY = 'wepcm-portal-demo-v1';
+  var TODAY = D.today;                       // fixed demo "today"
+  var STORE_KEY = 'wepcm-portal-demo-au-v1';
   var PASSWORD = 'demo123';
 
   // =====================================================================
-  //  Reference data
+  //  Reference data — Australian operations (all names are fictional)
   // =====================================================================
   var USERS = [
-    { id: 'u1', name: 'Anjali Varma', initials: 'AV', dept: 'construction', role: 'Designer', title: 'Senior Tekla Modeller', email: 'anjali@westepcm.com', emp: 'WE-E-0142', joined: '2022-03-14', manager: 'Ravi Menon', location: 'Kochi', phone: '+91 98470 11420' },
-    { id: 'u2', name: 'Rahul Prakash', initials: 'RP', dept: 'construction', role: 'Designer', title: 'Steel Detailer', email: 'rahul@westepcm.com', emp: 'WE-E-0167', joined: '2023-07-03', manager: 'Ravi Menon', location: 'Kochi', phone: '+91 98950 22671' },
-    { id: 'u7', name: 'Ravi Menon', initials: 'RM', dept: 'construction', role: 'Design Lead', title: 'Design Lead — Structural Steel', email: 'ravi@westepcm.com', emp: 'WE-E-0058', joined: '2019-01-21', manager: 'Arun Kumar', location: 'Kochi', phone: '+91 94470 05830' },
-    { id: 'u3', name: 'Rohan Mathew', initials: 'RO', dept: 'sales', role: 'BDM', title: 'Business Development Manager — Americas', email: 'rohan@westepcm.com', emp: 'WE-E-0091', joined: '2021-05-10', manager: 'Arun Kumar', location: 'Kochi', phone: '+91 98460 09133' },
-    { id: 'u4', name: 'Neha Pillai', initials: 'NP', dept: 'sales', role: 'BDM', title: 'Business Development Manager — ANZ & UK', email: 'neha@westepcm.com', emp: 'WE-E-0118', joined: '2022-01-17', manager: 'Arun Kumar', location: 'Kochi', phone: '+91 97440 11804' },
-    { id: 'u5', name: 'Lekha Joseph', initials: 'LJ', dept: 'accounts', role: 'Accounts', title: 'Accounts Executive — Receivables', email: 'lekha@westepcm.com', emp: 'WE-E-0076', joined: '2020-08-03', manager: 'Arun Kumar', location: 'Kochi', phone: '+91 95620 07610' },
-    { id: 'u6', name: 'Sanjay Kumar', initials: 'SK', dept: 'accounts', role: 'Accounts', title: 'Accounts Assistant — Payables', email: 'sanjay@westepcm.com', emp: 'WE-E-0183', joined: '2024-02-12', manager: 'Lekha Joseph', location: 'Kochi', phone: '+91 90480 18322' },
-    { id: 'm1', name: 'Arun Kumar', initials: 'AK', dept: 'management', role: 'Manager', title: 'Chief Operating Officer', email: 'manager@westepcm.com', emp: 'WE-E-0003', joined: '2016-06-01', manager: 'Board of Directors', location: 'Kochi', phone: '+91 94460 00031' }
+    { id: 'u1', name: 'Jack Thompson', initials: 'JT', dept: 'construction', role: 'Site Supervisor', title: 'Site Supervisor — NSW & VIC sites', projects: ['WE-2611', 'WE-2614', 'WE-2627'], location: 'Badgerys Creek NSW', phone: '+61 412 384 106', emp: 'WE-AU-0142', joined: '2021-03-15', manager: 'Daniel Walsh' },
+    { id: 'u10', name: 'Aaron Fraser', initials: 'AF', dept: 'construction', role: 'Site Supervisor', title: 'Site Supervisor — QLD & WA sites', projects: ['WE-2620', 'WE-2622', 'WE-2625'], location: 'Brendale QLD', phone: '+61 423 718 220', emp: 'WE-AU-0151', joined: '2022-06-06', manager: 'Daniel Walsh' },
+    { id: 'u2', name: 'Priya Sharma', initials: 'PS', dept: 'construction', role: 'Site Engineer', title: 'Site Engineer — Quality, RFIs & Progress', location: 'Parramatta NSW', phone: '+61 433 905 412', emp: 'WE-AU-0167', joined: '2023-01-30', manager: 'Daniel Walsh' },
+    { id: 'u8', name: "Liam O'Connor", initials: 'LO', dept: 'construction', role: 'HSE Advisor', title: 'Health, Safety & Environment Advisor', location: 'Sydney NSW', phone: '+61 401 226 870', emp: 'WE-AU-0118', joined: '2020-09-14', manager: 'Michael Harrison' },
+    { id: 'u9', name: 'Chloe Nguyen', initials: 'CN', dept: 'construction', role: 'Document Controller', title: 'Document Controller', location: 'Sydney NSW', phone: '+61 450 117 384', emp: 'WE-AU-0176', joined: '2023-08-21', manager: 'Daniel Walsh' },
+    { id: 'u7', name: 'Daniel Walsh', initials: 'DW', dept: 'construction', role: 'Project Manager', title: 'Project Manager — Delivery', location: 'Sydney NSW', phone: '+61 418 552 093', emp: 'WE-AU-0058', joined: '2018-02-05', manager: 'Michael Harrison' },
+    { id: 'u3', name: 'Olivia Bennett', initials: 'OB', dept: 'sales', role: 'BDM', title: 'Business Development Manager — NSW, VIC & ACT', location: 'Sydney NSW', phone: '+61 414 660 271', emp: 'WE-AU-0091', joined: '2021-05-10', manager: 'Michael Harrison' },
+    { id: 'u4', name: 'Lachlan Clarke', initials: 'LC', dept: 'sales', role: 'BDM', title: 'Business Development Manager — QLD, WA & NZ', location: 'Brisbane QLD', phone: '+61 437 208 514', emp: 'WE-AU-0124', joined: '2022-01-17', manager: 'Michael Harrison' },
+    { id: 'u5', name: 'Sarah Mitchell', initials: 'SM', dept: 'accounts', role: 'Accounts', title: 'Accounts Receivable Officer', location: 'Sydney NSW', phone: '+61 402 771 836', emp: 'WE-AU-0076', joined: '2020-08-03', manager: 'Michael Harrison' },
+    { id: 'u6', name: 'Ethan Kelly', initials: 'EK', dept: 'accounts', role: 'Accounts', title: 'Accounts Payable Officer', location: 'Sydney NSW', phone: '+61 421 390 655', emp: 'WE-AU-0183', joined: '2024-02-12', manager: 'Sarah Mitchell' },
+    { id: 'm1', name: 'Michael Harrison', initials: 'MH', dept: 'management', role: 'Manager', title: 'Operations Director', location: 'Sydney NSW', phone: '+61 400 318 902', emp: 'WE-AU-0003', joined: '2015-07-01', manager: 'Board of Directors' }
   ];
+  USERS.forEach(function (u) { u.email = u.name.split(' ')[0].toLowerCase() + '@westepcm.com.au'; });
+  userById('m1').email = 'manager@westepcm.com.au';
+
   var DEPTS = {
     construction: { name: 'Construction', icon: '🏗️', color: 'var(--s1)' },
     sales: { name: 'Sales', icon: '💼', color: 'var(--s2)' },
     accounts: { name: 'Accounts', icon: '💰', color: 'var(--s3)' }
   };
   var PROJECTS = [
-    { no: 'WE-2611', name: 'Riverside Logistics Hub', client: 'Pacific Steel Fabricators', alloc: 1500, base: 860, cur: 'USD' },
-    { no: 'WE-2614', name: 'Harbour Point Tower', client: 'Northline Structures', alloc: 2100, base: 1120, cur: 'CAD' },
-    { no: 'WE-2620', name: 'Cedar Valley Data Centre', client: 'Atlas Fabrication', alloc: 2600, base: 520, cur: 'USD' },
-    { no: 'WE-2622', name: 'Metro Line 4 Canopy', client: 'Northline Structures', alloc: 1750, base: 480, cur: 'CAD' },
-    { no: 'WE-2625', name: 'Westfield Cold Storage', client: 'Pacific Steel Fabricators', alloc: 1180, base: 610, cur: 'USD' },
-    { no: 'WE-2627', name: 'Airport Hangar Bay 3', client: 'Atlas Fabrication', alloc: 1960, base: 760, cur: 'USD' }
+    { no: 'WE-2611', name: 'Western Sydney Logistics Hub', loc: 'Badgerys Creek NSW', client: 'Banksia Developments Pty Ltd', value: 18.4e6, start: '2026-02-02', finish: '2026-12-18', spi: 0.97, cpi: 1.02, milestone: 'Roof sheeting complete' },
+    { no: 'WE-2614', name: 'Parramatta Commercial Tower', loc: 'Parramatta NSW', client: 'Harbourline Property Group Pty Ltd', value: 42.6e6, start: '2025-11-03', finish: '2027-08-27', spi: 0.93, cpi: 0.97, milestone: 'Level 9 slab pour' },
+    { no: 'WE-2620', name: 'Brisbane North Data Centre', loc: 'Brendale QLD', client: 'Coral Coast Infrastructure Pty Ltd', value: 31.2e6, start: '2026-03-16', finish: '2027-04-30', spi: 1.03, cpi: 1.01, milestone: 'Data hall 1 steel topped out' },
+    { no: 'WE-2622', name: 'Gold Coast Rail Depot Extension', loc: 'Southport QLD', client: 'SEQ Transit Partners Pty Ltd', value: 12.9e6, start: '2026-01-12', finish: '2026-11-27', spi: 0.89, cpi: 0.95, milestone: 'Stabling roads handover' },
+    { no: 'WE-2625', name: 'Perth Airport Cold Storage', loc: 'Redcliffe WA', client: 'Swan River Logistics Pty Ltd', value: 9.8e6, start: '2026-04-06', finish: '2026-12-11', spi: 1.0, cpi: 1.04, milestone: 'Insulated panels installed' },
+    { no: 'WE-2627', name: 'Geelong Hospital Car Park', loc: 'Geelong VIC', client: 'Bellarine Health Infrastructure Pty Ltd', value: 15.3e6, start: '2026-05-04', finish: '2027-03-26', spi: 0.98, cpi: 0.99, milestone: 'Deck 2 post-tensioning' }
   ];
-  var RATE = { USD: 83.6, CAD: 61.2, AUD: 55.1, GBP: 106.4, INR: 1 };   // bank rate used when accounts record INR equivalents
-  var CURS = ['USD', 'AUD', 'CAD', 'GBP'];
+  var TRADES = ['Structural steel', 'Concrete & formwork', 'Carpentry & finishes', 'Services (MEP)'];
+  var CURS = ['AUD', 'NZD'];
   var MONTHS = ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
   var MLABEL = { '2026-05': 'May', '2026-06': 'Jun', '2026-07': 'Jul', '2026-08': 'Aug', '2026-09': 'Sep', '2026-10': 'Oct' };
-  var projByNo = function (no) { return PROJECTS.filter(function (p) { return p.no === no; })[0]; };
-  var userById = function (id) { return USERS.filter(function (u) { return u.id === id; })[0]; };
+  var SUBBIES = ['Coastline Steel Erectors Pty Ltd', 'Pinnacle Formwork Pty Ltd', 'Southern Cranes & Rigging Pty Ltd', 'Apex Electrical Services Pty Ltd', 'Bluegum Concrete Pumping Pty Ltd'];
+  function projByNo(no) { return PROJECTS.filter(function (p) { return p.no === no; })[0]; }
+  function userById(id) { return USERS.filter(function (u) { return u.id === id; })[0]; }
   var deptUsers = function (dept) { return USERS.filter(function (u) { return u.dept === dept; }); };
 
   // =====================================================================
@@ -864,156 +876,265 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
   function iso(d) { return d.toISOString().slice(0, 10); }
   function addDays(s, n) { var d = parse(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
   function monday(s) { var w = parse(s).getUTCDay(); return addDays(s, -((w + 6) % 7)); }
+  function daysBetween(a, b) { return Math.round((parse(b) - parse(a)) / 864e5); }
   function workdays(from, to) { var out = []; for (var d = from; d <= to; d = addDays(d, 1)) { var w = parse(d).getUTCDay(); if (w > 0 && w < 6) out.push(d); } return out; }
+  function monthEnd(m) { var d = parse(m + '-01'); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(0); return iso(d); }
   var WEEKS = (function () { var out = [], m = monday('2026-08-17'); while (m <= TODAY) { out.push(m); m = addDays(m, 7); } return out; })();
-  var nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 1 });
-  var inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-  var rs = function (v) { return '₹' + inr.format(Math.round(v)); };
-  var lakh = function (v) { return '₹' + (v / 1e5).toFixed(1) + ' L'; };
-  var money = function (cur, v) { return cur + ' ' + Math.round(v).toLocaleString('en-US'); };
-  var kfmt = function (cur) { var sym = { USD: 'US$', AUD: 'A$', CAD: 'C$', GBP: '£' }[cur] || cur + ' '; return function (v) { return sym + (v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : Math.round(v / 1000) + 'K'); }; };
+  var nf = new Intl.NumberFormat('en-AU', { maximumFractionDigits: 1 });
+  var n0 = new Intl.NumberFormat('en-AU', { maximumFractionDigits: 0 });
+  var aud = function (v) { return 'A$' + n0.format(Math.round(v)); };
+  var audK = function (v) { return Math.abs(v) >= 1e6 ? 'A$' + (v / 1e6).toFixed(2) + 'M' : 'A$' + Math.round(v / 1000) + 'K'; };
+  var money = function (cur, v) { return (cur === 'NZD' ? 'NZ$' : 'A$') + n0.format(Math.round(v)); };
+  var kfmt = function (cur) { var sym = cur === 'NZD' ? 'NZ$' : 'A$'; return function (v) { return sym + (Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : Math.round(v / 1000) + 'K'); }; };
   var sum = function (a, f) { return a.reduce(function (t, x) { return t + (f ? f(x) : x); }, 0); };
+  var pct = function (v) { return nf.format(v) + '%'; };
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
+  // Planned progress follows an S-curve between start and finish; actual = planned × SPI.
+  function plannedPct(p, date) {
+    var x = Math.max(0, Math.min(1, daysBetween(p.start, date) / daysBetween(p.start, p.finish)));
+    var s = function (t) { return 1 / (1 + Math.exp(-9 * (t - 0.5))); };
+    return 100 * (s(x) - s(0)) / (s(1) - s(0));
+  }
+  function modelActual(p, date) { return Math.min(100, plannedPct(p, date) * p.spi); }
+
   // =====================================================================
-  //  Entry types (one shared ledger for every department)
+  //  Entry types — one ledger shared by every department
   // =====================================================================
+  var T = function (o) { return o; };
   var TYPES = {
-    timesheet: { label: 'Timesheet', icon: '⏱️', dept: 'construction',
-      summary: function (e) { return (e.workType === 'project' ? e.project + ' · ' + (e.drawing || '—') : 'Training') + ' — ' + e.desc; }, amount: function (e) { return e.hours + ' h'; } },
-    timereq: { label: 'Time request', icon: '⏰', dept: 'construction', approval: true,
-      summary: function (e) { return e.ref + ' · ' + e.project + ' — ' + e.reason; }, amount: function (e) { return '+' + e.hours + ' h'; } },
-    variation: { label: 'Variation', icon: '📑', dept: 'construction', approval: true,
-      summary: function (e) { return e.ref + ' · ' + e.project + ' — ' + e.scope; }, amount: function (e) { return e.hours + ' h · ' + money(e.currency, e.amount); } },
-    lead: { label: 'Lead', icon: '🎯', dept: 'sales',
-      summary: function (e) { return e.name + ' — ' + e.client + ' (' + e.source + ', ' + e.region + ')'; }, amount: function () { return '—'; } },
-    proposal: { label: 'Proposal', icon: '📋', dept: 'sales',
-      summary: function (e) { return e.ref + ' · ' + e.name + ' — ' + e.client; }, amount: function (e) { return e.value ? money(e.currency, e.value) : '—'; } },
-    invoice: { label: 'Invoice', icon: '🧾', dept: 'accounts',
-      summary: function (e) { return e.ref + ' · ' + e.project + ' — ' + e.milestone; }, amount: function (e) { return money(e.currency, e.amount); } },
-    receipt: { label: 'Receipt', icon: '💰', dept: 'accounts',
-      summary: function (e) { return 'Against ' + e.invoice + ' · ' + e.bankRef; }, amount: function (e) { return rs(e.amount); } },
-    expense: { label: 'Petty cash', icon: '💵', dept: 'accounts', approval: true,
-      summary: function (e) { return e.desc + ' (' + e.category + ')'; }, amount: function (e) { return rs(e.amount); } },
-    subpay: { label: 'Subvendor payment', icon: '💸', dept: 'accounts',
-      summary: function (e) { return e.subvendor + ' · ' + e.project + ' · TDS ' + rs(e.tds); }, amount: function (e) { return rs(e.bill - e.tds); } }
+    // construction — site
+    diary: T({ label: 'Site diary', icon: '📓', dept: 'construction',
+      summary: function (e) { return e.project + ' · ' + e.weather + ' · ' + e.activities; }, amount: function (e) { return e.workers + ' on site · ' + n0.format(e.workers * e.shift) + ' h'; } }),
+    delivery: T({ label: 'Material delivery', icon: '🚚', dept: 'construction',
+      summary: function (e) { return e.project + ' · ' + e.material + ' · ' + e.supplier + ' · docket ' + e.docket; }, amount: function (e) { return nf.format(e.qty) + ' ' + e.unit; } }),
+    // construction — engineering & quality
+    rfi: T({ label: 'RFI', icon: '❓', dept: 'construction',
+      summary: function (e) { return e.ref + ' · ' + e.project + ' · ' + e.discipline + ' — ' + e.subject; }, amount: function (e) { return (e.status === 'Open' ? daysBetween(e.date, TODAY) : daysBetween(e.date, e.answered)) + ' days'; } }),
+    inspection: T({ label: 'ITP inspection', icon: '🔍', dept: 'construction',
+      summary: function (e) { return e.project + ' · ' + e.point + ' — ' + e.element; }, amount: function () { return '—'; } }),
+    defect: T({ label: 'Defect / NCR', icon: '⚠️', dept: 'construction',
+      summary: function (e) { return e.ref + ' · ' + e.project + ' · ' + e.location + ' — ' + e.desc; }, amount: function (e) { return e.severity; } }),
+    progress: T({ label: 'Progress update', icon: '📈', dept: 'construction',
+      summary: function (e) { return e.project + ' — ' + e.activity; }, amount: function (e) { return pct(e.pct) + ' complete'; } }),
+    // construction — safety
+    incident: T({ label: 'Safety incident', icon: '🚑', dept: 'construction',
+      summary: function (e) { return e.ref + ' · ' + e.project + ' · ' + e.kind + ' — ' + e.desc; }, amount: function (e) { return e.kind; } }),
+    toolbox: T({ label: 'Toolbox talk', icon: '🦺', dept: 'construction',
+      summary: function (e) { return e.project + ' — ' + e.topic; }, amount: function (e) { return e.attendees + ' attended'; } }),
+    audit: T({ label: 'Safety inspection', icon: '📋', dept: 'construction',
+      summary: function (e) { return e.project + ' — ' + e.findings + ' findings · ' + e.notes; }, amount: function (e) { return e.score + '%'; } }),
+    // construction — documents & commercial
+    transmittal: T({ label: 'Drawing transmittal', icon: '📐', dept: 'construction',
+      summary: function (e) { return e.ref + ' · ' + e.project + ' · ' + e.purpose + ' to ' + e.recipient; }, amount: function (e) { return e.drawings + ' dwgs'; } }),
+    variation: T({ label: 'Variation', icon: '📑', dept: 'construction', approval: true,
+      summary: function (e) { return e.ref + ' · ' + e.project + ' — ' + e.desc; }, amount: function (e) { return aud(e.value) + (e.days ? ' · ' + e.days + ' d' : ''); } }),
+    eot: T({ label: 'EOT claim', icon: '⏳', dept: 'construction', approval: true,
+      summary: function (e) { return e.ref + ' · ' + e.project + ' — ' + e.cause + ': ' + e.desc; }, amount: function (e) { return e.days + ' days'; } }),
+    claim: T({ label: 'Progress claim', icon: '🧮', dept: 'construction', approval: true,
+      summary: function (e) { return e.ref + ' · ' + e.project + ' · ' + e.period + ' · ' + pct(e.cumPct) + ' cumulative'; }, amount: function (e) { return aud(e.amount); } }),
+    // sales
+    lead: T({ label: 'Lead', icon: '🎯', dept: 'sales',
+      summary: function (e) { return e.name + ' — ' + e.client + ' (' + e.source + ', ' + e.region + ')'; }, amount: function () { return '—'; } }),
+    proposal: T({ label: 'Proposal', icon: '📋', dept: 'sales',
+      summary: function (e) { return e.ref + ' · ' + e.name + ' — ' + e.client + ' (' + e.region + ')'; }, amount: function (e) { return e.value ? money(e.currency, e.value) : '—'; } }),
+    // accounts
+    invoice: T({ label: 'Tax invoice', icon: '🧾', dept: 'accounts',
+      summary: function (e) { return e.ref + ' · ' + e.project + ' — ' + e.milestone; }, amount: function (e) { return aud(e.total) + ' inc GST'; } }),
+    receipt: T({ label: 'Receipt', icon: '💰', dept: 'accounts',
+      summary: function (e) { return 'Against ' + e.invoice + ' · ' + e.bankRef; }, amount: function (e) { return aud(e.amount); } }),
+    expense: T({ label: 'Petty cash', icon: '💵', dept: 'accounts', approval: true,
+      summary: function (e) { return e.desc + ' (' + e.category + ')'; }, amount: function (e) { return aud(e.amount); } }),
+    subpay: T({ label: 'Subcontractor payment', icon: '💸', dept: 'accounts',
+      summary: function (e) { return e.subbie + ' · ' + e.project + ' · retention ' + aud(e.retention); }, amount: function (e) { return aud(e.bill - e.retention); } })
   };
   function statusKind(s) {
-    return { Approved: 'good', Won: 'good', Received: 'good', Submitted: 'good', Paid: 'good', Qualified: 'good', Recorded: 'good',
-      Pending: 'warn', Quoted: 'info', Estimating: 'neutral', New: 'info', Due: 'info', Overdue: 'bad', Rejected: 'bad', Lost: 'bad' }[s] || 'neutral';
+    return { Approved: 'good', Won: 'good', Received: 'good', Submitted: 'good', Paid: 'good', Qualified: 'good', Recorded: 'good', Accepted: 'good', Pass: 'good', Closed: 'good', Acknowledged: 'good', Issued: 'info',
+      Pending: 'warn', Open: 'warn', Conditional: 'warn', Answered: 'info', Quoted: 'info', Estimating: 'neutral', New: 'info', Due: 'info', Overdue: 'bad', Rejected: 'bad', Lost: 'bad', Fail: 'bad' }[s] || 'neutral';
   }
 
   // =====================================================================
-  //  Seed data — deterministic so every viewer sees the same history
+  //  Seed data — deterministic history so every viewer sees the same demo
   // =====================================================================
   function seed() {
-    var r = rng(20261014), E = [], n = 0, c = { tr: 114, vo: 26, ld: 300, pr: 140, inv: 96, pc: 410, sp: 40 };
+    var r = rng(61026), E = [], n = 0;
+    var c = { rfi: 140, ncr: 31, inc: 18, tx: 402, vo: 21, eot: 4, pcl: 0, ld: 300, pr: 140, inv: 1096, pc: 410, sp: 40 };
     var pick = function (a) { return a[Math.floor(r() * a.length)]; };
-    var half = function (lo, hi) { return lo + Math.round(r() * (hi - lo) * 2) / 2; };
-    function add(o) { o.id = 'e' + (++n); o.ts = o.date + 'T' + String(9 + Math.floor(r() * 9)).padStart(2, '0') + ':' + String(Math.floor(r() * 60)).padStart(2, '0'); E.push(o); return o; }
+    var between = function (lo, hi) { return lo + Math.round(r() * (hi - lo)); };
+    function add(o) { o.id = 'e' + (++n); o.ts = o.date + 'T' + String(7 + Math.floor(r() * 10)).padStart(2, '0') + ':' + String(Math.floor(r() * 60)).padStart(2, '0'); E.push(o); return o; }
+    var days = workdays('2026-08-17', TODAY);
+    var supOf = function (no) { return userById('u1').projects.indexOf(no) >= 0 ? 'u1' : 'u10'; };
+    var size = { 'WE-2611': 1.1, 'WE-2614': 1.6, 'WE-2620': 1.4, 'WE-2622': 0.8, 'WE-2625': 0.6, 'WE-2627': 0.9 };
+    var siteActs = {
+      'WE-2611': ['Erect portal frames grid 12–18', 'Roof purlins & bracing bay 4', 'Wall girts east elevation', 'Slab on ground pour 6'],
+      'WE-2614': ['Level 8 slab formwork', 'Core walls jump-form L9', 'Post-tensioning L7 stressing', 'Façade brackets L5–L6'],
+      'WE-2620': ['Data hall 1 steel erection', 'Precast wall panels north', 'Roof deck install', 'Generator yard footings'],
+      'WE-2622': ['Stabling road ballast', 'Maintenance shed steel', 'OHW mast footings', 'Drainage pits & pipes'],
+      'WE-2625': ['Insulated panel install', 'Freezer floor heating', 'Dock levellers', 'Roof membrane'],
+      'WE-2627': ['Deck 2 formwork', 'Ramp columns pour', 'Precast shear walls', 'Post-tensioning deck 1'] };
+    var weathers = ['Fine', 'Fine', 'Fine', 'Fine', 'Cloudy', 'Showers', 'Heavy rain', 'Strong wind', 'Extreme heat'];
 
-    // --- construction: daily timesheets for each designer + the design lead
-    var assign = { u1: ['WE-2620', 'WE-2611', 'WE-2614'], u2: ['WE-2627', 'WE-2625', 'WE-2620'], u7: ['WE-2614', 'WE-2622', 'WE-2611'] };
-    var acts = ['Beam connections — shear tabs', 'Column splices and base plates', 'Bracing gusset detailing', 'Stair & handrail modelling', 'GA drawing clean-up', 'IFC comments incorporated',
-      'Checker comments closed', 'Anchor bolt plan', 'Erection drawings', 'Clash review with MEP model', 'Roof truss assemblies', 'Embed plate schedule'];
-    workdays('2026-08-17', TODAY).forEach(function (d) {
-      Object.keys(assign).forEach(function (u) {
-        if (r() < 0.04) return;                                   // leave day
-        var main = pick(assign[u]), h1 = half(4, 6.5), total = u === 'u7' ? half(6, 8) : half(7, 9);
-        add({ type: 'timesheet', userId: u, date: d, workType: 'project', project: main, drawing: (r() < 0.5 ? 'E-' + (2000 + Math.floor(r() * 90)) : 'A-' + (1100 + Math.floor(r() * 90))), desc: pick(acts), hours: h1, status: 'Submitted' });
-        if (total - h1 > 0) {
-          if (r() < 0.12) add({ type: 'timesheet', userId: u, date: d, workType: 'training', project: '—', drawing: '', desc: 'Tekla custom components training', hours: total - h1, status: 'Submitted' });
-          else { var p2 = pick(assign[u]); add({ type: 'timesheet', userId: u, date: d, workType: 'project', project: p2, drawing: 'A-' + (1100 + Math.floor(r() * 90)), desc: pick(acts), hours: total - h1, status: 'Submitted' }); }
+    // --- site diaries (headcount by trade, lost time) and deliveries
+    days.forEach(function (d) {
+      PROJECTS.forEach(function (p) {
+        if (d < p.start) return;
+        var k = size[p.no], w = pick(weathers);
+        var crews = [between(4, 10) * k, between(6, 14) * k, between(2, 7) * k, between(2, 8) * k].map(Math.round);
+        var lost = w === 'Heavy rain' ? between(3, 6) : w === 'Strong wind' ? between(1, 3) : w === 'Extreme heat' ? between(1, 2) : r() < 0.05 ? 2 : 0;
+        add({ type: 'diary', userId: supOf(p.no), date: d, project: p.no, weather: w, crews: crews, workers: sum(crews), shift: 9, hoursLost: lost,
+          lostCause: lost ? (w === 'Heavy rain' || w === 'Strong wind' || w === 'Extreme heat' ? 'Weather' : pick(['Site access', 'Plant breakdown', 'Client direction'])) : 'None', activities: pick(siteActs[p.no]), status: 'Submitted' });
+        if (r() < 0.42) {
+          var mat = pick([['Structural steel', 't', 8, 42, 'Ironbark Steel Supply Pty Ltd'], ['Concrete', 'm³', 30, 180, 'Redgum Premix Pty Ltd'], ['Reinforcement', 't', 4, 22, 'Southern Reo Pty Ltd'], ['Precast panels', 'no.', 4, 16, 'Wattle Precast Pty Ltd']]);
+          add({ type: 'delivery', userId: supOf(p.no), date: d, project: p.no, material: mat[0], unit: mat[1], qty: between(mat[2], mat[3]), supplier: mat[4], docket: 'DK' + between(10000, 99999), status: r() < 0.05 ? 'Rejected' : 'Accepted' });
         }
       });
     });
-    [['2026-08-26', 'WE-2614', 120, 'Revised architectural grid — re-model transfer beams', 'Approved'], ['2026-09-08', 'WE-2611', 60, 'Dock leveller pits added by client', 'Approved'],
-     ['2026-09-22', 'WE-2622', 160, 'Curved canopy geometry received late from architect', 'Rejected'], ['2026-10-09', 'WE-2627', 80, 'Additional bracing per EOR RFI-14 response', 'Pending'],
-     ['2026-10-13', 'WE-2622', 100, 'Revised curved canopy — reduced scope resubmission', 'Pending']].forEach(function (t) {
-      add({ type: 'timereq', userId: 'u7', date: t[0], ref: 'TR-' + (++c.tr), project: t[1], hours: t[2], reason: t[3], status: t[4] });
+    // --- RFIs, ITP inspections, NCRs, weekly progress (site engineer)
+    var subjects = ['Clash between beam B12 and HVAC duct', 'Missing connection detail at grid C/7', 'Slab set-down at amenities not dimensioned', 'Bolt grade conflict on drawing S-301 vs spec',
+      'Fire-rating requirement for exposed steel', 'Footing size at grid A1 differs from geotech', 'Penetration through transfer beam', 'Cladding fixing to secondary steel', 'Embedment depth of cast-in plates', 'Stair landing level discrepancy'];
+    days.forEach(function (d, i) {
+      if (r() < 0.62) {
+        var p = pick(PROJECTS), age = daysBetween(d, TODAY), status = 'Open', ans = null;
+        if (age > 3 && r() < Math.min(0.92, 0.05 + age / 34)) { ans = addDays(d, between(2, Math.min(age, 16))); status = r() < 0.7 ? 'Closed' : 'Answered'; }
+        add({ type: 'rfi', userId: 'u2', date: d, ref: 'RFI-' + (++c.rfi), project: p.no, discipline: pick(['Structural', 'Structural', 'Architectural', 'Services', 'Civil']), subject: pick(subjects), due: addDays(d, 7), answered: ans, status: status });
+      }
+      if (r() < 0.55) {
+        var p2 = pick(PROJECTS), res = r();
+        add({ type: 'inspection', userId: 'u2', date: d, project: p2.no, point: pick(['Hold point', 'Witness point']), element: pick(['Footing reinforcement', 'Slab pour pre-check', 'Steel connections — bolt tension', 'Column base grout', 'Post-tension duct profile', 'Precast panel fixings', 'Waterproofing membrane']), result: res < 0.84 ? 'Pass' : res < 0.95 ? 'Conditional' : 'Fail', status: res < 0.84 ? 'Pass' : res < 0.95 ? 'Conditional' : 'Fail' });
+      }
+      if (r() < 0.2) {
+        var p3 = pick(PROJECTS), sev = r() < 0.65 ? 'Minor' : r() < 0.9 ? 'Major' : 'Critical', closed = daysBetween(d, TODAY) > 6 && r() < 0.7;
+        add({ type: 'defect', userId: 'u2', date: d, ref: 'NCR-0' + (++c.ncr), project: p3.no, location: pick(['Level 3 grid D', 'Roof bay 4', 'North façade', 'Basement ramp', 'Plant room', 'Deck 2 east']), severity: sev,
+          desc: pick(['Honeycombing in column face', 'Bolt missing washers', 'Incorrect cover to reinforcement', 'Weld undercut on bracket', 'Panel joint misalignment', 'Paint DFT below spec']), status: closed ? 'Closed' : 'Open' });
+      }
+      if (parse(d).getUTCDay() === 5) PROJECTS.forEach(function (p) {
+        if (d < p.start) return;
+        add({ type: 'progress', userId: 'u2', date: d, project: p.no, activity: pick(siteActs[p.no]), pct: Math.round(modelActual(p, d) * 10) / 10, status: 'Submitted' });
+      });
     });
-    [['2026-08-28', 'WE-2611', 'Dock leveller pits and edge angles', 64, 'USD', 6400, 'Approved'], ['2026-09-15', 'WE-2614', 'Level 3 transfer beam redesign', 120, 'CAD', 14200, 'Approved'],
-     ['2026-10-06', 'WE-2620', 'Additional mezzanine at grid 7–9', 140, 'USD', 13800, 'Pending'], ['2026-10-12', 'WE-2627', 'Extra bracing per RFI-14', 80, 'USD', 7900, 'Pending']].forEach(function (v) {
-      add({ type: 'variation', userId: 'u7', date: v[0], ref: 'VO-0' + (++c.vo), project: v[1], scope: v[2], hours: v[3], currency: v[4], amount: v[5], status: v[6] });
+    // --- safety (HSE advisor): toolbox talks, inspections, incidents
+    var topics = ['Working at heights & harness checks', 'Crane lift plans & exclusion zones', 'Heat stress & hydration', 'Manual handling', 'Silica dust controls', 'Hot works permits', 'Traffic management on site', 'Electrical tag & test'];
+    WEEKS.forEach(function (w) {
+      PROJECTS.forEach(function (p) {
+        if (w < p.start) return;
+        add({ type: 'toolbox', userId: 'u8', date: addDays(w, between(0, 1)), project: p.no, topic: pick(topics), attendees: Math.round(between(22, 48) * size[p.no]), status: 'Recorded' });
+        if (r() < 0.35) add({ type: 'audit', userId: 'u8', date: addDays(w, between(2, 4)), project: p.no, score: between(82, 98), findings: between(0, 6), notes: pick(['Edge protection gaps L4', 'Housekeeping in laydown area', 'Fire extinguisher tags overdue', 'Good PPE compliance', 'Scaffold tags current']), status: 'Recorded' });
+      });
+    });
+    [['2026-03-10', 'WE-2614', 'Lost time', 'Worker strained back lifting formwork panel'], ['2026-06-11', 'WE-2611', 'Near miss', 'Scissor lift operated without spotter'], ['2026-06-25', 'WE-2620', 'First aid', 'Grit in eye while grinding'], ['2026-07-02', 'WE-2614', 'Near miss', 'Unsecured mesh sheet lifted by wind'], ['2026-07-14', 'WE-2622', 'Medical treatment', 'Sprained ankle on uneven ballast — physio treatment'], ['2026-07-22', 'WE-2625', 'Near miss', 'Pallet jack rolled on ramp'], ['2026-08-21', 'WE-2620', 'Near miss', 'Unsecured load swung near crane exclusion zone'], ['2026-08-27', 'WE-2611', 'First aid', 'Minor laceration to hand from sheet edge'],
+     ['2026-09-03', 'WE-2614', 'Near miss', 'Dropped spanner from L6 into exclusion zone'], ['2026-09-10', 'WE-2622', 'Near miss', 'Excavator swing close to spotter'], ['2026-09-16', 'WE-2627', 'First aid', 'Eye irritation from concrete splash — eyewash on site'],
+     ['2026-09-24', 'WE-2625', 'First aid', 'Heat exhaustion symptoms, rested and rehydrated'], ['2026-10-01', 'WE-2614', 'Near miss', 'Unbarricaded penetration on Level 7'], ['2026-10-08', 'WE-2620', 'Near miss', 'Forklift reversed without spotter'], ['2026-10-13', 'WE-2611', 'First aid', 'Splinter from timber packer']].forEach(function (x) {
+      add({ type: 'incident', userId: 'u8', date: x[0], ref: 'INC-0' + (++c.inc), project: x[1], kind: x[2], desc: x[3], status: daysBetween(x[0], TODAY) > 7 ? 'Closed' : 'Open' });
+    });
+    // --- drawing transmittals (document controller)
+    days.forEach(function (d) {
+      if (r() < 0.5) {
+        var p = pick(PROJECTS), purpose = pick(['For Construction', 'For Construction', 'For Approval', 'For Information', 'As-built']);
+        add({ type: 'transmittal', userId: 'u9', date: d, ref: 'TX-0' + (++c.tx), project: p.no, purpose: purpose, drawings: between(3, 36), recipient: pick(['Client', 'Fabricator', 'Certifier', 'Architect', 'Subcontractor']), status: daysBetween(d, TODAY) > 4 ? 'Acknowledged' : 'Issued' });
+      }
+    });
+    // --- commercial (project manager): variations, EOTs, monthly progress claims
+    [['2026-08-19', 'WE-2611', 'Additional dock leveller pits ×4', 148000, 6, 'Approved'], ['2026-08-28', 'WE-2614', 'Level 3 transfer beam redesign', 412000, 12, 'Approved'], ['2026-09-04', 'WE-2620', 'Generator yard enlargement', 236000, 0, 'Approved'],
+     ['2026-09-15', 'WE-2622', 'Extra OHW mast foundations', 182000, 8, 'Rejected'], ['2026-09-22', 'WE-2627', 'EV charging conduits deck 1–2', 96000, 3, 'Approved'], ['2026-10-02', 'WE-2614', 'Façade bracket upgrade (wind load)', 268000, 5, 'Pending'],
+     ['2026-10-09', 'WE-2620', 'Mezzanine at data hall 2', 384000, 10, 'Pending'], ['2026-10-14', 'WE-2625', 'Additional freezer room door', 54000, 0, 'Pending']].forEach(function (v) {
+      add({ type: 'variation', userId: 'u7', date: v[0], ref: 'VAR-0' + (++c.vo), project: v[1], desc: v[2], value: v[3], days: v[4], status: v[5] });
+    });
+    [['2026-08-31', 'WE-2622', 'Inclement weather', 'Rain days above contract allowance (Aug)', 6, 'Approved'], ['2026-09-18', 'WE-2614', 'Latent conditions', 'Unexpected rock at core footings', 14, 'Approved'],
+     ['2026-10-07', 'WE-2622', 'Client-directed change', 'Late stabling layout revision', 10, 'Pending'], ['2026-10-12', 'WE-2627', 'Inclement weather', 'September rain days', 4, 'Pending']].forEach(function (x) {
+      add({ type: 'eot', userId: 'u7', date: x[0], ref: 'EOT-0' + (++c.eot), project: x[1], cause: x[2], desc: x[3], days: x[4], status: x[5] });
+    });
+    ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09'].forEach(function (m) {
+      var end = monthEnd(m), prevEnd = addDays(m + '-01', -1);
+      PROJECTS.forEach(function (p) {
+        if (end < p.start) return;
+        var cum = modelActual(p, end), prev = modelActual(p, prevEnd);
+        add({ type: 'claim', userId: 'u7', date: addDays(end, 0) > TODAY ? TODAY : end, ref: 'PC-' + p.no.slice(3) + '-' + String(++c.pcl).padStart(2, '0'), project: p.no, period: MLABEL[m] + ' 2026',
+          amount: Math.round(p.value * (cum - prev) / 100 / 100) * 100, cumPct: Math.round(cum * 10) / 10, status: m === '2026-09' && (p.no === 'WE-2614' || p.no === 'WE-2620') ? 'Pending' : 'Approved' });
+      });
     });
 
-    // --- sales: leads and proposals for each BDM over six months
+    // --- sales: leads and proposals (EPCM services) for each BDM
     var bdm = {
-      u3: { countries: [['USA', 'USD'], ['USA', 'USD'], ['Canada', 'CAD']], clients: ['Atlas Fabrication', 'Pacific Steel Fabricators', 'Meridian Steel Works', 'BlueRidge Steel', 'Northline Structures'] },
-      u4: { countries: [['Australia', 'AUD'], ['Australia', 'AUD'], ['UK', 'GBP']], clients: ['Southern Cross Steel', 'Pennine Steelwork', 'Harbourside Fabricators', 'Coastal Steel Co.', 'Midlands Structural'] }
+      u3: { regions: [['NSW', 'AUD'], ['NSW', 'AUD'], ['VIC', 'AUD'], ['ACT', 'AUD']], clients: ['Banksia Developments Pty Ltd', 'Harbourline Property Group Pty Ltd', 'Bellarine Health Infrastructure Pty Ltd', 'Yarra Valley Industrial Pty Ltd', 'Capital Precinct Builders Pty Ltd'] },
+      u4: { regions: [['QLD', 'AUD'], ['QLD', 'AUD'], ['WA', 'AUD'], ['NZ', 'NZD']], clients: ['Coral Coast Infrastructure Pty Ltd', 'SEQ Transit Partners Pty Ltd', 'Swan River Logistics Pty Ltd', 'Pilbara Resources Engineering Pty Ltd', 'Kauri Construction Ltd'] }
     };
-    var jobs = ['Distribution Centre', 'Data Centre', 'Hospital Expansion', 'Arena Roof Trusses', 'Cold Storage', 'School Gymnasium', 'Rail Depot Canopy', 'Office Tower Podium', 'Conveyor Gallery', 'Aquatic Centre', 'Airport Hangar', 'Pipe Racks'];
-    var places = { USA: ['Phoenix', 'Dallas', 'Austin', 'Orlando', 'Denver', 'Charlotte'], Canada: ['Toronto', 'Calgary', 'Vancouver'], Australia: ['Perth', 'Brisbane', 'Gold Coast', 'Adelaide'], UK: ['Manchester', 'Leeds', 'Bristol'] };
-    var sources = ['Repeat client', 'Repeat client', 'Referral', 'LinkedIn', 'Website', 'Trade show'];
+    var places = { NSW: ['Western Sydney', 'Newcastle', 'Wollongong', 'Penrith'], VIC: ['Melbourne Docklands', 'Geelong', 'Ballarat'], ACT: ['Canberra'], QLD: ['Brisbane', 'Gold Coast', 'Townsville', 'Toowoomba'], WA: ['Perth', 'Kwinana', 'Port Hedland'], NZ: ['Auckland', 'Christchurch'] };
+    var jobs = ['Distribution Centre', 'Data Centre', 'Hospital Expansion', 'School Hall', 'Cold Storage', 'Rail Maintenance Facility', 'Office Tower', 'Processing Plant Upgrade', 'Multi-deck Car Park', 'Aquatic Centre'];
+    var sources = ['Repeat client', 'Repeat client', 'Referral', 'LinkedIn', 'Tender portal', 'Industry event'];
     Object.keys(bdm).forEach(function (u) {
       var b = bdm[u];
       for (var i = 0; i < 14; i++) {
         var d = addDays('2026-05-04', Math.floor(r() * 160)); if (d > TODAY) d = addDays(TODAY, -Math.floor(r() * 10));
-        var cc = pick(b.countries), name = pick(places[cc[0]]) + ' ' + pick(jobs), client = pick(b.clients);
-        add({ type: 'lead', userId: u, date: d, ref: 'LD-' + (++c.ld), name: name, client: client, source: pick(sources), region: cc[0], status: r() < 0.6 ? 'Qualified' : 'New' });
+        var rg = pick(b.regions), name = pick(places[rg[0]]) + ' ' + pick(jobs), client = pick(b.clients);
+        add({ type: 'lead', userId: u, date: d, ref: 'LD-' + (++c.ld), name: name, client: client, source: pick(sources), region: rg[0], status: r() < 0.6 ? 'Qualified' : 'New' });
         if (i < 11) {
           var pd = addDays(d, 3 + Math.floor(r() * 6)); if (pd > TODAY) pd = TODAY;
-          var base = { USD: 160000, CAD: 110000, AUD: 140000, GBP: 60000 }[cc[1]];
-          var value = Math.round(base * (0.25 + r()) / 100) * 100;
-          var age = (parse(TODAY) - parse(pd)) / 864e5, roll = r(), stage;
+          var value = Math.round((180000 + r() * 2200000) / 1000) * 1000;
+          var age = daysBetween(pd, TODAY), roll = r(), stage;
           if (age < 12) stage = roll < 0.5 ? 'Estimating' : 'Quoted';
           else stage = roll < 0.44 ? 'Won' : roll < 0.66 ? 'Lost' : 'Quoted';
-          var p = add({ type: 'proposal', userId: u, date: pd, ref: 'PR-26-' + (++c.pr), name: name, client: client, country: cc[0], currency: cc[1], value: stage === 'Estimating' ? 0 : value, stage: stage, status: stage });
-          if (stage === 'Won') { p.wonDate = addDays(pd, 8 + Math.floor(r() * 20)); if (p.wonDate > TODAY) p.wonDate = TODAY; p.po = 'PO-' + client.split(' ').map(function (w) { return w[0]; }).join('') + '-' + (1000 + Math.floor(r() * 8999)); }
+          var pr = add({ type: 'proposal', userId: u, date: pd, ref: 'PR-26-' + (++c.pr), name: name, client: client, region: rg[0], currency: rg[1], value: stage === 'Estimating' ? 0 : value, stage: stage, status: stage });
+          if (stage === 'Won') { pr.wonDate = addDays(pd, 8 + Math.floor(r() * 20)); if (pr.wonDate > TODAY) pr.wonDate = TODAY; pr.po = 'PO-' + between(40000, 99999); }
         }
       }
     });
 
-    // --- accounts: Lekha raises invoices & records receipts, Sanjay handles payables
-    var milestones = ['Advance (20%)', 'Model 50%', 'IFA submission (30%)', 'IFC submission (40%)', 'Final (100%)', 'Variation billing'];
-    for (var k = 0; k < 16; k++) {
-      var proj = pick(PROJECTS), dt = addDays('2026-05-04', Math.floor(r() * 158));
-      var amt = Math.round((proj.cur === 'USD' ? 6000 : 7000) * (1 + r() * 3) / 100) * 100, inrv = Math.round(amt * RATE[proj.cur]);
-      var due = addDays(dt, 30), inv = add({ type: 'invoice', userId: 'u5', date: dt, ref: 'INV/26-27/' + (++c.inv), project: proj.no, client: proj.client, milestone: pick(milestones), currency: proj.cur, amount: amt, inr: inrv, due: due, status: 'Due' });
+    // --- accounts: tax invoices (10% GST), receipts, subcontractor payments, petty cash
+    for (var k = 0; k < 18; k++) {
+      var proj = pick(PROJECTS), dt = addDays('2026-05-04', Math.floor(r() * 160));
+      var ex = Math.round(proj.value / 14 * (0.4 + r() * 0.9) / 100) * 100, gst = Math.round(ex * 0.1);
+      var due = addDays(dt, 30), inv = add({ type: 'invoice', userId: 'u5', date: dt, ref: 'INV-' + (++c.inv), project: proj.no, client: proj.client, milestone: 'Progress claim ' + MLABEL[dt.slice(0, 7)], exGst: ex, gst: gst, total: ex + gst, due: due, status: 'Due' });
       var paid = due < addDays(TODAY, -20) ? r() < 0.86 : due < TODAY ? r() < 0.4 : r() < 0.1;
       if (paid) {
-        var rd = addDays(due, Math.floor(r() * 18) - 8); if (rd > TODAY) rd = TODAY; if (rd < dt) rd = addDays(dt, 5);
+        var rd = addDays(due, Math.floor(r() * 16) - 8); if (rd > TODAY) rd = TODAY; if (rd < dt) rd = addDays(dt, 5);
         inv.status = 'Received'; inv.receivedDate = rd;
-        add({ type: 'receipt', userId: r() < 0.7 ? 'u5' : 'u6', date: rd, invoice: inv.ref, amount: inrv - Math.round(r() * 1500), bankRef: 'SWIFT ' + (26000000 + Math.floor(r() * 999999)), status: 'Recorded' });
+        add({ type: 'receipt', userId: r() < 0.7 ? 'u5' : 'u6', date: rd, invoice: inv.ref, amount: ex + gst, bankRef: 'EFT ' + between(1000000, 9999999), status: 'Recorded' });
       } else if (due < TODAY) inv.status = 'Overdue';
     }
-    var cats = [['Courier — drawings to client', 'Courier', 900, 1800], ['Pantry supplies', 'Office', 2200, 4200], ['Printer toner', 'Office', 2400, 3600], ['Client visit — taxi', 'Travel', 1200, 2600], ['HDMI cables & adaptors', 'IT', 1500, 3200], ['Team lunch — milestone', 'Staff welfare', 4000, 7500]];
+    var cats = [['Courier — drawings to certifier', 'Courier', 25, 90], ['Site kitchen supplies', 'Office', 60, 180], ['Printer toner', 'Office', 90, 160], ['Parking — client meeting', 'Travel', 20, 60], ['Safety glasses restock', 'PPE', 80, 240], ['BBQ — LTI-free milestone', 'Staff welfare', 150, 420]];
     workdays('2026-07-01', TODAY).forEach(function (d) {
-      if (r() < 0.16) { var cx = pick(cats); add({ type: 'expense', userId: r() < 0.75 ? 'u6' : 'u5', date: d, ref: 'PC-' + (++c.pc), desc: cx[0], category: cx[1], amount: Math.round((cx[2] + r() * (cx[3] - cx[2])) / 50) * 50, status: d > addDays(TODAY, -6) ? 'Pending' : (r() < 0.93 ? 'Approved' : 'Rejected') }); }
+      if (r() < 0.18) { var cx = pick(cats); add({ type: 'expense', userId: r() < 0.75 ? 'u6' : 'u5', date: d, ref: 'PC-' + (++c.pc), desc: cx[0], category: cx[1], amount: Math.round(cx[2] + r() * (cx[3] - cx[2])), status: d > addDays(TODAY, -6) ? 'Pending' : (r() < 0.93 ? 'Approved' : 'Rejected') }); }
     });
-    [['Precision Detailing LLP', 'WE-2620', 210000], ['Steelgrid CAD Services', 'WE-2627', 180000], ['Axis Structural Drafting', 'WE-2614', 160000], ['Precision Detailing LLP', 'WE-2620', 230000], ['Keystone Detailers', 'WE-2622', 120000], ['Axis Structural Drafting', 'WE-2614', 150000]].forEach(function (s, i) {
-      add({ type: 'subpay', userId: 'u6', date: addDays('2026-06-10', i * 21 + Math.floor(r() * 6)), ref: 'SP-' + (++c.sp), subvendor: s[0], project: s[1], bill: s[2], tds: Math.round(s[2] * 0.1), status: 'Paid' });
-    });
+    for (var j = 0; j < 9; j++) {
+      var bill = Math.round((40000 + r() * 260000) / 100) * 100;
+      add({ type: 'subpay', userId: 'u6', date: addDays('2026-06-08', j * 14 + between(0, 5)), ref: 'SP-' + (++c.sp), subbie: pick(SUBBIES), project: pick(PROJECTS).no, bill: bill, retention: Math.round(bill * 0.05), status: 'Paid' });
+    }
     return { entries: E, notes: [], counters: c, seq: n };
   }
 
   // =====================================================================
-  //  Store (kept in this browser so a manager sees what a user entered)
+  //  Store (kept in this browser so the manager sees what users entered)
   // =====================================================================
   var DB;
   function load() { try { var raw = localStorage.getItem(STORE_KEY); if (raw) { DB = JSON.parse(raw); return; } } catch (e) {} DB = seed(); }
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch (e) {} }
   function nowTs() { var d = new Date(); return TODAY + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
-  function addEntry(o) { o.id = 'e' + (++DB.seq); o.date = o.date || TODAY; o.ts = nowTs(); o.fresh = true; DB.entries.push(o); save(); return o; }
+  function addEntry(o) { o.id = 'e' + (++DB.seq); o.date = o.date || TODAY; o.ts = (o.date === TODAY ? nowTs() : o.date + 'T17:00'); o.fresh = true; DB.entries.push(o); save(); return o; }
   function notify(userId, text) { DB.notes.unshift({ userId: userId, text: text, ts: nowTs(), read: false }); save(); }
   function entriesOf(filter) { return DB.entries.filter(filter).sort(function (a, b) { return a.ts < b.ts ? 1 : -1; }); }
   var byUser = function (id) { return function (e) { return e.userId === id; }; };
   var byDept = function (dept) { return function (e) { return TYPES[e.type].dept === dept; }; };
   var pendingApprovals = function () { return entriesOf(function (e) { return TYPES[e.type].approval && e.status === 'Pending'; }); };
+  // Latest reported % complete for a project (falls back to the schedule model).
+  function actualPct(no) {
+    var last = DB.entries.filter(function (e) { return e.type === 'progress' && e.project === no; }).sort(function (a, b) { return a.ts < b.ts ? 1 : -1; })[0];
+    return last ? last.pct : modelActual(projByNo(no), TODAY);
+  }
 
   // =====================================================================
-  //  Small render helpers
+  //  Render helpers
   // =====================================================================
   var $ = function (s, r) { return (r || document).querySelector(s); };
-  function avatar(u, size) { return '<div class="avatar" style="' + (size ? 'width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.38) + 'px;' : '') + 'background:' + avatarBg(u) + '">' + u.initials + '</div>'; }
   function avatarBg(u) { return { construction: 'linear-gradient(135deg,#1d63b8,#2a78d6)', sales: 'linear-gradient(135deg,#c2410c,#eb6834)', accounts: 'linear-gradient(135deg,#0f7a55,#1baf7a)', management: 'linear-gradient(135deg,#18212e,#0e7490)' }[u.dept]; }
+  function avatar(u, size) { return '<div class="avatar" style="' + (size ? 'width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.38) + 'px;' : '') + 'background:' + avatarBg(u) + '">' + u.initials + '</div>'; }
   function deptTag(dept) { return '<span class="dept-tag dt-' + dept + '">' + (DEPTS[dept] ? DEPTS[dept].name : 'Management') + '</span>'; }
-  function card(title, sub, body, extra) { return '<div class="card"><div class="card-h"><div><h3>' + title + '</h3>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (extra || '') + '</div>' + body + '</div>'; }
+  function card(title, sub, body, extra, wide) { return '<div class="card"' + (wide ? ' style="grid-column:1/-1"' : '') + '><div class="card-h"><div><h3>' + title + '</h3>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (extra || '') + '</div>' + body + '</div>'; }
   function legend(items) { return '<div class="legend">' + items.map(function (i) { return '<span><i style="background:' + i[1] + '"></i>' + i[0] + '</span>'; }).join('') + '</div>'; }
   var uid = 0; function hostId() { return 'h' + (++uid); }
   var lastActive = function (list) { return list.length ? D.shortDate(list[0].date) : '—'; };
+  var has = function (list, types) { return list.some(function (e) { return types.indexOf(e.type) >= 0; }); };
+  var ofType = function (list, t) { return list.filter(function (e) { return e.type === t; }); };
 
-  // Generic entry table — used for "My entries", per-user monitoring and activity logs.
   function entryTable(list, opts) {
     opts = opts || {};
     if (!list.length) return '<p class="empty-note">No entries yet.</p>';
@@ -1025,61 +1146,174 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
         '<td>' + t.icon + ' ' + t.label + '</td><td style="white-space:normal;min-width:260px">' + esc(t.summary(e)) + '</td><td class="r">' + esc(t.amount(e)) + '</td><td>' + P(statusKind(e.status), e.status) + '</td>' +
         (opts.approve ? '<td>' + act + '</td>' : '') + '</tr>';
     }).join('');
-    return '<div class="table-wrap"><table><thead><tr><th>Date</th>' + (opts.user ? '<th>Entered by</th>' : '') + '<th>Type</th><th>Details</th><th class="r">Amount</th><th>Status</th>' + (opts.approve ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    return '<div class="table-wrap"><table><thead><tr><th>Date</th>' + (opts.user ? '<th>Entered by</th>' : '') + '<th>Type</th><th>Details</th><th class="r">Value</th><th>Status</th>' + (opts.approve ? '<th></th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function clearFresh() { DB.entries.forEach(function (e) { delete e.fresh; }); }
 
   // =====================================================================
-  //  Analytics — one renderer per department. scope 'user' = one person,
-  //  'dept' = whole team (adds a per-person breakdown).
+  //  CONSTRUCTION analytics — panels. Each panel lists the entry types it
+  //  needs; a person sees the panels for what they record, the manager
+  //  sees all of them for the whole portfolio (or one project / person).
   // =====================================================================
-  function constructionAnalytics(host, list, scope, people) {
-    var ts = list.filter(function (e) { return e.type === 'timesheet'; });
-    var reqs = list.filter(function (e) { return e.type === 'timereq' || e.type === 'variation'; });
-    var heads = scope === 'dept' ? people.length : 1, cap = 40 * heads;
-    var weekly = WEEKS.map(function (w) { return sum(ts.filter(function (e) { return monday(e.date) === w; }), function (e) { return e.hours; }); });
-    var thisWeek = weekly[weekly.length - 1], total = sum(weekly);
-    var proj = sum(ts.filter(function (e) { return e.workType === 'project'; }), function (e) { return e.hours; });
-    var days = {}; ts.forEach(function (e) { days[e.userId + e.date] = 1; });
-    var pend = reqs.filter(function (e) { return e.status === 'Pending'; }).length;
-    var a = hostId(), b = hostId(), c = hostId(), k = hostId(), d2 = hostId();
-    host.innerHTML = '<div class="kpis" id="' + k + '"></div>' +
-      '<div class="grid g-3-1">' + card('Weekly hours logged', 'Timesheet hours per week · capacity ' + cap + ' h · latest week to date', '<div class="chart" id="' + a + '"></div>', legend([['Logged', 'var(--s1)'], ['Capacity', 'var(--axis)']])) +
-      card('Hours by project', 'Last ' + WEEKS.length + ' weeks', '<div id="' + b + '"></div>') + '</div>' +
-      (scope === 'dept' ? '<div class="grid g-2">' + card('Hours by team member', 'Last ' + WEEKS.length + ' weeks', '<div id="' + c + '"></div>') + card('Project budget burn', 'Hours used of allocation (all time)', '<div id="' + d2 + '"></div>') + '</div>' : '') +
-      (reqs.length ? card('Time requests & variations', 'Raised by the design lead · approved by the manager', entryTable(reqs, { user: scope === 'dept' })) : '') +
-      card('Recent timesheets', 'Latest 12 entries', entryTable(ts.slice(0, 12), { user: scope === 'dept' }));
-    D.kpis($('#' + k), [
-      { lbl: 'Hours this week', ico: '⏱️', val: nf.format(thisWeek), unit: 'h', d: Math.round(100 * thisWeek / (cap * 3 / 5)) + '% of capacity to date', up: null, sp: weekly, c: 'var(--s1)' },
-      { lbl: 'Hours (' + WEEKS.length + ' wks)', ico: '📆', val: inr.format(total), unit: 'h', d: nf.format(total / Math.max(1, Object.keys(days).length)) + ' h avg / day', up: null },
-      { lbl: 'Project-billable', ico: '📁', val: total ? Math.round(100 * proj / total) : 0, unit: '%', d: nf.format(total - proj) + ' h training / other', up: null },
-      { lbl: 'Open requests', ico: '⏳', val: String(pend), d: reqs.length + ' raised in total', up: null }
-    ]);
-    D.lineChart($('#' + a), { labels: WEEKS.map(D.shortDate), fmt: function (v) { return nf.format(v) + ' h'; }, axisFmt: function (v) { return inr.format(v); },
-      target: { value: cap, label: 'Capacity ' + cap + ' h' }, series: [{ name: 'Logged', values: weekly, color: 'var(--s1)', area: true }] });
-    var byP = {}; ts.forEach(function (e) { var key = e.workType === 'project' ? e.project : 'Training'; byP[key] = (byP[key] || 0) + e.hours; });
-    D.hbars($('#' + b), Object.keys(byP).sort(function (x, y) { return byP[y] - byP[x]; }).map(function (p) { var pr = projByNo(p); return { name: pr ? p + ' ' + pr.name : p, value: byP[p], note: 'Hours' }; }), function (v) { return inr.format(v) + ' h'; });
-    if (scope === 'dept') {
-      D.hbars($('#' + c), people.map(function (u) { return { name: u.name, value: sum(ts.filter(byUser(u.id)), function (e) { return e.hours; }), note: 'Hours' }; }), function (v) { return inr.format(v) + ' h'; });
-      var used = {}; entriesOf(function (e) { return e.type === 'timesheet' && e.workType === 'project'; }).forEach(function (e) { used[e.project] = (used[e.project] || 0) + e.hours; });
-      D.hbars($('#' + d2), PROJECTS.map(function (p) { var u = p.base + (used[p.no] || 0), pct = Math.round(100 * u / p.alloc); return { name: p.no + ' ' + p.name, value: pct, note: inr.format(u) + ' / ' + inr.format(p.alloc) + ' h', color: pct >= 90 ? 'var(--s8)' : pct >= 75 ? 'var(--s4)' : 'var(--s3)' }; }), function (v) { return v + '%'; }, 100);
-    }
+  function projectHealth(nos) {
+    return PROJECTS.filter(function (p) { return nos.indexOf(p.no) >= 0; }).map(function (p) {
+      var planned = plannedPct(p, TODAY), actual = actualPct(p.no), spi = planned ? actual / planned : 1;
+      var rag = spi >= 0.97 ? ['good', 'On track'] : spi >= 0.92 ? ['warn', 'At risk'] : ['bad', 'Behind'];
+      return { p: p, planned: planned, actual: actual, spi: spi, cpi: p.cpi, rag: rag };
+    });
+  }
+  function scurve(nos) {
+    var ps = PROJECTS.filter(function (p) { return nos.indexOf(p.no) >= 0; }), tot = sum(ps, function (p) { return p.value; });
+    var first = ps.reduce(function (a, p) { return p.start < a ? p.start : a; }, '2099-01-01'), last = ps.reduce(function (a, p) { return p.finish > a ? p.finish : a; }, '2000-01-01');
+    var months = [], m = first.slice(0, 7);
+    while (m <= last.slice(0, 7)) { months.push(m); var d = parse(m + '-01'); d.setUTCMonth(d.getUTCMonth() + 1); m = iso(d).slice(0, 7); }
+    var planned = months.map(function (mm) { return sum(ps, function (p) { return p.value * plannedPct(p, monthEnd(mm)); }) / tot; });
+    var actual = months.map(function (mm) {
+      if (mm > TODAY.slice(0, 7)) return null;
+      if (mm === TODAY.slice(0, 7)) return sum(ps, function (p) { return p.value * actualPct(p.no); }) / tot;
+      return sum(ps, function (p) { return p.value * modelActual(p, monthEnd(mm)); }) / tot;
+    });
+    var label = function (mm) { return new Date(mm + '-01T00:00:00').toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }); };
+    return { labels: months.map(label), planned: planned.map(function (v) { return Math.round(v * 10) / 10; }), actual: actual.map(function (v) { return v == null ? null : Math.round(v * 10) / 10; }) };
   }
 
-  var salesCur = 'USD';
+  var PANELS = [
+    { needs: ['progress', 'claim', 'variation', 'eot'], wide: false, title: 'Progress S-curve — planned vs actual', sub: function (c) { return c.nos.length > 1 ? 'Portfolio, weighted by contract value' : projByNo(c.nos[0]).name; },
+      legend: [['Planned', 'var(--s7)'], ['Actual', 'var(--s1)']],
+      draw: function (h, c) { var s = scurve(c.nos); D.lineChart(h, { labels: s.labels, fmt: pct, axisFmt: function (v) { return Math.round(v) + '%'; }, height: 280, max: 100,
+        series: [{ name: 'Planned', values: s.planned, color: 'var(--s7)', dash: '6 4' }, { name: 'Actual', values: s.actual, color: 'var(--s1)', area: true }] }); } },
+    { needs: ['progress', 'claim', 'variation', 'eot'], title: 'Schedule performance by project', sub: function () { return 'SPI = actual ÷ planned progress · 1.00 = on programme'; },
+      draw: function (h, c) { D.hbars(h, projectHealth(c.nos).map(function (x) { return { name: x.p.no + ' ' + x.p.name, value: Math.round(x.spi * 100) / 100, note: 'SPI · ' + pct(x.actual) + ' vs ' + pct(x.planned) + ' planned', color: x.spi >= 0.97 ? 'var(--s3)' : x.spi >= 0.92 ? 'var(--s4)' : 'var(--s8)' }; }), function (v) { return v.toFixed(2); }, 1.1); } },
+    { needs: ['progress', 'claim', 'variation', 'eot'], wide: true, title: 'Project health', sub: function () { return 'Programme, cost and next milestone for each project'; },
+      html: function (c) {
+        return '<div class="table-wrap"><table><thead><tr><th>Project</th><th>Location</th><th class="r">Contract</th><th>Planned</th><th>Actual</th><th class="r">SPI</th><th class="r">CPI</th><th>Next milestone</th><th>Status</th></tr></thead><tbody>' +
+          projectHealth(c.nos).map(function (x) {
+            return '<tr><td><div class="cell-main">' + x.p.name + '</div><div class="cell-sub">' + x.p.no + ' · ' + x.p.client + '</div></td><td>' + x.p.loc + '</td><td class="r">' + audK(x.p.value) + '</td><td>' + D.progress(Math.round(x.planned), 'var(--s7)') + '</td><td>' + D.progress(Math.round(x.actual), 'var(--s1)') +
+              '</td><td class="r">' + x.spi.toFixed(2) + '</td><td class="r">' + x.cpi.toFixed(2) + '</td><td>' + x.p.milestone + '<div class="cell-sub">Completion ' + new Date(x.p.finish + 'T00:00:00').toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) + '</div></td><td>' + P(x.rag[0], x.rag[1]) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+      } },
+    { needs: ['diary'], title: 'Labour hours by trade', sub: function () { return 'Man-hours per week from site diaries · latest week to date'; },
+      legend: TRADES.map(function (t, i) { return [t, 'var(--s' + (i + 1) + ')']; }),
+      draw: function (h, c) { var di = ofType(c.list, 'diary'); D.barChart(h, { labels: WEEKS.map(D.shortDate), stacked: true, fmt: function (v) { return n0.format(v) + ' h'; }, axisFmt: function (v) { return n0.format(v); },
+        series: TRADES.map(function (t, i) { return { name: t, color: 'var(--s' + (i + 1) + ')', values: WEEKS.map(function (w) { return sum(di.filter(function (e) { return monday(e.date) === w; }), function (e) { return e.crews[i] * e.shift; }); }) }; }) }); } },
+    { needs: ['diary'], title: 'Workforce on site', sub: function () { return 'Daily headcount, last 20 working days'; },
+      draw: function (h, c) { var di = ofType(c.list, 'diary'), days = workdays(addDays(TODAY, -27), TODAY).slice(-20);
+        D.lineChart(h, { labels: days.map(D.shortDate), fmt: function (v) { return v + ' workers'; }, series: [{ name: 'On site', color: 'var(--s1)', area: true, values: days.map(function (d) { return sum(di.filter(function (e) { return e.date === d; }), function (e) { return e.workers; }); }) }] }); } },
+    { needs: ['incident', 'toolbox', 'audit'], title: 'Safety incidents by month', sub: function () { return 'Recorded by HSE · near misses are encouraged reporting'; },
+      legend: [['Near miss', 'var(--s1)'], ['First aid', 'var(--s4)'], ['Medical treatment', 'var(--s2)'], ['Lost time', 'var(--s8)']],
+      draw: function (h, c) { var inc = ofType(c.list, 'incident'), kinds = ['Near miss', 'First aid', 'Medical treatment', 'Lost time'], cols = ['var(--s1)', 'var(--s4)', 'var(--s2)', 'var(--s8)'];
+        D.barChart(h, { labels: MONTHS.map(function (m) { return MLABEL[m]; }), stacked: true, fmt: function (v) { return v + ' incidents'; },
+          series: kinds.map(function (k, i) { return { name: k, color: cols[i], values: MONTHS.map(function (m) { return inc.filter(function (e) { return e.kind === k && e.date.slice(0, 7) === m; }).length; }) }; }) }); } },
+    { needs: ['audit', 'toolbox'], title: 'Safety inspection score by project', sub: function () { return 'Average site inspection score · target 90%'; },
+      draw: function (h, c) { var au = ofType(c.list, 'audit'), tb = ofType(c.list, 'toolbox');
+        var nos = c.nos.filter(function (no) { return au.some(function (e) { return e.project === no; }); });
+        D.hbars(h, nos.length ? nos.map(function (no) { var a = au.filter(function (e) { return e.project === no; }), avg = sum(a, function (e) { return e.score; }) / a.length;
+          return { name: no + ' ' + projByNo(no).name, value: Math.round(avg), note: a.length + ' inspections · ' + tb.filter(function (e) { return e.project === no; }).length + ' toolbox talks', color: avg >= 90 ? 'var(--s3)' : 'var(--s4)' }; }) : [{ name: 'No inspections yet', value: 0 }], function (v) { return v + '%'; }, 100); } },
+    { needs: ['rfi'], title: 'RFIs raised vs closed', sub: function () { return 'Per week · latest week to date'; }, legend: [['Raised', 'var(--s2)'], ['Answered / closed', 'var(--s3)']],
+      draw: function (h, c) { var rf = ofType(c.list, 'rfi');
+        D.lineChart(h, { labels: WEEKS.map(D.shortDate), fmt: function (v) { return v + ' RFIs'; }, series: [
+          { name: 'Raised', color: 'var(--s2)', values: WEEKS.map(function (w) { return rf.filter(function (e) { return monday(e.date) === w; }).length; }) },
+          { name: 'Answered / closed', color: 'var(--s3)', values: WEEKS.map(function (w) { return rf.filter(function (e) { return e.answered && monday(e.answered) === w; }).length; }) }] }); } },
+    { needs: ['rfi'], title: 'Open RFI ageing', sub: function () { return 'Days since raised · contract response time 7 days'; },
+      draw: function (h, c) { var open = ofType(c.list, 'rfi').filter(function (e) { return e.status === 'Open'; }), b = [['0–7 days', 0, 7, 'var(--seq2)'], ['8–14 days', 8, 14, 'var(--seq3)'], ['15–30 days', 15, 30, 'var(--seq4)'], ['30+ days', 31, 9999, 'var(--seq5)']];
+        D.hbars(h, b.map(function (x) { return { name: x[0], value: open.filter(function (e) { var a = daysBetween(e.date, TODAY); return a >= x[1] && a <= x[2]; }).length, color: x[3], note: 'Open RFIs' }; }), String); } },
+    { needs: ['inspection'], title: 'ITP first-time pass rate', sub: function () { return 'Hold & witness point inspections by project'; },
+      draw: function (h, c) { var ins = ofType(c.list, 'inspection'), nos = c.nos.filter(function (no) { return ins.some(function (e) { return e.project === no; }); });
+        D.hbars(h, nos.map(function (no) { var a = ins.filter(function (e) { return e.project === no; }), v = Math.round(100 * a.filter(function (e) { return e.result === 'Pass'; }).length / a.length);
+          return { name: no + ' ' + projByNo(no).name, value: v, note: a.length + ' inspections', color: v >= 85 ? 'var(--s3)' : 'var(--s4)' }; }), function (v) { return v + '%'; }, 100); } },
+    { needs: ['defect'], title: 'Defects & NCRs', sub: function () { return 'Open vs closed by severity'; }, legend: [['Open', 'var(--s2)'], ['Closed', 'var(--s3)']],
+      draw: function (h, c) { var df = ofType(c.list, 'defect'), sev = ['Minor', 'Major', 'Critical'];
+        D.barChart(h, { labels: sev, fmt: function (v) { return v + ' NCRs'; }, series: [
+          { name: 'Open', color: 'var(--s2)', values: sev.map(function (s) { return df.filter(function (e) { return e.severity === s && e.status === 'Open'; }).length; }) },
+          { name: 'Closed', color: 'var(--s3)', values: sev.map(function (s) { return df.filter(function (e) { return e.severity === s && e.status === 'Closed'; }).length; }) }] }); } },
+    { needs: ['variation'], title: 'Variations by project', sub: function () { return 'Value (A$) approved vs pending'; }, legend: [['Approved', 'var(--s3)'], ['Pending', 'var(--s4)']],
+      draw: function (h, c) { var vr = ofType(c.list, 'variation'), nos = c.nos.filter(function (no) { return vr.some(function (e) { return e.project === no; }); });
+        D.barChart(h, { labels: nos.map(function (no) { return no.slice(3); }), fmt: aud, axisFmt: audK, series: ['Approved', 'Pending'].map(function (s, i) { return { name: s, color: i ? 'var(--s4)' : 'var(--s3)', values: nos.map(function (no) { return sum(vr.filter(function (e) { return e.project === no && e.status === s; }), function (e) { return e.value; }); }) }; }) }); } },
+    { needs: ['claim'], title: 'Progress claims by month', sub: function () { return 'Value claimed (A$) across selected projects'; }, legend: [['Certified', 'var(--s1)'], ['Pending', 'var(--s4)']],
+      draw: function (h, c) { var cl = ofType(c.list, 'claim'), ms = ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09'];
+        D.barChart(h, { labels: ms.map(function (m) { return MLABEL[m]; }), stacked: true, fmt: aud, axisFmt: audK, series: [
+          { name: 'Certified', color: 'var(--s1)', values: ms.map(function (m) { return sum(cl.filter(function (e) { return e.period === MLABEL[m] + ' 2026' && e.status === 'Approved'; }), function (e) { return e.amount; }); }) },
+          { name: 'Pending', color: 'var(--s4)', values: ms.map(function (m) { return sum(cl.filter(function (e) { return e.period === MLABEL[m] + ' 2026' && e.status === 'Pending'; }), function (e) { return e.amount; }); }) }] }); } },
+    { needs: ['eot', 'diary'], title: 'Time lost & EOT', sub: function () { return 'Site hours lost by cause, and extension-of-time days claimed'; },
+      draw: function (h, c) { var di = ofType(c.list, 'diary'), eo = ofType(c.list, 'eot'), causes = {};
+        di.forEach(function (e) { if (e.hoursLost) causes[e.lostCause] = (causes[e.lostCause] || 0) + e.hoursLost * e.workers; });
+        var rows = Object.keys(causes).sort(function (a, b) { return causes[b] - causes[a]; }).map(function (k) { return { name: k, value: causes[k], note: 'Man-hours lost' }; });
+        var hrs = rows.length ? '<div id="' + h.id + 'a"></div>' : '';
+        h.innerHTML = hrs + (eo.length ? '<div style="margin-top:14px" class="empty-note"><b>EOT claimed:</b> ' + sum(eo, function (e) { return e.days; }) + ' days (' + sum(eo.filter(function (e) { return e.status === 'Approved'; }), function (e) { return e.days; }) + ' approved, ' + sum(eo.filter(function (e) { return e.status === 'Pending'; }), function (e) { return e.days; }) + ' pending)</div>' : '');
+        if (rows.length) D.hbars($('#' + h.id + 'a'), rows, function (v) { return n0.format(v) + ' h'; }); } },
+    { needs: ['delivery'], title: 'Material deliveries', sub: function () { return 'Structural steel received per week (t) · rejected loads shown separately'; }, legend: [['Accepted', 'var(--s1)'], ['Rejected', 'var(--s8)']],
+      draw: function (h, c) { var dl = ofType(c.list, 'delivery').filter(function (e) { return e.material === 'Structural steel'; });
+        D.barChart(h, { labels: WEEKS.map(D.shortDate), stacked: true, fmt: function (v) { return v + ' t'; }, series: ['Accepted', 'Rejected'].map(function (s, i) { return { name: s, color: i ? 'var(--s8)' : 'var(--s1)', values: WEEKS.map(function (w) { return sum(dl.filter(function (e) { return e.status === s && monday(e.date) === w; }), function (e) { return e.qty; }); }) }; }) }); } },
+    { needs: ['transmittal'], title: 'Drawing transmittals', sub: function () { return 'Drawings issued per week by purpose'; }, legend: [['For Construction', 'var(--s1)'], ['For Approval', 'var(--s2)'], ['For Information', 'var(--s3)'], ['As-built', 'var(--s4)']],
+      draw: function (h, c) { var tx = ofType(c.list, 'transmittal'), ps = ['For Construction', 'For Approval', 'For Information', 'As-built'];
+        D.barChart(h, { labels: WEEKS.map(D.shortDate), stacked: true, fmt: function (v) { return v + ' drawings'; }, series: ps.map(function (p, i) { return { name: p, color: 'var(--s' + (i + 1) + ')', values: WEEKS.map(function (w) { return sum(tx.filter(function (e) { return e.purpose === p && monday(e.date) === w; }), function (e) { return e.drawings; }); }) }; }) }); } }
+  ];
+
+  function sites(list) { var s = {}; list.forEach(function (e) { s[e.project] = 1; }); return Object.keys(s).length; }
+  function constructionKpis(list, nos, scope) {
+    var di = ofType(list, 'diary'), lastDay = di.length ? di.reduce(function (a, e) { return e.date > a ? e.date : a; }, '') : null;
+    var today = di.filter(function (e) { return e.date === lastDay; }), mh = sum(di, function (e) { return e.workers * e.shift; });
+    var allInc = entriesOf(function (e) { return e.type === 'incident' && nos.indexOf(e.project) >= 0; });
+    var lti = allInc.filter(function (e) { return e.kind === 'Lost time'; })[0], recordable = ofType(list, 'incident').filter(function (e) { return (e.kind === 'Medical treatment' || e.kind === 'Lost time') && e.date >= WEEKS[0]; }).length;
+    var rf = ofType(list, 'rfi'), open = rf.filter(function (e) { return e.status === 'Open'; });
+    var ins = ofType(list, 'inspection'), df = ofType(list, 'defect'), vr = ofType(list, 'variation'), eo = ofType(list, 'eot'), cl = ofType(list, 'claim'), tx = ofType(list, 'transmittal'), dl = ofType(list, 'delivery'), tb = ofType(list, 'toolbox'), au = ofType(list, 'audit');
+    var health = projectHealth(nos), tot = sum(health, function (x) { return x.p.value; });
+    var wPlan = tot ? sum(health, function (x) { return x.p.value * x.planned; }) / tot : 0, wAct = tot ? sum(health, function (x) { return x.p.value * x.actual; }) / tot : 0;
+    var K = {
+      contract: { needs: ['progress', 'claim', 'variation', 'eot'], lbl: 'Contract value', ico: '🏗️', val: audK(tot), d: health.length + ' active project' + (health.length === 1 ? '' : 's'), up: null },
+      progress: { needs: ['progress', 'claim', 'variation', 'eot'], lbl: 'Progress — actual', ico: '📈', val: nf.format(wAct), unit: '%', d: 'vs ' + pct(wPlan) + ' planned · SPI ' + (wPlan ? (wAct / wPlan).toFixed(2) : '—'), up: null },
+      workforce: { needs: ['diary'], lbl: 'Workforce on site', ico: '👷', val: String(sum(today, function (e) { return e.workers; })), d: lastDay ? D.shortDate(lastDay) + ' · ' + sites(today) + ' site' + (sites(today) === 1 ? '' : 's') : 'no diaries', up: null, sp: WEEKS.map(function (w) { return sum(di.filter(function (e) { return monday(e.date) === w; }), function (e) { return e.workers; }); }), c: 'var(--s1)' },
+      manhours: { needs: ['diary'], lbl: 'Man-hours (' + WEEKS.length + ' wks)', ico: '⏱️', val: n0.format(mh), d: n0.format(sum(di, function (e) { return e.hoursLost * e.workers; })) + ' h lost to delays', up: null },
+      ltifree: { needs: ['incident', 'toolbox', 'audit'], lbl: 'LTI-free days', ico: '🛡️', val: lti ? String(daysBetween(lti.date, TODAY)) : '—', d: 'since last lost-time injury', up: null },
+      trifr: { needs: ['incident'], lbl: 'TRIFR (' + WEEKS.length + ' wks)', ico: '🚑', val: mh ? (recordable * 1e6 / mh).toFixed(1) : '—', d: recordable + ' recordable injuries · per 1M hours', up: null },
+      toolbox: { needs: ['toolbox'], lbl: 'Toolbox attendance', ico: '🦺', val: n0.format(sum(tb, function (e) { return e.attendees; })), d: tb.length + ' talks · audit avg ' + (au.length ? Math.round(sum(au, function (e) { return e.score; }) / au.length) + '%' : '—'), up: null },
+      rfi: { needs: ['rfi'], lbl: 'Open RFIs', ico: '❓', val: String(open.length), d: 'avg age ' + (open.length ? Math.round(sum(open, function (e) { return daysBetween(e.date, TODAY); }) / open.length) : 0) + ' d · ' + open.filter(function (e) { return e.due < TODAY; }).length + ' overdue', up: null },
+      pass: { needs: ['inspection'], lbl: 'ITP pass rate', ico: '🔍', val: ins.length ? String(Math.round(100 * ins.filter(function (e) { return e.result === 'Pass'; }).length / ins.length)) : '—', unit: '%', d: ins.length + ' inspections', up: null },
+      ncr: { needs: ['defect'], lbl: 'Open NCRs', ico: '⚠️', val: String(df.filter(function (e) { return e.status === 'Open'; }).length), d: df.filter(function (e) { return e.status === 'Open' && e.severity !== 'Minor'; }).length + ' major / critical', up: null },
+      variations: { needs: ['variation'], lbl: 'Variations pending', ico: '📑', val: audK(sum(vr.filter(function (e) { return e.status === 'Pending'; }), function (e) { return e.value; })), d: audK(sum(vr.filter(function (e) { return e.status === 'Approved'; }), function (e) { return e.value; })) + ' approved', up: null },
+      eot: { needs: ['eot'], lbl: 'EOT days', ico: '⏳', val: String(sum(eo, function (e) { return e.days; })), d: sum(eo.filter(function (e) { return e.status === 'Pending'; }), function (e) { return e.days; }) + ' days pending', up: null },
+      claims: { needs: ['claim'], lbl: 'Claims certified', ico: '🧮', val: audK(sum(cl.filter(function (e) { return e.status === 'Approved'; }), function (e) { return e.amount; })), d: audK(sum(cl.filter(function (e) { return e.status === 'Pending'; }), function (e) { return e.amount; })) + ' awaiting certification', up: null },
+      steel: { needs: ['delivery'], lbl: 'Steel delivered', ico: '🚚', val: n0.format(sum(dl.filter(function (e) { return e.material === 'Structural steel' && e.status === 'Accepted'; }), function (e) { return e.qty; })), unit: 't', d: dl.filter(function (e) { return e.status === 'Rejected'; }).length + ' loads rejected', up: null },
+      drawings: { needs: ['transmittal'], lbl: 'Drawings issued', ico: '📐', val: n0.format(sum(tx, function (e) { return e.drawings; })), d: tx.length + ' transmittals · ' + tx.filter(function (e) { return e.status === 'Issued'; }).length + ' awaiting ack.', up: null }
+    };
+    var order = scope === 'dept' ? ['contract', 'progress', 'workforce', 'manhours', 'ltifree', 'trifr', 'rfi', 'ncr', 'variations', 'claims'] : Object.keys(K).filter(function (k) { return has(list, K[k].needs); });
+    return order.map(function (k) { return K[k]; });
+  }
+
+  function constructionAnalytics(host, list, scope, people, nos) {
+    nos = nos || PROJECTS.map(function (p) { return p.no; });
+    var c = { list: list, nos: nos, scope: scope };
+    var panels = PANELS.filter(function (p) { return scope === 'dept' || has(list, p.needs); });
+    var k = hostId();
+    panels.forEach(function (p) { p._id = hostId(); });
+    host.innerHTML = '<div class="kpis" id="' + k + '"></div><div class="grid g-2">' + panels.map(function (p) {
+      return card(p.title, p.sub(c), p.html ? p.html(c) : '<div class="chart" id="' + p._id + '"></div>', p.legend ? legend(p.legend) : '', p.wide);
+    }).join('') + '</div>' +
+      (scope === 'dept' ? card('Entries by team member', 'Everything recorded on site, by person', '<div id="' + k + 'p"></div>') : '') +
+      card('Recent site entries', 'Latest 15', entryTable(list, { user: scope === 'dept', limit: 15 }));
+    D.kpis($('#' + k), constructionKpis(list, nos, scope));
+    panels.forEach(function (p) { if (p.draw) p.draw($('#' + p._id), c); });
+    if (scope === 'dept') D.hbars($('#' + k + 'p'), people.map(function (u) { return { name: u.name + ' — ' + u.role, value: list.filter(byUser(u.id)).length, note: 'Entries' }; }), function (v) { return v + ' entries'; });
+  }
+
+  // =====================================================================
+  //  SALES analytics
+  // =====================================================================
+  var salesCur = 'AUD';
   function salesAnalytics(host, list, scope, people) {
-    var leads = list.filter(function (e) { return e.type === 'lead'; }), props = list.filter(function (e) { return e.type === 'proposal'; });
+    var leads = ofType(list, 'lead'), props = ofType(list, 'proposal');
     var won = props.filter(function (e) { return e.stage === 'Won'; }), lost = props.filter(function (e) { return e.stage === 'Lost'; });
     var open = props.filter(function (e) { return e.stage === 'Estimating' || e.stage === 'Quoted'; });
-    var curs = CURS.filter(function (c) { return props.some(function (p) { return p.currency === c; }); });
-    if (curs.indexOf(salesCur) < 0) salesCur = curs[0] || 'USD';
-    var a = hostId(), b = hostId(), c = hostId(), d = hostId(), k = hostId(), seg = hostId();
+    var curs = CURS.filter(function (cu) { return props.some(function (p) { return p.currency === cu; }); });
+    if (curs.indexOf(salesCur) < 0) salesCur = curs[0] || 'AUD';
+    var a = hostId(), b = hostId(), cc = hostId(), d = hostId(), k = hostId(), seg = hostId(), rg = hostId();
     host.innerHTML = '<div class="kpis" id="' + k + '"></div>' +
-      '<div class="monitor-bar"><b>Currency</b><span class="cur-note">Values are never converted or added across currencies.</span><div class="seg cur-tabs" id="' + seg + '">' + curs.map(function (cu) { return '<button data-cur="' + cu + '"' + (cu === salesCur ? ' class="on"' : '') + '>' + cu + '</button>'; }).join('') + '</div></div>' +
-      '<div class="grid g-3-1">' + card('Won value by month', salesCur + ' · PO value on won date', '<div class="chart" id="' + a + '"></div>', legend([['Won', 'var(--s1)']])) +
-      card('Proposals by stage', 'Count, all currencies', '<div id="' + b + '"></div>') + '</div>' +
-      '<div class="grid g-2">' + card(scope === 'dept' ? 'Won value by BDM' : 'Open pipeline', scope === 'dept' ? salesCur + ' · all time' : salesCur + ' · quoted, not yet decided', '<div id="' + c + '"></div>') +
-      card('Leads by source', leads.length + ' leads', '<div id="' + d + '"></div>') + '</div>' +
+      (curs.length > 1 ? '<div class="monitor-bar"><b>Currency</b><span class="cur-note">NZ work is quoted in NZD and never added to AUD totals.</span><div class="seg cur-tabs" id="' + seg + '">' + curs.map(function (cu) { return '<button data-cur="' + cu + '"' + (cu === salesCur ? ' class="on"' : '') + '>' + cu + '</button>'; }).join('') + '</div></div>' : '') +
+      '<div class="grid g-3-1">' + card('Won value by month', salesCur + ' · contract value on award', '<div class="chart" id="' + a + '"></div>', legend([['Won', 'var(--s1)']])) +
+      card('Proposals by stage', 'Count', '<div id="' + b + '"></div>') + '</div>' +
+      '<div class="grid g-2">' + card(scope === 'dept' ? 'Won value by BDM' : 'Open pipeline', salesCur, '<div id="' + cc + '"></div>') +
+      card('Pipeline by region', 'Open + won proposals (count)', '<div id="' + rg + '"></div>') + '</div>' +
+      card('Leads by source', leads.length + ' leads', '<div id="' + d + '"></div>') +
       card('Proposals', 'Latest first', entryTable(props, { user: scope === 'dept', limit: 15 })) +
       card('Leads', 'Latest first', entryTable(leads, { user: scope === 'dept', limit: 10 }));
     var wonCur = won.filter(function (p) { return p.currency === salesCur; }), openCur = open.filter(function (p) { return p.currency === salesCur; }), f = kfmt(salesCur);
@@ -1087,237 +1321,354 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
       { lbl: 'Leads captured', ico: '🎯', val: String(leads.length), d: leads.filter(function (l) { return l.status === 'Qualified'; }).length + ' qualified', up: null },
       { lbl: 'Proposals', ico: '📋', val: String(props.length), d: open.length + ' open', up: null },
       { lbl: 'Won', ico: '🏆', val: String(won.length), d: 'win rate ' + (won.length + lost.length ? Math.round(100 * won.length / (won.length + lost.length)) : 0) + '% (decided)', up: null },
-      { lbl: 'Booked (' + salesCur + ')', ico: '💵', val: f(sum(wonCur, function (p) { return p.value; })), d: wonCur.length + ' wins in ' + salesCur, up: null, sp: MONTHS.map(function (m) { return sum(wonCur.filter(function (p) { return p.wonDate.slice(0, 7) === m; }), function (p) { return p.value; }); }), c: 'var(--s1)' },
+      { lbl: 'Awarded (' + salesCur + ')', ico: '💵', val: f(sum(wonCur, function (p) { return p.value; })), d: wonCur.length + ' wins', up: null, sp: MONTHS.map(function (m) { return sum(wonCur.filter(function (p) { return p.wonDate.slice(0, 7) === m; }), function (p) { return p.value; }); }), c: 'var(--s1)' },
       { lbl: 'Pipeline (' + salesCur + ')', ico: '🔭', val: f(sum(openCur, function (p) { return p.value; })), d: openCur.length + ' quoted', up: null }
     ]);
     D.barChart($('#' + a), { labels: MONTHS.map(function (m) { return MLABEL[m]; }), fmt: function (v) { return money(salesCur, v); }, axisFmt: f,
       series: [{ name: 'Won', values: MONTHS.map(function (m) { return sum(wonCur.filter(function (p) { return p.wonDate.slice(0, 7) === m; }), function (p) { return p.value; }); }), color: 'var(--s1)' }] });
     D.hbars($('#' + b), ['Estimating', 'Quoted', 'Won', 'Lost'].map(function (s) { return { name: s, value: props.filter(function (p) { return p.stage === s; }).length, note: 'Proposals' }; }), String);
-    if (scope === 'dept') D.hbars($('#' + c), people.map(function (u) { return { name: u.name, value: sum(wonCur.filter(byUser(u.id)), function (p) { return p.value; }), note: 'Won ' + salesCur }; }), f);
-    else D.hbars($('#' + c), openCur.length ? openCur.map(function (p) { return { name: p.name, value: p.value, note: 'Quoted ' + salesCur }; }) : [{ name: 'No open quotes', value: 0 }], f);
+    if (scope === 'dept') D.hbars($('#' + cc), people.map(function (u) { return { name: u.name, value: sum(wonCur.filter(byUser(u.id)), function (p) { return p.value; }), note: 'Won ' + salesCur }; }), f);
+    else D.hbars($('#' + cc), openCur.length ? openCur.map(function (p) { return { name: p.name, value: p.value, note: 'Quoted ' + salesCur }; }) : [{ name: 'No open quotes', value: 0 }], f);
+    var reg = {}; props.filter(function (p) { return p.stage !== 'Lost'; }).forEach(function (p) { reg[p.region] = (reg[p.region] || 0) + 1; });
+    D.hbars($('#' + rg), Object.keys(reg).sort(function (x, y) { return reg[y] - reg[x]; }).map(function (s) { return { name: s, value: reg[s], note: 'Proposals' }; }), String);
     var src = {}; leads.forEach(function (l) { src[l.source] = (src[l.source] || 0) + 1; });
     D.hbars($('#' + d), Object.keys(src).sort(function (x, y) { return src[y] - src[x]; }).map(function (s) { return { name: s, value: src[s], note: 'Leads' }; }), String);
-    $('#' + seg).addEventListener('click', function (e) { var bt = e.target.closest('[data-cur]'); if (!bt) return; salesCur = bt.getAttribute('data-cur'); salesAnalytics(host, list, scope, people); });
+    if ($('#' + seg)) $('#' + seg).addEventListener('click', function (e) { var bt = e.target.closest('[data-cur]'); if (!bt) return; salesCur = bt.getAttribute('data-cur'); salesAnalytics(host, list, scope, people); });
   }
 
+  // =====================================================================
+  //  ACCOUNTS analytics (AUD, 10% GST)
+  // =====================================================================
   function accountsAnalytics(host, list, scope, people) {
-    var inv = list.filter(function (e) { return e.type === 'invoice'; }), rec = list.filter(function (e) { return e.type === 'receipt'; });
-    var exp = list.filter(function (e) { return e.type === 'expense'; }), sp = list.filter(function (e) { return e.type === 'subpay'; });
+    var inv = ofType(list, 'invoice'), rec = ofType(list, 'receipt'), exp = ofType(list, 'expense'), sp = ofType(list, 'subpay');
     var outstanding = inv.filter(function (e) { return e.status !== 'Received'; }), overdue = inv.filter(function (e) { return e.status === 'Overdue'; });
-    var a = hostId(), b = hostId(), c = hostId(), k = hostId();
+    var a = hostId(), b = hostId(), cc = hostId(), k = hostId(), ag = hostId();
     host.innerHTML = '<div class="kpis" id="' + k + '"></div>' +
-      '<div class="grid g-3-1">' + card('Invoiced vs. received', 'Monthly, INR equivalent', '<div class="chart" id="' + a + '"></div>', legend([['Invoiced', 'var(--s1)'], ['Received', 'var(--s3)']])) +
-      card('Petty cash by category', 'Approved & pending', '<div id="' + b + '"></div>') + '</div>' +
-      (scope === 'dept' ? card('Entries by team member', 'Everything recorded, by type', '<div id="' + c + '"></div>') : '') +
-      (inv.length ? card('Invoices', 'Latest first', entryTable(inv, { user: scope === 'dept', limit: 12 })) : '') +
-      card('Receipts, vendor payments & petty cash', 'Latest first', entryTable(rec.concat(sp, exp).sort(function (x, y) { return x.ts < y.ts ? 1 : -1; }), { user: scope === 'dept', limit: 14 }));
+      '<div class="grid g-3-1">' + card('Invoiced vs. received', 'Monthly, A$ incl. GST', '<div class="chart" id="' + a + '"></div>', legend([['Invoiced', 'var(--s1)'], ['Received', 'var(--s3)']])) +
+      card('Receivables ageing', 'Outstanding invoices by days past due', '<div id="' + ag + '"></div>') + '</div>' +
+      '<div class="grid g-2">' + card('Petty cash by category', 'Approved & pending', '<div id="' + b + '"></div>') +
+      (scope === 'dept' ? card('Entries by team member', 'Everything recorded', '<div id="' + cc + '"></div>') : card('Subcontractor payments', 'Net paid after retention', '<div id="' + cc + '"></div>')) + '</div>' +
+      (inv.length ? card('Tax invoices', 'Latest first', entryTable(inv, { user: scope === 'dept', limit: 12 })) : '') +
+      card('Receipts, subcontractor payments & petty cash', 'Latest first', entryTable(rec.concat(sp, exp).sort(function (x, y) { return x.ts < y.ts ? 1 : -1; }), { user: scope === 'dept', limit: 14 }));
     D.kpis($('#' + k), [
-      { lbl: 'Invoiced (FYTD)', ico: '🧾', val: lakh(sum(inv, function (e) { return e.inr; })), d: inv.length + ' invoices', up: null, sp: MONTHS.map(function (m) { return sum(inv.filter(function (e) { return e.date.slice(0, 7) === m; }), function (e) { return e.inr; }); }), c: 'var(--s1)' },
-      { lbl: 'Received', ico: '💰', val: lakh(sum(rec, function (e) { return e.amount; })), d: rec.length + ' receipts recorded', up: null },
-      { lbl: 'Outstanding', ico: '⏳', val: lakh(sum(outstanding, function (e) { return e.inr; })), d: overdue.length + ' overdue (' + lakh(sum(overdue, function (e) { return e.inr; })) + ')', up: null },
-      { lbl: 'Vendor payments', ico: '💸', val: lakh(sum(sp, function (e) { return e.bill - e.tds; })), d: 'TDS ' + lakh(sum(sp, function (e) { return e.tds; })), up: null },
-      { lbl: 'Petty cash', ico: '💵', val: rs(sum(exp.filter(function (e) { return e.status !== 'Rejected'; }), function (e) { return e.amount; })), d: exp.filter(function (e) { return e.status === 'Pending'; }).length + ' awaiting approval', up: null }
+      { lbl: 'Invoiced (6 mths)', ico: '🧾', val: audK(sum(inv, function (e) { return e.total; })), d: inv.length + ' tax invoices · GST ' + audK(sum(inv, function (e) { return e.gst; })), up: null, sp: MONTHS.map(function (m) { return sum(inv.filter(function (e) { return e.date.slice(0, 7) === m; }), function (e) { return e.total; }); }), c: 'var(--s1)' },
+      { lbl: 'Received', ico: '💰', val: audK(sum(rec, function (e) { return e.amount; })), d: rec.length + ' receipts', up: null },
+      { lbl: 'Outstanding', ico: '⏳', val: audK(sum(outstanding, function (e) { return e.total; })), d: overdue.length + ' overdue (' + audK(sum(overdue, function (e) { return e.total; })) + ')', up: null },
+      { lbl: 'Subcontractors paid', ico: '💸', val: audK(sum(sp, function (e) { return e.bill - e.retention; })), d: 'retention held ' + audK(sum(sp, function (e) { return e.retention; })), up: null },
+      { lbl: 'Petty cash', ico: '💵', val: aud(sum(exp.filter(function (e) { return e.status !== 'Rejected'; }), function (e) { return e.amount; })), d: exp.filter(function (e) { return e.status === 'Pending'; }).length + ' awaiting approval', up: null }
     ]);
-    D.barChart($('#' + a), { labels: MONTHS.map(function (m) { return MLABEL[m]; }), fmt: lakh, axisFmt: function (v) { return (v / 1e5).toFixed(0) + ' L'; },
-      series: [{ name: 'Invoiced', values: MONTHS.map(function (m) { return sum(inv.filter(function (e) { return e.date.slice(0, 7) === m; }), function (e) { return e.inr; }); }), color: 'var(--s1)' },
+    D.barChart($('#' + a), { labels: MONTHS.map(function (m) { return MLABEL[m]; }), fmt: aud, axisFmt: audK,
+      series: [{ name: 'Invoiced', values: MONTHS.map(function (m) { return sum(inv.filter(function (e) { return e.date.slice(0, 7) === m; }), function (e) { return e.total; }); }), color: 'var(--s1)' },
                { name: 'Received', values: MONTHS.map(function (m) { return sum(rec.filter(function (e) { return e.date.slice(0, 7) === m; }), function (e) { return e.amount; }); }), color: 'var(--s3)' }] });
+    var buckets = [['Not yet due', -9999, 0, 'var(--seq2)'], ['1–30 days', 1, 30, 'var(--seq3)'], ['31–60 days', 31, 60, 'var(--seq4)'], ['60+ days', 61, 9999, 'var(--seq5)']];
+    D.hbars($('#' + ag), buckets.map(function (bk) { return { name: bk[0], color: bk[3], note: 'Outstanding', value: sum(outstanding.filter(function (e) { var od = daysBetween(e.due, TODAY); return od >= bk[1] && od <= bk[2]; }), function (e) { return e.total; }) }; }), audK);
     var cat = {}; exp.filter(function (e) { return e.status !== 'Rejected'; }).forEach(function (e) { cat[e.category] = (cat[e.category] || 0) + e.amount; });
     var cats = Object.keys(cat).sort(function (x, y) { return cat[y] - cat[x]; });
-    D.hbars($('#' + b), cats.length ? cats.map(function (x) { return { name: x, value: cat[x], note: 'Spend' }; }) : [{ name: 'No expenses', value: 0 }], rs);
-    if (scope === 'dept') D.hbars($('#' + c), people.map(function (u) { return { name: u.name, value: list.filter(byUser(u.id)).length, note: 'Entries' }; }), function (v) { return v + ' entries'; });
+    D.hbars($('#' + b), cats.length ? cats.map(function (x) { return { name: x, value: cat[x], note: 'Spend' }; }) : [{ name: 'No expenses', value: 0 }], aud);
+    if (scope === 'dept') D.hbars($('#' + cc), people.map(function (u) { return { name: u.name, value: list.filter(byUser(u.id)).length, note: 'Entries' }; }), function (v) { return v + ' entries'; });
+    else { var bs = {}; sp.forEach(function (e) { bs[e.subbie] = (bs[e.subbie] || 0) + e.bill - e.retention; }); var ks = Object.keys(bs);
+      D.hbars($('#' + cc), ks.length ? ks.sort(function (x, y) { return bs[y] - bs[x]; }).map(function (x) { return { name: x, value: bs[x], note: 'Net paid' }; }) : [{ name: 'No payments', value: 0 }], audK); }
   }
   var ANALYTICS = { construction: constructionAnalytics, sales: salesAnalytics, accounts: accountsAnalytics };
 
   // =====================================================================
-  //  Data-entry forms (what each role can record)
+  //  Data-entry forms
   // =====================================================================
-  var projOpts = PROJECTS.map(function (p) { return { value: p.no, label: p.no + ' — ' + p.name }; });
-  function projUsed(no) { return projByNo(no).base + sum(DB.entries.filter(function (e) { return e.type === 'timesheet' && e.project === no; }), function (e) { return e.hours; }); }
+  function projOpts(u) { return PROJECTS.filter(function (p) { return !u.projects || u.projects.indexOf(p.no) >= 0; }).map(function (p) { return { value: p.no, label: p.no + ' — ' + p.name + ' (' + p.loc + ')' }; }); }
   function done(msg) { save(); render(); return msg; }
+  var findEntry = function (id) { return DB.entries.filter(function (e) { return e.id === id; })[0]; };
+  function std(icon, title, sub, submit, flow, fields, onSubmit, extra) { var o = { icon: icon, title: title, subtitle: sub, submit: submit, flow: flow, fields: fields, onSubmit: onSubmit }; for (var k in extra || {}) o[k] = extra[k]; return o; }
 
   var FORMS = {
-    timesheet: { label: '⏱️ Log timesheet', roles: ['Designer', 'Design Lead'], build: function (u) {
-      return { icon: '⏱️', title: 'Log timesheet', subtitle: u.name + ' · hours worked', submit: 'Submit timesheet', flow: ['You submit', 'Hours deducted from the project allocation', 'Manager sees it in Construction reports'],
-        fields: [
-          { name: 'workType', label: 'Work type', type: 'select', half: true, value: 'project', options: [{ value: 'project', label: '📁 Project work' }, { value: 'training', label: '📚 Training' }] },
-          { name: 'date', label: 'Date', type: 'date', required: true, half: true, value: TODAY },
-          { name: 'project', label: 'Project', type: 'select', placeholder: 'Select a project…', options: projOpts },
-          { name: 'alloc', type: 'info' },
-          { name: 'drawing', label: 'Drawing number', half: true, placeholder: 'e.g. E-2042' },
-          { name: 'hours', label: 'Hours worked', type: 'number', required: true, half: true, min: 0.5, step: 0.5, placeholder: 'e.g. 4.5' },
-          { name: 'desc', label: 'Activity / description', type: 'textarea', required: true, placeholder: 'Describe what you worked on…' }
-        ],
-        onInput: function (v, f) {
-          if (v.workType !== 'project') { f.info('alloc', 'Training time — no project allocation is used.'); return; }
-          var p = projByNo(v.project); if (!p) { f.info('alloc', 'Select a project to see its allocated and remaining hours.'); return; }
-          var rem = p.alloc - projUsed(p.no), h = +v.hours || 0;
-          f.info('alloc', '<b>' + p.no + '</b> · allocated ' + inr.format(p.alloc) + ' h · remaining <b>' + nf.format(rem) + ' h</b>' + (h ? ' → ' + nf.format(rem - h) + ' h after this entry' : '') + (h > rem ? '<br>⚠ Exceeds the allocation — ask your design lead to request more time.' : ''), h > rem);
-        },
-        validate: function (v, f) {
-          if (v.workType === 'project' && !v.project) { f.error('project', 'Select the project you worked on'); return false; }
-          if (+v.hours > 12) { f.error('hours', 'Maximum 12 hours per entry'); return false; }
-          if (v.date > TODAY) { f.error('date', 'Cannot log hours for a future date'); return false; }
-        },
-        onSubmit: function (v) { addEntry({ type: 'timesheet', userId: u.id, date: v.date, workType: v.workType, project: v.workType === 'project' ? v.project : '—', drawing: v.drawing, desc: v.desc, hours: +v.hours, status: 'Submitted' }); return done(v.hours + ' h logged'); } };
+    // ---------------- Site Supervisor ----------------
+    diary: { label: '📓 Daily site diary', help: 'Weather, headcount by trade, work done and any time lost.', build: function (u) {
+      return std('📓', 'Daily site diary', u.name + ' · ' + D.shortDate(TODAY), 'Submit diary', ['Supervisor submits', 'Feeds workforce, labour & lost-time charts', 'Evidence for EOT claims'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select site…', options: projOpts(u) },
+        { name: 'date', label: 'Date', type: 'date', required: true, half: true, value: TODAY },
+        { name: 'weather', label: 'Weather', type: 'select', half: true, options: ['Fine', 'Cloudy', 'Showers', 'Heavy rain', 'Strong wind', 'Extreme heat'] },
+        { name: 'c0', label: 'Structural steel crew', type: 'number', half: true, min: 0, value: 0 },
+        { name: 'c1', label: 'Concrete & formwork crew', type: 'number', half: true, min: 0, value: 0 },
+        { name: 'c2', label: 'Carpentry & finishes crew', type: 'number', half: true, min: 0, value: 0 },
+        { name: 'c3', label: 'Services (MEP) crew', type: 'number', half: true, min: 0, value: 0 },
+        { name: 'shift', label: 'Shift length (h)', type: 'number', half: true, min: 1, value: 9 },
+        { name: 'hoursLost', label: 'Hours lost', type: 'number', half: true, min: 0, value: 0 },
+        { name: 'lostCause', label: 'Cause of lost time', type: 'select', options: ['None', 'Weather', 'Site access', 'Plant breakdown', 'Client direction', 'Industrial action'] },
+        { name: 'tot', type: 'info' },
+        { name: 'activities', label: 'Work carried out', type: 'textarea', required: true, placeholder: 'e.g. Erected portal frames grid 12–18, roof purlins bay 4' },
+        { name: 'photos', label: 'Site photos (optional)', type: 'file', placeholder: 'Attach progress photos' }
+      ], function (v) {
+        var crews = [+v.c0 || 0, +v.c1 || 0, +v.c2 || 0, +v.c3 || 0];
+        addEntry({ type: 'diary', userId: u.id, date: v.date, project: v.project, weather: v.weather, crews: crews, workers: sum(crews), shift: +v.shift, hoursLost: +v.hoursLost || 0, lostCause: +v.hoursLost ? (v.lostCause === 'None' ? 'Other' : v.lostCause) : 'None', activities: v.activities, status: 'Submitted' });
+        return done('Site diary saved — ' + sum(crews) + ' workers on ' + v.project);
+      }, {
+        onInput: function (v, f) { var w = (+v.c0 || 0) + (+v.c1 || 0) + (+v.c2 || 0) + (+v.c3 || 0); f.info('tot', '<b>' + w + ' workers</b> on site · ' + n0.format(w * (+v.shift || 0)) + ' man-hours' + (+v.hoursLost ? ' · ' + n0.format(w * v.hoursLost) + ' man-hours lost' : '')); },
+        validate: function (v, f) { if ((+v.c0 || 0) + (+v.c1 || 0) + (+v.c2 || 0) + (+v.c3 || 0) === 0) { f.error('c0', 'Enter at least one crew'); return false; } if (+v.hoursLost > +v.shift) { f.error('hoursLost', 'Cannot exceed the shift length'); return false; } if (v.date > TODAY) { f.error('date', 'Cannot be in the future'); return false; } }
+      });
     } },
-    timereq: { label: '⏰ Request additional time', roles: ['Design Lead'], build: function (u) {
-      return { icon: '⏰', title: 'Request additional time', subtitle: u.name + ' · more hours for a project', submit: 'Send to manager', flow: ['You request', 'Manager approves or rejects', 'You get a notification'],
-        fields: [
-          { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select a project…', options: projOpts },
-          { name: 'use', type: 'info' },
-          { name: 'hours', label: 'Additional hours', type: 'number', required: true, half: true, min: 1 },
-          { name: 'reason', label: 'Reason', type: 'textarea', required: true, placeholder: 'Why more time is needed' }
-        ],
-        onInput: function (v, f) { var p = projByNo(v.project); f.info('use', p ? p.no + ' · ' + inr.format(projUsed(p.no)) + ' of ' + inr.format(p.alloc) + ' h used (' + Math.round(100 * projUsed(p.no) / p.alloc) + '%)' : 'Pick a project to see its hour usage.'); },
-        onSubmit: function (v) { var ref = 'TR-' + (++DB.counters.tr); addEntry({ type: 'timereq', userId: u.id, ref: ref, project: v.project, hours: +v.hours, reason: v.reason, status: 'Pending' }); return done(ref + ' sent for approval'); } };
+    delivery: { label: '🚚 Material delivery', help: 'Record a delivery docket and accept or reject the load.', build: function (u) {
+      var units = { 'Structural steel': 't', Concrete: 'm³', Reinforcement: 't', 'Precast panels': 'no.' };
+      return std('🚚', 'Material delivery', u.name + ' · goods received on site', 'Record delivery', ['Supervisor checks the load', 'Accepted or rejected', 'Tracked against the programme'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select site…', options: projOpts(u) },
+        { name: 'material', label: 'Material', type: 'select', required: true, half: true, options: Object.keys(units) },
+        { name: 'qty', label: 'Quantity', type: 'number', required: true, half: true, min: 0.1, step: 0.1 },
+        { name: 'unitInfo', type: 'info' },
+        { name: 'supplier', label: 'Supplier', required: true, half: true, placeholder: 'e.g. Ironbark Steel Supply Pty Ltd' },
+        { name: 'docket', label: 'Docket number', required: true, half: true, placeholder: 'e.g. DK48213' },
+        { name: 'status', label: 'Result', type: 'select', half: true, options: ['Accepted', 'Rejected'] },
+        { name: 'doc', label: 'Delivery docket photo', type: 'file', required: true }
+      ], function (v) { addEntry({ type: 'delivery', userId: u.id, project: v.project, material: v.material, unit: units[v.material], qty: +v.qty, supplier: v.supplier, docket: v.docket, status: v.status }); return done(v.material + ' delivery ' + v.status.toLowerCase()); },
+      { onInput: function (v, f) { f.info('unitInfo', 'Unit: <b>' + units[v.material] + '</b>'); } });
     } },
-    variation: { label: '📑 Raise variation', roles: ['Design Lead'], build: function (u) {
-      return { icon: '📑', title: 'Raise variation', subtitle: u.name + ' · client scope change', submit: 'Submit variation', flow: ['You raise it', 'Manager approves', 'Accounts can invoice it'],
-        fields: [
-          { name: 'project', label: 'Parent project', type: 'select', required: true, placeholder: 'Select a project…', options: projOpts },
-          { name: 'scope', label: 'Scope of variation', type: 'textarea', required: true },
-          { name: 'hours', label: 'Estimated hours', type: 'number', required: true, half: true, min: 1 },
-          { name: 'currency', label: 'Currency', type: 'select', half: true, options: CURS, value: 'USD' },
-          { name: 'amount', label: 'Variation amount', type: 'number', required: true, half: true, min: 1 },
-          { name: 'doc', label: 'Client instruction / RFI', type: 'file', required: true }
-        ],
-        onInput: function (v, f) { var p = projByNo(v.project); if (p && f._p !== v.project) { f._p = v.project; f.set('currency', p.cur); } },
-        onSubmit: function (v) { var ref = 'VO-0' + (++DB.counters.vo); addEntry({ type: 'variation', userId: u.id, ref: ref, project: v.project, scope: v.scope, hours: +v.hours, currency: v.currency, amount: +v.amount, status: 'Pending' }); return done(ref + ' sent for approval'); } };
+    // ---------------- Site Engineer ----------------
+    rfi: { label: '❓ Raise RFI', help: 'Ask the design team a question; 7-day response.', build: function (u) {
+      return std('❓', 'Request for information', u.name, 'Issue RFI', ['Engineer raises', 'Design team responds within 7 days', 'Engineer closes out'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'discipline', label: 'Discipline', type: 'select', half: true, options: ['Structural', 'Architectural', 'Services', 'Civil'] },
+        { name: 'due', label: 'Response required by', type: 'date', half: true, value: addDays(TODAY, 7) },
+        { name: 'subject', label: 'Subject', required: true, placeholder: 'e.g. Missing connection detail at grid C/7' },
+        { name: 'question', label: 'Question', type: 'textarea', required: true },
+        { name: 'att', label: 'Marked-up drawing / photo', type: 'file' }
+      ], function (v) { var ref = 'RFI-' + (++DB.counters.rfi); addEntry({ type: 'rfi', userId: u.id, ref: ref, project: v.project, discipline: v.discipline, subject: v.subject, due: v.due, answered: null, status: 'Open' }); return done(ref + ' issued'); });
     } },
-    lead: { label: '🎯 Add lead', roles: ['BDM'], build: function (u) {
-      return { icon: '🎯', title: 'Add lead', subtitle: u.name + ' · new enquiry', submit: 'Save lead', flow: ['You capture it', 'Qualified leads become proposals'],
-        fields: [
-          { name: 'name', label: 'Lead / project', required: true, placeholder: 'e.g. Calgary Cold Store' },
-          { name: 'client', label: 'Company', required: true, half: true },
-          { name: 'source', label: 'Source', type: 'select', required: true, half: true, placeholder: 'Select…', options: ['Repeat client', 'Referral', 'LinkedIn', 'Website', 'Trade show'] },
-          { name: 'region', label: 'Region', type: 'select', half: true, options: ['USA', 'Canada', 'Australia', 'UK'] },
-          { name: 'status', label: 'Status', type: 'select', half: true, options: ['New', 'Qualified'] }
-        ],
-        onSubmit: function (v) { addEntry({ type: 'lead', userId: u.id, ref: 'LD-' + (++DB.counters.ld), name: v.name, client: v.client, source: v.source, region: v.region, status: v.status }); return done('Lead saved'); } };
+    rficlose: { label: '✅ Close out RFI', help: 'Record the design response and close the RFI.', build: function (u) {
+      var open = DB.entries.filter(function (e) { return e.type === 'rfi' && e.status !== 'Closed'; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      return std('✅', 'Close out RFI', u.name, 'Update RFI', ['Response received', 'Answered or Closed', 'Ageing chart updates'], [
+        { name: 'id', label: 'RFI', type: 'select', required: true, placeholder: open.length ? 'Select an open RFI…' : 'No open RFIs', options: open.map(function (e) { return { value: e.id, label: e.ref + ' · ' + e.project + ' — ' + e.subject + ' (' + daysBetween(e.date, TODAY) + ' d)' }; }) },
+        { name: 'status', label: 'New status', type: 'select', half: true, options: ['Closed', 'Answered'] },
+        { name: 'date', label: 'Response date', type: 'date', half: true, value: TODAY },
+        { name: 'response', label: 'Response summary', type: 'textarea', required: true }
+      ], function (v) { var e = findEntry(v.id); e.status = v.status; e.answered = v.date; e.ts = nowTs(); e.fresh = true; return done(e.ref + ' ' + v.status.toLowerCase()); });
     } },
-    proposal: { label: '📋 Create proposal', roles: ['BDM'], build: function (u) {
-      var cc = { USA: 'USD', Canada: 'CAD', Australia: 'AUD', UK: 'GBP' };
-      return { icon: '📋', title: 'Create proposal', subtitle: u.name + ' · goes to estimation', submit: 'Create proposal', flow: ['You create it', 'Estimator prices it', 'You send the quote', 'Mark won or lost'],
-        fields: [
-          { name: 'name', label: 'Project name', required: true, placeholder: 'e.g. Orlando Convention Centre — Phase 2' },
-          { name: 'client', label: 'Client company', required: true, half: true },
-          { name: 'country', label: 'Country', type: 'select', required: true, half: true, placeholder: 'Select…', options: Object.keys(cc) },
-          { name: 'scope', label: 'Scope of work', type: 'textarea', required: true },
-          { name: 'files', label: 'Tender drawings', type: 'file' }
-        ],
-        onSubmit: function (v) { var ref = 'PR-26-' + (++DB.counters.pr); addEntry({ type: 'proposal', userId: u.id, ref: ref, name: v.name, client: v.client, country: v.country, currency: cc[v.country], value: 0, stage: 'Estimating', status: 'Estimating' }); return done(ref + ' created'); } };
+    inspection: { label: '🔍 ITP inspection', help: 'Record a hold or witness point result.', build: function (u) {
+      return std('🔍', 'ITP inspection', u.name + ' · inspection & test plan', 'Record result', ['Engineer inspects', 'Pass releases the hold point', 'Fail raises an NCR'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'point', label: 'Point type', type: 'select', half: true, options: ['Hold point', 'Witness point'] },
+        { name: 'result', label: 'Result', type: 'select', half: true, options: ['Pass', 'Conditional', 'Fail'] },
+        { name: 'element', label: 'Element / activity', required: true, placeholder: 'e.g. Level 4 slab pour pre-check' },
+        { name: 'comments', label: 'Comments', type: 'textarea' },
+        { name: 'photo', label: 'Photos', type: 'file' }
+      ], function (v) { addEntry({ type: 'inspection', userId: u.id, project: v.project, point: v.point, element: v.element, result: v.result, status: v.result }); return done('Inspection recorded — ' + v.result + (v.result === 'Fail' ? '. Raise an NCR next.' : '')); });
     } },
-    stage: { label: '🏆 Update proposal (quote / won / lost)', roles: ['BDM'], build: function (u) {
+    defect: { label: '⚠️ Raise defect / NCR', help: 'Non-conformance with severity and location.', build: function (u) {
+      return std('⚠️', 'Defect / non-conformance report', u.name, 'Raise NCR', ['Engineer raises', 'Subcontractor rectifies', 'Engineer closes'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'location', label: 'Location', required: true, half: true, placeholder: 'e.g. Level 3 grid D' },
+        { name: 'severity', label: 'Severity', type: 'select', half: true, options: ['Minor', 'Major', 'Critical'] },
+        { name: 'desc', label: 'Description', type: 'textarea', required: true },
+        { name: 'photo', label: 'Photo', type: 'file', required: true }
+      ], function (v) { var ref = 'NCR-0' + (++DB.counters.ncr); addEntry({ type: 'defect', userId: u.id, ref: ref, project: v.project, location: v.location, severity: v.severity, desc: v.desc, status: 'Open' }); return done(ref + ' raised'); });
+    } },
+    ncrclose: { label: '🧹 Close defect / NCR', help: 'Confirm rectification and close the NCR.', build: function (u) {
+      var open = DB.entries.filter(function (e) { return e.type === 'defect' && e.status === 'Open'; });
+      return std('🧹', 'Close defect / NCR', u.name, 'Close NCR', ['Rectified', 'Closed'], [
+        { name: 'id', label: 'NCR', type: 'select', required: true, placeholder: open.length ? 'Select an open NCR…' : 'No open NCRs', options: open.map(function (e) { return { value: e.id, label: e.ref + ' · ' + e.project + ' — ' + e.severity + ': ' + e.desc }; }) },
+        { name: 'note', label: 'Rectification', type: 'textarea', required: true },
+        { name: 'photo', label: 'Close-out photo', type: 'file', required: true }
+      ], function (v) { var e = findEntry(v.id); e.status = 'Closed'; e.ts = nowTs(); e.fresh = true; return done(e.ref + ' closed'); });
+    } },
+    progress: { label: '📈 Progress update', help: 'Report % complete; drives the S-curve and SPI.', build: function (u) {
+      return std('📈', 'Progress update', u.name + ' · weekly', 'Submit progress', ['Engineer reports % complete', 'S-curve & SPI update', 'Basis for the progress claim'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'cmp', type: 'info' },
+        { name: 'pct', label: 'Overall % complete', type: 'number', required: true, half: true, min: 0, step: 0.1 },
+        { name: 'activity', label: 'Current key activity', required: true, half: true },
+        { name: 'notes', label: 'Comments', type: 'textarea' }
+      ], function (v) { addEntry({ type: 'progress', userId: u.id, project: v.project, activity: v.activity, pct: +v.pct, status: 'Submitted' }); return done(v.project + ' updated to ' + v.pct + '%'); },
+      { onInput: function (v, f) { var p = projByNo(v.project); if (!p) { f.info('cmp', 'Pick a project to see planned vs last reported progress.'); return; }
+          var pl = plannedPct(p, TODAY), last = actualPct(p.no); f.info('cmp', 'Planned today <b>' + pct(pl) + '</b> · last reported <b>' + pct(last) + '</b>' + (+v.pct ? ' → SPI <b>' + (v.pct / pl).toFixed(2) + '</b>' : ''), +v.pct && v.pct / pl < 0.92);
+          if (f._p !== v.project) { f._p = v.project; f.set('pct', Math.round(last * 10) / 10); } },
+        validate: function (v, f) { if (+v.pct > 100) { f.error('pct', 'Cannot exceed 100%'); return false; } if (+v.pct < actualPct(v.project) - 5) { f.error('pct', 'Much lower than the last report — check the value'); return false; } } });
+    } },
+    // ---------------- HSE Advisor ----------------
+    incident: { label: '🚑 Report incident', help: 'Near miss, first aid, medical treatment or lost time.', build: function (u) {
+      return std('🚑', 'Safety incident', u.name, 'Report incident', ['HSE records', 'Investigation', 'Feeds TRIFR & LTI-free days'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'kind', label: 'Classification', type: 'select', required: true, half: true, options: ['Near miss', 'First aid', 'Medical treatment', 'Lost time'] },
+        { name: 'date', label: 'Date of incident', type: 'date', half: true, value: TODAY },
+        { name: 'desc', label: 'What happened', type: 'textarea', required: true },
+        { name: 'action', label: 'Immediate action taken', type: 'textarea', required: true },
+        { name: 'warn', type: 'info' }
+      ], function (v) { var ref = 'INC-0' + (++DB.counters.inc); addEntry({ type: 'incident', userId: u.id, date: v.date, ref: ref, project: v.project, kind: v.kind, desc: v.desc, status: 'Open' }); return done(ref + ' reported'); },
+      { onInput: function (v, f) { f.info('warn', v.kind === 'Lost time' || v.kind === 'Medical treatment' ? '⚠ Recordable injury — notify the Operations Director and check if SafeWork notification is required.' : 'Non-recordable — still investigated and trended.', v.kind === 'Lost time' || v.kind === 'Medical treatment'); } });
+    } },
+    toolbox: { label: '🦺 Toolbox talk', help: 'Topic and attendance for a pre-start or toolbox talk.', build: function (u) {
+      return std('🦺', 'Toolbox talk', u.name, 'Save', ['Talk delivered', 'Attendance recorded'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'topic', label: 'Topic', required: true, placeholder: 'e.g. Working at heights' },
+        { name: 'attendees', label: 'Attendees', type: 'number', required: true, half: true, min: 1 },
+        { name: 'sheet', label: 'Sign-on sheet', type: 'file', required: true }
+      ], function (v) { addEntry({ type: 'toolbox', userId: u.id, project: v.project, topic: v.topic, attendees: +v.attendees, status: 'Recorded' }); return done('Toolbox talk recorded'); });
+    } },
+    audit: { label: '📋 Safety inspection', help: 'Site safety walk score and findings.', build: function (u) {
+      return std('📋', 'Safety inspection', u.name, 'Save', ['HSE inspects', 'Findings assigned', 'Score trended'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'score', label: 'Score (%)', type: 'number', required: true, half: true, min: 0 },
+        { name: 'findings', label: 'Findings', type: 'number', required: true, half: true, min: 0 },
+        { name: 'notes', label: 'Key observations', required: true }
+      ], function (v) { addEntry({ type: 'audit', userId: u.id, project: v.project, score: +v.score, findings: +v.findings, notes: v.notes, status: 'Recorded' }); return done('Safety inspection saved'); },
+      { validate: function (v, f) { if (+v.score > 100) { f.error('score', 'Maximum 100%'); return false; } } });
+    } },
+    // ---------------- Document Controller ----------------
+    transmittal: { label: '📐 Drawing transmittal', help: 'Issue drawings for approval, construction or information.', build: function (u) {
+      return std('📐', 'Drawing transmittal', u.name, 'Issue transmittal', ['Controller issues', 'Recipient acknowledges'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'purpose', label: 'Purpose', type: 'select', half: true, options: ['For Construction', 'For Approval', 'For Information', 'As-built'] },
+        { name: 'recipient', label: 'Recipient', type: 'select', half: true, options: ['Client', 'Fabricator', 'Certifier', 'Architect', 'Subcontractor'] },
+        { name: 'drawings', label: 'Number of drawings', type: 'number', required: true, half: true, min: 1 },
+        { name: 'rev', label: 'Revision', half: true, placeholder: 'e.g. Rev C' },
+        { name: 'register', label: 'Drawing register / PDFs', type: 'file', required: true }
+      ], function (v) { var ref = 'TX-0' + (++DB.counters.tx); addEntry({ type: 'transmittal', userId: u.id, ref: ref, project: v.project, purpose: v.purpose, drawings: +v.drawings, recipient: v.recipient, status: 'Issued' }); return done(ref + ' issued'); });
+    } },
+    // ---------------- Project Manager ----------------
+    variation: { label: '📑 Submit variation', help: 'Scope change with value and time impact.', build: function (u) {
+      return std('📑', 'Variation', u.name, 'Submit for approval', ['PM submits', 'Operations Director approves', 'Added to contract sum'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'desc', label: 'Description', required: true },
+        { name: 'value', label: 'Value (A$ ex GST)', type: 'number', required: true, half: true, min: 1 },
+        { name: 'days', label: 'Time impact (days)', type: 'number', half: true, min: 0, value: 0 },
+        { name: 'doc', label: 'Instruction / quote', type: 'file', required: true }
+      ], function (v) { var ref = 'VAR-0' + (++DB.counters.vo); addEntry({ type: 'variation', userId: u.id, ref: ref, project: v.project, desc: v.desc, value: +v.value, days: +v.days || 0, status: 'Pending' }); return done(ref + ' sent for approval'); });
+    } },
+    eot: { label: '⏳ Extension of time claim', help: 'Claim days for weather, latent conditions or client changes.', build: function (u) {
+      return std('⏳', 'Extension of time claim', u.name, 'Submit EOT', ['PM claims', 'Operations Director approves', 'Programme updated'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'cause', label: 'Cause', type: 'select', half: true, options: ['Inclement weather', 'Latent conditions', 'Client-directed change', 'Late information'] },
+        { name: 'days', label: 'Days claimed', type: 'number', required: true, half: true, min: 1 },
+        { name: 'evid', type: 'info' },
+        { name: 'desc', label: 'Basis of claim', type: 'textarea', required: true },
+        { name: 'doc', label: 'Notice & evidence', type: 'file', required: true }
+      ], function (v) { var ref = 'EOT-0' + (++DB.counters.eot); addEntry({ type: 'eot', userId: u.id, ref: ref, project: v.project, cause: v.cause, desc: v.desc, days: +v.days, status: 'Pending' }); return done(ref + ' sent for approval'); },
+      { onInput: function (v, f) { var di = DB.entries.filter(function (e) { return e.type === 'diary' && e.project === v.project && e.hoursLost; });
+          f.info('evid', v.project ? 'Site diaries record <b>' + di.length + ' days</b> with lost time on ' + v.project + ' (' + n0.format(sum(di, function (e) { return e.hoursLost; })) + ' h) — attach them as evidence.' : 'Pick a project to see supporting diary evidence.'); } });
+    } },
+    claim: { label: '🧮 Progress claim', help: 'Monthly payment claim against % complete.', build: function (u) {
+      return std('🧮', 'Progress claim', u.name + ' · payment claim', 'Submit claim', ['PM prepares', 'Operations Director certifies', 'Accounts issues tax invoice'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'period', label: 'Claim period', type: 'select', half: true, options: ['Oct 2026', 'Sep 2026'] },
+        { name: 'amount', label: 'Amount this claim (A$ ex GST)', type: 'number', required: true, half: true, min: 1 },
+        { name: 'calc', type: 'info' },
+        { name: 'doc', label: 'Claim breakdown', type: 'file', required: true }
+      ], function (v) { var p = projByNo(v.project), ref = 'PC-' + p.no.slice(3) + '-' + String(++DB.counters.pcl).padStart(2, '0'); addEntry({ type: 'claim', userId: u.id, ref: ref, project: v.project, period: v.period, amount: +v.amount, cumPct: Math.round(actualPct(p.no) * 10) / 10, status: 'Pending' }); return done(ref + ' sent for certification'); },
+      { onInput: function (v, f) { var p = projByNo(v.project); if (!p) { f.info('calc', 'Pick a project.'); return; }
+          var claimed = sum(DB.entries.filter(function (e) { return e.type === 'claim' && e.project === p.no && e.status !== 'Rejected'; }), function (e) { return e.amount; }), earned = p.value * actualPct(p.no) / 100;
+          f.info('calc', 'Earned to date ' + aud(earned) + ' (' + pct(actualPct(p.no)) + ') · claimed ' + aud(claimed) + ' → <b>available ' + aud(Math.max(0, earned - claimed)) + '</b>');
+          if (f._p !== v.project) { f._p = v.project; f.set('amount', Math.max(0, Math.round((earned - claimed) / 100) * 100)); } } });
+    } },
+    // ---------------- Sales ----------------
+    lead: { label: '🎯 Add lead', help: 'Capture a new enquiry and its source.', build: function (u) {
+      return std('🎯', 'Add lead', u.name, 'Save lead', ['BDM captures', 'Qualified leads become proposals'], [
+        { name: 'name', label: 'Opportunity', required: true, placeholder: 'e.g. Newcastle Distribution Centre' },
+        { name: 'client', label: 'Company', required: true, half: true, placeholder: 'e.g. Hunter Valley Developments Pty Ltd' },
+        { name: 'source', label: 'Source', type: 'select', required: true, half: true, placeholder: 'Select…', options: ['Repeat client', 'Referral', 'LinkedIn', 'Tender portal', 'Industry event'] },
+        { name: 'region', label: 'State / region', type: 'select', half: true, options: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'ACT', 'TAS', 'NT', 'NZ'] },
+        { name: 'status', label: 'Status', type: 'select', half: true, options: ['New', 'Qualified'] }
+      ], function (v) { addEntry({ type: 'lead', userId: u.id, ref: 'LD-' + (++DB.counters.ld), name: v.name, client: v.client, source: v.source, region: v.region, status: v.status }); return done('Lead saved'); });
+    } },
+    proposal: { label: '📋 Create proposal', help: 'Start an EPCM services proposal for estimation.', build: function (u) {
+      return std('📋', 'Create proposal', u.name, 'Create proposal', ['BDM creates', 'Estimating prices it', 'Quote sent', 'Won or lost'], [
+        { name: 'name', label: 'Project', required: true },
+        { name: 'client', label: 'Client', required: true, half: true },
+        { name: 'region', label: 'State / region', type: 'select', required: true, half: true, placeholder: 'Select…', options: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'ACT', 'TAS', 'NT', 'NZ'] },
+        { name: 'scope', label: 'Scope of services', type: 'textarea', required: true, placeholder: 'Engineering, procurement and construction management for…' },
+        { name: 'files', label: 'Tender documents', type: 'file' }
+      ], function (v) { var ref = 'PR-26-' + (++DB.counters.pr); addEntry({ type: 'proposal', userId: u.id, ref: ref, name: v.name, client: v.client, region: v.region, currency: v.region === 'NZ' ? 'NZD' : 'AUD', value: 0, stage: 'Estimating', status: 'Estimating' }); return done(ref + ' created'); });
+    } },
+    stage: { label: '🏆 Update proposal', help: 'Move a proposal to Quoted, Won (with PO) or Lost.', build: function (u) {
       var mine = DB.entries.filter(function (e) { return e.type === 'proposal' && e.userId === u.id && (e.stage === 'Estimating' || e.stage === 'Quoted'); });
-      return { icon: '🏆', title: 'Update proposal', subtitle: u.name + ' · record a quote, win or loss', submit: 'Update', flow: ['Estimating', 'Quoted', 'Won (with PO) or Lost'],
-        fields: [
-          { name: 'id', label: 'Proposal', type: 'select', required: true, placeholder: mine.length ? 'Select an open proposal…' : 'No open proposals', options: mine.map(function (p) { return { value: p.id, label: p.ref + ' — ' + p.name + ' (' + p.stage + ')' }; }) },
-          { name: 'stage', label: 'New stage', type: 'select', required: true, half: true, options: ['Quoted', 'Won', 'Lost'], value: 'Quoted' },
-          { name: 'value', label: 'Quoted / PO value', type: 'number', half: true, min: 1 },
-          { name: 'cur', type: 'info' },
-          { name: 'po', label: 'Client PO number (for Won)', half: true, placeholder: 'e.g. PO-AF-7790' },
-          { name: 'date', label: 'Date', type: 'date', half: true, value: TODAY }
-        ],
-        onInput: function (v, f) { var p = DB.entries.filter(function (e) { return e.id === v.id; })[0]; f.info('cur', p ? 'Currency: <b>' + p.currency + '</b>' + (p.value ? ' · current value ' + money(p.currency, p.value) : '') : 'Pick a proposal.'); if (p && f._p !== v.id) { f._p = v.id; if (p.value) f.set('value', p.value); } },
-        validate: function (v, f) {
-          if (v.stage !== 'Lost' && !v.value) { f.error('value', 'Enter the quoted or PO value'); return false; }
-          if (v.stage === 'Won' && !v.po) { f.error('po', 'A PO number is required to mark it won'); return false; }
-        },
-        onSubmit: function (v) {
-          var p = DB.entries.filter(function (e) { return e.id === v.id; })[0];
-          p.stage = p.status = v.stage; if (v.value) p.value = +v.value;
-          if (v.stage === 'Won') { p.wonDate = v.date || TODAY; p.po = v.po; }
-          p.ts = nowTs(); p.fresh = true;
-          return done(p.ref + ' → ' + v.stage);
-        } };
+      return std('🏆', 'Update proposal', u.name, 'Update', ['Estimating', 'Quoted', 'Won (with PO) or Lost'], [
+        { name: 'id', label: 'Proposal', type: 'select', required: true, placeholder: mine.length ? 'Select…' : 'No open proposals', options: mine.map(function (p) { return { value: p.id, label: p.ref + ' — ' + p.name + ' (' + p.stage + ')' }; }) },
+        { name: 'stage', label: 'New stage', type: 'select', half: true, options: ['Quoted', 'Won', 'Lost'] },
+        { name: 'value', label: 'Quoted / contract value', type: 'number', half: true, min: 1 },
+        { name: 'po', label: 'Client PO / contract no. (Won)', half: true },
+        { name: 'date', label: 'Date', type: 'date', half: true, value: TODAY }
+      ], function (v) { var p = findEntry(v.id); p.stage = p.status = v.stage; if (v.value) p.value = +v.value; if (v.stage === 'Won') { p.wonDate = v.date || TODAY; p.po = v.po; } p.ts = nowTs(); p.fresh = true; return done(p.ref + ' → ' + v.stage); },
+      { onInput: function (v, f) { var p = findEntry(v.id); if (p && f._p !== v.id) { f._p = v.id; if (p.value) f.set('value', p.value); } },
+        validate: function (v, f) { if (v.stage !== 'Lost' && !v.value) { f.error('value', 'Enter the value'); return false; } if (v.stage === 'Won' && !v.po) { f.error('po', 'Required to mark it won'); return false; } } });
     } },
-    invoice: { label: '🧾 Raise invoice', roles: ['Accounts'], build: function (u) {
-      return { icon: '🧾', title: 'Raise client invoice', subtitle: u.name + ' · bill a milestone', submit: 'Save invoice', flow: ['You raise it', 'Due → Overdue after 30 days', 'Record the receipt when paid'],
-        fields: [
-          { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts },
-          { name: 'milestone', label: 'Milestone', required: true, placeholder: 'e.g. IFA submission (30%)' },
-          { name: 'currency', label: 'Currency', type: 'select', half: true, options: CURS, value: 'USD' },
-          { name: 'amount', label: 'Amount', type: 'number', required: true, half: true, min: 1 },
-          { name: 'inr', type: 'info' }
-        ],
-        onInput: function (v, f) { var p = projByNo(v.project); if (p && f._p !== v.project) { f._p = v.project; f.set('currency', p.cur); v.currency = p.cur; } f.info('inr', v.amount ? 'INR equivalent at bank rate ' + RATE[v.currency] + ': <b>' + rs(v.amount * RATE[v.currency]) + '</b> · due ' + D.shortDate(addDays(TODAY, 30)) : 'Due 30 days from today.'); },
-        onSubmit: function (v) { var p = projByNo(v.project), ref = 'INV/26-27/' + (++DB.counters.inv); addEntry({ type: 'invoice', userId: u.id, ref: ref, project: p.no, client: p.client, milestone: v.milestone, currency: v.currency, amount: +v.amount, inr: Math.round(v.amount * RATE[v.currency]), due: addDays(TODAY, 30), status: 'Due' }); return done(ref + ' raised'); } };
+    // ---------------- Accounts ----------------
+    invoice: { label: '🧾 Raise tax invoice', help: 'Invoice a certified progress claim (10% GST).', build: function (u) {
+      return std('🧾', 'Tax invoice', u.name, 'Save invoice', ['Claim certified', 'Tax invoice issued', 'Receipt recorded when paid'], [
+        { name: 'project', label: 'Project', type: 'select', required: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'milestone', label: 'Description', required: true, placeholder: 'e.g. Progress claim Oct 2026' },
+        { name: 'exGst', label: 'Amount ex GST (A$)', type: 'number', required: true, half: true, min: 1 },
+        { name: 'terms', label: 'Terms', type: 'select', half: true, options: [{ value: 15, label: '15 business days (SOPA)' }, { value: 30, label: '30 days' }], value: 30 },
+        { name: 'gst', type: 'info' }
+      ], function (v) { var p = projByNo(v.project), ex = +v.exGst, g = Math.round(ex * 0.1), ref = 'INV-' + (++DB.counters.inv); addEntry({ type: 'invoice', userId: u.id, ref: ref, project: p.no, client: p.client, milestone: v.milestone, exGst: ex, gst: g, total: ex + g, due: addDays(TODAY, +v.terms === 15 ? 21 : 30), status: 'Due' }); return done(ref + ' issued — ' + aud(ex + g) + ' inc GST'); },
+      { onInput: function (v, f) { var ex = +v.exGst || 0; f.info('gst', ex ? 'GST 10% ' + aud(ex * 0.1) + ' · <b>total ' + aud(ex * 1.1) + '</b>' : 'GST is calculated at 10%.'); } });
     } },
-    receipt: { label: '💰 Record payment received', roles: ['Accounts'], build: function (u) {
+    receipt: { label: '💰 Record payment received', help: 'Match an EFT receipt to an invoice.', build: function (u) {
       var open = DB.entries.filter(function (e) { return e.type === 'invoice' && e.status !== 'Received'; });
-      return { icon: '💰', title: 'Record payment received', subtitle: u.name + ' · match a receipt to an invoice', submit: 'Record receipt', flow: ['You record it', 'Invoice marked Received', 'Outstanding drops'],
-        fields: [
-          { name: 'id', label: 'Invoice', type: 'select', required: true, placeholder: 'Select an outstanding invoice…', options: open.map(function (e) { return { value: e.id, label: e.ref + ' — ' + e.client + ' (' + money(e.currency, e.amount) + ', ' + e.status + ')' }; }) },
-          { name: 'amount', label: 'Amount received (₹)', type: 'number', required: true, half: true, min: 1 },
-          { name: 'bankRef', label: 'Bank reference / UTR', required: true, half: true },
-          { name: 'proof', label: 'Remittance advice', type: 'file', required: true }
-        ],
-        onInput: function (v, f) { var i = DB.entries.filter(function (e) { return e.id === v.id; })[0]; if (i && f._p !== v.id) { f._p = v.id; f.set('amount', i.inr); } },
-        onSubmit: function (v) { var i = DB.entries.filter(function (e) { return e.id === v.id; })[0]; i.status = 'Received'; i.receivedDate = TODAY; addEntry({ type: 'receipt', userId: u.id, invoice: i.ref, amount: +v.amount, bankRef: v.bankRef, status: 'Recorded' }); return done(i.ref + ' marked received'); } };
+      return std('💰', 'Payment received', u.name, 'Record receipt', ['Receipt recorded', 'Invoice marked Received'], [
+        { name: 'id', label: 'Invoice', type: 'select', required: true, placeholder: 'Select…', options: open.map(function (e) { return { value: e.id, label: e.ref + ' — ' + e.client + ' (' + aud(e.total) + ', ' + e.status + ')' }; }) },
+        { name: 'amount', label: 'Amount (A$)', type: 'number', required: true, half: true, min: 1 },
+        { name: 'bankRef', label: 'EFT reference', required: true, half: true },
+        { name: 'proof', label: 'Remittance advice', type: 'file', required: true }
+      ], function (v) { var i = findEntry(v.id); i.status = 'Received'; i.receivedDate = TODAY; addEntry({ type: 'receipt', userId: u.id, invoice: i.ref, amount: +v.amount, bankRef: v.bankRef, status: 'Recorded' }); return done(i.ref + ' marked received'); },
+      { onInput: function (v, f) { var i = findEntry(v.id); if (i && f._p !== v.id) { f._p = v.id; f.set('amount', i.total); } } });
     } },
-    expense: { label: '💵 Add petty cash expense', roles: ['Accounts'], build: function (u) {
-      return { icon: '💵', title: 'Add petty cash expense', subtitle: u.name + ' · small office spend', submit: 'Submit expense', flow: ['You submit', 'Manager approves', 'Float balance reduces'],
-        fields: [
-          { name: 'desc', label: 'Description', required: true },
-          { name: 'category', label: 'Category', type: 'select', required: true, half: true, placeholder: 'Select…', options: ['Office', 'Courier', 'Travel', 'IT', 'Staff welfare'] },
-          { name: 'amount', label: 'Amount (₹)', type: 'number', required: true, half: true, min: 1 },
-          { name: 'receipt', label: 'Receipt photo', type: 'file', required: true }
-        ],
-        validate: function (v, f) { if (+v.amount > 10000) { f.error('amount', 'Petty cash limit is ₹10,000 per expense'); return false; } },
-        onSubmit: function (v) { var ref = 'PC-' + (++DB.counters.pc); addEntry({ type: 'expense', userId: u.id, ref: ref, desc: v.desc, category: v.category, amount: +v.amount, status: 'Pending' }); return done(ref + ' sent for approval'); } };
+    expense: { label: '💵 Petty cash expense', help: 'Small spend up to A$500, approved by the manager.', build: function (u) {
+      return std('💵', 'Petty cash expense', u.name, 'Submit', ['Submitted', 'Manager approves'], [
+        { name: 'desc', label: 'Description', required: true },
+        { name: 'category', label: 'Category', type: 'select', required: true, half: true, placeholder: 'Select…', options: ['Office', 'Courier', 'Travel', 'PPE', 'Staff welfare'] },
+        { name: 'amount', label: 'Amount (A$ inc GST)', type: 'number', required: true, half: true, min: 1 },
+        { name: 'receipt', label: 'Receipt', type: 'file', required: true }
+      ], function (v) { var ref = 'PC-' + (++DB.counters.pc); addEntry({ type: 'expense', userId: u.id, ref: ref, desc: v.desc, category: v.category, amount: +v.amount, status: 'Pending' }); return done(ref + ' sent for approval'); },
+      { validate: function (v, f) { if (+v.amount > 500) { f.error('amount', 'Petty cash limit is A$500'); return false; } } });
     } },
-    subpay: { label: '💸 Record subvendor payment', roles: ['Accounts'], build: function (u) {
-      return { icon: '💸', title: 'Record subvendor payment', subtitle: u.name + ' · pay a vendor bill', submit: 'Record payment', flow: ['You pay the bill', 'TDS deducted', 'Shows in vendor payments'],
-        fields: [
-          { name: 'subvendor', label: 'Subvendor', type: 'select', required: true, placeholder: 'Select…', options: ['Precision Detailing LLP', 'Steelgrid CAD Services', 'Axis Structural Drafting', 'Keystone Detailers', 'NovaBIM Solutions'] },
-          { name: 'project', label: 'Project', type: 'select', required: true, half: true, placeholder: 'Select…', options: projOpts },
-          { name: 'bill', label: 'Bill amount (₹)', type: 'number', required: true, half: true, min: 1 },
-          { name: 'tdsPct', label: 'TDS', type: 'select', half: true, options: [{ value: 10, label: '10% (194J)' }, { value: 2, label: '2% (194C)' }, { value: 0, label: 'None' }], value: 10 },
-          { name: 'calc', type: 'info' }
-        ],
-        onInput: function (v, f) { var b = +v.bill || 0, t = Math.round(b * v.tdsPct / 100); f.info('calc', b ? 'Bill ' + rs(b) + ' − TDS ' + rs(t) + ' = <b>net ' + rs(b - t) + '</b>' : 'Enter the bill to calculate TDS.'); },
-        onSubmit: function (v) { var b = +v.bill, t = Math.round(b * v.tdsPct / 100); addEntry({ type: 'subpay', userId: u.id, ref: 'SP-' + (++DB.counters.sp), subvendor: v.subvendor, project: v.project, bill: b, tds: t, status: 'Paid' }); return done('Paid ' + rs(b - t) + ' to ' + v.subvendor); } };
+    subpay: { label: '💸 Subcontractor payment', help: 'Pay a subcontractor claim, holding retention.', build: function (u) {
+      return std('💸', 'Subcontractor payment', u.name, 'Record payment', ['Claim approved', 'Retention held', 'Paid'], [
+        { name: 'subbie', label: 'Subcontractor', type: 'select', required: true, placeholder: 'Select…', options: SUBBIES },
+        { name: 'project', label: 'Project', type: 'select', required: true, half: true, placeholder: 'Select…', options: projOpts(u) },
+        { name: 'bill', label: 'Claim amount (A$)', type: 'number', required: true, half: true, min: 1 },
+        { name: 'ret', label: 'Retention', type: 'select', half: true, options: [{ value: 5, label: '5%' }, { value: 10, label: '10%' }, { value: 0, label: 'None (released)' }], value: 5 },
+        { name: 'calc', type: 'info' }
+      ], function (v) { var b = +v.bill, rt = Math.round(b * v.ret / 100); addEntry({ type: 'subpay', userId: u.id, ref: 'SP-' + (++DB.counters.sp), subbie: v.subbie, project: v.project, bill: b, retention: rt, status: 'Paid' }); return done('Paid ' + aud(b - rt) + ' to ' + v.subbie); },
+      { onInput: function (v, f) { var b = +v.bill || 0, rt = Math.round(b * v.ret / 100); f.info('calc', b ? 'Claim ' + aud(b) + ' − retention ' + aud(rt) + ' = <b>pay ' + aud(b - rt) + '</b>' : 'Enter the claim amount.'); } });
     } }
   };
-  var DEPT_FORMS = { construction: ['timesheet', 'timereq', 'variation'], sales: ['lead', 'proposal', 'stage'], accounts: ['invoice', 'receipt', 'expense', 'subpay'] };
-  function formsFor(u) { return (DEPT_FORMS[u.dept] || []).filter(function (k) { return FORMS[k].roles.indexOf(u.role) >= 0; }); }
+  var ROLE_FORMS = {
+    'Site Supervisor': ['diary', 'delivery'], 'Site Engineer': ['progress', 'rfi', 'rficlose', 'inspection', 'defect', 'ncrclose'], 'HSE Advisor': ['incident', 'toolbox', 'audit'],
+    'Document Controller': ['transmittal'], 'Project Manager': ['variation', 'eot', 'claim'], BDM: ['lead', 'proposal', 'stage'], Accounts: ['invoice', 'receipt', 'expense', 'subpay']
+  };
+  function formsFor(u) { return ROLE_FORMS[u.role] || []; }
+  function userNos(u, list) { if (u.projects) return u.projects; var s = {}; list.forEach(function (e) { if (e.project && projByNo(e.project)) s[e.project] = 1; }); var k = Object.keys(s); return k.length ? k.sort() : PROJECTS.map(function (p) { return p.no; }); }
 
   // =====================================================================
   //  Views
   // =====================================================================
-  var state = { user: null, view: null, deptFilter: {}, monitor: null };
+  var state = { user: null, view: null, deptFilter: {}, projFilter: 'all', monitor: null };
+  function runAnalytics(host, dept, list, scope, people, nos) { ANALYTICS[dept](host, list, scope, people, nos); }
 
   function profileCard(u, list) {
     var month = list.filter(function (e) { return e.date.slice(0, 7) === TODAY.slice(0, 7); }).length;
     return '<div class="card"><div class="profile-head">' + avatar(u, 64) + '<div><h2>' + esc(u.name) + '</h2><p>' + esc(u.title) + '</p><div style="margin-top:6px">' + deptTag(u.dept) + '</div></div><div class="spacer"></div>' +
       '<div class="kpis" style="grid-template-columns:repeat(3,minmax(110px,1fr));flex:1;max-width:520px">' +
       '<div class="kpi"><div class="lbl">Entries (all)</div><div class="val">' + list.length + '</div></div><div class="kpi"><div class="lbl">This month</div><div class="val">' + month + '</div></div><div class="kpi"><div class="lbl">Last active</div><div class="val" style="font-size:20px">' + lastActive(list) + '</div></div></div></div>' +
-      '<div class="facts"><div><small>Employee ID</small><b>' + u.emp + '</b></div><div><small>Email</small><b>' + u.email + '</b></div><div><small>Phone</small><b>' + u.phone + '</b></div>' +
-      '<div><small>Role</small><b>' + u.role + '</b></div><div><small>Reports to</small><b>' + u.manager + '</b></div><div><small>Joined</small><b>' + new Date(u.joined + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + '</b></div><div><small>Location</small><b>' + u.location + '</b></div></div></div>';
+      '<div class="facts"><div><small>Employee ID</small><b>' + u.emp + '</b></div><div><small>Email</small><b>' + u.email + '</b></div><div><small>Mobile</small><b>' + u.phone + '</b></div>' +
+      '<div><small>Role</small><b>' + u.role + '</b></div><div><small>Reports to</small><b>' + u.manager + '</b></div><div><small>Started</small><b>' + new Date(u.joined + 'T00:00:00').toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) + '</b></div><div><small>Base</small><b>' + u.location + '</b></div>' +
+      (u.projects ? '<div><small>Sites</small><b>' + u.projects.join(', ') + '</b></div>' : '') + '</div></div>';
   }
 
   var USER_NAV = [['dash', '📊', 'My dashboard'], ['entry', '✍️', 'New entry'], ['entries', '📄', 'My entries'], ['profile', '👤', 'My profile']];
-  var MGR_NAV = [['m-overview', '🧭', 'Overview'], ['m-approvals', '✅', 'Approvals'], ['m-construction', '🏗️', 'Construction reports'], ['m-sales', '💼', 'Sales reports'], ['m-accounts', '💰', 'Accounts reports'], ['m-team', '👥', 'Team monitor'], ['m-activity', '📜', 'Activity log']];
-
+  var MGR_NAV = [['m-overview', '🧭', 'Overview'], ['m-approvals', '✅', 'Approvals'], ['m-construction', '🏗️', 'Construction'], ['m-sales', '💼', 'Sales'], ['m-accounts', '💰', 'Accounts'], ['m-team', '👥', 'Team monitor'], ['m-activity', '📜', 'Activity log']];
   var VIEWS = {
     dash: function (c, u) {
-      var list = entriesOf(byUser(u.id));
-      c.innerHTML = '<div class="page-head"><div><h2>Welcome back, ' + esc(u.name.split(' ')[0]) + '</h2><p>Your own entries and analytics · ' + DEPTS[u.dept].name + ' · ' + u.role + '</p></div>' +
-        '<div class="filters">' + formsFor(u).slice(0, 2).map(function (k) { return '<button class="btn' + (k === formsFor(u)[0] ? ' primary' : '') + '" data-form="' + k + '">' + FORMS[k].label + '</button>'; }).join('') + '</div></div><div class="view active" id="an"></div>';
-      ANALYTICS[u.dept]($('#an'), list, 'user', [u]);
+      var list = entriesOf(byUser(u.id)), fs = formsFor(u);
+      c.innerHTML = '<div class="page-head"><div><h2>G\'day, ' + esc(u.name.split(' ')[0]) + '</h2><p>Your entries and analytics · ' + DEPTS[u.dept].name + ' · ' + u.role + '</p></div>' +
+        '<div class="filters">' + fs.slice(0, 2).map(function (k, i) { return '<button class="btn' + (i === 0 ? ' primary' : '') + '" data-form="' + k + '">' + FORMS[k].label + '</button>'; }).join('') + (fs.length > 2 ? '<button class="btn" data-go="entry">More…</button>' : '') + '</div></div><div class="view active" id="an"></div>';
+      runAnalytics($('#an'), u.dept, list, 'user', [u], userNos(u, list));
     },
     entry: function (c, u) {
       var list = entriesOf(byUser(u.id));
-      c.innerHTML = '<div class="page-head"><div><h2>New entry</h2><p>Choose what to record. Your entry is saved right away and shows up in your dashboard and the manager\'s reports.</p></div></div>' +
-        '<div class="roles">' + formsFor(u).map(function (k) { var f = FORMS[k]; return '<div class="role-card"><div class="acts"><button class="btn primary" data-form="' + k + '" style="justify-content:flex-start">' + f.label + '</button></div><span class="empty-note">' + formHelp[k] + '</span></div>'; }).join('') + '</div>' +
+      c.innerHTML = '<div class="page-head"><div><h2>New entry</h2><p>Everything a ' + u.role.toLowerCase() + ' records. Entries are saved straight away and feed your dashboard and the Operations Director\'s reports.</p></div></div>' +
+        '<div class="roles">' + formsFor(u).map(function (k) { var f = FORMS[k]; return '<div class="role-card"><div class="acts"><button class="btn primary" data-form="' + k + '" style="justify-content:flex-start">' + f.label + '</button></div><span class="empty-note">' + f.help + '</span></div>'; }).join('') + '</div>' +
         card('Your latest entries', 'Most recent first', entryTable(list, { limit: 10 }));
     },
     entries: function (c, u) {
-      var list = entriesOf(byUser(u.id)), types = Object.keys(TYPES).filter(function (t) { return list.some(function (e) { return e.type === t; }); });
-      var f = state.entryType || 'all';
-      c.innerHTML = '<div class="page-head"><div><h2>My entries</h2><p>' + list.length + ' entries recorded by you</p></div><div class="seg" id="typeSeg"><button data-t="all"' + (f === 'all' ? ' class="on"' : '') + '>All</button>' +
+      var list = entriesOf(byUser(u.id)), types = Object.keys(TYPES).filter(function (t) { return list.some(function (e) { return e.type === t; }); }), f = state.entryType || 'all';
+      c.innerHTML = '<div class="page-head"><div><h2>My entries</h2><p>' + list.length + ' entries recorded by you</p></div><div class="seg" id="typeSeg" style="flex-wrap:wrap"><button data-t="all"' + (f === 'all' ? ' class="on"' : '') + '>All</button>' +
         types.map(function (t) { return '<button data-t="' + t + '"' + (f === t ? ' class="on"' : '') + '>' + TYPES[t].label + '</button>'; }).join('') + '</div></div>' +
-        '<div class="card">' + entryTable(list.filter(function (e) { return f === 'all' || e.type === f; })) + '</div>';
+        '<div class="card">' + entryTable(list.filter(function (e) { return f === 'all' || e.type === f; }), { limit: 150 }) + '</div>';
       $('#typeSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b) { state.entryType = b.getAttribute('data-t'); render(); } });
     },
     profile: function (c, u) {
@@ -1327,53 +1678,56 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
       D.hbars($('#' + h), Object.keys(t).map(function (k) { return { name: TYPES[k].icon + ' ' + TYPES[k].label, value: t[k], note: 'Entries' }; }), String);
     },
 
-    // ---------------- manager ----------------
     'm-overview': function (c) {
-      var all = DB.entries, pend = pendingApprovals();
-      var ts = all.filter(function (e) { return e.type === 'timesheet' && monday(e.date) === monday(TODAY); });
-      var won = all.filter(function (e) { return e.type === 'proposal' && e.stage === 'Won'; });
+      var all = DB.entries, pend = pendingApprovals(), nos = PROJECTS.map(function (p) { return p.no; });
+      var health = projectHealth(nos), tot = sum(health, function (x) { return x.p.value; });
+      var wAct = sum(health, function (x) { return x.p.value * x.actual; }) / tot, wPlan = sum(health, function (x) { return x.p.value * x.planned; }) / tot;
+      var di = all.filter(function (e) { return e.type === 'diary'; }), lastDay = di.reduce(function (a, e) { return e.date > a ? e.date : a; }, '');
+      var lti = entriesOf(function (e) { return e.type === 'incident' && e.kind === 'Lost time'; })[0];
+      var won = all.filter(function (e) { return e.type === 'proposal' && e.stage === 'Won' && e.currency === 'AUD'; });
       var rec = all.filter(function (e) { return e.type === 'receipt'; }), od = all.filter(function (e) { return e.type === 'invoice' && e.status === 'Overdue'; });
-      var k = hostId(), a = hostId();
-      c.innerHTML = '<div class="page-head"><div><h2>Company overview</h2><p>Every department in one place · ' + (USERS.length - 1) + ' team members · week of ' + D.shortDate(monday(TODAY)) + '</p></div></div>' +
+      var k = hostId(), a = hostId(), sc = hostId();
+      c.innerHTML = '<div class="page-head"><div><h2>Operations overview</h2><p>' + PROJECTS.length + ' projects across NSW, QLD, VIC & WA · ' + (USERS.length - 1) + ' team members · week of ' + D.shortDate(monday(TODAY)) + '</p></div></div>' +
         '<div class="kpis" id="' + k + '"></div>' +
         '<div class="dept-cards">' + Object.keys(DEPTS).map(function (d) {
           var list = all.filter(byDept(d)), people = deptUsers(d), mini;
-          if (d === 'construction') mini = [['Hours this wk', nf.format(sum(ts, function (e) { return e.hours; }))], ['Open requests', all.filter(function (e) { return (e.type === 'timereq' || e.type === 'variation') && e.status === 'Pending'; }).length], ['People', people.length]];
-          else if (d === 'sales') mini = [['Proposals', all.filter(function (e) { return e.type === 'proposal'; }).length], ['Won', won.length], ['Open', all.filter(function (e) { return e.type === 'proposal' && (e.stage === 'Quoted' || e.stage === 'Estimating'); }).length]];
-          else mini = [['Received', lakh(sum(rec, function (e) { return e.amount; }))], ['Overdue', od.length], ['Pending PC', all.filter(function (e) { return e.type === 'expense' && e.status === 'Pending'; }).length]];
-          return '<div class="dept-card"><div class="dh"><span class="chip-ico">' + DEPTS[d].icon + '</span><b>' + DEPTS[d].name + '</b><span class="spacer" style="flex:1"></span><button class="btn sm" data-go="m-' + d + '">Open report →</button></div>' +
+          if (d === 'construction') mini = [['On site today', sum(di.filter(function (e) { return e.date === lastDay; }), function (e) { return e.workers; })], ['Open RFIs', all.filter(function (e) { return e.type === 'rfi' && e.status === 'Open'; }).length], ['LTI-free days', lti ? daysBetween(lti.date, TODAY) : '—']];
+          else if (d === 'sales') mini = [['Proposals', all.filter(function (e) { return e.type === 'proposal'; }).length], ['Won', all.filter(function (e) { return e.type === 'proposal' && e.stage === 'Won'; }).length], ['Open', all.filter(function (e) { return e.type === 'proposal' && (e.stage === 'Quoted' || e.stage === 'Estimating'); }).length]];
+          else mini = [['Received', audK(sum(rec, function (e) { return e.amount; }))], ['Overdue', od.length], ['Pending PC', all.filter(function (e) { return e.type === 'expense' && e.status === 'Pending'; }).length]];
+          return '<div class="dept-card"><div class="dh"><span class="chip-ico">' + DEPTS[d].icon + '</span><b>' + DEPTS[d].name + '</b><span style="flex:1"></span><button class="btn sm" data-go="m-' + d + '">Open report →</button></div>' +
             '<div class="mini">' + mini.map(function (m) { return '<div><small>' + m[0] + '</small><b>' + m[1] + '</b></div>'; }).join('') + '</div>' +
-            '<div class="who-cell">' + people.map(function (u) { return '<button class="icon-btn" style="width:auto;height:auto;border:0;background:none;padding:0" data-monitor="' + u.id + '" title="Monitor ' + esc(u.name) + '">' + avatar(u) + '</button>'; }).join('') + '<span class="empty-note">' + list.length + ' entries</span></div></div>';
+            '<div class="who-cell" style="flex-wrap:wrap">' + people.map(function (u) { return '<button class="icon-btn" style="width:auto;height:auto;border:0;background:none;padding:0" data-monitor="' + u.id + '" title="Monitor ' + esc(u.name) + ' — ' + u.role + '">' + avatar(u) + '</button>'; }).join('') + '<span class="empty-note">' + list.length + ' entries</span></div></div>';
         }).join('') + '</div>' +
-        '<div class="grid g-3-1">' + card('Entries per week by department', 'How actively each team records work · latest week to date', '<div class="chart" id="' + a + '"></div>', legend([['Construction', 'var(--s1)'], ['Sales', 'var(--s2)'], ['Accounts', 'var(--s3)']])) +
-        card('Waiting for your approval', pend.length + ' items', pend.length ? '<div class="feed">' + pend.slice(0, 5).map(function (e) { var u = userById(e.userId); return '<div class="feed-item">' + avatar(u) + '<div><b>' + esc(u.name) + '</b> · ' + TYPES[e.type].label + ' ' + esc(TYPES[e.type].amount(e)) + '<small>' + esc(TYPES[e.type].summary(e)) + '</small><div style="margin-top:6px"><button class="btn sm ok" data-decide="Approved" data-id="' + e.id + '">Approve</button> <button class="btn sm no" data-decide="Rejected" data-id="' + e.id + '">Reject</button></div></div></div>'; }).join('') + '</div>' : '<p class="empty-note">Nothing pending. 🎉</p>', '<button class="btn sm" data-go="m-approvals">All →</button>') + '</div>' +
+        '<div class="grid g-3-1">' + card('Portfolio S-curve', 'Planned vs actual progress, weighted by contract value', '<div class="chart" id="' + sc + '"></div>', legend([['Planned', 'var(--s7)'], ['Actual', 'var(--s1)']])) +
+        card('Waiting for your approval', pend.length + ' items', pend.length ? '<div class="feed">' + pend.slice(0, 4).map(function (e) { var u = userById(e.userId); return '<div class="feed-item">' + avatar(u) + '<div><b>' + esc(u.name) + '</b> · ' + TYPES[e.type].label + ' ' + esc(TYPES[e.type].amount(e)) + '<small>' + esc(TYPES[e.type].summary(e)) + '</small><div style="margin-top:6px"><button class="btn sm ok" data-decide="Approved" data-id="' + e.id + '">Approve</button> <button class="btn sm no" data-decide="Rejected" data-id="' + e.id + '">Reject</button></div></div></div>'; }).join('') + '</div>' : '<p class="empty-note">Nothing pending.</p>', '<button class="btn sm" data-go="m-approvals">All →</button>') + '</div>' +
+        card('Project health', 'Programme, cost and status for every project', PANELS[2].html({ nos: nos })) +
+        card('Entries per week by department', 'How actively each team records work · latest week to date', '<div class="chart" id="' + a + '"></div>', legend([['Construction', 'var(--s1)'], ['Sales', 'var(--s2)'], ['Accounts', 'var(--s3)']])) +
         card('Latest activity', 'Most recent entries from all users', entryTable(entriesOf(function () { return true; }), { user: true, limit: 8 }), '<button class="btn sm" data-go="m-activity">Full log →</button>');
       D.kpis($('#' + k), [
-        { lbl: 'Team members', ico: '👥', val: String(USERS.length - 1), d: '3 departments', up: null },
-        { lbl: 'Hours this week', ico: '⏱️', val: nf.format(sum(ts, function (e) { return e.hours; })), unit: 'h', d: 'Construction team', up: null },
-        { lbl: 'Proposals won', ico: '🏆', val: String(won.length), d: 'FY to date', up: null },
-        { lbl: 'Cash received', ico: '💰', val: lakh(sum(rec, function (e) { return e.amount; })), d: od.length + (od.length === 1 ? ' invoice' : ' invoices') + ' overdue', up: null },
-        { lbl: 'Pending approvals', ico: '✅', val: String(pend.length), d: 'time, variations, petty cash', up: null }
+        { lbl: 'Portfolio progress', ico: '📈', val: nf.format(wAct), unit: '%', d: 'vs ' + pct(wPlan) + ' planned · SPI ' + (wAct / wPlan).toFixed(2) + ' · ' + audK(tot) + ' portfolio', up: null },
+        { lbl: 'Workforce on site', ico: '👷', val: String(sum(di.filter(function (e) { return e.date === lastDay; }), function (e) { return e.workers; })), d: D.shortDate(lastDay), up: null },
+        { lbl: 'LTI-free days', ico: '🛡️', val: lti ? String(daysBetween(lti.date, TODAY)) : '—', d: 'all sites', up: null },
+        { lbl: 'Won (AUD, 6 mths)', ico: '🏆', val: audK(sum(won, function (e) { return e.value; })), d: won.length + ' contracts', up: null },
+        { lbl: 'Cash received', ico: '💰', val: audK(sum(rec, function (e) { return e.amount; })), d: od.length + ' invoice' + (od.length === 1 ? '' : 's') + ' overdue', up: null }
       ]);
-      D.lineChart($('#' + a), { labels: WEEKS.map(D.shortDate), fmt: function (v) { return v + ' entries'; },
+      var s = scurve(nos);
+      D.lineChart($('#' + sc), { labels: s.labels, max: 100, fmt: pct, axisFmt: function (v) { return Math.round(v) + '%'; }, series: [{ name: 'Planned', values: s.planned, color: 'var(--s7)', dash: '6 4' }, { name: 'Actual', values: s.actual, color: 'var(--s1)', area: true }] });
+      D.lineChart($('#' + a), { labels: WEEKS.map(D.shortDate), fmt: function (v) { return v + ' entries'; }, height: 220,
         series: Object.keys(DEPTS).map(function (d) { return { name: DEPTS[d].name, color: DEPTS[d].color, values: WEEKS.map(function (w) { return all.filter(function (e) { return TYPES[e.type].dept === d && monday(e.date) === w; }).length; }) }; }) });
     },
     'm-approvals': function (c) {
       var pend = pendingApprovals(), decided = entriesOf(function (e) { return TYPES[e.type].approval && e.status !== 'Pending'; });
-      c.innerHTML = '<div class="page-head"><div><h2>Approvals</h2><p>Time requests, variations and petty cash raised by your team. Decisions notify the person who entered them.</p></div></div>' +
+      c.innerHTML = '<div class="page-head"><div><h2>Approvals</h2><p>Variations, extension-of-time claims, progress claims and petty cash. Each decision notifies the person who submitted it.</p></div></div>' +
         card('Pending', pend.length + ' waiting', entryTable(pend, { user: true, approve: true })) + card('Recently decided', '', entryTable(decided, { user: true, limit: 12 }));
     },
     'm-team': function (c) {
       c.innerHTML = '<div class="page-head"><div><h2>Team monitor</h2><p>Select anyone to see their profile, entries and analytics, exactly as they see them.</p></div></div>' +
         Object.keys(DEPTS).map(function (d) {
           return '<h3 style="margin:6px 0 -6px;font-size:14px;color:var(--text-2)">' + DEPTS[d].icon + ' ' + DEPTS[d].name + '</h3><div class="team-grid">' + deptUsers(d).map(function (u) {
-            var list = entriesOf(byUser(u.id)), wk = list.filter(function (e) { return monday(e.date) === monday(TODAY); }), stat;
-            if (d === 'construction') stat = ['Hours wk', nf.format(sum(wk.filter(function (e) { return e.type === 'timesheet'; }), function (e) { return e.hours; }))];
-            else if (d === 'sales') stat = ['Won', list.filter(function (e) { return e.type === 'proposal' && e.stage === 'Won'; }).length];
-            else stat = ['Pending', list.filter(function (e) { return e.status === 'Pending' || e.status === 'Overdue'; }).length];
+            var list = entriesOf(byUser(u.id)), wk = list.filter(function (e) { return monday(e.date) === monday(TODAY); }), pend = list.filter(function (e) { return e.status === 'Pending' || e.status === 'Open' || e.status === 'Overdue'; }).length;
             return '<button class="member" data-monitor="' + u.id + '"><div class="top">' + avatar(u) + '<div><b>' + esc(u.name) + '</b><small>' + esc(u.title) + '</small></div></div>' +
-              '<div class="stats"><div><small>Entries</small><b>' + list.length + '</b></div><div><small>This week</small><b>' + wk.length + '</b></div><div><small>' + stat[0] + '</small><b>' + stat[1] + '</b></div></div>' +
-              '<div class="last">Last active ' + lastActive(list) + ' · ' + u.email + '</div></button>';
+              '<div class="stats"><div><small>Entries</small><b>' + list.length + '</b></div><div><small>This week</small><b>' + wk.length + '</b></div><div><small>Open items</small><b>' + pend + '</b></div></div>' +
+              '<div class="last">Last active ' + lastActive(list) + ' · ' + u.location + '</div></button>';
           }).join('') + '</div>';
         }).join('');
     },
@@ -1382,7 +1736,7 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
       c.innerHTML = '<div class="monitor-bar"><button class="btn sm" data-go="m-team">← Team</button><b>Monitoring</b><select class="select" id="monSel">' +
         USERS.filter(function (x) { return x.dept !== 'management'; }).map(function (x) { return '<option value="' + x.id + '"' + (x.id === u.id ? ' selected' : '') + '>' + esc(x.name) + ' — ' + DEPTS[x.dept].name + ' · ' + x.role + '</option>'; }).join('') + '</select></div>' +
         profileCard(u, list) + '<div class="view active" id="' + h + '"></div>' + card('All entries by ' + esc(u.name.split(' ')[0]), list.length + ' entries', entryTable(list, { approve: true, limit: 30 }));
-      ANALYTICS[u.dept]($('#' + h), list, 'user', [u]);
+      runAnalytics($('#' + h), u.dept, list, 'user', [u], userNos(u, list));
       $('#monSel').addEventListener('change', function () { state.monitor = this.value; render(); });
     },
     'm-activity': function (c) {
@@ -1395,122 +1749,95 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
   };
   Object.keys(DEPTS).forEach(function (d) {
     VIEWS['m-' + d] = function (c) {
-      var people = deptUsers(d), sel = state.deptFilter[d] || 'all', h = hostId();
-      var list = entriesOf(sel === 'all' ? byDept(d) : byUser(sel));
-      c.innerHTML = '<div class="page-head"><div><h2>' + DEPTS[d].icon + ' ' + DEPTS[d].name + ' reports</h2><p>' + (sel === 'all' ? 'Whole team · ' + people.length + ' people' : 'Showing ' + esc(userById(sel).name) + ' only') + '</p></div>' +
-        '<div class="filters"><div class="seg" id="pSeg"><button data-u="all"' + (sel === 'all' ? ' class="on"' : '') + '>All team</button>' +
-        people.map(function (u) { return '<button data-u="' + u.id + '"' + (sel === u.id ? ' class="on"' : '') + '>' + esc(u.name.split(' ')[0]) + '</button>'; }).join('') + '</div>' +
+      var people = deptUsers(d), sel = state.deptFilter[d] || 'all', h = hostId(), isC = d === 'construction';
+      var proj = isC ? state.projFilter : 'all';
+      var list = entriesOf(function (e) { return TYPES[e.type].dept === d && (sel === 'all' || e.userId === sel) && (proj === 'all' || e.project === proj); });
+      var nos = proj === 'all' ? (sel === 'all' ? PROJECTS.map(function (p) { return p.no; }) : userNos(userById(sel), list)) : [proj];
+      var desc = (sel === 'all' ? 'Whole team · ' + people.length + ' people' : 'Showing ' + esc(userById(sel).name) + ' (' + userById(sel).role + ')') + (proj !== 'all' ? ' · ' + projByNo(proj).name + ', ' + projByNo(proj).loc : (isC ? ' · all projects' : ''));
+      c.innerHTML = '<div class="page-head"><div><h2>' + DEPTS[d].icon + ' ' + DEPTS[d].name + (isC ? ' dashboard' : ' reports') + '</h2><p>' + desc + '</p></div>' +
+        '<div class="filters">' + (isC ? '<select class="select" id="projSel" aria-label="Project"><option value="all">All projects</option>' + PROJECTS.map(function (p) { return '<option value="' + p.no + '"' + (proj === p.no ? ' selected' : '') + '>' + p.no + ' — ' + p.name + '</option>'; }).join('') + '</select>' : '') +
+        '<select class="select" id="pSel" aria-label="Team member"><option value="all">All team members</option>' + people.map(function (u) { return '<option value="' + u.id + '"' + (sel === u.id ? ' selected' : '') + '>' + esc(u.name) + ' — ' + u.role + '</option>'; }).join('') + '</select>' +
         (sel !== 'all' ? '<button class="btn sm" data-monitor="' + sel + '">Open profile →</button>' : '') + '</div></div><div class="view active" id="' + h + '"></div>';
-      ANALYTICS[d]($('#' + h), list, sel === 'all' ? 'dept' : 'user', sel === 'all' ? people : [userById(sel)]);
-      $('#pSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-u]'); if (b) { state.deptFilter[d] = b.getAttribute('data-u'); render(); } });
+      runAnalytics($('#' + h), d, list, sel === 'all' ? 'dept' : 'user', sel === 'all' ? people : [userById(sel)], nos);
+      $('#pSel').addEventListener('change', function () { state.deptFilter[d] = this.value; render(); });
+      if (isC) $('#projSel').addEventListener('change', function () { state.projFilter = this.value; render(); });
     };
   });
-  var formHelp = {
-    timesheet: 'Hours per project and drawing, checked against the project allocation.',
-    timereq: 'Ask the manager for more hours when a project needs it.',
-    variation: 'Record a client scope change with hours and value.',
-    lead: 'Capture a new enquiry and where it came from.',
-    proposal: 'Start a proposal for estimation.',
-    stage: 'Move a proposal to Quoted, Won (with PO) or Lost.',
-    invoice: 'Bill a project milestone in the client currency.',
-    receipt: 'Match a client payment to an outstanding invoice.',
-    expense: 'Office spend up to ₹10,000, approved by the manager.',
-    subpay: 'Pay a subvendor bill with TDS deducted.'
-  };
 
   // =====================================================================
-  //  Shell: login, navigation, notifications
+  //  Shell: login, navigation, approvals, notifications
   // =====================================================================
-  var TITLES = {};
-  USER_NAV.concat(MGR_NAV).forEach(function (n) { TITLES[n[0]] = n[2]; });
-  TITLES['m-user'] = 'Team monitor';
-
+  var TITLES = {}; USER_NAV.concat(MGR_NAV).forEach(function (n) { TITLES[n[0]] = n[2]; }); TITLES['m-construction'] = 'Construction dashboard';
   function render() {
-    var u = state.user, c = $('#content');
-    var isMgr = u.dept === 'management';
-    var nav = isMgr ? MGR_NAV : USER_NAV, pend = pendingApprovals().length;
-    $('#nav').innerHTML = '<div class="nav-group"><h6>' + (isMgr ? 'Manager portal' : DEPTS[u.dept].name + ' portal') + '</h6>' + nav.map(function (n) {
+    var u = state.user, isMgr = u.dept === 'management', nav = isMgr ? MGR_NAV : USER_NAV, pend = pendingApprovals().length;
+    $('#nav').innerHTML = '<div class="nav-group"><h6>' + (isMgr ? 'Operations Director' : DEPTS[u.dept].name + ' portal') + '</h6>' + nav.map(function (n) {
       var active = state.view === n[0] || (state.view === 'm-user' && n[0] === 'm-team');
       return '<button class="nav-item' + (active ? ' active' : '') + '" data-go="' + n[0] + '"><span class="ico">' + n[1] + '</span>' + n[2] + (n[0] === 'm-approvals' && pend ? '<span class="badge">' + pend + '</span>' : '') + '</button>';
     }).join('') + '</div>';
     $('#pageTitle').textContent = state.view === 'm-user' ? userById(state.monitor).name : TITLES[state.view];
     $('#crumb').textContent = isMgr ? 'Manager · ' + u.name : DEPTS[u.dept].name + ' · ' + u.role;
     renderBell();
-    VIEWS[state.view](c, u);
+    VIEWS[state.view]($('#content'), u);
     clearFresh();
   }
   function go(view) { state.view = view; $('.sidebar').classList.remove('open'); render(); window.scrollTo(0, 0); }
-
   function renderBell() {
-    var mine = DB.notes.filter(function (n) { return n.userId === state.user.id; }), unread = mine.filter(function (n) { return !n.read; }).length;
-    var bc = $('#bellCount'); bc.hidden = !unread; bc.textContent = unread;
-    if (state.user.dept === 'management') { var p = pendingApprovals().length; bc.hidden = !p; bc.textContent = p; }
-    $('#notifPanel').innerHTML = state.user.dept === 'management'
+    var isMgr = state.user.dept === 'management', mine = DB.notes.filter(function (n) { return n.userId === state.user.id; }), unread = mine.filter(function (n) { return !n.read; }).length;
+    var count = isMgr ? pendingApprovals().length : unread, bc = $('#bellCount'); bc.hidden = !count; bc.textContent = count;
+    $('#notifPanel').innerHTML = isMgr
       ? (pendingApprovals().slice(0, 6).map(function (e) { var u = userById(e.userId); return '<div class="n unread">' + TYPES[e.type].icon + ' <b>' + esc(u.name) + '</b> needs approval: ' + TYPES[e.type].label + ' ' + esc(TYPES[e.type].amount(e)) + '<small>' + D.shortDate(e.date) + '</small></div>'; }).join('') || '<div class="n">No pending approvals.</div>')
-      : (mine.map(function (n) { return '<div class="n' + (n.read ? '' : ' unread') + '">' + esc(n.text) + '<small>' + D.shortDate(n.ts.slice(0, 10)) + ' ' + n.ts.slice(11) + '</small></div>'; }).join('') || '<div class="n">No notifications yet. Approvals and rejections from your manager will appear here.</div>');
+      : (mine.map(function (n) { return '<div class="n' + (n.read ? '' : ' unread') + '">' + esc(n.text) + '<small>' + D.shortDate(n.ts.slice(0, 10)) + ' ' + n.ts.slice(11) + '</small></div>'; }).join('') || '<div class="n">No notifications yet. Approvals and rejections will appear here.</div>');
   }
-
   function decide(id, status) {
-    var e = DB.entries.filter(function (x) { return x.id === id; })[0]; if (!e || e.status !== 'Pending') return;
-    e.status = status; e.fresh = true;
+    var e = findEntry(id); if (!e || e.status !== 'Pending') return;
+    e.status = status; e.fresh = true; e.ts = nowTs();
     var t = TYPES[e.type];
     notify(e.userId, 'Your ' + t.label.toLowerCase() + ' ' + (e.ref || '') + ' (' + t.amount(e) + ') was ' + status.toLowerCase() + ' by ' + state.user.name + '.');
     save(); render();
     D.toast(t.label + ' ' + status.toLowerCase() + ' — ' + userById(e.userId).name + ' notified');
   }
-
   function login(u) {
     state.user = u; state.view = u.dept === 'management' ? 'm-overview' : 'dash'; state.entryType = 'all';
-    try { sessionStorage.setItem('wepcm-user', u.id); } catch (e) {}
+    try { sessionStorage.setItem('wepcm-au-user', u.id); } catch (e) {}
     $('#login').style.display = 'none'; $('#app').style.display = 'grid';
-    $('#portalName').textContent = u.dept === 'management' ? 'Manager Portal' : DEPTS[u.dept].name + ' Portal';
+    $('#portalName').textContent = u.dept === 'management' ? 'Operations Director' : DEPTS[u.dept].name + ' Portal';
     $('#topAvatar').outerHTML = avatar(u).replace('class="avatar"', 'class="avatar" id="topAvatar"');
     $('#topName').textContent = u.name; $('#topRole').textContent = u.role;
     $('#sideUser').textContent = 'Signed in as ' + u.email;
     $('#banner').innerHTML = '<b>DEMO</b> ' + (u.dept === 'management'
-      ? 'Manager view of everyone\'s entries. Sign out and sign in as a team member to add entries; they appear here straight away.'
-      : 'Sample data. Entries you add are saved in this browser and appear in the Manager portal (sign in as Arun Kumar).');
+      ? 'Operations Director view of every team\'s entries. Sign out and sign in as a team member to add entries; they appear here straight away.'
+      : 'Sample data. Entries you add are saved in this browser and appear in the Operations Director\'s portal.');
     render();
   }
   function logout() {
-    try { sessionStorage.removeItem('wepcm-user'); } catch (e) {}
+    try { sessionStorage.removeItem('wepcm-au-user'); } catch (e) {}
     state.user = null; $('#app').style.display = 'none'; $('#login').style.display = 'grid'; $('#notifPanel').classList.remove('show');
     $('#lgPass').value = ''; $('#lgErr').textContent = '';
   }
-
   function initLogin() {
-    var groups = [['construction', 'u1 u7'], ['sales', 'u3 u4'], ['accounts', 'u5 u6']];
-    var html = '';
-    USERS.filter(function (u) { return u.dept !== 'management'; }).concat([userById('m1')]).forEach(function (u) {
-      html += '<button type="button" class="acct' + (u.dept === 'management' ? ' mgr' : '') + '" data-email="' + u.email + '">' + avatar(u) + '<div><b>' + esc(u.name) + '</b><small>' + deptTag(u.dept) + ' ' + u.role + '</small></div></button>';
-    });
-    $('#acctGrid').innerHTML = html;
+    $('#acctGrid').innerHTML = USERS.filter(function (u) { return u.dept !== 'management'; }).concat([userById('m1')]).map(function (u) {
+      return '<button type="button" class="acct' + (u.dept === 'management' ? ' mgr' : '') + '" data-email="' + u.email + '">' + avatar(u) + '<div><b>' + esc(u.name) + '</b><small>' + deptTag(u.dept) + ' ' + u.role + '</small></div></button>';
+    }).join('');
     $('#acctGrid').addEventListener('click', function (e) {
       var b = e.target.closest('.acct'); if (!b) return;
       document.querySelectorAll('.acct').forEach(function (x) { x.classList.toggle('sel', x === b); });
-      $('#lgEmail').value = b.getAttribute('data-email'); $('#lgPass').value = PASSWORD; $('#lgErr').textContent = '';
-      $('#lgPass').focus();
+      $('#lgEmail').value = b.getAttribute('data-email'); $('#lgPass').value = PASSWORD; $('#lgErr').textContent = ''; $('#lgPass').focus();
     });
     $('#loginForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      var em = $('#lgEmail').value.trim().toLowerCase(), pw = $('#lgPass').value;
-      var u = USERS.filter(function (x) { return x.email === em; })[0];
+      var em = $('#lgEmail').value.trim().toLowerCase(), pw = $('#lgPass').value, u = USERS.filter(function (x) { return x.email === em; })[0];
       if (!em || !pw) { $('#lgErr').textContent = 'Enter your email and password.'; return; }
       if (!u || pw !== PASSWORD) { $('#lgErr').textContent = 'Email or password is incorrect.'; return; }
       login(u);
     });
   }
-
   function initApp() {
     document.addEventListener('click', function (e) {
       var t;
       if ((t = e.target.closest('[data-go]'))) { e.preventDefault(); go(t.getAttribute('data-go')); return; }
       if ((t = e.target.closest('[data-monitor]'))) { state.monitor = t.getAttribute('data-monitor'); go('m-user'); return; }
       if ((t = e.target.closest('[data-form]'))) { D.openForm(FORMS[t.getAttribute('data-form')].build(state.user)); return; }
-      if ((t = e.target.closest('[data-decide]'))) {
-        if (state.user.dept !== 'management') return;
-        decide(t.getAttribute('data-id'), t.getAttribute('data-decide')); return;
-      }
+      if ((t = e.target.closest('[data-decide]'))) { if (state.user.dept === 'management') decide(t.getAttribute('data-id'), t.getAttribute('data-decide')); return; }
       if (e.target.closest('#bellBtn')) {
         var p = $('#notifPanel'), show = !p.classList.contains('show'); p.classList.toggle('show', show);
         if (!show) { DB.notes.forEach(function (n) { if (n.userId === state.user.id) n.read = true; }); save(); renderBell(); }
@@ -1520,17 +1847,12 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
     });
     $('#logoutBtn').addEventListener('click', logout);
     $('#logoutSide').addEventListener('click', function (e) { e.preventDefault(); logout(); });
-    $('#resetBtn').addEventListener('click', function (e) {
-      e.preventDefault();
-      if (!confirm('Reset all demo data to the original sample entries?')) return;
-      DB = seed(); save(); render(); D.toast('Demo data reset');
-    });
+    $('#resetBtn').addEventListener('click', function (e) { e.preventDefault(); if (!confirm('Reset all demo data to the original sample entries?')) return; DB = seed(); save(); render(); D.toast('Demo data reset'); });
     $('.menu-btn').addEventListener('click', function (e) { e.stopPropagation(); $('.sidebar').classList.toggle('open'); });
     var saved = null; try { saved = localStorage.getItem('wepcm-demo-theme'); } catch (e) {}
     if (saved) document.documentElement.setAttribute('data-theme', saved);
     $('#themeBtn').addEventListener('click', function () {
-      var cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      var next = cur === 'dark' ? 'light' : 'dark';
+      var cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), next = cur === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       try { localStorage.setItem('wepcm-demo-theme', next); } catch (e) {}
       D.redrawAll();
@@ -1540,7 +1862,7 @@ tr.fresh td { animation: fresh 2.4s ease-out; }
   load();
   initLogin();
   initApp();
-  var resume = null; try { resume = sessionStorage.getItem('wepcm-user'); } catch (e) {}
+  var resume = null; try { resume = sessionStorage.getItem('wepcm-au-user'); } catch (e) {}
   if (resume && userById(resume)) login(userById(resume));
 })();
 

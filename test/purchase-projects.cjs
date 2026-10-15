@@ -5,7 +5,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const screenshotDir = process.env.PROJECT_SCREENSHOT_DIR || require('node:os').tmpdir();
 const project = { id: 'p1', projectNumber: 'EB-2026-01', name: 'Plant shed <b>x</b>', client: 'Acme', location: 'Chennai', manager: 'Ravi', description: 'Steel shed', projectValue: 100000, currency: 'INR', awardDate: '2026-10-01', startDate: '2026-10-02', endDate: '2026-12-31', status: 'active', includeInSales: true, version: 3,
-    approval: { status: 'pending', kind: 'edit' }, sales: { include: true, value: 90000, currency: 'INR', date: '2026-10-01' },
+    approval: { status: 'pending', kind: 'edit' }, sales: { include: true, value: 90000, currency: 'INR', date: '2026-10-01' }, initialSales: { value: 90000, currency: 'INR', date: '2026-10-01', approvedAt: '2026-10-01T10:00:00Z' },
     totals: { material: 4000, manpower: 3600, machinery: 15000, manDays: 4, manHours: 32, machineHours: 6, entries: 3 }, lastEntryDate: '2026-10-08' };
 const entries = [
     { id: 'e1', type: 'material', date: '2026-10-07', description: 'Cement', unit: 'bag', quantity: 10, rate: 400, amount: 4000, supplier: 'ACC', currency: 'INR', createdBy: { name: 'Anwar' } },
@@ -26,7 +26,9 @@ async function setup(browser, role) {
             let body;
             if (u.pathname === '/api/purchase-projects') body = options.method === 'POST' ? { success: true, data: { id: 'p1' } } : { success: true, role, data: [project, { ...project, id: 'p2', projectNumber: 'EB-2026-02', name: 'Bridge', currency: 'USD', projectValue: 5000, approval: { status: 'approved' }, totals: {} }] };
             else if (u.pathname === '/api/purchase-projects/p1') body = { success: true, data: project, entries, activities: [{ action: 'submitted_edit', actor: { name: 'Anwar', role: 'purchase' }, at: '2026-10-08T10:00:00Z', details: { note: 'Revised', changed: [{ field: 'projectValue', before: 90000, after: 100000 }] } }] };
-            else if (u.pathname === '/api/purchases') body = { success: true, data: [{ id: 'x1', reference: 'PO-9', projectNumber: 'EB-2026-01', item: 'Bolts', qty: '100 nos', vendor: 'V', amount: 500, currency: 'INR', stage: 'po', approval: { status: 'approved' }, updatedAt: '2026-10-08T10:00:00Z' }], next: null };
+            else if (u.pathname === '/api/purchases') body = { success: true, data: [
+                { id: 'x1', reference: 'PO-9', projectNumber: 'EB-2026-01', project: 'Plant shed', item: 'Bolts', qty: '100 nos', vendor: 'V', amount: 500, currency: 'INR', stage: 'po', requiredBy: '2026-01-05', priority: 'urgent', approval: { status: 'approved' }, createdAt: '2026-10-01T10:00:00Z', updatedAt: '2026-10-08T10:00:00Z' },
+                { id: 'x2', reference: 'RFQ-2', project: 'Office', item: 'Chairs', qty: '10 nos', vendor: '', amount: 900, currency: 'USD', stage: 'rfq', priority: 'normal', approval: { status: 'pending' }, createdAt: '2026-10-02T10:00:00Z', updatedAt: '2026-10-09T10:00:00Z' }], next: null };
             else body = { success: true, data: { id: 'new' } };
             return { ok: true, json: async () => structuredClone(body) };
         };
@@ -49,13 +51,39 @@ async function setup(browser, role) {
         assert.equal(await page.locator('#ppNew').count(), 0, 'Management cannot create projects');
         assert.equal(await page.locator('.pp b b').count(), 0, 'HTML is escaped');
         await page.screenshot({ path: path.join(screenshotDir, 'projects-coo-list.png'), fullPage: true });
+        assert.match(text, /Initial sales value[\s\S]*INR 90,000\.00/);
+        await page.click('[data-view="schedule"]');
+        assert.match(await page.locator('#ppRows').textContent(), /Planned completion[\s\S]*31 Dec 2026/);
+        await page.screenshot({ path: path.join(screenshotDir, 'projects-coo-schedule-list.png'), fullPage: true });
+        await page.click('[data-view="cost"]');
+        // Purchase report.
+        await page.click('#ppPurchaseReport'); await page.waitForSelector('#pr-project');
+        const pr = await page.locator('.pp').textContent();
+        assert.match(pr, /Overdue[\s\S]*1/); assert.match(pr, /EB-2026-01[\s\S]*Plant shed <b>x<\/b>/); assert.match(pr, /Not linked to a project/);
+        assert.match(pr, /INR 500\.00[\s\S]*USD 900\.00/, 'Values per currency');
+        await page.screenshot({ path: path.join(screenshotDir, 'purchase-report.png'), fullPage: true });
+        await page.selectOption('#pr-project', 'EB-2026-01');
+        assert.match(await page.locator('.pp-kpi').first().textContent(), /Purchases\s*1/);
+        await page.click('#prProjects'); await page.waitForSelector('[data-review="p1"]');
         await page.click('[data-review="p1"]');
         await page.waitForSelector('#ppTab');
         const report = await page.locator('.pp').textContent();
         assert.match(report, /INR 22,600\.00/, 'Cost to date'); assert.match(report, /INR 77,400\.00/, 'Balance');
-        assert.match(report, /4 man-days · 32 man-hours/); assert.match(report, /last approved value INR 90,000\.00/);
+        assert.match(report, /Initial sales value[\s\S]*INR 90,000\.00/); assert.match(report, /Revision INR 10,000\.00/);
+        // Cost report is the default tab.
+        const cost = await page.locator('#ppTab').textContent();
+        assert.match(cost, /Approved purchase commitments[\s\S]*INR 500\.00/); assert.match(cost, /Crane 25T[\s\S]*6[\s\S]*2,500\.00/); assert.match(cost, /Welder[\s\S]*4[\s\S]*32/);
+        assert.match(cost, /Oct 2026[\s\S]*22,600\.00/);
+        await page.screenshot({ path: path.join(screenshotDir, 'projects-cost-report.png'), fullPage: true });
+        await page.click('[data-tab="schedule"]');
+        const sched = await page.locator('#ppTab').textContent();
+        assert.match(sched, /Planned duration[\s\S]*91 days/); assert.match(sched, /Site working days logged\s*2/);
+        assert.match(sched, /5 Oct 2026 – 11 Oct 2026|05 Oct 2026 – 11 Oct 2026/);
+        await page.screenshot({ path: path.join(screenshotDir, 'projects-schedule-report.png'), fullPage: true });
+        await page.click('[data-tab="daily"]');
+        assert.match(report, /4 man-days · 32 man-hours/); assert.match(report, /keeps the initial sales value INR 90,000\.00/);
         assert.match(await page.locator('#ppTab tfoot').textContent(), /22,600\.00/, 'Daily summary excludes removed entries');
-        await page.screenshot({ path: path.join(screenshotDir, 'projects-coo-report.png'), fullPage: true });
+
         await page.click('[data-tab="material"]');
         assert.equal(await page.locator('#ppTab tr.removed').count(), 1); assert.match(await page.locator('#ppTab tfoot').textContent(), /4,000\.00/);
         assert.equal(await page.locator('[data-remove]').count(), 0, 'Management cannot remove logs');

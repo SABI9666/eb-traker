@@ -18,6 +18,7 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
             { id: '5', source: 'projects', kind: 'quote', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', client: 'Client A', value: 26000, currency: 'CAD', date: '2026-08-20', status: 'won' },
             { id: '6', source: 'projects', kind: 'quote', bdmUid: 'b', bdmName: 'Bob', projectName: 'Depot', client: '=cmd', value: 4000, currency: 'CAD', date: '2026-08-21', status: 'lost' },
             { id: '4', source: 'manual', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Warehouse', client: 'Client B', value: 7000, currency: 'USD', date: '2026-10-03', status: 'won' },
+            { id: '8', source: 'purchase', kind: 'purchase', bdmUid: 'purchase-portal', bdmName: 'Purchase portal', projectName: 'Tank farm', projectNumber: 'EB-01', client: 'Acme', value: 50000, currency: 'INR', date: '2026-10-03', status: 'approved' },
             { id: '7', source: 'manual', kind: 'won', bdmUid: 'c', bdmName: 'GERARD MOSS', projectName: 'Old job', client: 'Client C', value: 999, currency: 'INR', date: '2025-12-15', status: 'won' }
         ];
         const css = fs.readFileSync(path.join(__dirname, '../public/sales-monitor.css'), 'utf8');
@@ -35,7 +36,11 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.waitForSelector('.sm-card');
         // Default matches the COO BDM analysis: every source, converted to INR.
         assert.equal(await page.locator('#sm-currency').inputValue(), 'ALL_INR');
-        assert.equal(await page.locator('.sm-card strong').first().textContent(), '23,68,500.00');
+        assert.equal(await page.locator('.sm-card strong').first().textContent(), '24,18,500.00');
+        // Purchase portal projects: own section, initial value only, kept out of BDM performance.
+        assert.equal(await page.locator('.sm-card', { hasText: 'Purchase project sales' }).locator('strong').textContent(), '50,000.00');
+        assert.match(await page.locator('.sm-panel', { has: page.locator('h2', { hasText: /^Purchase portal projects$/ }) }).textContent(), /EB-01[\s\S]*Tank farm[\s\S]*50,000\.00/);
+        assert.doesNotMatch(await page.locator('.sm-panel', { has: page.locator('h2', { hasText: 'BDM performance' }) }).locator('tbody').textContent(), /Purchase portal/);
         assert.equal(await page.locator('.sm-card', { hasText: 'Open pipeline' }).locator('strong').textContent(), '6,10,000.00');
         assert.equal(await page.locator('#sm-from').inputValue(), '2026-01-01', 'Report starts in January 2026');
         assert.match(await page.locator('#sm-results').textContent(), /Gerard Moss/, 'Capitalised names are title-cased');
@@ -43,7 +48,7 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         assert.match(await page.locator('.sm-trend-table').textContent(), /Oct 2026[\s\S]*Jan 2026/, 'Monthly periods from Jan 2026');
         await page.click('[data-trend="week"]');
         const week = page.locator('.sm-trend-table tr', { hasText: '28 Sep – 4 Oct 2026' });
-        assert.equal(await week.locator('.sm-total').textContent(), '23,68,500.00');
+        assert.equal(await week.locator('.sm-total').textContent(), '24,18,500.00', 'Weekly booked sales include purchase projects');
         assert.match(await page.locator('.sm-trend-table').textContent(), /29 Dec – 4 Jan 2026/, 'Weekly periods start at the first January week');
         await page.screenshot({ path: path.join(screenshotDir, 'sales-all.png'), fullPage: true });
         await page.click('[data-trend="month"]');

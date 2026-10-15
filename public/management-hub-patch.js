@@ -9,8 +9,8 @@
     if (window._managementHubSalesWrapperLoaded) return;
     window._managementHubSalesWrapperLoaded = true;
 
-    var CORE_SRC = 'management-hub-core.js?v=project-reports-v1';
-    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-projects-v1';
+    var CORE_SRC = 'management-hub-core.js?v=project-reports-v2';
+    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-projects-v2';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
         'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },
@@ -142,7 +142,8 @@
         if (!grid) return;
         // Inserted in reverse so Purchase Management stays first.
         [
-            { label: 'Project Cost Reports', icon: '🏗️', fn: 'showPurchaseProjects', tag: 'Project value · Material · Manpower · Machinery' },
+            { label: 'Purchase Report', icon: '🧾', fn: 'showPurchaseReport', tag: 'Stage · Project · Vendor · Overdue' },
+            { label: 'Project-wise Report', icon: '🏗️', fn: 'showPurchaseProjects', tag: 'Sales value · Cost report · Schedule report' },
             { label: 'Purchase Management', icon: '🛒', fn: 'showPurchaseManagement', tag: 'RFQ · Vendors · PO · Delivery' }
         ].forEach(function (t) {
             if (typeof window[t.fn] !== 'function') return;

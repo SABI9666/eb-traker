@@ -58,9 +58,9 @@
 .sm-actions { display:flex; gap:10px; flex-wrap:wrap; }
 @media print {
     @page { size:A4 landscape; margin:12mm; }
-    body * { visibility:hidden; }
-    #appContainer.sales-portal .sm, #appContainer.sales-portal .sm * { visibility:visible; }
-    #appContainer.sales-portal .sm { position:absolute; inset:0 auto auto 0; width:100%; max-width:none; }
+    body:has(#mainContent .sm) * { visibility:hidden; }
+    #mainContent .sm, #mainContent .sm * { visibility:visible; }
+    #mainContent .sm { position:absolute; inset:0 auto auto 0; width:100%; max-width:none; }
     .sm-toolbar, .sm-filters, .sm-actions, .sm-pages, .sm-filters + .sm-note { display:none!important; }
     .sm-hero { background:#142f50!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; padding:18px; }
     .sm-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; }

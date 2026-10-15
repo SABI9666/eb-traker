@@ -49,7 +49,9 @@
     // the menu. Deduplicated against the live sidebar by label.
     var GUARANTEED_REPORTS = {
         'Estimation Report Generation': { icon: '📑', group: 'Estimation & Workflow', groupIcon: '📐', fn: 'showEstimationReportGeneration', allowed: 'canSeeEstimationReports' },
-        'Lead Reports': { icon: '🎯', group: 'Business Development', groupIcon: '💼', fn: 'showBdmLeads' }
+        'Lead Reports': { icon: '🎯', group: 'Business Development', groupIcon: '💼', fn: 'showBdmLeads' },
+        'Sales Revenue Monitor': { icon: '💹', group: 'Business Development', groupIcon: '💼', fn: 'showSalesMonitor' },
+        'Project Cost Reports': { icon: '🏗️', group: 'Procurement', groupIcon: '🛒', fn: 'showPurchaseProjects' }
     };
     // Same guarantee for ordinary phase tools (not reports): rendered as a
     // first-class tile in their phase even when the sidebar item is hidden

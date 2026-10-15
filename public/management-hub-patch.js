@@ -9,8 +9,8 @@
     if (window._managementHubSalesWrapperLoaded) return;
     window._managementHubSalesWrapperLoaded = true;
 
-    var CORE_SRC = 'management-hub-core.js?v=estimation-report-v1';
-    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-approval-v3';
+    var CORE_SRC = 'management-hub-core.js?v=project-reports-v1';
+    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-projects-v1';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
         'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },
@@ -18,7 +18,8 @@
         'Upload Quote / Won': { key: 'quotes', display: 'Upload Quotes', icon: '📝', fn: 'showBdmEntries' },
         'Upload Quote Entry': { key: 'quotes', display: 'Upload Quotes', icon: '📝', fn: 'showBdmEntries' },
         'Lead Reports': { key: 'leads', display: 'Lead Reports', icon: '🎯', fn: 'showBdmLeads' },
-        'Sample Projects': { key: 'samples', display: 'Sample Projects', icon: '🖼️', fn: 'showSampleProjects' }
+        'Sample Projects': { key: 'samples', display: 'Sample Projects', icon: '🖼️', fn: 'showSampleProjects' },
+        'Sales Revenue Monitor': { key: 'salesMonitor', display: 'Sales Revenue Monitor', icon: '💹', fn: 'showSalesMonitor' }
     };
     var PEOPLE_LABELS = {
         'Leave Approval': { key: 'leaveApproval', display: 'Leave Approval', icon: '✅' },
@@ -26,7 +27,7 @@
         'Candidate Screening': { key: 'candidateScreening', display: 'Candidate Screening', icon: '🧑‍💼' }
     };
 
-    var SALES_ORDER = ['proposals', 'quotes', 'analytics', 'bdmAnalytics', 'leads', 'samples'];
+    var SALES_ORDER = ['salesMonitor', 'proposals', 'quotes', 'analytics', 'bdmAnalytics', 'leads', 'samples'];
     var PEOPLE_ORDER = ['leaveApproval', 'candidateScreening'];
     var salesState = { tiles: [] };
     var peopleState = { tiles: [] };
@@ -138,21 +139,28 @@
     function ensurePurchaseTile() {
         var main = document.getElementById('mainContent');
         var grid = main && main.querySelector('.hub-tilegrid');
-        if (!grid || typeof window.showPurchaseManagement !== 'function') return;
-        var exists = false;
-        Array.prototype.slice.call(grid.children).forEach(function (tile) {
-            if (tileLabel(tile) === 'Purchase Management') exists = true;
+        if (!grid) return;
+        // Inserted in reverse so Purchase Management stays first.
+        [
+            { label: 'Project Cost Reports', icon: '🏗️', fn: 'showPurchaseProjects', tag: 'Project value · Material · Manpower · Machinery' },
+            { label: 'Purchase Management', icon: '🛒', fn: 'showPurchaseManagement', tag: 'RFQ · Vendors · PO · Delivery' }
+        ].forEach(function (t) {
+            if (typeof window[t.fn] !== 'function') return;
+            var exists = false;
+            Array.prototype.slice.call(grid.children).forEach(function (tile) {
+                if (tileLabel(tile) === t.label) exists = true;
+            });
+            if (exists) return;
+            var tile = document.createElement('div');
+            tile.className = 'glass-surface hub-tile';
+            tile.setAttribute('onclick', 'window.' + t.fn + '()');
+            tile.innerHTML =
+                '<div class="hub-tile__icon">' + t.icon + '</div>' +
+                '<div class="hub-tile__label">' + t.label + '</div>' +
+                '<div style="margin-top:0.35rem;color:#9fb0c4;font-size:0.72rem;">' + t.tag + '</div>';
+            if (grid.firstChild) grid.insertBefore(tile, grid.firstChild);
+            else grid.appendChild(tile);
         });
-        if (exists) return;
-        var tile = document.createElement('div');
-        tile.className = 'glass-surface hub-tile';
-        tile.setAttribute('onclick', 'window.showPurchaseManagement()');
-        tile.innerHTML =
-            '<div class="hub-tile__icon">🛒</div>' +
-            '<div class="hub-tile__label">Purchase Management</div>' +
-            '<div style="margin-top:0.35rem;color:#9fb0c4;font-size:0.72rem;">RFQ · Vendors · PO · Delivery</div>';
-        if (grid.firstChild) grid.insertBefore(tile, grid.firstChild);
-        else grid.appendChild(tile);
     }
 
     function renderGroup(title, icon, subtitle, tiles, marker) {

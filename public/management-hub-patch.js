@@ -10,7 +10,7 @@
     window._managementHubSalesWrapperLoaded = true;
 
     var CORE_SRC = 'management-hub-core.js?v=project-reports-v2';
-    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-projects-v2';
+    var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-projects-v3';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
         'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },
@@ -144,7 +144,7 @@
         [
             { label: 'Purchase Report', icon: '🧾', fn: 'showPurchaseReport', tag: 'Stage · Project · Vendor · Overdue' },
             { label: 'Project-wise Report', icon: '🏗️', fn: 'showPurchaseProjects', tag: 'Sales value · Cost report · Schedule report' },
-            { label: 'Purchase Management', icon: '🛒', fn: 'showPurchaseManagement', tag: 'RFQ · Vendors · PO · Delivery' }
+            { label: 'Purchase Management', icon: '🛒', fn: 'showPurchaseManagement', tag: 'Purchase request approvals · RFQ · PO' }
         ].forEach(function (t) {
             if (typeof window[t.fn] !== 'function') return;
             var exists = false;

@@ -29,7 +29,8 @@
         // A pending legacy dashboard request must not replace the purchase screen.
         if (app.style.display !== 'none' && main && !main.querySelector('.pm') &&
             typeof window.showPurchaseManagement === 'function') {
-            window.showPurchaseManagement();
+            // Purchase work starts from the project register.
+            (window.showPurchaseProjects || window.showPurchaseManagement)();
         }
     }
     function schedule() {

@@ -44,6 +44,7 @@ function css() {
 .pp-tab{border:0;background:transparent;padding:.5rem .75rem;border-radius:8px;font-weight:700;color:#64748b;white-space:nowrap;cursor:pointer;font-size:.78rem}.pp-tab[aria-selected=true]{background:#172333;color:#fff}
 .pp-empty{padding:2rem;color:#64748b;text-align:center;font-size:.85rem}.pp-alert{margin:0 0 1rem;padding:.7rem 1rem;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.78rem}
 .pp-note{font-size:.72rem;color:#64748b;margin:.4rem 0 1rem}
+.pp-steps{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:.5rem;margin-bottom:1rem;overflow:auto}.pp-step{background:#fff;border:1px solid #e5ebf1;border-radius:12px;padding:.7rem .8rem;position:relative}.pp-step b{display:flex;gap:.45rem;align-items:center;font-size:.78rem}.pp-step b i{font-style:normal;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#172333;color:#fff;font-size:.68rem;flex-shrink:0}.pp-step span{display:block;font-size:.68rem;color:#64748b;margin-top:.3rem}
 .pp-event{display:grid;grid-template-columns:22px 1fr;gap:.5rem;padding:.55rem 1rem;border-bottom:1px solid #f1f5f9}.pp-event b{font-size:.76rem}.pp-event span{display:block;color:#7b8998;font-size:.68rem}.pp-event p{margin:.2rem 0 0;font-size:.76rem;white-space:pre-wrap}
 .pp-modal{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:10060;display:flex;align-items:center;justify-content:center;padding:1rem}
 .pp-box{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;color:#0f172a;border-radius:16px}
@@ -148,14 +149,14 @@ async function loadList() {
     const run = ++generation; current = null;
     busy('Loading projects…');
     try {
-        const result = await request('purchase-projects');
+        const [result, list] = await Promise.all([request('purchase-projects'), loadPurchases().catch(() => null)]);
         if (run !== generation) return;
-        projects = result.data; role = result.role;
+        projects = result.data; role = result.role; purchases = list;
         renderList();
     } catch (e) { if (run === generation) failed(e, loadList); }
 }
 function backButton() {
-    if (role === 'purchase') return '<button class="pp-btn" type="button" id="ppToPurchases">← Purchase register</button>';
+    if (role === 'purchase') return '<button class="pp-btn" type="button" id="ppToPurchases">All purchase requests</button>';
     return '<button class="pp-btn" type="button" id="ppToHub">← Procurement</button>';
 }
 function bindBack() {
@@ -176,6 +177,7 @@ function renderList() {
     main().innerHTML = `<div class="pm pp">
       <div class="pp-hero"><div><span class="pp-eyebrow">${role === 'purchase' ? 'Purchase portal' : (role === 'coo' ? 'COO' : 'Director') + ' · Project reports'}</span><h2>${role === 'purchase' ? 'Projects &amp; site logs' : 'Project-wise report'}</h2><p>Initial sales value, contract value, cost and schedule for every purchase portal project.</p></div>
       <div class="pp-actions pp-noprint">${backButton()}<button class="pp-btn" type="button" id="ppRefresh">Refresh</button><button class="pp-btn" type="button" id="ppCsv">Export CSV</button><button class="pp-btn" type="button" id="ppPrint">Print / PDF</button><button class="pp-btn" type="button" id="ppPurchaseReport">Purchase report</button>${role === 'purchase' ? '<button class="pp-btn primary" type="button" id="ppNew">+ New project</button>' : ''}</div></div>
+      <div class="pp-steps pp-noprint">${[['Create project', 'Project number, client, value, dates and scope'], ['Project approval', 'COO / Director approve; initial sales value is fixed'], ['Purchase requests', 'Raised under the approved project'], ['Request approval', 'COO / Director approve each request and process step'], ['Project cost', 'Daily material, manpower and machinery logs']].map(([t, d], i) => `<div class="pp-step"><b><i>${i + 1}</i>${t}</b><span>${d}</span></div>`).join('')}</div>
       ${pending && isManager() ? `<p class="pp-alert">${pending} project(s) await your approval. A project's initial sales value is fixed when it is first approved.</p>` : ''}
       <div class="pp-kpis">${kpi('Active projects', live.filter(p => p.status === 'active').length, projects.length + ' in register')}${kpi('Initial sales value', byCurrency(live.filter(p => p.initialSales), p => initialValue(p)), 'First approved value')}${kpi('Current contract value', byCurrency(live, p => p.projectValue || 0), 'Excludes cancelled')}${kpi('Cost to date', byCurrency(live, costOf), t.entries + ' log entries')}${kpi('Material', byCurrency(live, p => totalsOf(p).material))}${kpi('Manpower', byCurrency(live, p => totalsOf(p).manpower), qty(t.manDays) + ' man-days')}${kpi('Machinery', byCurrency(live, p => totalsOf(p).machinery), qty(t.machineHours) + ' machine-hours')}${kpi('Schedule', live.filter(p => /Overdue|late/.test(schedule(p).label)).length + ' overdue', live.filter(p => /At risk/.test(schedule(p).label)).length + ' at risk · ' + live.filter(p => schedule(p).label === 'On track').length + ' on track')}${kpi('Awaiting approval', pending, 'Project creation / edits')}</div>
       <div class="pp-card"><div class="pp-head"><div><h3>${listView === 'cost' ? 'Project-wise cost report' : 'Project-wise schedule report'}</h3><p>${listView === 'cost' ? 'Cost to date = material + manpower + machinery logs. Balance = current contract value − cost to date.' : 'Time elapsed against the planned start and completion dates, compared with the share of contract value consumed.'}</p></div>
@@ -195,6 +197,19 @@ function renderList() {
     document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { listView = b.dataset.view; renderList(); });
     listRows();
 }
+const requestsOf = p => (purchases || []).filter(r => (r.projectNumber || '').toUpperCase() === p.projectNumber);
+const isPendingRequest = r => ['pending', 'draft'].includes(r.approval?.status || 'draft');
+function requestSummary(p) {
+    if (purchases === null) return '—';
+    const list = requestsOf(p), waiting = list.filter(isPendingRequest).length;
+    return list.length ? `${list.length} request(s)${waiting ? `<small style="color:#c2410c;font-weight:700">${waiting} awaiting approval</small>` : ''}` : '<small>None</small>';
+}
+const canRequest = p => role === 'purchase' && !!p.approvedAt && !['completed', 'cancelled'].includes(p.status);
+function openRequest(id, mode) {
+    const p = current.data;
+    tab = 'purchases';
+    return window.openPurchaseRequest?.(id, mode, { role, projectNumber: p.projectNumber, projectName: p.name, refresh: () => openProject(p.id) });
+}
 function listRows() {
     const items = visibleProjects();
     const box = document.getElementById('ppRows');
@@ -205,12 +220,12 @@ function listRows() {
         return `<tr><td class="pp-no">${esc(p.projectNumber)}</td><td><b>${esc(p.name)}</b><small>${esc([p.client, p.location].filter(Boolean).join(' · ') || '—')}</small></td><td>${dmy(p.startDate)}</td><td>${dmy(p.endDate)}</td><td>${dmy(p.actualCompletion)}</td>
         <td class="num">${sc.planned ?? '—'}</td><td class="num">${sc.elapsed}</td><td class="num">${sc.remaining == null ? '—' : sc.remaining < 0 ? `<span style="color:#b91c1c">${sc.remaining}</span>` : sc.remaining}</td><td>${bar(sc.timePct, '#475569')}</td><td>${bar(sc.costPct)}</td><td>${pill(sc.cls, sc.label)}</td><td>${dmy(p.lastEntryDate)}</td>${actions(p, p.approval?.status || 'pending')}</tr>`;
     }).join('')}</tbody></table></div>`;
-    else box.innerHTML = `<div class="pp-wrap"><table class="pp-table"><thead><tr><th>Project no.</th><th>Project / client</th><th>Status</th><th class="num">Initial sales value</th><th class="num">Contract value</th><th class="num">Material</th><th class="num">Manpower</th><th class="num">Machinery</th><th class="num">Cost to date</th><th>Cost % of value</th><th class="num">Balance</th><th>Last log</th><th class="pp-noprint">Actions</th></tr></thead><tbody>${items.map(p => {
+    else box.innerHTML = `<div class="pp-wrap"><table class="pp-table"><thead><tr><th>Project no.</th><th>Project / client</th><th>Status</th><th class="num">Initial sales value</th><th class="num">Contract value</th><th class="num">Material</th><th class="num">Manpower</th><th class="num">Machinery</th><th class="num">Cost to date</th><th>Cost % of value</th><th class="num">Balance</th><th>Purchase requests</th><th>Last log</th><th class="pp-noprint">Actions</th></tr></thead><tbody>${items.map(p => {
         const x = totalsOf(p), cost = costOf(p), a = p.approval?.status || 'pending';
         return `<tr><td class="pp-no">${esc(p.projectNumber)}</td><td><b>${esc(p.name)}</b><small>${esc([p.client, p.location].filter(Boolean).join(' · ') || '—')}</small></td>
         <td>${pill(p.status, statusLabel(p.status))}<br>${pill(a, a === 'pending' ? 'Awaiting approval' : a)}</td>
         <td class="num">${initialValue(p) == null ? '<small>Not yet approved</small>' : money(p.initialSales.currency, initialValue(p))}</td><td class="num">${money(p.currency, p.projectValue)}</td><td class="num">${fmt(x.material)}</td><td class="num">${fmt(x.manpower)}<small>${qty(x.manDays)} man-days</small></td><td class="num">${fmt(x.machinery)}<small>${qty(x.machineHours)} hrs</small></td>
-        <td class="num"><b>${fmt(cost)}</b></td><td>${meter(cost, p.projectValue)}</td><td class="num" style="color:${(p.projectValue || 0) - cost < 0 ? '#b91c1c' : 'inherit'}">${fmt((p.projectValue || 0) - cost)}</td><td>${dmy(p.lastEntryDate)}</td>
+        <td class="num"><b>${fmt(cost)}</b></td><td>${meter(cost, p.projectValue)}</td><td class="num" style="color:${(p.projectValue || 0) - cost < 0 ? '#b91c1c' : 'inherit'}">${fmt((p.projectValue || 0) - cost)}</td><td>${requestSummary(p)}</td><td>${dmy(p.lastEntryDate)}</td>
         ${actions(p, a)}</tr>`;
     }).join('')}</tbody></table></div>`;
     box.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openProject(b.dataset.open));
@@ -253,12 +268,12 @@ function renderProject() {
     const sales = p.sales;
     main().innerHTML = `<div class="pm pp">
       <div class="pp-hero"><div><span class="pp-eyebrow">Project report · ${esc(p.projectNumber)}</span><h2>${esc(p.name)}</h2><p>${esc([p.client, p.location].filter(Boolean).join(' · ') || 'No client recorded')} &nbsp; ${pill(p.status, statusLabel(p.status))} ${pill(a, a === 'pending' ? 'Awaiting approval' : a)}</p></div>
-      <div class="pp-actions pp-noprint"><button class="pp-btn" type="button" id="ppBack">← All projects</button><button class="pp-btn" type="button" id="ppCsv">Export CSV</button><button class="pp-btn" type="button" id="ppPrint">Print / PDF</button>${role === 'purchase' ? '<button class="pp-btn" type="button" id="ppEdit">Edit project</button>' : ''}${canLog ? Object.keys(TYPES).map(k => `<button class="pp-btn primary" type="button" data-add="${k}">+ ${TYPES[k].label}</button>`).join('') : ''}${isManager() && a === 'pending' ? '<button class="pp-btn ok" type="button" data-decide="approved">Approve</button><button class="pp-btn danger" type="button" data-decide="rejected">Reject</button>' : ''}</div></div>
+      <div class="pp-actions pp-noprint"><button class="pp-btn" type="button" id="ppBack">← All projects</button><button class="pp-btn" type="button" id="ppCsv">Export CSV</button><button class="pp-btn" type="button" id="ppPrint">Print / PDF</button>${role === 'purchase' ? '<button class="pp-btn" type="button" id="ppEdit">Edit project</button>' : ''}${canRequest(p) ? '<button class="pp-btn ok" type="button" data-request>+ Purchase request</button>' : ''}${canLog ? Object.keys(TYPES).map(k => `<button class="pp-btn primary" type="button" data-add="${k}">+ ${TYPES[k].label}</button>`).join('') : ''}${isManager() && a === 'pending' ? '<button class="pp-btn ok" type="button" data-decide="approved">Approve</button><button class="pp-btn danger" type="button" data-decide="rejected">Reject</button>' : ''}</div></div>
       ${a === 'pending' ? `<p class="pp-alert">${p.approval?.kind === 'edit' ? 'Project changes are' : 'This project is'} awaiting COO / Director approval${p.initialSales ? ` — the sales portal keeps the initial sales value ${esc(money(p.initialSales.currency, p.initialSales.value))}` : ' — the initial sales value is fixed on this first approval'}.</p>` : ''}
       ${a === 'rejected' ? `<p class="pp-alert">Rejected by ${esc(p.approval.decidedBy?.name || 'management')}: ${esc(p.approval.note || '')}. Edit the project to resubmit.</p>` : ''}
       <div class="pp-card"><div class="pp-info">
         <div><span>Project number</span><b>${esc(p.projectNumber)}</b></div><div><span>Initial sales value</span><b>${p.initialSales ? esc(money(p.initialSales.currency, p.initialSales.value)) : 'Fixed on first approval'}</b></div><div><span>Current contract / PO value</span><b>${esc(money(cur, p.projectValue))}</b></div><div><span>Award / PO date</span><b>${dmy(p.awardDate)}</b></div>
-        <div><span>Start · planned completion</span><b>${dmy(p.startDate)} → ${dmy(p.endDate)}</b></div><div><span>Actual completion</span><b>${dmy(p.actualCompletion)}</b></div><div><span>Schedule status</span><b>${pill(sched.cls, sched.label)}</b></div><div><span>Project manager</span><b>${esc(p.manager || '—')}</b></div>
+        <div><span>Start · planned completion</span><b>${dmy(p.startDate)} → ${dmy(p.endDate)}</b></div><div><span>Actual completion</span><b>${dmy(p.actualCompletion)}</b></div><div><span>Schedule status</span><b>${pill(sched.cls, sched.label)}</b></div><div><span>Project manager</span><b>${esc(p.manager || '—')}</b></div><div><span>Client PO / work order</span><b>${esc(p.poNumber || '—')}</b></div><div><span>Client contact</span><b>${esc(p.clientContact || '—')}</b></div>
         <div><span>Shown in sales portal</span><b>${sales?.include ? `Yes · ${esc(money(sales.currency, sales.value))} on ${dmy(sales.date)}` : p.includeInSales ? 'After approval' : 'No'}</b></div>
         ${p.description ? `<div style="grid-column:1/-1"><span>Scope / description</span><b style="font-weight:500;white-space:pre-wrap">${esc(p.description)}</b></div>` : ''}
       </div></div>
@@ -267,7 +282,7 @@ function renderProject() {
       <div class="pp-card pp-section"><div class="pp-tools pp-noprint"><label>From<input type="date" id="ppFrom" value="${esc(from)}"></label><label>To<input type="date" id="ppTo" value="${esc(to)}"></label>
         <button class="pp-btn small" type="button" data-range="week">This week</button><button class="pp-btn small" type="button" data-range="month">This month</button><button class="pp-btn small" type="button" data-range="all">All dates</button>
         <span style="font-size:.74rem;color:#475569">${ranged ? `Period cost: <b>${esc(money(cur, periodCost))}</b> · ${qty(manDays)} man-days · ${qty(machineHours)} machine-hours` : 'Showing all dates'}</span></div>
-        <div class="pp-tabs pp-noprint" role="tablist">${[['cost', 'Cost report'], ['schedule', 'Schedule report'], ['daily', 'Daily summary'], ['material', 'Material'], ['manpower', 'Manpower'], ['machinery', 'Machinery'], ['purchases', 'Purchases'], ['activity', 'Activity']].map(([k, l]) => `<button class="pp-tab" type="button" role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+        <div class="pp-tabs pp-noprint" role="tablist">${[['cost', 'Cost report'], ['schedule', 'Schedule report'], ['daily', 'Daily summary'], ['material', 'Material'], ['manpower', 'Manpower'], ['machinery', 'Machinery'], ['purchases', 'Purchase requests'], ['activity', 'Activity']].map(([k, l]) => `<button class="pp-tab" type="button" role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
         <div id="ppTab"></div></div>
       <p class="pp-note">Amounts are in the project currency (${esc(cur)}). Material = quantity × rate; manpower = workers × rate per man-day; machinery = units × hours × rate per hour. Removed entries stay in the history but are excluded from totals.${ranged ? ` Report period ${esc(from || 'start')} to ${esc(to || 'today')}.` : ''} Generated ${esc(new Date().toLocaleString())}.</p></div>`;
     document.getElementById('ppBack').onclick = loadList;
@@ -275,6 +290,7 @@ function renderProject() {
     document.getElementById('ppCsv').onclick = exportProject;
     document.getElementById('ppEdit')?.addEventListener('click', () => projectForm(p));
     document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => entryForm(b.dataset.add));
+    document.querySelectorAll('[data-request]').forEach(b => b.onclick = () => openRequest(null, 'view'));
     document.querySelectorAll('[data-decide]').forEach(b => b.onclick = () => decisionForm(b.dataset.decide));
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderProject(); });
     document.getElementById('ppFrom').onchange = e => { from = e.target.value; renderProject(); };
@@ -332,10 +348,24 @@ function renderTab(entries) {
             rowsOf('machinery').map(e => `<tr class="${e.deletedAt ? 'removed' : ''}"><td>${dmy(e.date)}</td><td><b>${esc(e.description)}</b></td><td class="num">${qty(e.units)}</td><td class="num">${qty(e.hours)}</td><td class="num">${qty(e.units * e.hours)}</td><td class="num">${fmt(e.rate)}</td><td class="num"><b>${fmt(e.amount)}</b></td><td>${esc(e.supplier || '—')}</td>${why(e)}<td>${remove(e)}</td></tr>`),
             `<tr><td colspan="4">Total machinery</td><td class="num">${qty(sum('machinery', e => e.units * e.hours))}</td><td></td><td class="num">${fmt(sum('machinery', e => e.amount))}</td><td colspan="3"></td></tr>`);
     } else if (tab === 'purchases') {
-        const linked = (purchases || []).filter(r => (r.projectNumber || '').toUpperCase() === p.projectNumber);
-        box.innerHTML = purchases === null ? '<p class="pp-empty">The purchase register could not be loaded.</p>' : table(['Reference', 'Item / quantity', 'Vendor', 'Value', 'Stage', 'Approval', 'Updated'],
-            linked.map(r => `<tr><td class="pp-no">${esc(r.reference || r.id.slice(0, 8))}</td><td><b>${esc(r.item)}</b><small>${esc(r.qty)}</small></td><td>${esc(r.vendor || '—')}</td><td class="num">${esc(money(r.currency, r.amount))}</td><td>${pill('', String(r.stage).toUpperCase())}</td><td>${pill(r.approval?.status || 'draft')}</td><td>${when(r.updatedAt)}</td></tr>`)) +
-            '<p class="pp-note" style="padding:0 1rem">Purchase register entries linked to this project number. Link a purchase by choosing the project number on the purchase form.</p>';
+        if (purchases === null) { box.innerHTML = '<p class="pp-empty">The purchase requests could not be loaded. Refresh to try again.</p>'; return; }
+        const linked = requestsOf(p).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+        const approved = linked.filter(r => r.approval?.status === 'approved' && r.currency === p.currency);
+        const ops = { initial: 'New request', edit: 'Edit / stage change', delete: 'Deletion', document: 'Document' };
+        const actions = r => {
+            const st = r.approval?.status || 'draft', b = (mode, text, cls = '') => `<button class="pp-btn small ${cls}" type="button" data-req="${esc(r.id)}" data-mode="${mode}">${text}</button>`;
+            if (isManager()) return isPendingRequest(r) ? b('approve', 'Review & approve', 'ok') : b('view', 'View');
+            if (role !== 'purchase') return b('view', 'View');
+            if (st === 'pending') return b('view', 'View pending');
+            if (r.stage === 'closed') return b('view', 'View');
+            return b('view', 'View') + b('edit', 'Edit') + (st === 'approved' ? b('quotation', 'Add quote', 'primary') + b('po', 'Add P.O.') + b('other', 'Add document') : '');
+        };
+        box.innerHTML = `<div class="pp-tools">${canRequest(p) ? '<button class="pp-btn ok" type="button" data-request>+ New purchase request</button>' : `<span style="font-size:.76rem;color:#64748b">${role === 'purchase' ? (p.approvedAt ? 'This project is ' + esc(statusLabel(p.status).toLowerCase()) + '; new requests are closed.' : 'Purchase requests can be raised after COO / Director approve this project.') : 'Purchase requests raised by the Purchase team for this project.'}</span>`}
+            <span style="margin-left:auto;font-size:.76rem;color:#475569">${linked.length} request(s) · ${linked.filter(isPendingRequest).length} awaiting approval · approved value <b>${esc(money(p.currency, approved.reduce((s, r) => s + (r.amount || 0), 0)))}</b></span></div>
+            ${table(['Reference', 'Item / quantity', 'Vendor', 'Value', 'Required by', 'Stage', 'Approval', 'Updated', ''],
+            linked.map(r => `<tr><td class="pp-no">${esc(r.reference || r.id.slice(0, 8))}${r.priority === 'urgent' ? '<small style="color:#b91c1c;font-weight:800">URGENT</small>' : ''}</td><td><b>${esc(r.item)}</b><small>${esc(r.qty)}</small></td><td>${esc(r.vendor || '—')}</td><td class="num">${esc(money(r.currency, r.amount))}</td><td>${dmy(r.requiredBy)}</td><td>${pill('', String(r.stage).toUpperCase())}</td><td>${pill(r.approval?.status || 'draft')}${r.pendingChange ? `<small>${esc(ops[r.pendingChange.kind] || '')}${r.pendingChange.documentType ? ': ' + esc(r.pendingChange.documentType) : ''}</small>` : ''}</td><td>${when(r.updatedAt)}</td><td class="pp-noprint"><div class="pp-actions">${actions(r)}</div></td></tr>`))}`;
+        box.querySelectorAll('[data-request]').forEach(b => b.onclick = () => openRequest(null, 'view'));
+        box.querySelectorAll('[data-req]').forEach(b => b.onclick = () => openRequest(b.dataset.req, b.dataset.mode));
     } else {
         box.innerHTML = current.activities.length ? current.activities.map(a => `<div class="pp-event"><span>•</span><div><b>${esc(a.actor?.name)} · ${esc(String(a.action).replace(/_/g, ' '))}</b><span>${when(a.at)} · ${esc(a.actor?.role)}</span><p>${esc(typeof a.details === 'string' ? a.details : [a.details?.note, ...(a.details?.changed || []).map(c => `${c.field}: ${c.before} → ${c.after}`)].filter(Boolean).join('\n'))}</p></div></div>`).join('') : '<p class="pp-empty">No activity recorded.</p>';
     }
@@ -459,6 +489,7 @@ function projectForm(p) {
         ${input('client', 'Client', p.client, 'maxlength="200"')}${input('location', 'Site / location', p.location, 'maxlength="200"')}
         ${input('projectValue', 'Project / PO value *', p.projectValue, 'required type="number" min="0" max="1000000000000" step="0.01"')}
         <div class="pp-field"><label for="pp-currency">Currency</label><select id="pp-currency" name="currency">${CURRENCIES.map(c => `<option ${p.currency === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+        ${input('poNumber', 'Client PO / work order no.', p.poNumber, 'maxlength="200"')}${input('clientContact', 'Client contact (name / phone / email)', p.clientContact, 'maxlength="200"')}
         ${input('awardDate', 'Award / PO date *', p.awardDate, 'required type="date"')}${input('manager', 'Project manager / site in-charge', p.manager, 'maxlength="200"')}
         ${input('startDate', 'Planned start date', p.startDate, 'type="date"')}${input('endDate', 'Planned completion', p.endDate, 'type="date"')}
         ${input('actualCompletion', 'Actual completion (required when completed)', p.actualCompletion, 'type="date"')}

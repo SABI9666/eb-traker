@@ -10,7 +10,7 @@ async function setup(role,record){
  w.eval(fs.readFileSync(root+'purchase-management-patch.js','utf8'));w.showPurchaseManagement();await pause();
  return {w,d,calls,close:()=>w.close()};
 }
-const record={id:'sample',reference:'PO-1',project:'Project',item:'Steel',qty:'1 MT',vendor:'Vendor',amount:20000,currency:'INR',priority:'normal',requiredBy:'2026-09-23',specification:'Steel',paymentReference:'',stage:'rfq',approval:{status:'approved'},version:7,updatedAt:'2026-09-22T12:00:00Z'};
+const record={id:'sample',reference:'PO-1',projectNumber:'EB-1',project:'Project',item:'Steel',qty:'1 MT',vendor:'Vendor',amount:20000,currency:'INR',priority:'normal',requiredBy:'2026-09-23',specification:'Steel',paymentReference:'',stage:'rfq',approval:{status:'approved'},version:7,updatedAt:'2026-09-22T12:00:00Z'};
 (async()=>{
  for(const role of ['coo','director']){
   for(const status of ['draft','pending']){
@@ -34,7 +34,7 @@ const record={id:'sample',reference:'PO-1',project:'Project',item:'Steel',qty:'1
   if(mode==='edit'){
    assert.ok(!d.querySelector('#pmForm fieldset').disabled);d.getElementById('pm-amount').value='25000';d.getElementById('pm-note').value='Revised budget';
    const form=d.getElementById('pmForm');await form.onsubmit({preventDefault(){},target:form});
-   const req=calls.find(c=>c.options.method==='PUT');assert.equal(JSON.parse(req.options.body).amount,25000);assert.equal(JSON.parse(req.options.body).version,7);
+   const req=calls.find(c=>c.options.method==='PUT');assert.equal(JSON.parse(req.options.body).amount,25000);assert.equal(JSON.parse(req.options.body).projectNumber,'EB-1');assert.equal(JSON.parse(req.options.body).version,7);
   }else if(mode==='delete'){
    await d.querySelector('[data-action="delete-request"]').onclick();assert.ok(!calls.find(c=>c.url.endsWith('/delete-request')));
    d.getElementById('pmDeleteNote').value='Duplicate';await d.querySelector('[data-action="delete-request"]').onclick();

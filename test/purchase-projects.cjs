@@ -5,7 +5,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const screenshotDir = process.env.PROJECT_SCREENSHOT_DIR || require('node:os').tmpdir();
 const project = { id: 'p1', projectNumber: 'EB-2026-01', name: 'Plant shed <b>x</b>', client: 'Acme', location: 'Chennai', manager: 'Ravi', description: 'Steel shed', projectValue: 100000, currency: 'INR', awardDate: '2026-10-01', startDate: '2026-10-02', endDate: '2026-12-31', status: 'active', includeInSales: true, version: 3,
-    approval: { status: 'pending', kind: 'edit' }, sales: { include: true, value: 90000, currency: 'INR', date: '2026-10-01' }, initialSales: { value: 90000, currency: 'INR', date: '2026-10-01', approvedAt: '2026-10-01T10:00:00Z' },
+    approval: { status: 'pending', kind: 'edit' }, sales: { include: true, value: 90000, currency: 'INR', date: '2026-10-01' }, initialSales: { value: 90000, currency: 'INR', date: '2026-10-01', approvedAt: '2026-10-01T10:00:00Z' }, approvedAt: '2026-10-01T10:00:00Z', poNumber: 'WO-77',
     totals: { material: 4000, manpower: 3600, machinery: 15000, manDays: 4, manHours: 32, machineHours: 6, entries: 3 }, lastEntryDate: '2026-10-08' };
 const entries = [
     { id: 'e1', type: 'material', date: '2026-10-07', description: 'Cement', unit: 'bag', quantity: 10, rate: 400, amount: 4000, supplier: 'ACC', currency: 'INR', createdBy: { name: 'Anwar' } },
@@ -26,6 +26,8 @@ async function setup(browser, role) {
             let body;
             if (u.pathname === '/api/purchase-projects') body = options.method === 'POST' ? { success: true, data: { id: 'p1' } } : { success: true, role, data: [project, { ...project, id: 'p2', projectNumber: 'EB-2026-02', name: 'Bridge', currency: 'USD', projectValue: 5000, approval: { status: 'approved' }, totals: {} }] };
             else if (u.pathname === '/api/purchase-projects/p1') body = { success: true, data: project, entries, activities: [{ action: 'submitted_edit', actor: { name: 'Anwar', role: 'purchase' }, at: '2026-10-08T10:00:00Z', details: { note: 'Revised', changed: [{ field: 'projectValue', before: 90000, after: 100000 }] } }] };
+            else if (u.pathname === '/api/purchases' && options.method === 'POST') body = { success: true, data: { id: 'x9' } };
+            else if (u.pathname === '/api/purchases/x9') body = { success: true, data: { id: 'x9', projectNumber: 'EB-2026-01', project: 'Plant shed', item: 'Angles', qty: '2 MT', amount: 1000, currency: 'INR', priority: 'normal', stage: 'rfq', approval: { status: 'pending' }, version: 1 }, documents: [], activities: [] };
             else if (u.pathname === '/api/purchases') body = { success: true, data: [
                 { id: 'x1', reference: 'PO-9', projectNumber: 'EB-2026-01', project: 'Plant shed', item: 'Bolts', qty: '100 nos', vendor: 'V', amount: 500, currency: 'INR', stage: 'po', requiredBy: '2026-01-05', priority: 'urgent', approval: { status: 'approved' }, createdAt: '2026-10-01T10:00:00Z', updatedAt: '2026-10-08T10:00:00Z' },
                 { id: 'x2', reference: 'RFQ-2', project: 'Office', item: 'Chairs', qty: '10 nos', vendor: '', amount: 900, currency: 'USD', stage: 'rfq', priority: 'normal', approval: { status: 'pending' }, createdAt: '2026-10-02T10:00:00Z', updatedAt: '2026-10-09T10:00:00Z' }], next: null };
@@ -34,6 +36,7 @@ async function setup(browser, role) {
         };
     }, { role, project, entries });
     await page.addScriptTag({ content: fs.readFileSync(path.join(__dirname, '../public/purchase-projects-patch.js'), 'utf8') });
+    await page.addScriptTag({ content: fs.readFileSync(path.join(__dirname, '../public/purchase-management-patch.js'), 'utf8') });
     await page.evaluate(() => window.showPurchaseProjects());
     await page.waitForSelector('.pp-table');
     return { page, errors };
@@ -88,6 +91,7 @@ async function setup(browser, role) {
         assert.equal(await page.locator('#ppTab tr.removed').count(), 1); assert.match(await page.locator('#ppTab tfoot').textContent(), /4,000\.00/);
         assert.equal(await page.locator('[data-remove]').count(), 0, 'Management cannot remove logs');
         await page.click('[data-tab="purchases"]'); assert.match(await page.locator('#ppTab').textContent(), /PO-9/);
+        assert.equal(await page.locator('[data-request]').count(), 0, 'Management does not raise requests');
         await page.click('[data-tab="activity"]'); assert.match(await page.locator('#ppTab').textContent(), /projectValue: 90000 → 100000/);
         await page.click('[data-decide="rejected"]'); await page.click('.pp-modal [type=submit]');
         assert.match(await page.locator('#ppMsg').textContent(), /Decision note/, 'Rejection needs a note');
@@ -114,6 +118,20 @@ async function setup(browser, role) {
         calls = await page.evaluate(() => window.calls);
         const entry = JSON.parse(calls.find(c => c.url.endsWith('/entries')).body);
         assert.equal(entry.type, 'machinery'); assert.equal(entry.units, 2); assert.equal(entry.hours, 5); assert.equal(entry.rate, 1200);
+        // Purchase requests are raised from inside the approved project.
+        assert.match(await page.locator('.pp-info').textContent(), /WO-77/);
+        await page.click('.pp-hero [data-request]'); await page.waitForSelector('#pmForm');
+        assert.equal(await page.locator('#pm-projectNumber').inputValue(), 'EB-2026-01');
+        assert.equal(await page.locator('#pm-project').inputValue(), 'Plant shed <b>x</b>');
+        await page.fill('#pm-item', 'Angles'); await page.fill('#pm-qty', '2 MT'); await page.fill('#pm-amount', '1000');
+        await page.screenshot({ path: path.join(screenshotDir, 'purchase-request-form.png') });
+        await page.click('#pmForm [type=submit]'); await page.waitForSelector('#pmDetail >> text=Approval: pending');
+        calls = await page.evaluate(() => window.calls);
+        const req = JSON.parse(calls.find(c => c.method === 'POST' && c.url.endsWith('/api/purchases')).body);
+        assert.equal(req.projectNumber, 'EB-2026-01'); assert.equal(req.amount, 1000);
+        assert.equal(await page.locator('[role=tab][aria-selected=true]').textContent(), 'Purchase requests', 'Returns to the project');
+        await page.click('#pmClose');
+        await page.screenshot({ path: path.join(screenshotDir, 'project-purchase-requests.png'), fullPage: true });
         await page.click('[data-tab="material"]'); await page.click('[data-remove="e1"]'); await page.fill('#pp-reason', 'Wrong project'); await page.click('.pp-modal [type=submit]');
         await page.waitForSelector('.pp-modal', { state: 'detached' });
         calls = await page.evaluate(() => window.calls);

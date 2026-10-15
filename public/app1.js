@@ -1486,7 +1486,7 @@
             if (roleForCheck === 'purchase') {
                 appContainer.classList.remove('top-menu-mode');
                 window._pendingDeepLink = null;
-                window.showPurchaseManagement();
+                (window.showPurchaseProjects || window.showPurchaseManagement)();
                 return;
             }
 
@@ -1780,7 +1780,7 @@ function routeToDefaultView(roleForCheck, isDesigner, isHR, isDC, isBDM, isManag
     if (roleForCheck === 'sales_monitor') {
         window.showSalesMonitor();
     } else if (roleForCheck === 'purchase') {
-        window.showPurchaseManagement();
+        (window.showPurchaseProjects || window.showPurchaseManagement)();
     } else if (roleForCheck === 'design_lead') {
         showDesignLeadPortal();
     } else if (isDesigner) {

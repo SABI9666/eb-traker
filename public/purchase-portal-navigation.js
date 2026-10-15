@@ -17,12 +17,15 @@
         }
         if (!purchaseSession) return;
         if (app.classList.contains('top-menu-mode')) app.classList.remove('top-menu-mode');
-        const link = document.getElementById('nav-purchase-management');
-        if (link) {
-            if (!link.classList.contains('active')) link.classList.add('active');
-            link.setAttribute('aria-current', 'page');
-        }
         const main = document.getElementById('mainContent');
+        const onProjects = !!(main && main.querySelector('.pp'));
+        [['nav-purchase-management', !onProjects], ['nav-purchase-projects', onProjects]].forEach(function (pair) {
+            const link = document.getElementById(pair[0]);
+            if (!link) return;
+            if (link.classList.contains('active') !== pair[1]) link.classList.toggle('active', pair[1]);
+            if (pair[1] && link.getAttribute('aria-current') !== 'page') link.setAttribute('aria-current', 'page');
+            if (!pair[1] && link.hasAttribute('aria-current')) link.removeAttribute('aria-current');
+        });
         // A pending legacy dashboard request must not replace the purchase screen.
         if (app.style.display !== 'none' && main && !main.querySelector('.pm') &&
             typeof window.showPurchaseManagement === 'function') {
@@ -40,6 +43,7 @@
             if (!purchaseSession) {
                 document.getElementById('pmModal')?.remove();
                 document.getElementById('nav-purchase-management')?.removeAttribute('aria-current');
+                document.getElementById('nav-purchase-projects')?.removeAttribute('aria-current');
             }
             schedule();
         });
@@ -51,6 +55,11 @@
         if (link) link.addEventListener('click', function (event) {
             event.preventDefault();
             if (purchaseSession && typeof window.showPurchaseManagement === 'function') window.showPurchaseManagement();
+        });
+        const projectsLink = document.getElementById('nav-purchase-projects');
+        if (projectsLink) projectsLink.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (purchaseSession && typeof window.showPurchaseProjects === 'function') window.showPurchaseProjects();
         });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

@@ -10913,7 +10913,7 @@ function getAnalyticsHTML(role) {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-top: 2rem;">
             
             <div class="card">
-                <h3 style="margin-bottom: 1rem;">Monthly Revenue (Since Nov 2025)</h3>
+                <h3 style="margin-bottom: 1rem;">Monthly Revenue (Since Dec 2025)</h3>
                 <div style="position: relative; height: 350px;">
                     <canvas id="monthlyRevenueChart"></canvas>
                 </div>
@@ -10959,10 +10959,10 @@ async function loadAnalyticsData(role) {
 
     const kpis = { totalRevenue, totalProposals, winRate, avgDealValue, totalWon, totalLost };
 
-    // Monthly Revenue: every month from Nov 2025 up to the current month.
+    // Monthly Revenue: every month from Dec 2025 up to the current month.
     const monthlyRevenue = {};
     const now = new Date();
-    for (let d = new Date(2025, 10, 1); d <= now; d.setMonth(d.getMonth() + 1)) {
+    for (let d = new Date(2025, 11, 1); d <= now; d.setMonth(d.getMonth() + 1)) {
         const label = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
         monthlyRevenue[label] = 0;
     }

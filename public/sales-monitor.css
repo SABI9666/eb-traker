@@ -38,6 +38,9 @@
 .sm td, .sm th { padding:14px 18px; border-bottom:1px solid #edf1f5; }
 .sm td { max-width:300px; overflow-wrap:anywhere; }
 .sm-total { font-weight:700; color:#126878; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.sm-charts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.sm-chart { position:relative; height:340px; padding:16px 20px 20px; }
+@media(max-width:1100px) { .sm-charts { grid-template-columns:1fr; } }
 .sm-num { white-space:nowrap; font-variant-numeric:tabular-nums; }
 .sm tr.sm-sum td { background:#f7f9fc; border-top:2px solid #dbe4ee; font-weight:700; color:#173450; }
 .sm-idle { margin:0; padding:12px 20px; font-size:12px; color:#65798e; border-top:1px solid #edf1f5; }

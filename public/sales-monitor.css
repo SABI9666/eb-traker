@@ -38,6 +38,9 @@
 .sm td, .sm th { padding:14px 18px; border-bottom:1px solid #edf1f5; }
 .sm td { max-width:300px; overflow-wrap:anywhere; }
 .sm-total { font-weight:700; color:#126878; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.sm-num { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.sm tr.sm-sum td { background:#f7f9fc; border-top:2px solid #dbe4ee; font-weight:700; color:#173450; }
+.sm-idle { margin:0; padding:12px 20px; font-size:12px; color:#65798e; border-top:1px solid #edf1f5; }
 .sm-tag { background:#edf5f8; padding:4px 8px; border-radius:20px; white-space:nowrap; }
 .sm-empty { text-align:center; padding:30px!important; color:#6b7d91; }
 .sm-alert { padding:16px; background:#fff6de; color:#795512; border:1px solid #f2d894; border-radius:10px; font-size:13px; }

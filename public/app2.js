@@ -10881,7 +10881,7 @@ function getAnalyticsHTML(role) {
 
     const directorCharts = `
         <div class="card">
-            <h3 style="margin-bottom: 1rem;">BDM Performance (Won Revenue)</h3>
+            <h3 style="margin-bottom: 1rem;">BDM Performance (Won Revenue Since Dec 2025)</h3>
             <div style="position: relative; height: 350px;">
                 <canvas id="bdmPerformanceChart"></canvas>
             </div>
@@ -10996,8 +10996,12 @@ async function loadAnalyticsData(role) {
     let bdmPerformance = null, weeklyRevenue = null, regionalData = null;
 
     if (role !== 'bdm') {
+        // Same window as the monthly chart: proposals won from 1 Dec 2025 onward.
+        const chartStart = new Date(2025, 11, 1);
         bdmPerformance = {};
         wonProposals.forEach(p => {
+            const date = parseAnalyticsDate(p.wonDate) || parseAnalyticsDate(p.updatedAt);
+            if (!date || isNaN(date.getTime()) || date < chartStart) return;
             const bdmName = p.createdByName || 'Unknown';
             bdmPerformance[bdmName] = (bdmPerformance[bdmName] || 0) + (p.pricing?.quoteValue || 0);
         });

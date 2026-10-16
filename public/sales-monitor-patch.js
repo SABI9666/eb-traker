@@ -9,15 +9,14 @@
     // COO / Director open the same report from their hub; the API enforces access.
     const isManagement = () => typeof currentUserRole !== 'undefined' && ['coo', 'director'].includes(String(currentUserRole || '').toLowerCase());
     const canView = () => typeof currentUser !== 'undefined' && !!currentUser && (isSales() || isManagement());
-    const SOURCES = { all: 'All sources', projects: 'Project records', manual: 'Manual BDM uploads', purchase: 'Purchase portal projects' };
+    // BDM sales come only from values entered in "Upload Quote / Won"; proposal values are never included.
+    const SOURCES = { all: 'All sources', manual: 'BDM quote uploads', purchase: 'Purchase portal projects' };
     function filters() {
         return Object.fromEntries(['source', 'currency', 'bdm', 'from', 'to', 'search', 'kind'].map(key => [key, document.getElementById('sm-' + key)?.value || '']));
     }
     function table(headers, rows) {
         return `<div class="sm-scroll"><table><thead><tr>${headers.map(h => `<th scope="col">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.length ? rows.join('') : `<tr><td colspan="${headers.length}" class="sm-empty">No records match these filters.</td></tr>`}</tbody></table></div>`;
     }
-    // Proposal statuses on project-record quotes; anything else is still open pipeline.
-    const LOST = ['lost', 'rejected'], CLOSED = ['won', 'lost', 'rejected', 'subcontracted', 'cancelled'];
     const pct = (part, whole) => whole ? (part / whole * 100).toFixed(1) + '%' : '—';
     const quarter = date => date.slice(0, 4) + ' Q' + (Math.floor((Number(date.slice(5, 7)) - 1) / 3) + 1);
     // Same fixed rates as the COO BDM analysis (EB-Backend api/bdm-analytics.js), so combined totals match it.
@@ -60,9 +59,6 @@
             (!f.from || (r.date && r.date >= f.from)) && (!f.to || (r.date && r.date <= f.to)) &&
             (!f.search || `${r.projectName} ${r.projectNumber} ${r.client}`.toLowerCase().includes(f.search.toLowerCase())))
             .map(r => f.currency === ALL ? { ...r, value: inr(r), currency: 'INR' } : r);
-        // Only project-record quotes carry a proposal won/lost outcome.
-        const tracksOutcome = f.source === 'all' || f.source === 'projects';
-        const outcome = r => r.source === 'projects';
         const of = kind => rows.filter(r => r.kind === kind);
         const total = list => list.reduce((v, r) => v + (r.value || 0), 0);
         const wonRows = of('won'), quoteRows = of('quote');
@@ -71,11 +67,9 @@
         const showPurchase = f.source === 'all' || f.source === 'purchase';
         const wins = total(wonRows), variations = total(of('variation')), purchaseSales = total(purchaseRows), bdmBooked = wins + variations, booked = bdmBooked + purchaseSales;
         const pricedWins = wonRows.filter(r => r.value != null);
-        const decided = quoteRows.filter(r => outcome(r) && (r.status === 'won' || LOST.includes(r.status)));
-        const openQuotes = quoteRows.filter(r => outcome(r) && !CLOSED.includes(r.status));
-        const winRate = tracksOutcome ? pct(decided.filter(r => r.status === 'won').length, decided.length) : 'Not tracked';
+        const quoted = total(quoteRows);
         const bdms = new Map();
-        const blank = name => ({ name, won: 0, quote: 0, variation: 0, count: 0, quotes: 0, decided: 0, wonQuotes: 0, pipeline: 0 });
+        const blank = name => ({ name, won: 0, quote: 0, variation: 0, count: 0, quotes: 0 });
         // Show zero-activity BDMs, too, when no individual BDM is selected.
         report.bdms.filter(b => !f.bdm || b.id === f.bdm).forEach(b => bdms.set(b.id, blank(b.name)));
         const months = new Map(), quarters = new Map();
@@ -83,11 +77,7 @@
             const b = r.kind === 'purchase' ? blank('') : (bdms.get(r.bdmUid) || bdms.set(r.bdmUid, blank(r.bdmName)).get(r.bdmUid));
             if (r.kind !== 'purchase') b[r.kind] += r.value || 0;
             if (r.kind === 'won') b.count++;
-            if (r.kind === 'quote') {
-                b.quotes++;
-                if (outcome(r) && (r.status === 'won' || LOST.includes(r.status))) { b.decided++; if (r.status === 'won') b.wonQuotes++; }
-                if (outcome(r) && !CLOSED.includes(r.status)) b.pipeline += r.value || 0;
-            }
+            if (r.kind === 'quote') b.quotes++;
             if (r.date) {
                 const key = trend === 'week' ? weekStart(r.date) : r.date.slice(0, 7);
                 const t = months.get(key) || { won: 0, wonCount: 0, variation: 0, quote: 0, quoteCount: 0, purchase: 0, purchaseCount: 0 };
@@ -100,12 +90,15 @@
                 quarters.set(quarter(r.date), q);
             }
         }
-        const ranking = [...bdms.values()].sort((a, b) => (b.won + b.variation) - (a.won + a.variation));
+        // Rank by booked sales, then quoted value; BDMs with no uploads in the period are listed after a summary line.
+        const all = [...bdms.values()];
+        const ranking = all.filter(b => b.count || b.quotes || b.won || b.variation || b.quote)
+            .sort((a, b) => (b.won + b.variation) - (a.won + a.variation) || b.quote - a.quote || a.name.localeCompare(b.name));
+        const idle = all.filter(b => !ranking.includes(b)).map(b => b.name).sort((a, b) => a.localeCompare(b));
         const last = rows.reduce((m, r) => r.date > m ? r.date : m, '');
         const end = f.to || [day(new Date()), last].sort()[1];
         const series = periods(f.from, end).map(p => ({ ...p, ...(months.get(p.key) || { won: 0, wonCount: 0, variation: 0, quote: 0, quoteCount: 0, purchase: 0, purchaseCount: 0 }) })).reverse();
         const quarterly = [...quarters.entries()].sort(([a], [b]) => b.localeCompare(a));
-        const pipeline = [...openQuotes].sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, 10);
         const max = Math.max(1, ...series.map(p => Math.abs(p.won + p.variation + p.purchase)));
         const details = rows.filter(r => !f.kind || r.kind === f.kind).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         filtered = details;
@@ -116,19 +109,18 @@
         const cur = f.currency === ALL ? 'INR (all currencies converted)' : esc(f.currency);
         const card = (label, value, caption) => `<article class="sm-card"><span>${label}</span><strong>${value}</strong><small>${caption}</small></article>`;
         const period = `${esc(f.from)} to ${esc(f.to || 'today')}`;
-        const scope = [period, f.bdm ? esc(ranking[0]?.name || '') : 'All BDMs', f.search ? `“${esc(f.search)}”` : ''].filter(Boolean).join(' · ');
+        const scope = [period, f.bdm ? esc((ranking[0] || all[0])?.name || '') : 'All BDMs', f.search ? `“${esc(f.search)}”` : ''].filter(Boolean).join(' · ');
         output.innerHTML = `${missingDates || missingValues || f.currency === 'UNSPECIFIED' ? `<p class="sm-alert">${missingDates ? `${missingDates} record(s) have no event date and are not included in this report. ` : ''}${missingValues ? `${missingValues} matching record(s) have no value and are excluded from monetary totals. ` : ''}${f.currency === 'UNSPECIFIED' ? 'Currency is not recorded for this group; do not compare this total with other currencies.' : ''}</p>` : ''}
             <div class="sm-report-head"><div><h2>Sales performance report</h2><span>${SOURCES[f.source]} · ${cur} · ${scope}</span></div><div class="sm-actions"><button type="button" id="sm-csv">Export CSV</button><button type="button" id="sm-print">Print / Save PDF</button></div></div>
-            <div class="sm-cards">${card('Booked sales', money(booked), cur + ' · wins + variations' + (showPurchase ? ' + purchase projects' : ''))}${card('Won project value', money(wins), wonRows.length + ' won records')}${card('Approved / recorded variations', money(variations), of('variation').length + ' variations · ' + cur)}${card('Quoted value', money(total(quoteRows)), quoteRows.length + ' quotes · separate from booked sales')}
-            ${card('Average deal size', pricedWins.length ? money(total(pricedWins) / pricedWins.length) : '—', 'Won value ÷ priced wins')}${card('Win rate', winRate, tracksOutcome ? `${decided.filter(r => r.status === 'won').length} won of ${decided.length} decided quotes` : 'Not tracked for this source')}${card('Open pipeline', tracksOutcome ? money(total(openQuotes)) : 'Not tracked', tracksOutcome ? openQuotes.length + ' quotes awaiting a decision' : 'Use project records for pipeline')}${card('Variation share', pct(variations, booked), 'Of booked sales')}${showPurchase ? card('Purchase project sales', money(purchaseSales), purchaseRows.length + ' projects · initial sales value · not BDM sales') : ''}</div>
-            <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance</h2><span>${cur} · ${ranking.length} BDMs · ranked by booked sales · purchase portal projects excluded</span></div>${table(['Rank', 'BDM', 'Won', 'Won value', 'Variations', 'Booked sales', 'Share', 'Avg deal', 'Quotes', 'Quoted value', 'Win rate', 'Open pipeline'], ranking.map((b, i) => `<tr><td>${i + 1}</td><td class="sm-name"><strong>${esc(b.name)}</strong></td><td>${b.count}</td><td>${money(b.won)}</td><td>${money(b.variation)}</td><td class="sm-total">${money(b.won + b.variation)}</td><td>${pct(b.won + b.variation, bdmBooked)}</td><td>${b.count ? money(b.won / b.count) : '—'}</td><td>${b.quotes}</td><td>${money(b.quote)}</td><td>${tracksOutcome ? pct(b.wonQuotes, b.decided) : '—'}</td><td>${tracksOutcome ? money(b.pipeline) : '—'}</td></tr>`))}</section>
+            <div class="sm-cards">${card('Booked sales', money(booked), cur + ' · wins + variations' + (showPurchase ? ' + purchase projects' : ''))}${card('Won project value', money(wins), wonRows.length + ' uploaded wins')}${card('Variations', money(variations), of('variation').length + ' uploaded variations · ' + cur)}${card('Quoted value', money(quoted), quoteRows.length + ' quotes uploaded · separate from booked sales')}
+            ${card('Average deal size', pricedWins.length ? money(total(pricedWins) / pricedWins.length) : '—', 'Won value ÷ priced wins')}${card('Quote conversion', pct(wins, quoted), 'Won value ÷ quoted value')}${card('Variation share', pct(variations, booked), 'Of booked sales')}${showPurchase ? card('Purchase project sales', money(purchaseSales), purchaseRows.length + ' projects · initial sales value · not BDM sales') : ''}</div>
+            <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance</h2><span>${cur} · ${ranking.length} active BDM${ranking.length === 1 ? '' : 's'} · ranked by booked sales · values entered in Upload Quote / Won only</span></div>${table(['Rank', 'BDM', 'Quotes', 'Quoted value', 'Wins', 'Won value', 'Variations', 'Booked sales', 'Share', 'Avg deal', 'Conversion'], ranking.map((b, i) => `<tr><td>${i + 1}</td><td class="sm-name"><strong>${esc(b.name)}</strong></td><td class="sm-num">${b.quotes}</td><td class="sm-num">${money(b.quote)}</td><td class="sm-num">${b.count}</td><td class="sm-num">${money(b.won)}</td><td class="sm-num">${b.variation ? money(b.variation) : '—'}</td><td class="sm-total sm-num">${money(b.won + b.variation)}</td><td class="sm-num">${pct(b.won + b.variation, bdmBooked)}</td><td class="sm-num">${b.count ? money(b.won / b.count) : '—'}</td><td class="sm-num">${pct(b.won, b.quote)}</td></tr>`).concat(ranking.length ? [`<tr class="sm-sum"><td></td><td><strong>Total</strong></td><td class="sm-num">${ranking.reduce((n, b) => n + b.quotes, 0)}</td><td class="sm-num">${money(quoted)}</td><td class="sm-num">${wonRows.length}</td><td class="sm-num">${money(wins)}</td><td class="sm-num">${variations ? money(variations) : '—'}</td><td class="sm-total sm-num">${money(bdmBooked)}</td><td class="sm-num">${bdmBooked ? '100.0%' : '—'}</td><td class="sm-num">${pricedWins.length ? money(total(pricedWins) / pricedWins.length) : '—'}</td><td class="sm-num">${pct(wins, quoted)}</td></tr>`] : []))}${idle.length ? `<p class="sm-idle">No uploads in this period: ${idle.map(esc).join(', ')}</p>` : ''}</section>
             <section class="sm-panel"><div class="sm-section-title"><h2>Quarterly summary</h2><span>${cur} · dated records</span></div>${table(['Quarter', 'Won', 'Won value', 'Variations', 'Purchase projects', 'Booked sales', 'Quotes issued', 'Quoted value'], quarterly.map(([q, v]) => `<tr><td><strong>${esc(q)}</strong></td><td>${v.wonCount}</td><td>${money(v.won)}</td><td>${money(v.variation)}</td><td>${money(v.purchase)}</td><td class="sm-total">${money(v.won + v.variation + v.purchase)}</td><td>${v.quoteCount}</td><td>${money(v.quote)}</td></tr>`))}</section>
             <section class="sm-panel"><div class="sm-section-title"><h2>${trend === 'week' ? 'Weekly' : 'Monthly'} sales</h2><div class="sm-toggle" role="group" aria-label="Sales period"><button type="button" data-trend="week" aria-pressed="${trend === 'week'}">Weekly</button><button type="button" data-trend="month" aria-pressed="${trend === 'month'}">Monthly</button></div></div>
             <div class="sm-scroll sm-trend-table">${table([trend === 'week' ? 'Week (Mon – Sun)' : 'Month', 'Won', 'Won value', 'Variations', 'Purchase projects', 'Booked sales', '', 'Quotes', 'Quoted value'], series.map(p => `<tr><td><strong>${esc(p.label)}</strong></td><td>${p.wonCount}</td><td>${money(p.won)}</td><td>${money(p.variation)}</td><td>${money(p.purchase)}</td><td class="sm-total">${money(p.won + p.variation + p.purchase)}</td><td class="sm-bar-cell"><div class="sm-bar-track"><div class="sm-bar" style="width:${Math.min(100, Math.abs(p.won + p.variation + p.purchase) / max * 100)}%"></div></div></td><td>${p.quoteCount}</td><td>${money(p.quote)}</td></tr>`))}</div></section>
             ${showPurchase ? `<section class="sm-panel"><div class="sm-section-title"><h2>Purchase portal projects</h2><span>${cur} · initial sales value approved by COO / Director · not attributed to BDMs</span></div>${table(['Award / PO date', 'Project number', 'Project', 'Client', 'Initial sales value'], purchaseRows.map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectNumber)}</strong></td><td><strong>${esc(r.projectName)}</strong></td><td>${esc(r.client || '—')}</td><td class="sm-total">${money(r.value)}</td></tr>`))}</section>` : ''}
-            <section class="sm-panel"><div class="sm-section-title"><h2>Open pipeline</h2><span>${tracksOutcome ? `${cur} · top ${pipeline.length} quotes awaiting decision` : 'Not tracked for this source'}</span></div>${table(['Quoted', 'Project', 'BDM', 'Stage', 'Value'], tracksOutcome ? pipeline.map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.client || '')}</small></td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(String(r.status).replace(/_/g, ' '))}</span></td><td class="sm-total">${money(r.value)}</td></tr>`) : [])}</section>
-            <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Project revenue details</h2><span>${details.length} matching records</span></div>${table(['Date', 'Project / reference', 'Client', 'BDM', 'Type', 'Status', 'Value (' + (f.currency === ALL ? 'INR' : f.currency) + ')'], details.slice((page - 1) * 25, page * 25).map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.projectNumber)}</small></td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.kind === 'purchase' ? 'purchase project' : r.kind)}</span>${f.source === 'all' ? `<small>${{ manual: 'BDM upload', purchase: 'Purchase project', projects: 'Project record' }[r.source]}</small>` : ''}</td><td>${esc(String(r.status).replace(/_/g, ' '))}</td><td class="sm-total">${money(r.value)}</td></tr>`))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
-            <p class="sm-note">Report period starts 1 Jan 2026${before ? ` (${before} earlier record(s) not shown)` : ''}. ${f.currency === ALL ? 'Converted to INR at the fixed rates used by the COO BDM analysis (USD 90, AUD 55, NZD 51, EUR 90, GBP 105, SGD 62, AED 22.7, CAD 61, JPY 0.55); unrecorded currencies are counted as INR. ' : ''}${f.source === 'all' ? 'All sources adds project records, manual BDM uploads and approved purchase portal projects together; a win entered in more than one place is counted more than once. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Win rate counts priced proposals already marked won or lost/rejected; open pipeline is priced proposals not yet decided. Figures are booked sales, not invoiced revenue or cash received.</p>`;
+            <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Project revenue details</h2><span>${details.length} matching records</span></div>${table(['Date', 'Project / reference', 'Client', 'BDM', 'Type', 'Status', 'Value (' + (f.currency === ALL ? 'INR' : f.currency) + ')'], details.slice((page - 1) * 25, page * 25).map(r => `<tr><td>${esc(r.date || 'No date')}</td><td><strong>${esc(r.projectName)}</strong><small>${esc(r.projectNumber)}</small></td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.kind === 'purchase' ? 'purchase project' : r.kind)}</span>${f.source === 'all' ? `<small>${{ manual: 'BDM upload', purchase: 'Purchase project' }[r.source]}</small>` : ''}</td><td>${esc(String(r.status).replace(/_/g, ' '))}</td><td class="sm-total">${money(r.value)}</td></tr>`))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
+            <p class="sm-note">Report period starts 1 Jan 2026${before ? ` (${before} earlier record(s) not shown)` : ''}. ${f.currency === ALL ? 'Converted to INR at the fixed rates used by the COO BDM analysis (USD 90, AUD 55, NZD 51, EUR 90, GBP 105, SGD 62, AED 22.7, CAD 61, JPY 0.55); unrecorded currencies are counted as INR. ' : ''}${f.source === 'all' ? 'All sources adds BDM quote uploads and approved purchase portal projects together. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. BDM quotes, wins and variations are only the values entered in Upload Quote / Won; proposal values are not included. Conversion is won value ÷ quoted value. Figures are booked sales, not invoiced revenue or cash received.</p>`;
         document.getElementById('sm-prev').onclick = () => { page--; render(); };
         document.getElementById('sm-next').onclick = () => { page++; render(); };
         document.getElementById('sm-csv').onclick = exportCsv;
@@ -185,14 +177,14 @@
         main.innerHTML = `<div class="sm"><header class="sm-hero"><div><div class="sm-eyebrow">WEST EPCM · SALES INTELLIGENCE</div><h1>Sales revenue monitor</h1><p>A clear view of sales performance across BDMs and projects.</p></div><div class="sm-actions">${isSales() ? '' : '<button type="button" id="sm-back">← Sales tools</button>'}<span class="sm-readonly">Read-only access</span></div></header>
             <div class="sm-toolbar"><span id="sm-updated" aria-live="polite">Waiting for data</span><button type="button" id="sm-refresh">Refresh data</button></div>
             <section class="sm-panel sm-filters" aria-label="Sales filters">
-            <label>Data source<select id="sm-source"><option value="all">All sources (as COO BDM analysis)</option><option value="projects">Project records</option><option value="manual">Manual BDM uploads</option><option value="purchase">Purchase portal projects</option></select></label>
+            <label>Data source<select id="sm-source"><option value="all">All sources</option><option value="manual">BDM quote uploads</option><option value="purchase">Purchase portal projects</option></select></label>
             <label>Currency<select id="sm-currency"><option value="ALL_INR">All currencies (in INR)</option></select></label>
             <label>BDM<select id="sm-bdm"><option value="">All BDMs</option></select></label>
             <label>From date<input type="date" id="sm-from" min="${START}" value="${START}"></label><label>To date<input type="date" id="sm-to" min="${START}"></label>
             <label>Project / client<input type="search" id="sm-search" placeholder="Search projects or clients"></label>
             <label>Detail rows<select id="sm-kind"><option value="">All types</option><option value="won">Won projects</option><option value="quote">Quotes</option><option value="variation">Variations</option><option value="purchase">Purchase projects</option></select></label>
             <button type="button" id="sm-reset">Reset filters</button></section>
-            <p class="sm-note">Booked sales = won project / PO value + approved variations + purchase portal projects (initial sales value at the award / PO date; these are separate from BDM sales and not shown in BDM figures). Quotes are reported separately from booked sales. The default view combines project records, manual BDM uploads and purchase portal projects in INR, like the COO BDM analysis; pick a single source or currency to see original amounts without conversion. These figures are not invoices or payments received. The report covers 1 January 2026 onwards; date filters use the win, quote, or variation event date. “Detail rows” filters only the final table.</p>
+            <p class="sm-note">BDM figures use only the values entered in Upload Quote / Won — proposal values are never added. Booked sales = uploaded won value + uploaded variations + purchase portal projects (initial sales value at the award / PO date; these are separate from BDM sales and not shown in BDM figures). Quotes are reported separately from booked sales. The default view combines BDM quote uploads and purchase portal projects in INR; pick a single source or currency to see original amounts without conversion. These figures are not invoices or payments received. The report covers 1 January 2026 onwards; date filters use the win, quote, or variation event date. “Detail rows” filters only the final table.</p>
             <div id="sm-results" aria-live="polite"></div></div>`;
         document.getElementById('sm-refresh').onclick = refresh;
         document.getElementById('sm-back')?.addEventListener('click', () => { requestId++; if (typeof window._hubOpenSales === 'function') window._hubOpenSales(); else if (typeof window._hubOpenPhase === 'function') window._hubOpenPhase('corporate'); });

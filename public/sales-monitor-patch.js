@@ -36,29 +36,32 @@
     const person = name => name && (name === name.toUpperCase() || name === name.toLowerCase())
         ? name.toLowerCase().replace(/(^|[\s.'-])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase()) : name;
     let filtered = [], trend = 'month', charts = [];
-    // Compact axis / label values in Indian units (K, L, Cr).
-    const compact = v => { const a = Math.abs(v); return a >= 1e7 ? (v / 1e7).toFixed(2) + ' Cr' : a >= 1e5 ? (v / 1e5).toFixed(2) + ' L' : a >= 1e3 ? (v / 1e3).toFixed(1) + ' K' : String(Math.round(v)); };
-    // Same charts as the COO analytics dashboard, drawn from this report's filtered figures.
-    function drawCharts(monthly, ranking) {
+    // Proposal charts, as on the COO analytics dashboard: proposals marked won since 1 Dec 2025, at quoted value.
+    const usd = v => '$' + Math.round(v).toLocaleString('en-US');
+    const usdAxis = v => Math.abs(v) >= 1000 ? '$' + v / 1000 + 'k' : '$' + v;
+    function drawCharts() {
         charts.forEach(c => c.destroy()); charts = [];
         if (typeof Chart === 'undefined') return;
+        const wins = report.proposalWins || [], byMonth = new Map(), byBdm = new Map();
+        wins.forEach(w => { byMonth.set(w.date.slice(0, 7), (byMonth.get(w.date.slice(0, 7)) || 0) + w.value); byBdm.set(w.bdmName, (byBdm.get(w.bdmName) || 0) + w.value); });
+        const months = periods(START, day(new Date()), 'month'), bdms = [...byBdm.entries()].sort((a, b) => b[1] - a[1]);
         const valueLabels = { id: 'smValueLabels', afterDatasetsDraw(chart) {
             const c = chart.ctx, horizontal = chart.options.indexAxis === 'y';
             c.save(); c.font = '600 11px sans-serif'; c.fillStyle = '#173450';
             c.textAlign = horizontal ? 'left' : 'center'; c.textBaseline = horizontal ? 'middle' : 'bottom';
-            chart.getDatasetMeta(0).data.forEach((bar, i) => { const v = chart.data.datasets[0].data[i]; if (v) c.fillText(compact(v), horizontal ? bar.x + 6 : bar.x, horizontal ? bar.y : bar.y - 4); });
+            chart.getDatasetMeta(0).data.forEach((bar, i) => { const v = chart.data.datasets[0].data[i]; if (v) c.fillText(usd(v), horizontal ? bar.x + 6 : bar.x, horizontal ? bar.y : bar.y - 4); });
             c.restore();
         } };
-        const tooltip = { callbacks: { label: ctx => money(ctx.raw) } };
+        const tooltip = { callbacks: { label: ctx => usd(ctx.raw) } };
         const month = document.getElementById('sm-chart-month'), bdm = document.getElementById('sm-chart-bdm');
         if (month) charts.push(new Chart(month, { type: 'bar', plugins: [valueLabels],
-            data: { labels: monthly.map(p => p.label), datasets: [{ data: monthly.map(p => p.value), backgroundColor: '#39a8ae', borderRadius: 5 }] },
+            data: { labels: months.map(m => m.label), datasets: [{ data: months.map(m => byMonth.get(m.key) || 0), backgroundColor: '#39a8ae', borderRadius: 5 }] },
             options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } }, plugins: { legend: { display: false }, tooltip },
-                scales: { y: { beginAtZero: true, ticks: { callback: compact } }, x: { grid: { display: false } } } } }));
+                scales: { y: { beginAtZero: true, ticks: { callback: usdAxis } }, x: { grid: { display: false } } } } }));
         if (bdm) charts.push(new Chart(bdm, { type: 'bar', plugins: [valueLabels],
-            data: { labels: ranking.map(b => b.name), datasets: [{ data: ranking.map(b => b.won + b.variation), backgroundColor: ['#1f5e8a', '#39a8ae', '#f2b24c', '#8e6cc4', '#e57f4f', '#5fb07a', '#d1606b', '#8696a7'], borderRadius: 5 }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 70 } }, plugins: { legend: { display: false }, tooltip },
-                scales: { x: { beginAtZero: true, ticks: { callback: compact } }, y: { grid: { display: false } } } } }));
+            data: { labels: bdms.map(b => person(b[0])), datasets: [{ data: bdms.map(b => b[1]), backgroundColor: ['#1f5e8a', '#39a8ae', '#f2b24c', '#8e6cc4', '#e57f4f', '#5fb07a', '#d1606b', '#8696a7'], borderRadius: 5 }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 80 } }, plugins: { legend: { display: false }, tooltip },
+                scales: { x: { beginAtZero: true, ticks: { callback: usdAxis } }, y: { grid: { display: false } } } } }));
     }
     // Every week or month from the report start to the end of the selection, including empty ones.
     function periods(from, to, mode = trend) {
@@ -140,8 +143,8 @@
             <div class="sm-report-head"><div><h2>Sales performance report</h2><span>${SOURCES[f.source]} · ${cur} · ${scope}</span></div><div class="sm-actions"><button type="button" id="sm-csv">Export CSV</button><button type="button" id="sm-print">Print / Save PDF</button></div></div>
             <div class="sm-cards">${card('Booked sales', money(booked), cur + ' · wins + variations' + (showPurchase ? ' + purchase projects' : ''))}${card('Won project value', money(wins), wonRows.length + ' wins')}${card('Variations', money(variations), of('variation').length + ' uploaded variations · ' + cur)}${card('Quoted value', money(quoted), quoteRows.length + ' quotes uploaded · separate from booked sales')}
             ${card('Average deal size', pricedWins.length ? money(total(pricedWins) / pricedWins.length) : '—', 'Won value ÷ priced wins')}${card('Quote conversion', pct(wins, quoted), 'Won value ÷ quoted value')}${card('Variation share', pct(variations, booked), 'Of booked sales')}${showPurchase ? card('Purchase project sales', money(purchaseSales), purchaseRows.length + ' projects · initial sales value · not BDM sales') : ''}</div>
-            <div class="sm-charts"><section class="sm-panel"><div class="sm-section-title"><h2>Monthly sales</h2><span>${cur} · booked sales by month</span></div><div class="sm-chart"><canvas id="sm-chart-month" role="img" aria-label="Monthly booked sales"></canvas></div></section>
-            <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance (booked sales)</h2><span>${cur} · purchase portal projects excluded</span></div><div class="sm-chart"><canvas id="sm-chart-bdm" role="img" aria-label="Booked sales by BDM"></canvas></div></section></div>
+            <div class="sm-charts"><section class="sm-panel"><div class="sm-section-title"><h2>Monthly revenue (won proposals)</h2><span>USD · proposals marked won since Dec 2025 · not affected by the filters above</span></div><div class="sm-chart"><canvas id="sm-chart-month" role="img" aria-label="Monthly booked sales"></canvas></div></section>
+            <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance (won revenue)</h2><span>USD · proposals marked won since Dec 2025 · not affected by the filters above</span></div><div class="sm-chart"><canvas id="sm-chart-bdm" role="img" aria-label="Booked sales by BDM"></canvas></div></section></div>
             <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance</h2><span>${cur} · ${ranking.length} active BDM${ranking.length === 1 ? '' : 's'} · ranked by booked sales · Upload Quote / Won values + proposal wins before April 2026</span></div>${table(['Rank', 'BDM', 'Quotes', 'Quoted value', 'Wins', 'Won value', 'Variations', 'Booked sales', 'Share', 'Avg deal', 'Conversion'], ranking.map((b, i) => `<tr><td>${i + 1}</td><td class="sm-name"><strong>${esc(b.name)}</strong></td><td class="sm-num">${b.quotes}</td><td class="sm-num">${money(b.quote)}</td><td class="sm-num">${b.count}</td><td class="sm-num">${money(b.won)}</td><td class="sm-num">${b.variation ? money(b.variation) : '—'}</td><td class="sm-total sm-num">${money(b.won + b.variation)}</td><td class="sm-num">${pct(b.won + b.variation, bdmBooked)}</td><td class="sm-num">${b.count ? money(b.won / b.count) : '—'}</td><td class="sm-num">${pct(b.won, b.quote)}</td></tr>`).concat(ranking.length ? [`<tr class="sm-sum"><td></td><td><strong>Total</strong></td><td class="sm-num">${ranking.reduce((n, b) => n + b.quotes, 0)}</td><td class="sm-num">${money(quoted)}</td><td class="sm-num">${wonRows.length}</td><td class="sm-num">${money(wins)}</td><td class="sm-num">${variations ? money(variations) : '—'}</td><td class="sm-total sm-num">${money(bdmBooked)}</td><td class="sm-num">${bdmBooked ? '100.0%' : '—'}</td><td class="sm-num">${pricedWins.length ? money(total(pricedWins) / pricedWins.length) : '—'}</td><td class="sm-num">${pct(wins, quoted)}</td></tr>`] : []))}${idle.length ? `<p class="sm-idle">No uploads in this period: ${idle.map(esc).join(', ')}</p>` : ''}</section>
             <section class="sm-panel"><div class="sm-section-title"><h2>Quarterly summary</h2><span>${cur} · dated records</span></div>${table(['Quarter', 'Won', 'Won value', 'Variations', 'Purchase projects', 'Booked sales', 'Quotes issued', 'Quoted value'], quarterly.map(([q, v]) => `<tr><td><strong>${esc(q)}</strong></td><td>${v.wonCount}</td><td>${money(v.won)}</td><td>${money(v.variation)}</td><td>${money(v.purchase)}</td><td class="sm-total">${money(v.won + v.variation + v.purchase)}</td><td>${v.quoteCount}</td><td>${money(v.quote)}</td></tr>`))}</section>
             <section class="sm-panel"><div class="sm-section-title"><h2>${trend === 'week' ? 'Weekly' : 'Monthly'} sales</h2><div class="sm-toggle" role="group" aria-label="Sales period"><button type="button" data-trend="week" aria-pressed="${trend === 'week'}">Weekly</button><button type="button" data-trend="month" aria-pressed="${trend === 'month'}">Monthly</button></div></div>
@@ -152,9 +155,7 @@
         document.getElementById('sm-prev').onclick = () => { page--; render(); };
         document.getElementById('sm-next').onclick = () => { page++; render(); };
         document.getElementById('sm-csv').onclick = exportCsv;
-        const monthTotals = new Map();
-        rows.forEach(r => { if (r.date && r.kind !== 'quote') monthTotals.set(r.date.slice(0, 7), (monthTotals.get(r.date.slice(0, 7)) || 0) + (r.value || 0)); });
-        drawCharts(periods(f.from, end, 'month').map(p => ({ label: p.label, value: monthTotals.get(p.key) || 0 })), ranking);
+        drawCharts();
         output.querySelectorAll('[data-trend]').forEach(b => b.onclick = () => { trend = b.dataset.trend; render(); });
         document.getElementById('sm-print').onclick = () => window.print();
     }

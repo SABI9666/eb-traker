@@ -10913,7 +10913,7 @@ function getAnalyticsHTML(role) {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-top: 2rem;">
             
             <div class="card">
-                <h3 style="margin-bottom: 1rem;">Monthly Revenue (Last 12 Months)</h3>
+                <h3 style="margin-bottom: 1rem;">Monthly Revenue (Since Nov 2025)</h3>
                 <div style="position: relative; height: 350px;">
                     <canvas id="monthlyRevenueChart"></canvas>
                 </div>
@@ -10959,11 +10959,10 @@ async function loadAnalyticsData(role) {
 
     const kpis = { totalRevenue, totalProposals, winRate, avgDealValue, totalWon, totalLost };
 
-    // Monthly Revenue
+    // Monthly Revenue: every month from Nov 2025 up to the current month.
     const monthlyRevenue = {};
     const now = new Date();
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    for (let d = new Date(2025, 10, 1); d <= now; d.setMonth(d.getMonth() + 1)) {
         const label = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
         monthlyRevenue[label] = 0;
     }
@@ -11217,8 +11216,24 @@ function renderBdmPerformanceChart(bdmData) {
                 x: { beginAtZero: true, ticks: { callback: (v) => formatAnalyticsAxisValue(v) } },
                 y: { grid: { display: false } }
             },
+            layout: { padding: { right: 70 } },
             plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => formatAnalyticsTooltip(ctx) } } }
-        }
+        },
+        // Print each BDM's won revenue at the end of its bar.
+        plugins: [{
+            id: 'bdmValueLabels',
+            afterDatasetsDraw(chart) {
+                const { ctx: c } = chart;
+                c.save();
+                c.font = '600 12px sans-serif';
+                c.fillStyle = '#1e293b';
+                c.textBaseline = 'middle';
+                chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                    c.fillText(formatCurrencyFull(chart.data.datasets[0].data[i]), bar.x + 6, bar.y);
+                });
+                c.restore();
+            }
+        }]
     });
 }
 

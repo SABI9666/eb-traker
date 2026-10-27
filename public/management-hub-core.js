@@ -50,7 +50,7 @@
     var GUARANTEED_REPORTS = {
         'Estimation Report Generation': { icon: '📑', group: 'Estimation & Workflow', groupIcon: '📐', fn: 'showEstimationReportGeneration', allowed: 'canSeeEstimationReports' },
         'Lead Reports': { icon: '🎯', group: 'Business Development', groupIcon: '💼', fn: 'showBdmLeads' },
-        'Sales Revenue Monitor': { icon: '💹', group: 'Business Development', groupIcon: '💼', fn: 'showSalesMonitor' },
+        'Sales Analysis Report': { icon: '💹', group: 'Business Development', groupIcon: '💼', fn: 'showSalesMonitor' },
         'Purchase Report': { icon: '🧾', group: 'Procurement', groupIcon: '🛒', fn: 'showPurchaseReport' },
         'Project-wise Report': { icon: '🏗️', group: 'Procurement', groupIcon: '🛒', fn: 'showPurchaseProjects' }
     };

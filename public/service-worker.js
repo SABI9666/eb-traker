@@ -7,7 +7,7 @@
 //   - The SW itself is not cached (browser handles SW updates).
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v87';
+const CACHE_NAME = 'ebtracker-v88';
 const STATIC_CACHE = 'ebtracker-static-v87';
 const DYNAMIC_CACHE = 'ebtracker-dynamic-v87';
 

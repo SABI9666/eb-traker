@@ -1521,7 +1521,7 @@
 
             // --- Menu Visibility ---
             setDisplay('newProposalNavItem', isBDM);
-            setDisplay('analyticsNavItem', (isBDM || isManagement) && !isHR && !isDC); // Analytics for BDM/COO/Director
+            setDisplay('analyticsNavItem', isBDM && !isHR && !isDC); // BDM's own analytics; COO/Director use the Sales analysis report
             setDisplay('workflowNavItem', ['estimator', 'coo'].includes(roleForCheck) && !isHR && !isDC);
             setDisplay('settingsNavItem', roleForCheck === 'director' || userEmail === 'sabin@edanbrook.com');
             

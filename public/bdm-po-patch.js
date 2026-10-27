@@ -261,11 +261,8 @@
         // window.generateWordQuote so the BDM gets the estimator's custom
         // template (if any) rendered with live p.pricing values.
         { id: '_estimatorQuoteTemplatePatchScript', src: 'estimator-quote-template-patch.js' },
-        { id: '_bdmAnalyticsPatchScript', src: 'bdm-analytics.js' },
-        { id: '_bdmEntriesPatchScript', src: 'bdm-entries.js' },
-        { id: '_bdmQuoteSyncPatchScript', src: 'bdm-quote-sync-patch.js' },
-        { id: '_bdmAnalyticsDropdownFixScript', src: 'bdm-analytics-dropdown-fix.js' },
-        { id: '_bdmAnalyticsRoleGuardScript', src: 'bdm-analytics-role-guard.js' },
+        // BDM Analytics and the manual "Upload Quote / Won" ledger are retired:
+        // the single Sales analysis report (sales-monitor-patch.js) replaces them.
         // Accounts-driven Variation upload + COO Variation Tracker section +
         // BDM "My Variations" view. Companion to api/account-variations.js.
         { id: '_accountVariationPatchScript', src: 'account-variation-patch.js' },
@@ -285,7 +282,7 @@
         s.id  = p.id;
         // Bump on every change to any *-patch.js so browsers fetch a fresh
         // copy instead of serving the previously cached ?v= URL.
-        var APP_PATCH_VERSION = 'v74';
+        var APP_PATCH_VERSION = 'v75';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

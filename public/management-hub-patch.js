@@ -9,17 +9,14 @@
     if (window._managementHubSalesWrapperLoaded) return;
     window._managementHubSalesWrapperLoaded = true;
 
-    var CORE_SRC = 'management-hub-core.js?v=project-reports-v2';
+    var CORE_SRC = 'management-hub-core.js?v=sales-report-v1';
     var PURCHASE_SRC = 'purchase-management-patch.js?v=purchase-projects-v3';
     var SALES_LABELS = {
         'All Proposals': { key: 'proposals', display: 'All Proposals', icon: '📋', fn: 'showProposals' },
-        'Analytics': { key: 'analytics', display: 'Analytics', icon: '📈', fn: 'showAnalyticsDashboard' },
-        'BDM Analytics': { key: 'bdmAnalytics', display: 'BDM Analytics', icon: '📊', fn: 'showBdmAnalytics' },
-        'Upload Quote / Won': { key: 'quotes', display: 'Upload Quotes', icon: '📝', fn: 'showBdmEntries' },
-        'Upload Quote Entry': { key: 'quotes', display: 'Upload Quotes', icon: '📝', fn: 'showBdmEntries' },
         'Lead Reports': { key: 'leads', display: 'Lead Reports', icon: '🎯', fn: 'showBdmLeads' },
         'Sample Projects': { key: 'samples', display: 'Sample Projects', icon: '🖼️', fn: 'showSampleProjects' },
-        'Sales Revenue Monitor': { key: 'salesMonitor', display: 'Sales Revenue Monitor', icon: '💹', fn: 'showSalesMonitor' }
+        'Sales Analysis Report': { key: 'salesMonitor', display: 'Sales Analysis Report', icon: '💹', fn: 'showSalesMonitor' },
+        'Sales Revenue Monitor': { key: 'salesMonitor', display: 'Sales Analysis Report', icon: '💹', fn: 'showSalesMonitor' }
     };
     var PEOPLE_LABELS = {
         'Leave Approval': { key: 'leaveApproval', display: 'Leave Approval', icon: '✅' },
@@ -27,7 +24,8 @@
         'Candidate Screening': { key: 'candidateScreening', display: 'Candidate Screening', icon: '🧑‍💼' }
     };
 
-    var SALES_ORDER = ['salesMonitor', 'proposals', 'quotes', 'analytics', 'bdmAnalytics', 'leads', 'samples'];
+    // One sales report: the old Analytics, BDM Analytics and Upload Quote tools are retired.
+    var SALES_ORDER = ['salesMonitor', 'proposals', 'leads', 'samples'];
     var PEOPLE_ORDER = ['leaveApproval', 'candidateScreening'];
     var salesState = { tiles: [] };
     var peopleState = { tiles: [] };

@@ -2827,13 +2827,16 @@ function renderProposals(proposals) {
 
         if (currentUserRole === 'bdm' && statusLower === 'won') {
             actionButtons += `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button> `;
+            if (p.createdByUid === currentUser.uid) actionButtons += `<button class="btn btn-outline btn-sm" style="border-color:#1d4ed8;color:#1d4ed8;font-weight:600;" onclick="editWonDate('${p.id}')">📅 Edit won date</button> `;
         }
+        // Won date at a glance on every won proposal.
+        const wonDateChip = p.status === 'won' ? `<span title="${p.wonDateEdited ? 'Won date edited by ' + (p.wonDateEditedBy || 'BDM') : 'Won date'}" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.15rem 0.55rem;margin-left:0.5rem;background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;border-radius:12px;font-size:0.72rem;font-weight:600;">📅 Won ${typeof formatWonDate === 'function' ? formatWonDate(p.wonDate) : formatDate(p.wonDate)}${p.wonDateEdited ? ' · edited' : ''}</span>` : '';
 
         return `
         <div class="action-item" style="${otherFullyAllocated ? 'border-left: 3px solid #10b981; background: #f0fdf4;' : otherPartiallyAllocated ? 'border-left: 3px solid #f59e0b; background: #fffbeb;' : ''}">
             <div class="action-content">
-                <strong>${p.projectName}</strong>${allocBadge}
-                <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}</div>
+                <strong>${p.projectName}</strong>${allocBadge}${wonDateChip}
+                <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}${p.status === 'won' && p.poNumber ? ` | P.O.: ${p.poNumber}` : ''}</div>
             </div>
             <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
             <div class="action-buttons">
@@ -5399,7 +5402,9 @@ function showCreateProposalModal() {
                     <button class="btn btn-danger btn-sm" onclick="markProposalLost('${p.id}')" style="margin-left: 10px;">❌ LOST</button>
                  `;
             } else if (currentUserRole === 'bdm' && statusLower === 'won') {
-                 actionsHtml = `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button>`;
+                 actionsHtml = `<span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.35rem 0.75rem;margin-right:10px;background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;border-radius:8px;font-weight:600;font-size:0.85rem;">📅 Won ${typeof formatWonDate === 'function' ? formatWonDate(p.wonDate) : formatDate(p.wonDate)}${p.wonDateEdited ? ' (edited)' : ''}</span>`;
+                 actionsHtml += `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;font-weight:600;" onclick="updateBdmPo('${p.id}')">📝 Update P.O.</button>`;
+                 if (p.createdByUid === currentUser.uid) actionsHtml += ` <button class="btn btn-outline btn-sm" style="margin-left:10px;border-color:#1d4ed8;color:#1d4ed8;font-weight:600;" onclick="editWonDate('${p.id}')">📅 Edit won date</button>`;
             }
              // --- ADD THIS BLOCK: Generate Word Quote Button for BDM ---
             if (currentUserRole === 'bdm' && p.pricing && p.pricing.quoteValue) {

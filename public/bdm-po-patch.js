@@ -102,6 +102,12 @@
             + '          <input type="number" id="bdmPoValue" value="' + (prefill.poValue || '') + '" placeholder="e.g., 50000" min="0" step="0.01" required style="width:100%;padding:0.55rem 0.75rem;border:1px solid #d1d5db;border-radius:6px;">'
             + '        </div>'
             + '      </div>'
+            + (mode === 'update' ? '' :
+                '      <div style="margin-bottom:0.85rem;">'
+            + '        <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Won date <span style="color:#dc2626;">*</span></label>'
+            + '        <input type="date" id="bdmWonDate" value="' + localToday() + '" max="' + localToday() + '" min="2020-01-01" required style="width:100%;max-width:240px;padding:0.55rem 0.75rem;border:1px solid #d1d5db;border-radius:6px;">'
+            + '        <div style="font-size:0.78rem;color:#6b7280;margin-top:4px;">The date the client confirmed the order. It drives the sales report and can be corrected later with “Edit won date”.</div>'
+            + '      </div>')
             + '      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">'
             + '        <div style="flex:1;min-width:200px;">'
             + '          <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Currency</label>'
@@ -117,12 +123,102 @@
             + '    </div>'
             + '    <div style="padding:1rem 1.25rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:0.5rem;flex-wrap:wrap;">'
             + '      <button type="button" onclick="closeBdmPoModal()" style="padding:0.55rem 1rem;border:1px solid #d1d5db;background:#fff;border-radius:6px;cursor:pointer;">Cancel</button>'
-            + '      <button type="button" onclick="' + submitFn + '" style="padding:0.55rem 1rem;border:1px solid #16a34a;background:#16a34a;color:#fff;border-radius:6px;cursor:pointer;">' + submitLabel + '</button>'
+            + '      <button type="button" id="bdmPoSubmit" onclick="' + submitFn + '" style="padding:0.55rem 1rem;border:1px solid #16a34a;background:#16a34a;color:#fff;border-radius:6px;cursor:pointer;">' + submitLabel + '</button>'
             + '    </div>'
             + '  </div>'
             + '</div>';
         document.body.insertAdjacentHTML('beforeend', html);
     }
+
+    function localToday() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    // One submit at a time: a double click must not send the same P.O. / win twice.
+    function lockSubmit(id, busyText) {
+        var btn = document.getElementById(id);
+        if (!btn || btn.disabled) return null;
+        var label = btn.textContent;
+        btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = busyText;
+        return function () { if (document.body.contains(btn)) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = label; } };
+    }
+    function findProposal(proposalId) {
+        var lists = [window.proposals, window.allProposals, (window.appData && window.appData.proposals)];
+        for (var i = 0; i < lists.length; i++) {
+            if (Array.isArray(lists[i])) {
+                var p = lists[i].find(function (x) { return x && (x.id === proposalId || x._id === proposalId); });
+                if (p) return p;
+            }
+        }
+        return null;
+    }
+    function isoDay(ts) {
+        if (!ts) return '';
+        var d = ts.toDate ? ts.toDate() : new Date(ts._seconds != null ? ts._seconds * 1000 : ts.seconds != null ? ts.seconds * 1000 : ts);
+        return isNaN(d.getTime()) ? '' : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    window.formatWonDate = function (ts) {
+        var day = isoDay(ts);
+        if (!day) return 'Not set';
+        var d = new Date(day + 'T12:00:00');
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    // ---------------------------------------------------------
+    // 3. Edit won date (BDM who won the proposal, COO or Director)
+    // ---------------------------------------------------------
+    window.editWonDate = async function (proposalId) {
+        var p = findProposal(proposalId);
+        if (!p) {
+            try {
+                var got = await apiCall('proposals?id=' + encodeURIComponent(proposalId));
+                p = (got && got.success && got.data) || {};
+            } catch (e) { p = {}; }
+        }
+        var current = isoDay(p.wonDate);
+        var history = Array.isArray(p.wonDateHistory) ? p.wonDateHistory.slice(-5).reverse() : [];
+        var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+        var existing = document.getElementById('bdmWonDateOverlay');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', ''
+            + '<div id="bdmWonDateOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;">'
+            + '  <div role="dialog" aria-modal="true" aria-labelledby="bdmWonDateTitle" style="background:#fff;max-width:440px;width:100%;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.3);font-family:inherit;">'
+            + '    <div style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;">'
+            + '      <div><h2 id="bdmWonDateTitle" style="margin:0;font-size:1.1rem;">Edit won date</h2>'
+            + '      <div style="font-size:0.8rem;color:#6b7280;">' + esc(p.projectName || 'Proposal') + (p.clientCompany ? ' · ' + esc(p.clientCompany) : '') + '</div></div>'
+            + '      <span style="cursor:pointer;font-size:1.5rem;line-height:1;color:#6b7280;" onclick="document.getElementById(\'bdmWonDateOverlay\').remove()">&times;</span>'
+            + '    </div>'
+            + '    <div style="padding:1.25rem;">'
+            + '      <div style="font-size:0.85rem;color:#374151;margin-bottom:0.75rem;">Current won date: <strong>' + esc(window.formatWonDate(p.wonDate)) + '</strong></div>'
+            + '      <label for="bdmEditWonDate" style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">New won date</label>'
+            + '      <input type="date" id="bdmEditWonDate" value="' + esc(current || localToday()) + '" max="' + localToday() + '" min="2020-01-01" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #d1d5db;border-radius:6px;">'
+            + '      <div style="font-size:0.78rem;color:#6b7280;margin-top:6px;">Use the date the client confirmed the order. The change is logged and the sales report moves the win to that date.</div>'
+            + (history.length ? '<div style="margin-top:0.9rem;font-size:0.78rem;color:#4b5563;"><strong>Previous changes</strong><ul style="margin:0.3rem 0 0 1rem;padding:0;">'
+                + history.map(function (h) { return '<li>' + esc(h.from) + ' → ' + esc(h.to) + ' by ' + esc(h.by) + '</li>'; }).join('') + '</ul></div>' : '')
+            + '    </div>'
+            + '    <div style="padding:1rem 1.25rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:0.5rem;">'
+            + '      <button type="button" onclick="document.getElementById(\'bdmWonDateOverlay\').remove()" style="padding:0.55rem 1rem;border:1px solid #d1d5db;background:#fff;border-radius:6px;cursor:pointer;">Cancel</button>'
+            + '      <button type="button" id="bdmWonDateSave" onclick="saveWonDate(\'' + esc(proposalId) + '\')" style="padding:0.55rem 1rem;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:6px;cursor:pointer;">Save won date</button>'
+            + '    </div>'
+            + '  </div>'
+            + '</div>');
+    };
+    window.saveWonDate = async function (proposalId) {
+        var value = (document.getElementById('bdmEditWonDate') || {}).value || '';
+        if (!value) { alert('Please choose a date.'); return; }
+        if (value > localToday()) { alert('Won date cannot be in the future.'); return; }
+        var unlock = lockSubmit('bdmWonDateSave', 'Saving…');
+        if (!unlock) return;
+        try {
+            var resp = await apiCall('proposals?id=' + proposalId, { method: 'PUT', body: JSON.stringify({ action: 'update_won_date', data: { wonDate: value } }) });
+            if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Could not save the won date');
+            var overlay = document.getElementById('bdmWonDateOverlay');
+            if (overlay) overlay.remove();
+            alert('Won date saved: ' + window.formatWonDate(value));
+            if (typeof closeModal === 'function') closeModal();
+            if (typeof showProposals === 'function') showProposals();
+        } catch (error) { alert('Error: ' + error.message); unlock(); }
+    };
 
     window.closeBdmPoModal = function () {
         var el = document.getElementById('bdmPoModalOverlay');
@@ -159,11 +255,15 @@
     }
 
     window.confirmMarkProposalWon = async function (proposalId) {
+        var wonDate = (document.getElementById('bdmWonDate') || {}).value || localToday();
+        if (wonDate > localToday()) { alert('Won date cannot be in the future.'); return; }
+        var unlock = lockSubmit('bdmPoSubmit', 'Submitting…');
+        if (!unlock) return;
         try {
             if (typeof showLoading === 'function') showLoading();
             var po = await collectPoPayloadFromModal(proposalId);
-            if (!po) { if (typeof hideLoading === 'function') hideLoading(); return; }
-            var payload = { action: 'mark_won', data: Object.assign({ wonDate: new Date().toISOString() }, po) };
+            if (!po) { unlock(); if (typeof hideLoading === 'function') hideLoading(); return; }
+            var payload = { action: 'mark_won', data: Object.assign({ wonDate: wonDate }, po) };
             var resp = await apiCall('proposals?id=' + proposalId, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
@@ -174,15 +274,17 @@
                 if (typeof closeModal === 'function') closeModal();
                 if (typeof showProposals === 'function') showProposals();
             } else { throw new Error((resp && resp.error) || 'Failed to mark as WON'); }
-        } catch (error) { alert('Error: ' + error.message); }
+        } catch (error) { alert('Error: ' + error.message); unlock(); }
         finally { if (typeof hideLoading === 'function') hideLoading(); }
     };
 
     window.confirmUpdateBdmPo = async function (proposalId) {
+        var unlock = lockSubmit('bdmPoSubmit', 'Saving…');
+        if (!unlock) return;
         try {
             if (typeof showLoading === 'function') showLoading();
             var po = await collectPoPayloadFromModal(proposalId);
-            if (!po) { if (typeof hideLoading === 'function') hideLoading(); return; }
+            if (!po) { unlock(); if (typeof hideLoading === 'function') hideLoading(); return; }
             var payload = { action: 'mark_won', data: Object.assign({ poUpdated: true, poUpdatedAt: new Date().toISOString() }, po) };
             var resp = await apiCall('proposals?id=' + proposalId, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
@@ -192,31 +294,22 @@
                 alert('P.O. details updated.\n\nCOO, HR & Accounts have been notified.');
                 if (typeof showProposals === 'function') showProposals();
             } else { throw new Error((resp && resp.error) || 'Failed to update P.O.'); }
-        } catch (error) { alert('Error: ' + error.message); }
+        } catch (error) { alert('Error: ' + error.message); unlock(); }
         finally { if (typeof hideLoading === 'function') hideLoading(); }
     };
 
-    window.updateBdmPo = function (proposalId) {
-        var prefill = {};
-        try {
-            var lists = [window.proposals, window.allProposals, (window.appData && window.appData.proposals)];
-            for (var i = 0; i < lists.length; i++) {
-                var arr = lists[i];
-                if (Array.isArray(arr)) {
-                    var p = arr.find(function (x) { return x && (x.id === proposalId || x._id === proposalId); });
-                    if (p) {
-                        prefill = {
-                            poNumber: p.poNumber || '',
-                            poValue: p.poValue || (p.pricing && p.pricing.quoteValue) || '',
-                            poCurrency: p.poCurrency || 'USD',
-                            trackingNumber: p.trackingNumber || '',
-                            attachmentName: p.poAttachmentName || ''
-                        };
-                        break;
-                    }
-                }
-            }
-        } catch (e) { /* ignore */ }
+    window.updateBdmPo = async function (proposalId) {
+        var p = findProposal(proposalId);
+        if (!p) {
+            try { var got = await apiCall('proposals?id=' + encodeURIComponent(proposalId)); p = got && got.success ? got.data : null; } catch (e) { p = null; }
+        }
+        var prefill = p ? {
+            poNumber: p.poNumber || '',
+            poValue: p.poValue || (p.pricing && p.pricing.quoteValue) || '',
+            poCurrency: p.poCurrency || 'USD',
+            trackingNumber: (p.poDetails && p.poDetails.trackingNumber) || p.trackingNumber || '',
+            attachmentName: (p.poDetails && p.poDetails.attachmentName) || p.poAttachmentName || ''
+        } : {};
         openBdmPoModal(proposalId, 'update', prefill);
     };
 
@@ -229,7 +322,7 @@
             var wrapped = function (p) {
                 var html = orig.apply(this, arguments) || '';
                 try {
-                    if (window.currentUserRole === 'bdm' && p && p.id) {
+                    if (window.currentUserRole === 'bdm' && p && p.id && p.status === 'won') {
                         html += ' <button class="btn btn-warning btn-sm" onclick="updateBdmPo(\'' + p.id + '\')" style="margin-left:10px;background:#f59e0b;color:#fff;border:none;padding:0.4rem 0.8rem;border-radius:6px;cursor:pointer;">&#128221; Update P.O.</button>';
                     }
                 } catch (e) { /* ignore */ }
@@ -282,7 +375,7 @@
         s.id  = p.id;
         // Bump on every change to any *-patch.js so browsers fetch a fresh
         // copy instead of serving the previously cached ?v= URL.
-        var APP_PATCH_VERSION = 'v75';
+        var APP_PATCH_VERSION = 'v76';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

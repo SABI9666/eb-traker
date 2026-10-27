@@ -192,7 +192,7 @@
             + '      <div style="font-size:0.85rem;color:#374151;margin-bottom:0.75rem;">Current won date: <strong>' + esc(window.formatWonDate(p.wonDate)) + '</strong></div>'
             + '      <label for="bdmEditWonDate" style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">New won date</label>'
             + '      <input type="date" id="bdmEditWonDate" value="' + esc(current || localToday()) + '" max="' + localToday() + '" min="2020-01-01" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #d1d5db;border-radius:6px;">'
-            + '      <div style="font-size:0.78rem;color:#6b7280;margin-top:6px;">Use the date the client confirmed the order. The change is logged and the sales report moves the win to that date.</div>'
+            + '      <div style="font-size:0.78rem;color:#6b7280;margin-top:6px;">Use the date the client confirmed the order. The change is logged, the sales report moves the win to that date, and no email is sent.</div>'
             + (history.length ? '<div style="margin-top:0.9rem;font-size:0.78rem;color:#4b5563;"><strong>Previous changes</strong><ul style="margin:0.3rem 0 0 1rem;padding:0;">'
                 + history.map(function (h) { return '<li>' + esc(h.from) + ' → ' + esc(h.to) + ' by ' + esc(h.by) + '</li>'; }).join('') + '</ul></div>' : '')
             + '    </div>'
@@ -214,9 +214,12 @@
             if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Could not save the won date');
             var overlay = document.getElementById('bdmWonDateOverlay');
             if (overlay) overlay.remove();
-            alert('Won date saved: ' + window.formatWonDate(value));
+            // Editing the date never sends the "Project won" email again.
+            var reopen = !!document.getElementById('wonRecordPanel') && typeof viewProposal === 'function';
             if (typeof closeModal === 'function') closeModal();
             if (typeof showProposals === 'function') showProposals();
+            if (reopen) viewProposal(proposalId);
+            alert('Won date saved: ' + window.formatWonDate(value) + '\nNo email is sent for a date change.');
         } catch (error) { alert('Error: ' + error.message); unlock(); }
     };
 
@@ -277,7 +280,8 @@
         panel.innerHTML = '<div style="border:1px solid #dbeafe;border-radius:12px;overflow:hidden;">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;padding:0.85rem 1rem;background:#eff6ff;border-bottom:1px solid #dbeafe;"><strong style="color:#1e3a8a;">Won record</strong><span style="display:flex;gap:0.5rem;align-items:center;">' + undoLegacy + clickBadge + '</span></div>'
             + '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:0.9rem 1rem;">'
-            + stat('Won date', escHtml(window.formatWonDate(p.wonDate)) + (p.wonDateEdited ? ' <span style="font-size:0.72rem;color:#3730a3;font-weight:600;">(edited' + (p.wonDateEditedBy ? ' by ' + escHtml(p.wonDateEditedBy) : '') + ')</span>' : ''))
+            + stat('Won date', escHtml(window.formatWonDate(p.wonDate)) + (p.wonDateEdited ? ' <span style="font-size:0.72rem;color:#3730a3;font-weight:600;">(edited' + (p.wonDateEditedBy ? ' by ' + escHtml(p.wonDateEditedBy) : '') + ')</span>' : '')
+                + (canEdit ? ' <button type="button" data-won-date-edit title="Change the won date (no email is sent)" style="margin-left:6px;padding:0.15rem 0.5rem;border:1px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;vertical-align:middle;">✏️ Edit</button>' : ''))
             + stat('First clicked WON', clicks.length ? when(clicks[0].timestamp) : (p.poAddedAt ? escHtml(window.formatWonDate(p.poAddedAt)) : 'Not recorded'))
             + stat('Won value (quote)', money(p))
             + stat('P.O.', escHtml(p.poNumber || '—') + (p.poValue ? ' · ' + escHtml((p.poCurrency || '') + ' ' + Number(p.poValue).toLocaleString('en-US')) : ''))
@@ -286,6 +290,8 @@
             + (clicks.length > 1 ? '<div style="margin:0 1rem 0.8rem;padding:0.6rem 0.8rem;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;font-size:0.8rem;color:#78350f;">Repeat WON clicks on this proposal are counted <strong>once</strong> in the sales report. Use <strong>Delete</strong> beside a repeat entry to clean the record; the won date then returns to the first click unless it was set by hand. Deleting the only remaining entry undoes the WON. (Before 27 Oct 2026 an “Update P.O.” save was also recorded as a WON click.)</div>' : '')
             + '<div id="wonDuplicateList" style="border-top:1px solid #e5e7eb;padding:0.8rem 1rem;font-size:0.85rem;color:#6b7280;">Checking for other proposals of this project…</div>'
             + '</div>';
+        var dateButton = panel.querySelector('[data-won-date-edit]');
+        if (dateButton) dateButton.onclick = function () { window.editWonDate(p.id); };
         panel.querySelectorAll('[data-won-remove]').forEach(function (btn) {
             btn.onclick = async function () {
                 var ts = btn.getAttribute('data-won-remove');
@@ -396,7 +402,7 @@
             if (resp && resp.success) {
                 window.closeBdmPoModal();
                 alert('Proposal marked as WON!\n\nP.O. details have been sent to COO, HR & Accounts.');
-                try { if (typeof triggerEmailNotification === 'function') triggerEmailNotification('project.won', { proposalId: proposalId }); } catch (e) {}
+                // The server sends the "Project won" email once, when the proposal is first marked won.
                 if (typeof closeModal === 'function') closeModal();
                 if (typeof showProposals === 'function') showProposals();
             } else { throw new Error((resp && resp.error) || 'Failed to mark as WON'); }

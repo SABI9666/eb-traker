@@ -81,7 +81,8 @@
             + '    <div style="padding:1.25rem;">'
             + '      <div style="background:#fef9e7;padding:0.75rem 1rem;border-radius:8px;border-left:4px solid #f0c040;margin-bottom:1rem;font-size:0.85rem;color:#7c6a0a;">'
             + '        ' + (mode === 'update'
-                ? 'Update the client P.O. details below. <strong>COO, HR &amp; Accounts</strong> will be notified of the changes.'
+                ? 'Correct the client P.O. number, value or currency. The change is logged in the Won record; <strong>no email is sent</strong> and the won date stays the same.'
+                    + (prefill.quoteLabel ? '<br>The sales report values this win at the priced quote (<strong>' + prefill.quoteLabel + '</strong>); the P.O. value is kept beside it for comparison.' : '')
                 : 'Enter the client P.O. details below. They will be sent to <strong>COO, HR &amp; Accounts</strong>.')
             + ' <strong>P.O. Number</strong> and <strong>P.O. Value</strong> are required.'
             + '      </div>'
@@ -236,7 +237,6 @@
         return window.currentUser ? window.currentUser.uid : '';
     }
     var escHtml = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-    var matchKey = function (v) { return String(v || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim(); };
     function when(iso) {
         var d = new Date(iso);
         return isNaN(d.getTime()) ? escHtml(iso || '—') : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -284,7 +284,8 @@
                 + (canEdit ? ' <button type="button" data-won-date-edit title="Change the won date (no email is sent)" style="margin-left:6px;padding:0.15rem 0.5rem;border:1px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;vertical-align:middle;">✏️ Edit</button>' : ''))
             + stat('First clicked WON', clicks.length ? when(clicks[0].timestamp) : (p.poAddedAt ? escHtml(window.formatWonDate(p.poAddedAt)) : 'Not recorded'))
             + stat('Won value (quote)', money(p))
-            + stat('P.O.', escHtml(p.poNumber || '—') + (p.poValue ? ' · ' + escHtml((p.poCurrency || '') + ' ' + Number(p.poValue).toLocaleString('en-US')) : ''))
+            + stat('P.O. (number · value)', escHtml(p.poNumber || '—') + (p.poValue ? ' · ' + escHtml((p.poCurrency || '') + ' ' + Number(p.poValue).toLocaleString('en-US', { maximumFractionDigits: 2 })) : '')
+                + (role() === 'bdm' && p.createdByUid === uid() ? ' <button type="button" data-po-edit title="Edit P.O. number, value or currency (no email is sent)" style="margin-left:6px;padding:0.15rem 0.5rem;border:1px solid #fcd34d;background:#fff;color:#b45309;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;vertical-align:middle;">✏️ Edit</button>' : ''))
             + '</div>'
             + (events.length ? '<div style="padding:0 1rem 0.6rem;"><div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.2rem;">History</div><ul style="list-style:none;margin:0;padding:0;">' + events.map(function (e) { return e.html; }).join('') + '</ul></div>' : '')
             + (clicks.length > 1 ? '<div style="margin:0 1rem 0.8rem;padding:0.6rem 0.8rem;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;font-size:0.8rem;color:#78350f;">Repeat WON clicks on this proposal are counted <strong>once</strong> in the sales report. Use <strong>Delete</strong> beside a repeat entry to clean the record; the won date then returns to the first click unless it was set by hand. Deleting the only remaining entry undoes the WON. (Before 27 Oct 2026 an “Update P.O.” save was also recorded as a WON click.)</div>' : '')
@@ -292,6 +293,8 @@
             + '</div>';
         var dateButton = panel.querySelector('[data-won-date-edit]');
         if (dateButton) dateButton.onclick = function () { window.editWonDate(p.id); };
+        var poButton = panel.querySelector('[data-po-edit]');
+        if (poButton) poButton.onclick = function () { window.updateBdmPo(p.id); };
         panel.querySelectorAll('[data-won-remove]').forEach(function (btn) {
             btn.onclick = async function () {
                 var ts = btn.getAttribute('data-won-remove');
@@ -315,25 +318,32 @@
                 } catch (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = '🗑 Delete'; }
             };
         });
-        var list = [];
-        try { var resp = await apiCall('proposals'); list = (resp && resp.success && Array.isArray(resp.data)) ? resp.data : []; } catch (e) { list = null; }
+        // The server checks every BDM's proposals with the same rule as the sales report (same project and client).
+        var dups = null;
+        try {
+            var resp = await apiCall('proposals?id=' + encodeURIComponent(p.id) + '&duplicates=1');
+            if (resp && resp.success && resp.data && Array.isArray(resp.data.duplicates)) dups = resp.data.duplicates;
+        } catch (e) { dups = null; }
         if (request !== wonRecordRequest) return;
         var box = document.getElementById('wonDuplicateList');
         if (!box) return;
-        if (list === null) { box.textContent = 'Could not check for duplicate proposals.'; return; }
-        var name = matchKey(p.projectName), client = matchKey(p.clientCompany);
-        var dups = list.filter(function (x) { return x && x.id !== p.id && matchKey(x.projectName) === name && matchKey(x.clientCompany) === client; });
+        if (dups === null) { box.textContent = 'Could not check for duplicate proposals.'; return; }
         if (!dups.length) { box.innerHTML = '<span style="color:#166534;font-weight:600;">✓ No other proposal for this project and client.</span>'; return; }
         var me = uid(), r = role();
-        box.innerHTML = '<div style="font-weight:700;color:#9a3412;margin-bottom:0.5rem;">⚠ ' + dups.length + ' other proposal' + (dups.length === 1 ? '' : 's') + ' for the same project and client — likely duplicate' + (dups.length === 1 ? '' : 's') + '</div>'
+        // Only another WON proposal is a duplicate win in the sales report; others are listed for clean-up.
+        var wonDups = dups.filter(function (d) { return d.status === 'won'; }).length;
+        box.innerHTML = (wonDups
+            ? '<div style="font-weight:700;color:#9a3412;margin-bottom:0.5rem;">⚠ ' + wonDups + ' other WON proposal' + (wonDups === 1 ? '' : 's') + ' for the same project and client — shown as a possible duplicate in the sales report</div>'
+            : '<div style="font-weight:700;color:#92400e;margin-bottom:0.5rem;">' + dups.length + ' other proposal' + (dups.length === 1 ? '' : 's') + ' for the same project and client (not won — not counted in sales)</div>')
             + dups.map(function (d) {
                 var canDelete = (r === 'director') || (d.createdByUid === me && !(d.projectCreated && d.projectId));
-                var why = !canDelete ? (d.projectCreated ? 'Project already created — ask COO / Director' : 'Only its BDM or the Director can delete it') : '';
+                var why = !canDelete ? (d.projectCreated ? 'Project already created — ask COO / Director' : 'Owned by ' + escHtml(d.createdByName || 'another BDM') + ' — they or the Director can delete it') : '';
+                var canView = r !== 'bdm' || d.createdByUid === me;
                 return '<div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;padding:0.6rem 0.75rem;margin-bottom:0.45rem;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;">'
                     + '<div><div style="font-weight:600;color:#1f2937;">' + escHtml(d.projectName) + ' <span style="font-weight:500;color:#6b7280;">· ' + escHtml(String(d.status || '').replace(/_/g, ' ').toUpperCase()) + '</span></div>'
                     + '<div style="font-size:0.78rem;color:#6b7280;">Created ' + escHtml(window.formatWonDate(d.createdAt)) + ' by ' + escHtml(d.createdByName || '—') + (d.status === 'won' ? ' · Won ' + escHtml(window.formatWonDate(d.wonDate)) + ' · ' + money(d) + (d.poNumber ? ' · P.O. ' + escHtml(d.poNumber) : '') : '') + '</div></div>'
                     + '<div style="display:flex;gap:0.4rem;">'
-                    + '<button type="button" class="btn btn-outline btn-sm" onclick="if (typeof closeModal === \'function\') closeModal(); viewProposal(\'' + escHtml(d.id) + '\')">View</button>'
+                    + (canView ? '<button type="button" class="btn btn-outline btn-sm" onclick="if (typeof closeModal === \'function\') closeModal(); viewProposal(\'' + escHtml(d.id) + '\')">View</button>' : '')
                     + (canDelete ? '<button type="button" class="btn btn-danger btn-sm" data-dup-delete="' + escHtml(d.id) + '">🗑 Delete duplicate</button>' : '<span style="font-size:0.75rem;color:#9a3412;align-self:center;">' + why + '</span>')
                     + '</div></div>';
             }).join('');
@@ -423,8 +433,11 @@
             });
             if (resp && resp.success) {
                 window.closeBdmPoModal();
-                alert('P.O. details updated.\n\nCOO, HR & Accounts have been notified.');
+                alert('P.O. details updated. No email was sent.');
+                var reopen = !!document.getElementById('wonRecordPanel') && typeof viewProposal === 'function';
+                if (reopen && typeof closeModal === 'function') closeModal();
                 if (typeof showProposals === 'function') showProposals();
+                if (reopen) viewProposal(proposalId);
             } else { throw new Error((resp && resp.error) || 'Failed to update P.O.'); }
         } catch (error) { alert('Error: ' + error.message); unlock(); }
         finally { if (typeof hideLoading === 'function') hideLoading(); }
@@ -440,7 +453,8 @@
             poValue: p.poValue || (p.pricing && p.pricing.quoteValue) || '',
             poCurrency: p.poCurrency || 'USD',
             trackingNumber: (p.poDetails && p.poDetails.trackingNumber) || p.trackingNumber || '',
-            attachmentName: (p.poDetails && p.poDetails.attachmentName) || p.poAttachmentName || ''
+            attachmentName: (p.poDetails && p.poDetails.attachmentName) || p.poAttachmentName || '',
+            quoteLabel: p.pricing && p.pricing.quoteValue != null ? escHtml((p.pricing.currency || '') + ' ' + Number(p.pricing.quoteValue).toLocaleString('en-US', { maximumFractionDigits: 2 })) : ''
         } : {};
         openBdmPoModal(proposalId, 'update', prefill);
     };

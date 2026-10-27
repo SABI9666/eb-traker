@@ -220,6 +220,97 @@
         } catch (error) { alert('Error: ' + error.message); unlock(); }
     };
 
+    // ---------------------------------------------------------
+    // 4. Won record: won date, every "Won" click, P.O. updates and
+    //    other proposals for the same project (delete duplicates here)
+    // ---------------------------------------------------------
+    function role() {
+        try { if (typeof currentUserRole !== 'undefined' && currentUserRole) return String(currentUserRole).toLowerCase(); } catch (e) {}
+        return String(window.currentUserRole || '').toLowerCase();
+    }
+    function uid() {
+        try { if (typeof currentUser !== 'undefined' && currentUser) return currentUser.uid; } catch (e) {}
+        return window.currentUser ? window.currentUser.uid : '';
+    }
+    var escHtml = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var matchKey = function (v) { return String(v || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim(); };
+    function when(iso) {
+        var d = new Date(iso);
+        return isNaN(d.getTime()) ? escHtml(iso || '—') : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    function money(p) {
+        var v = p.pricing && p.pricing.quoteValue != null ? p.pricing.quoteValue : p.poValue;
+        var c = p.pricing && p.pricing.quoteValue != null ? p.pricing.currency : p.poCurrency;
+        return v == null || v === '' ? '—' : escHtml((c || '') + ' ' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }));
+    }
+    var wonRecordRequest = 0;
+    window.renderWonRecord = async function (p) {
+        var panel = document.getElementById('wonRecordPanel');
+        if (!panel || !p || p.status !== 'won') return;
+        var request = ++wonRecordRequest;
+        var log = Array.isArray(p.changeLog) ? p.changeLog : [];
+        var clicks = log.filter(function (e) { return e && e.action === 'mark_won'; });
+        var poUpdates = log.filter(function (e) { return e && e.action === 'update_po'; });
+        var dateEdits = Array.isArray(p.wonDateHistory) ? p.wonDateHistory : [];
+        var item = function (icon, title, sub) {
+            return '<li style="display:flex;gap:0.6rem;align-items:flex-start;padding:0.45rem 0;border-bottom:1px dashed #e5e7eb;"><span aria-hidden="true">' + icon + '</span><div><div style="font-weight:600;color:#1f2937;">' + title + '</div><div style="font-size:0.8rem;color:#6b7280;">' + sub + '</div></div></li>';
+        };
+        var events = clicks.map(function (e, i) { return { at: e.timestamp, html: item('✅', i === 0 ? 'Marked WON' : 'Marked WON again (repeat click)', when(e.timestamp) + ' · ' + escHtml(e.performedByName || '')) }; })
+            .concat(poUpdates.map(function (e) { return { at: e.timestamp, html: item('📝', 'P.O. updated', when(e.timestamp) + ' · ' + escHtml(e.performedByName || '') + (e.details ? ' · ' + escHtml(e.details.replace(/^P\.O\. details updated /, '')) : '')) }; }))
+            .concat(dateEdits.map(function (h) { return { at: h.at, html: item('📅', 'Won date changed ' + escHtml(h.from) + ' → ' + escHtml(h.to), when(h.at) + ' · ' + escHtml(h.by || '')) }; }))
+            .sort(function (a, b) { return String(a.at).localeCompare(String(b.at)); });
+        var badge = function (text, bg, fg, border) { return '<span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:999px;background:' + bg + ';color:' + fg + ';border:1px solid ' + border + ';font-size:0.75rem;font-weight:700;">' + text + '</span>'; };
+        var clickBadge = clicks.length > 1 ? badge('Won clicked ' + clicks.length + ' times', '#fef3c7', '#92400e', '#fcd34d') : badge('Won clicked once', '#dcfce7', '#166534', '#86efac');
+        var stat = function (label, value) { return '<div style="min-width:150px;"><div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;">' + label + '</div><div style="font-weight:700;color:#111827;margin-top:2px;">' + value + '</div></div>'; };
+        panel.innerHTML = '<div style="border:1px solid #dbeafe;border-radius:12px;overflow:hidden;">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;padding:0.85rem 1rem;background:#eff6ff;border-bottom:1px solid #dbeafe;"><strong style="color:#1e3a8a;">Won record</strong>' + clickBadge + '</div>'
+            + '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:0.9rem 1rem;">'
+            + stat('Won date', escHtml(window.formatWonDate(p.wonDate)) + (p.wonDateEdited ? ' <span style="font-size:0.72rem;color:#3730a3;font-weight:600;">(edited' + (p.wonDateEditedBy ? ' by ' + escHtml(p.wonDateEditedBy) : '') + ')</span>' : ''))
+            + stat('First clicked WON', clicks.length ? when(clicks[0].timestamp) : (p.poAddedAt ? escHtml(window.formatWonDate(p.poAddedAt)) : 'Not recorded'))
+            + stat('Won value (quote)', money(p))
+            + stat('P.O.', escHtml(p.poNumber || '—') + (p.poValue ? ' · ' + escHtml((p.poCurrency || '') + ' ' + Number(p.poValue).toLocaleString('en-US')) : ''))
+            + '</div>'
+            + (events.length ? '<div style="padding:0 1rem 0.6rem;"><div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.2rem;">History</div><ul style="list-style:none;margin:0;padding:0;">' + events.map(function (e) { return e.html; }).join('') + '</ul></div>' : '')
+            + (clicks.length > 1 ? '<div style="margin:0 1rem 0.8rem;padding:0.6rem 0.8rem;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;font-size:0.8rem;color:#78350f;">Repeat WON clicks on this proposal are counted <strong>once</strong> in the sales report, so nothing needs deleting for them. (Before 27 Oct 2026 an “Update P.O.” save was also recorded as a WON click.) A second <em>proposal</em> for the same project is listed below and can be deleted.</div>' : '')
+            + '<div id="wonDuplicateList" style="border-top:1px solid #e5e7eb;padding:0.8rem 1rem;font-size:0.85rem;color:#6b7280;">Checking for other proposals of this project…</div>'
+            + '</div>';
+        var list = [];
+        try { var resp = await apiCall('proposals'); list = (resp && resp.success && Array.isArray(resp.data)) ? resp.data : []; } catch (e) { list = null; }
+        if (request !== wonRecordRequest) return;
+        var box = document.getElementById('wonDuplicateList');
+        if (!box) return;
+        if (list === null) { box.textContent = 'Could not check for duplicate proposals.'; return; }
+        var name = matchKey(p.projectName), client = matchKey(p.clientCompany);
+        var dups = list.filter(function (x) { return x && x.id !== p.id && matchKey(x.projectName) === name && matchKey(x.clientCompany) === client; });
+        if (!dups.length) { box.innerHTML = '<span style="color:#166534;font-weight:600;">✓ No other proposal for this project and client.</span>'; return; }
+        var me = uid(), r = role();
+        box.innerHTML = '<div style="font-weight:700;color:#9a3412;margin-bottom:0.5rem;">⚠ ' + dups.length + ' other proposal' + (dups.length === 1 ? '' : 's') + ' for the same project and client — likely duplicate' + (dups.length === 1 ? '' : 's') + '</div>'
+            + dups.map(function (d) {
+                var canDelete = (r === 'director') || (d.createdByUid === me && !(d.projectCreated && d.projectId));
+                var why = !canDelete ? (d.projectCreated ? 'Project already created — ask COO / Director' : 'Only its BDM or the Director can delete it') : '';
+                return '<div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;padding:0.6rem 0.75rem;margin-bottom:0.45rem;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;">'
+                    + '<div><div style="font-weight:600;color:#1f2937;">' + escHtml(d.projectName) + ' <span style="font-weight:500;color:#6b7280;">· ' + escHtml(String(d.status || '').replace(/_/g, ' ').toUpperCase()) + '</span></div>'
+                    + '<div style="font-size:0.78rem;color:#6b7280;">Created ' + escHtml(window.formatWonDate(d.createdAt)) + ' by ' + escHtml(d.createdByName || '—') + (d.status === 'won' ? ' · Won ' + escHtml(window.formatWonDate(d.wonDate)) + ' · ' + money(d) + (d.poNumber ? ' · P.O. ' + escHtml(d.poNumber) : '') : '') + '</div></div>'
+                    + '<div style="display:flex;gap:0.4rem;">'
+                    + '<button type="button" class="btn btn-outline btn-sm" onclick="if (typeof closeModal === \'function\') closeModal(); viewProposal(\'' + escHtml(d.id) + '\')">View</button>'
+                    + (canDelete ? '<button type="button" class="btn btn-danger btn-sm" data-dup-delete="' + escHtml(d.id) + '">🗑 Delete duplicate</button>' : '<span style="font-size:0.75rem;color:#9a3412;align-self:center;">' + why + '</span>')
+                    + '</div></div>';
+            }).join('');
+        box.querySelectorAll('[data-dup-delete]').forEach(function (btn) {
+            btn.onclick = async function () {
+                var d = dups.find(function (x) { return x.id === btn.getAttribute('data-dup-delete'); });
+                if (!d || !confirm('Delete the duplicate proposal "' + d.projectName + '" (' + String(d.status || '').replace(/_/g, ' ') + ', created ' + window.formatWonDate(d.createdAt) + ')?\n\nIts files are removed too. This cannot be undone.')) return;
+                btn.disabled = true; btn.textContent = 'Deleting…';
+                try {
+                    var del = await apiCall('proposals?id=' + encodeURIComponent(d.id), { method: 'DELETE' });
+                    if (!del || !del.success) throw new Error((del && del.error) || 'Delete failed');
+                    window.renderWonRecord(p);
+                    if (typeof showProposals === 'function') showProposals();
+                } catch (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = '🗑 Delete duplicate'; }
+            };
+        });
+    };
+
     window.closeBdmPoModal = function () {
         var el = document.getElementById('bdmPoModalOverlay');
         if (el) el.remove();

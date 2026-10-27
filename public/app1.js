@@ -5540,6 +5540,7 @@ function showCreateProposalModal() {
                                     ${p.status.replace(/_/g, ' ').toUpperCase()}
                                 </span>
                             </div>
+                            ${p.status === 'won' ? `<div id="wonRecordPanel" style="margin-bottom: 2rem;"></div>` : ''}
 
                             <div style="display: grid; gap: 2rem;"> 
                                 <div class="form-section">
@@ -5645,6 +5646,8 @@ function showCreateProposalModal() {
             `;
 
             document.body.insertAdjacentHTML('beforeend', modalHtml);
+            // Won date, every "Won" click and any duplicate proposals for the same project (bdm-po-patch.js).
+            if (p.status === 'won' && typeof window.renderWonRecord === 'function') window.renderWonRecord(p);
         }
 
 

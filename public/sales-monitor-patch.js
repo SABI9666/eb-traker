@@ -17,10 +17,10 @@
     const TO_INR = { INR: 1, USD: 90.0, AUD: 55.0, NZD: 51.0, EUR: 90.0, GBP: 105.0, SGD: 62.0, AED: 22.7, CAD: 61.0, JPY: 0.55 };
     const ALL = 'ALL_INR';
     const inr = r => r.value == null ? null : r.value * (TO_INR[r.currency] ?? 1);
-    // Reporting starts in December 2025; earlier and undated records are left out.
+    // The report opens on December 2025; earlier dates can be chosen. Undated records are left out.
     const START = '2025-12-01';
     const KINDS = {
-        won: { label: 'Won projects', short: 'Won', color: '#1f5e8a', source: 'P.O. value entered when the BDM marked the proposal won' },
+        won: { label: 'Won projects', short: 'Won', color: '#1f5e8a', source: 'Priced quote value of proposals the BDM marked won (P.O. value shown for comparison)' },
         variation: { label: 'Variations (Accounts)', short: 'Variations', color: '#39a8ae', source: 'Uploaded by Accounts for the BDM' },
         purchase: { label: 'Purchase projects', short: 'Purchase projects', color: '#e0a23a', source: 'Initial approved sales value · not attributed to BDMs' },
         rfq: { label: 'RFQ value (Estimator)', short: 'RFQ', color: '#8696a7', source: 'Quote value uploaded by the estimator · not added to sales' }
@@ -116,11 +116,12 @@
         const output = document.getElementById('sm-results');
         if (!output || !report || !canView()) return;
         const f = filters();
-        if (!f.from || f.from < START) f.from = START;
+        if (!f.from) f.from = START;
         const end = f.to || today();
         if (f.bdm && tab === 'purchase') tab = 'won';
         if (f.from > end) { charts.forEach(c => c.destroy()); charts = []; output.innerHTML = '<p class="sm-alert" role="alert">The start date must be on or before the end date.</p>'; return; }
         const search = f.search.toLowerCase();
+        const earlierWins = report.rows.filter(r => r.kind === 'won' && r.date && r.date < f.from && (!f.bdm || r.bdmUid === f.bdm)).length;
         const rows = report.rows.filter(r => (f.currency === ALL || r.currency === f.currency) &&
             // Purchase projects belong to no BDM, so a single-BDM view leaves them out.
             (!f.bdm || r.bdmUid === f.bdm) && r.date && r.date >= f.from && r.date <= end &&
@@ -152,7 +153,7 @@
         const periodRow = (label, p, isTotal) => `<tr${isTotal ? ' class="sm-sum"' : ''}><td><strong>${label}</strong></td><td class="sm-num">${p.wonCount}</td><td class="sm-num">${money(p.won)}</td><td class="sm-num">${money(p.variation)}</td><td class="sm-num">${money(p.won + p.variation)}</td><td class="sm-num">${money(p.purchase)}</td><td class="sm-total sm-num">${money(p.won + p.variation + p.purchase)}</td><td class="sm-num">${p.rfqCount}</td><td class="sm-num">${money(p.rfq)}</td></tr>`;
         const bdmRow = (rank, b, isTotal) => `<tr${isTotal ? ' class="sm-sum"' : ''}><td>${rank}</td><td class="sm-name"><strong>${esc(b.name)}</strong></td><td class="sm-num">${b.wonCount}</td><td class="sm-num">${money(b.won)}</td><td class="sm-num">${b.variationCount}</td><td class="sm-num">${money(b.variation)}</td><td class="sm-total sm-num">${money(b.won + b.variation)}</td><td class="sm-num">${pct(b.won + b.variation, bdmSales)}</td><td class="sm-num">${b.wonCount ? money(b.won / b.wonCount) : '—'}</td><td class="sm-num">${b.rfqCount}</td><td class="sm-num">${money(b.rfq)}</td></tr>`;
         const recordHeaders = {
-            won: ['Won date', 'Project', 'Client', 'BDM', 'P.O. number', 'P.O. value'],
+            won: ['Won date', 'Project', 'Client', 'BDM', 'P.O. number', 'P.O. value (as typed)', 'Won value (quote)'],
             variation: ['Uploaded', 'Project / description', 'BDM', 'Reference', 'Variation value'],
             purchase: ['Award / PO date', 'Project number', 'Project', 'Client', 'Initial sales value'],
             rfq: ['Priced', 'Project', 'Client', 'BDM', 'Proposal status', 'RFQ value']
@@ -160,15 +161,15 @@
         const recordRow = r => {
             const project = `<strong>${esc(r.projectName)}</strong>${r.projectNumber && tab !== 'purchase' ? `<small>${esc(r.projectNumber)}</small>` : ''}`;
             const value = `<td class="sm-total sm-num">${money(r.value)}</td>`;
-            if (tab === 'won') return `<tr><td>${esc(r.date)}</td><td>${project}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td>${esc(r.reference || '—')}</td>${value}</tr>`;
+            if (tab === 'won') return `<tr><td>${esc(r.date)}</td><td>${project}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td>${esc(r.reference || '—')}</td><td class="sm-num">${r.poValue == null ? '—' : esc(r.poCurrency) + ' ' + money(r.poValue)}</td>${value}</tr>`;
             if (tab === 'variation') return `<tr><td>${esc(r.date)}</td><td>${project}</td><td class="sm-name">${esc(r.bdmName)}</td><td>${esc(r.reference || '—')}</td>${value}</tr>`;
             if (tab === 'purchase') return `<tr><td>${esc(r.date)}</td><td><strong>${esc(r.projectNumber || '—')}</strong></td><td>${project}</td><td>${esc(r.client || '—')}</td>${value}</tr>`;
             return `<tr><td>${esc(r.date)}</td><td>${project}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.status)}</span></td>${value}</tr>`;
         };
         const tabTotal = records.reduce((s, r) => s + (r.value || 0), 0);
-        output.innerHTML = `${missingValues || undated || f.currency === 'UNSPECIFIED' ? `<p class="sm-alert">${missingValues ? `${missingValues} matching record(s) have no value (for example a won proposal without a P.O. value) and count as zero. ` : ''}${undated ? `${undated} record(s) have no date and are not in this report. ` : ''}${f.currency === 'UNSPECIFIED' ? 'Currency is not recorded for this group; do not compare this total with other currencies.' : ''}</p>` : ''}
+        output.innerHTML = `${missingValues || undated || earlierWins || f.currency === 'UNSPECIFIED' ? `<p class="sm-alert">${missingValues ? `${missingValues} matching record(s) have no value (a won proposal with no quote or P.O. value) and count as zero. ` : ''}${earlierWins ? `${earlierWins} won proposal(s) dated before ${longDate(f.from)} are outside this range; choose an earlier From date or “All time” to include them. ` : ''}${undated ? `${undated} record(s) have no date and are not in this report. ` : ''}${f.currency === 'UNSPECIFIED' ? 'Currency is not recorded for this group; do not compare this total with other currencies.' : ''}</p>` : ''}
             <div class="sm-report-head"><div><h2>Sales analysis · ${longDate(f.from)} to ${longDate(end)}</h2><span>${viewName} view · ${cur} · ${bdmName}${f.search ? ` · “${esc(f.search)}”` : ''}</span></div><div class="sm-actions"><button type="button" id="sm-csv">Export CSV</button><button type="button" id="sm-print">Print / Save PDF</button></div></div>
-            <div class="sm-cards">${card('Total sales', money(sales), 'Won + variations' + (f.bdm ? '' : ' + purchase projects'), '#173450')}${card('Won projects', money(totals.won), count(totals.wonCount, 'proposal') + ' marked won by BDMs', KINDS.won.color)}${card('Variations (Accounts)', money(totals.variation), count(totals.variationCount, 'variation') + ' uploaded by Accounts', KINDS.variation.color)}${card('Purchase projects', f.bdm ? '—' : money(totals.purchase), f.bdm ? 'Not attributed to BDMs' : count(totals.purchaseCount, 'project') + ' · shown separately', KINDS.purchase.color)}
+            <div class="sm-cards">${card('Total sales', money(sales), 'Won + variations' + (f.bdm ? '' : ' + purchase projects'), '#173450')}${card('Won projects', money(totals.won), count(totals.wonCount, 'proposal') + ' marked won · quote value', KINDS.won.color)}${card('Variations (Accounts)', money(totals.variation), count(totals.variationCount, 'variation') + ' uploaded by Accounts', KINDS.variation.color)}${card('Purchase projects', f.bdm ? '—' : money(totals.purchase), f.bdm ? 'Not attributed to BDMs' : count(totals.purchaseCount, 'project') + ' · shown separately', KINDS.purchase.color)}
             ${card('BDM sales', money(bdmSales), 'Won + variations · excludes purchase', '#173450')}${card('Average won deal', totals.wonCount ? money(totals.won / totals.wonCount) : '—', 'Won value ÷ won proposals', KINDS.won.color)}${card('RFQ value (Estimator)', money(totals.rfq), count(totals.rfqCount, 'RFQ') + ' priced · not added to sales', KINDS.rfq.color)}${card('Won ÷ RFQ value', pct(totals.won, totals.rfq), 'Won value against RFQ value in this period', KINDS.rfq.color)}</div>
             <div class="sm-charts">
                 <section class="sm-panel sm-wide"><div class="sm-section-title"><h2>${viewName} sales</h2><span>${cur} · won + variations + purchase projects</span></div><div class="sm-chart"><canvas id="sm-chart-period" role="img" aria-label="${viewName} sales by type"></canvas></div></section>
@@ -192,8 +193,8 @@
     }
     function exportCsv(rows) {
         const cell = value => { let s = String(value ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
-        const lines = [['Date', 'Type', 'Project', 'Project number', 'Client', 'BDM', 'Reference', 'Status', 'Currency', 'Value'].map(cell).join(',')]
-            .concat([...rows].sort((a, b) => b.date.localeCompare(a.date)).map(r => [r.date, KINDS[r.kind].label, r.projectName, r.projectNumber, r.client, r.kind === 'purchase' ? '' : r.bdmName, r.reference, r.status, r.currency, r.value ?? ''].map(cell).join(',')));
+        const lines = [['Date', 'Type', 'Project', 'Project number', 'Client', 'BDM', 'Reference', 'Status', 'Currency', 'Value', 'P.O. currency', 'P.O. value (as typed)'].map(cell).join(',')]
+            .concat([...rows].sort((a, b) => b.date.localeCompare(a.date)).map(r => [r.date, KINDS[r.kind].label, r.projectName, r.projectNumber, r.client, r.kind === 'purchase' ? '' : r.bdmName, r.reference, r.status, r.currency, r.value ?? '', r.poCurrency ?? '', r.poValue ?? ''].map(cell).join(',')));
         const link = document.createElement('a');
         link.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
         link.download = `sales-analysis-${today()}.csv`;
@@ -216,6 +217,7 @@
         if (name === 'week') set(weekStart(t) < START ? START : weekStart(t), t, 'day');
         else if (name === 'month') set(t.slice(0, 8) + '01', t, 'day');
         else if (name === 'last-month') { const first = utc(t.slice(0, 8) + '01'); first.setUTCMonth(first.getUTCMonth() - 1); set(day(first) < START ? START : day(first), addDays(t.slice(0, 8) + '01', -1), 'week'); }
+        else if (name === 'ever') set(report?.rows.reduce((m, r) => r.date && r.date < m ? r.date : m, START) || START, '', 'month');
         else set(START, '', 'month');
     }
     function setView(v) {
@@ -253,13 +255,13 @@
             <div class="sm-toolbar"><span id="sm-updated" aria-live="polite">Waiting for data</span><button type="button" id="sm-refresh">Refresh data</button></div>
             <section class="sm-panel sm-filters" aria-label="Report filters">
             <div class="sm-filter-row"><div class="sm-toggle" role="group" aria-label="Report view"><button type="button" data-view="month" aria-pressed="true">Monthly</button><button type="button" data-view="week" aria-pressed="false">Weekly</button><button type="button" data-view="day" aria-pressed="false">Date-wise</button></div>
-            <div class="sm-presets" role="group" aria-label="Quick ranges"><button type="button" data-preset="week">This week</button><button type="button" data-preset="month">This month</button><button type="button" data-preset="last-month">Last month</button><button type="button" data-preset="all">All (from 1 Dec 2025)</button></div></div>
-            <label>From date<input type="date" id="sm-from" min="${START}" value="${START}"></label><label>To date<input type="date" id="sm-to" min="${START}"></label>
+            <div class="sm-presets" role="group" aria-label="Quick ranges"><button type="button" data-preset="week">This week</button><button type="button" data-preset="month">This month</button><button type="button" data-preset="last-month">Last month</button><button type="button" data-preset="all">From 1 Dec 2025</button><button type="button" data-preset="ever">All time</button></div></div>
+            <label>From date<input type="date" id="sm-from" value="${START}"></label><label>To date<input type="date" id="sm-to"></label>
             <label>BDM<select id="sm-bdm"><option value="">All BDMs</option></select></label>
             <label>Currency<select id="sm-currency"><option value="ALL_INR">All currencies (in INR)</option></select></label>
             <label class="sm-search">Project / client / reference<input type="search" id="sm-search" placeholder="Search"></label>
             <button type="button" id="sm-reset">Reset filters</button></section>
-            <p class="sm-note"><strong>What is counted.</strong> Won projects: the P.O. value the BDM enters when marking a proposal won, on the won date. Variations: values Accounts upload for a BDM. Purchase projects: the initial approved sales value of purchase portal projects, shown separately and not credited to any BDM. Total sales = won + variations + purchase projects. RFQ value is the quote value the estimator uploads on the proposal; it is shown for comparison and never added to sales. The report covers 1 December 2025 onwards.</p>
+            <p class="sm-note"><strong>What is counted.</strong> Won projects: the priced quote value (estimator pricing) of proposals the BDM marked won, on the won date; the P.O. value the BDM typed is listed beside it for comparison and used only when a proposal was never priced. Variations: values Accounts upload for a BDM. Purchase projects: the initial approved sales value of purchase portal projects, shown separately and not credited to any BDM. Total sales = won + variations + purchase projects. RFQ value is the quote value the estimator uploads on the proposal; it is shown for comparison and never added to sales. The report opens on 1 December 2025; choose “All time” or an earlier From date to see older wins.</p>
             <div id="sm-results" aria-live="polite"></div></div>`;
         view = 'month'; tab = 'won'; page = 1;
         document.getElementById('sm-refresh').onclick = refresh;

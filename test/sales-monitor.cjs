@@ -12,13 +12,14 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
         const errors = []; page.on('pageerror', e => errors.push(e.message));
         const rows = [
-            { id: '1', source: 'proposals', kind: 'won', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', projectNumber: 'P-101', client: 'Client A', reference: 'PO-77', value: 25000, currency: 'CAD', date: '2026-10-01', status: 'won' },
+            { id: '1', source: 'proposals', kind: 'won', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', projectNumber: 'P-101', client: 'Client A', reference: 'PO-77', value: 25000, currency: 'CAD', poValue: 20000, poCurrency: 'CAD', date: '2026-10-01', status: 'won' },
             { id: '2', source: 'accounts', kind: 'variation', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', reference: 'VAR-1', value: 3500, currency: 'CAD', date: '2026-10-02', status: 'uploaded by accounts' },
             { id: '3', source: 'estimator', kind: 'rfq', bdmUid: 'b', bdmName: 'Bob', projectName: '<img src=x onerror=alert(1)>', client: 'Client B', value: 10000, currency: 'CAD', date: '2026-09-10', status: 'submitted to client' },
             { id: '5', source: 'estimator', kind: 'rfq', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', client: 'Client A', value: 26000, currency: 'CAD', date: '2026-08-20', status: 'won' },
             { id: '6', source: 'estimator', kind: 'rfq', bdmUid: 'b', bdmName: 'Bob', projectName: 'Depot', client: '=cmd', value: 4000, currency: 'CAD', date: '2026-08-21', status: 'lost' },
             { id: '4', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Warehouse', client: 'Client B', reference: 'PO-9', value: 7000, currency: 'USD', date: '2026-10-03', status: 'won' },
             { id: '8', source: 'purchase', kind: 'purchase', bdmUid: 'purchase-portal', bdmName: 'Purchase portal', projectName: 'Tank farm', projectNumber: 'EB-01', client: 'Acme', value: 50000, currency: 'INR', date: '2026-10-03', status: 'approved' },
+            { id: '9', source: 'proposals', kind: 'won', bdmUid: 'a', bdmName: 'Alice', projectName: 'Older win', client: 'Client A', value: 1000, currency: 'INR', date: '2025-06-01', status: 'won' },
             { id: '7', source: 'proposals', kind: 'won', bdmUid: 'c', bdmName: 'GERARD MOSS', projectName: 'Old job', client: 'Client C', value: 999, currency: 'INR', date: '2025-12-15', status: 'won' }
         ];
         const css = fs.readFileSync(path.join(__dirname, '../public/sales-monitor.css'), 'utf8');
@@ -60,6 +61,8 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.screenshot({ path: path.join(screenshotDir, 'sales-all.png'), fullPage: true });
         // Record lists are separate per source.
         assert.match(await page.locator('.sm-details').textContent(), /PO-77[\s\S]*PO-9|PO-9[\s\S]*PO-77/);
+        assert.match(await page.locator('.sm-details tbody').textContent(), /CAD 20,000\.00[\s\S]*15,25,000\.00/, 'Won list shows typed P.O. value beside the quote value');
+        assert.match(await page.locator('#sm-results .sm-alert').textContent(), /1 won proposal\(s\) dated before/, 'Wins before the range are reported');
         await page.click('[data-tab="purchase"]');
         assert.match(await page.locator('.sm-details tbody').textContent(), /EB-01[\s\S]*Tank farm[\s\S]*50,000\.00/);
         await page.click('[data-tab="rfq"]');
@@ -77,6 +80,10 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         assert.equal(await cardText('Total sales'), '8,93,500.00');
         await page.fill('#sm-to', '2026-09-01');
         assert.match(await page.locator('#sm-results').textContent(), /start date/);
+        await page.click('#sm-reset');
+        await page.click('[data-preset="ever"]');
+        assert.equal(await page.locator('#sm-from').inputValue(), '2025-06-01', 'All time starts at the oldest record');
+        assert.equal(await cardText('Won projects'), '21,56,999.00', 'All time includes wins before Dec 2025');
         await page.click('#sm-reset');
         await page.fill('#sm-search', 'no match');
         assert.match(await page.locator('#sm-results').textContent(), /No records match/);

@@ -252,18 +252,30 @@
         var clicks = log.filter(function (e) { return e && e.action === 'mark_won'; });
         var poUpdates = log.filter(function (e) { return e && e.action === 'update_po'; });
         var dateEdits = Array.isArray(p.wonDateHistory) ? p.wonDateHistory : [];
-        var item = function (icon, title, sub) {
-            return '<li style="display:flex;gap:0.6rem;align-items:flex-start;padding:0.45rem 0;border-bottom:1px dashed #e5e7eb;"><span aria-hidden="true">' + icon + '</span><div><div style="font-weight:600;color:#1f2937;">' + title + '</div><div style="font-size:0.8rem;color:#6b7280;">' + sub + '</div></div></li>';
+        // The BDM who won it, COO or Director may remove a WON entry; removing the last one undoes the win.
+        var canEdit = ['coo', 'director'].indexOf(role()) !== -1 || (role() === 'bdm' && p.createdByUid === uid());
+        var locked = !!(p.projectCreated && p.projectId);
+        var item = function (icon, title, sub, action) {
+            return '<li style="display:flex;gap:0.6rem;align-items:flex-start;padding:0.45rem 0;border-bottom:1px dashed #e5e7eb;"><span aria-hidden="true">' + icon + '</span><div style="flex:1;"><div style="font-weight:600;color:#1f2937;">' + title + '</div><div style="font-size:0.8rem;color:#6b7280;">' + sub + '</div></div>' + (action || '') + '</li>';
         };
-        var events = clicks.map(function (e, i) { return { at: e.timestamp, html: item('✅', i === 0 ? 'Marked WON' : 'Marked WON again (repeat click)', when(e.timestamp) + ' · ' + escHtml(e.performedByName || '')) }; })
+        var removeButton = function (e) {
+            if (!canEdit) return '';
+            var last = clicks.length === 1;
+            if (last && locked) return '<span style="font-size:0.72rem;color:#6b7280;align-self:center;" title="A project was created from this win">Project created</span>';
+            return '<button type="button" data-won-remove="' + escHtml(e.timestamp) + '" title="' + (last ? 'Remove this WON entry and undo the win' : 'Remove this repeat WON entry') + '" style="align-self:center;padding:0.25rem 0.6rem;border:1px solid #fca5a5;background:#fff;color:#b91c1c;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap;">🗑 ' + (last ? 'Delete (undo WON)' : 'Delete') + '</button>';
+        };
+        var events = clicks.map(function (e, i) { return { at: e.timestamp, html: item('✅', i === 0 ? 'Marked WON' : 'Marked WON again (repeat click)', when(e.timestamp) + ' · ' + escHtml(e.performedByName || ''), removeButton(e)) }; })
             .concat(poUpdates.map(function (e) { return { at: e.timestamp, html: item('📝', 'P.O. updated', when(e.timestamp) + ' · ' + escHtml(e.performedByName || '') + (e.details ? ' · ' + escHtml(e.details.replace(/^P\.O\. details updated /, '')) : '')) }; }))
             .concat(dateEdits.map(function (h) { return { at: h.at, html: item('📅', 'Won date changed ' + escHtml(h.from) + ' → ' + escHtml(h.to), when(h.at) + ' · ' + escHtml(h.by || '')) }; }))
             .sort(function (a, b) { return String(a.at).localeCompare(String(b.at)); });
         var badge = function (text, bg, fg, border) { return '<span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:999px;background:' + bg + ';color:' + fg + ';border:1px solid ' + border + ';font-size:0.75rem;font-weight:700;">' + text + '</span>'; };
-        var clickBadge = clicks.length > 1 ? badge('Won clicked ' + clicks.length + ' times', '#fef3c7', '#92400e', '#fcd34d') : badge('Won clicked once', '#dcfce7', '#166534', '#86efac');
+        var clickBadge = clicks.length > 1 ? badge('Won clicked ' + clicks.length + ' times', '#fef3c7', '#92400e', '#fcd34d')
+            : clicks.length ? badge('Won clicked once', '#dcfce7', '#166534', '#86efac') : badge('Won click not recorded', '#f3f4f6', '#374151', '#d1d5db');
+        // Older wins have no recorded click; they can still be undone as a whole.
+        var undoLegacy = !clicks.length && canEdit && !locked ? '<button type="button" data-won-remove="" style="padding:0.25rem 0.6rem;border:1px solid #fca5a5;background:#fff;color:#b91c1c;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;">🗑 Undo WON</button>' : '';
         var stat = function (label, value) { return '<div style="min-width:150px;"><div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;">' + label + '</div><div style="font-weight:700;color:#111827;margin-top:2px;">' + value + '</div></div>'; };
         panel.innerHTML = '<div style="border:1px solid #dbeafe;border-radius:12px;overflow:hidden;">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;padding:0.85rem 1rem;background:#eff6ff;border-bottom:1px solid #dbeafe;"><strong style="color:#1e3a8a;">Won record</strong>' + clickBadge + '</div>'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;padding:0.85rem 1rem;background:#eff6ff;border-bottom:1px solid #dbeafe;"><strong style="color:#1e3a8a;">Won record</strong><span style="display:flex;gap:0.5rem;align-items:center;">' + undoLegacy + clickBadge + '</span></div>'
             + '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:0.9rem 1rem;">'
             + stat('Won date', escHtml(window.formatWonDate(p.wonDate)) + (p.wonDateEdited ? ' <span style="font-size:0.72rem;color:#3730a3;font-weight:600;">(edited' + (p.wonDateEditedBy ? ' by ' + escHtml(p.wonDateEditedBy) : '') + ')</span>' : ''))
             + stat('First clicked WON', clicks.length ? when(clicks[0].timestamp) : (p.poAddedAt ? escHtml(window.formatWonDate(p.poAddedAt)) : 'Not recorded'))
@@ -271,9 +283,32 @@
             + stat('P.O.', escHtml(p.poNumber || '—') + (p.poValue ? ' · ' + escHtml((p.poCurrency || '') + ' ' + Number(p.poValue).toLocaleString('en-US')) : ''))
             + '</div>'
             + (events.length ? '<div style="padding:0 1rem 0.6rem;"><div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.2rem;">History</div><ul style="list-style:none;margin:0;padding:0;">' + events.map(function (e) { return e.html; }).join('') + '</ul></div>' : '')
-            + (clicks.length > 1 ? '<div style="margin:0 1rem 0.8rem;padding:0.6rem 0.8rem;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;font-size:0.8rem;color:#78350f;">Repeat WON clicks on this proposal are counted <strong>once</strong> in the sales report, so nothing needs deleting for them. (Before 27 Oct 2026 an “Update P.O.” save was also recorded as a WON click.) A second <em>proposal</em> for the same project is listed below and can be deleted.</div>' : '')
+            + (clicks.length > 1 ? '<div style="margin:0 1rem 0.8rem;padding:0.6rem 0.8rem;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;font-size:0.8rem;color:#78350f;">Repeat WON clicks on this proposal are counted <strong>once</strong> in the sales report. Use <strong>Delete</strong> beside a repeat entry to clean the record; the won date then returns to the first click unless it was set by hand. Deleting the only remaining entry undoes the WON. (Before 27 Oct 2026 an “Update P.O.” save was also recorded as a WON click.)</div>' : '')
             + '<div id="wonDuplicateList" style="border-top:1px solid #e5e7eb;padding:0.8rem 1rem;font-size:0.85rem;color:#6b7280;">Checking for other proposals of this project…</div>'
             + '</div>';
+        panel.querySelectorAll('[data-won-remove]').forEach(function (btn) {
+            btn.onclick = async function () {
+                var ts = btn.getAttribute('data-won-remove');
+                var undo = clicks.length <= 1;
+                var message = undo
+                    ? 'Undo WON for "' + (p.projectName || 'this proposal') + '"?\n\nThe proposal goes back to ' + (p.submittedToClientAt ? 'Submitted to client' : 'Approved') + ', its P.O. details are cleared and it leaves the sales report.'
+                    : 'Delete the repeat WON entry of ' + when(ts) + '?\n\nThe win stays; the won date returns to the first WON click' + (p.wonDateEdited ? ' only if it was not set by hand' : '') + '.';
+                if (!confirm(message)) return;
+                btn.disabled = true; btn.textContent = 'Deleting…';
+                try {
+                    var resp = await apiCall('proposals?id=' + encodeURIComponent(p.id), { method: 'PUT', body: JSON.stringify({ action: 'remove_won_click', data: ts ? { timestamp: ts } : {} }) });
+                    if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Could not delete the WON entry');
+                    if (undo) {
+                        if (typeof closeModal === 'function') closeModal();
+                        alert('WON removed. The proposal is back to ' + (p.submittedToClientAt ? 'Submitted to client' : 'Approved') + '.');
+                    } else {
+                        var fresh = await apiCall('proposals?id=' + encodeURIComponent(p.id));
+                        if (fresh && fresh.success && fresh.data) window.renderWonRecord(Object.assign({ id: p.id }, fresh.data));
+                    }
+                    if (typeof showProposals === 'function') showProposals();
+                } catch (error) { alert('Error: ' + error.message); btn.disabled = false; btn.textContent = '🗑 Delete'; }
+            };
+        });
         var list = [];
         try { var resp = await apiCall('proposals'); list = (resp && resp.success && Array.isArray(resp.data)) ? resp.data : []; } catch (e) { list = null; }
         if (request !== wonRecordRequest) return;

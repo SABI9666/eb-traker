@@ -52,6 +52,10 @@
 .sm-num { white-space:nowrap; font-variant-numeric:tabular-nums; }
 .sm tr.sm-sum td { background:#f7f9fc; border-top:2px solid #dbe4ee; font-weight:700; color:#173450; }
 .sm-idle { margin:0; padding:12px 20px; font-size:12px; color:#65798e; border-top:1px solid #edf1f5; }
+.sm-flag { display:inline-block!important; margin:4px 0 0!important; padding:1px 6px; border-radius:10px; background:#eef2ff; color:#3730a3!important; font-size:10px!important; font-weight:600; }
+.sm-dup { display:inline-block; margin-left:8px; padding:1px 7px; border-radius:10px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:10px; font-weight:700; white-space:nowrap; vertical-align:middle; }
+.sm tr.sm-dup-row td { background:#fffbeb; }
+.sm-alert-dup { background:#fff7ed; border-color:#fdba74; color:#7c2d12; }
 .sm-tag { background:#edf5f8; padding:4px 8px; border-radius:20px; white-space:nowrap; }
 .sm-empty { text-align:center; padding:30px!important; color:#6b7d91; }
 .sm-alert { padding:16px; background:#fff6de; color:#795512; border:1px solid #f2d894; border-radius:10px; font-size:13px; }

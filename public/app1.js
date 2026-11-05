@@ -5268,21 +5268,8 @@ function showCreateProposalModal() {
                 });
             }
 
-            // 4. Notifications
-             try {
-                 const userName = (currentUser && (currentUser.displayName || currentUser.email)) ? 
-                                  (currentUser.displayName || currentUser.email) : 'System User';
-                 const userEmail = (currentUser && currentUser.email) ? currentUser.email : '';
-
-                 await triggerEmailNotification('project.submitted', {
-                    projectName: formData.projectName,
-                    createdBy: userName,
-                    bdmName: userName,
-                    bdmEmail: userEmail,
-                    clientName: formData.clientCompany,
-                    projectId: proposalId
-                });
-            } catch (err) { console.warn("Email notification non-fatal error:", err); }
+            // 4. Notifications: the server emails COO, Director, the estimators (incl. Maxwell) and the BDM
+            //    ("New Proposal Created") when the proposal is saved, so no second email is sent from here.
 
             alert('✅ Proposal created successfully!');
             closeModal();

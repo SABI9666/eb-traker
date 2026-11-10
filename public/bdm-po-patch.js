@@ -225,6 +225,70 @@
     };
 
     // ---------------------------------------------------------
+    // 3b. Proposal / RFQ date: shown in the details, editable by the
+    //     BDM who created it (or COO / Director); reports use it
+    // ---------------------------------------------------------
+    window.renderProposalDate = function (p) {
+        var box = document.getElementById('proposalDatePanel');
+        if (!box || !p) return;
+        var r = role(), canEdit = ['coo', 'director'].indexOf(r) !== -1 || (r === 'bdm' && p.createdByUid === uid());
+        var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+        box.innerHTML = '<span style="display:inline-flex;align-items:center;gap:0.45rem;flex-wrap:wrap;padding:0.4rem 0.75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:0.88rem;color:#334155;">'
+            + '📅 <strong>Proposal / RFQ date:</strong> ' + esc(window.formatWonDate(p.proposalDate || p.createdAt))
+            + (p.proposalDateEdited ? ' <span style="font-size:0.75rem;color:#3730a3;font-weight:600;">(set by ' + esc(p.proposalDateEditedBy || 'BDM') + ')</span>' : '')
+            + (canEdit ? ' <button type="button" id="proposalDateEditBtn" title="Change the proposal / RFQ date used in sales reports" style="padding:0.15rem 0.55rem;border:1px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;">✏️ Edit</button>' : '')
+            + '</span>';
+        var btn = document.getElementById('proposalDateEditBtn');
+        if (btn) btn.onclick = function () { window.editProposalDate(p); };
+    };
+    window.editProposalDate = function (p) {
+        var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+        var history = Array.isArray(p.proposalDateHistory) ? p.proposalDateHistory.slice(-5).reverse() : [];
+        var existing = document.getElementById('proposalDateOverlay');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', ''
+            + '<div id="proposalDateOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;">'
+            + '  <div role="dialog" aria-modal="true" aria-labelledby="proposalDateTitle" style="background:#fff;max-width:440px;width:100%;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.3);font-family:inherit;">'
+            + '    <div style="padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;">'
+            + '      <div><h2 id="proposalDateTitle" style="margin:0;font-size:1.1rem;">Edit proposal / RFQ date</h2>'
+            + '      <div style="font-size:0.8rem;color:#6b7280;">' + esc(p.projectName || 'Proposal') + (p.clientCompany ? ' · ' + esc(p.clientCompany) : '') + '</div></div>'
+            + '      <span style="cursor:pointer;font-size:1.5rem;line-height:1;color:#6b7280;" onclick="document.getElementById(\'proposalDateOverlay\').remove()">&times;</span>'
+            + '    </div>'
+            + '    <div style="padding:1.25rem;">'
+            + '      <div style="font-size:0.85rem;color:#374151;margin-bottom:0.75rem;">Current date: <strong>' + esc(window.formatWonDate(p.proposalDate || p.createdAt)) + '</strong>' + (p.proposalDate ? '' : ' (date the proposal was created)') + '</div>'
+            + '      <label for="proposalDateInput" style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">New proposal / RFQ date</label>'
+            + '      <input type="date" id="proposalDateInput" value="' + esc(isoDay(p.proposalDate || p.createdAt) || localToday()) + '" max="' + localToday() + '" min="2020-01-01" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #d1d5db;border-radius:6px;">'
+            + '      <div style="font-size:0.78rem;color:#6b7280;margin-top:6px;">Use the date the enquiry / RFQ was received. The sales report shows this RFQ in that week; the change is logged and no email is sent.</div>'
+            + (history.length ? '<div style="margin-top:0.9rem;font-size:0.78rem;color:#4b5563;"><strong>Previous changes</strong><ul style="margin:0.3rem 0 0 1rem;padding:0;">'
+                + history.map(function (h) { return '<li>' + esc(h.from) + ' → ' + esc(h.to) + ' by ' + esc(h.by) + '</li>'; }).join('') + '</ul></div>' : '')
+            + '    </div>'
+            + '    <div style="padding:1rem 1.25rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:0.5rem;">'
+            + '      <button type="button" onclick="document.getElementById(\'proposalDateOverlay\').remove()" style="padding:0.55rem 1rem;border:1px solid #d1d5db;background:#fff;border-radius:6px;cursor:pointer;">Cancel</button>'
+            + '      <button type="button" id="proposalDateSave" style="padding:0.55rem 1rem;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:6px;cursor:pointer;">Save date</button>'
+            + '    </div>'
+            + '  </div>'
+            + '</div>');
+        document.getElementById('proposalDateSave').onclick = async function () {
+            var value = (document.getElementById('proposalDateInput') || {}).value || '';
+            if (!value) { alert('Please choose a date.'); return; }
+            if (value > localToday()) { alert('The proposal date cannot be in the future.'); return; }
+            var unlock = lockSubmit('proposalDateSave', 'Saving…');
+            if (!unlock) return;
+            try {
+                var resp = await apiCall('proposals?id=' + encodeURIComponent(p.id), { method: 'PUT', body: JSON.stringify({ action: 'update_proposal_date', data: { proposalDate: value } }) });
+                if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Could not save the date');
+                var overlay = document.getElementById('proposalDateOverlay');
+                if (overlay) overlay.remove();
+                var reopen = !!document.getElementById('proposalDatePanel') && typeof viewProposal === 'function';
+                if (typeof closeModal === 'function') closeModal();
+                if (typeof showProposals === 'function') showProposals();
+                if (reopen) viewProposal(p.id);
+                alert('Proposal date saved: ' + window.formatWonDate(value));
+            } catch (error) { alert('Error: ' + error.message); unlock(); }
+        };
+    };
+
+    // ---------------------------------------------------------
     // 4. Won record: won date, every "Won" click, P.O. updates and
     //    other proposals for the same project (delete duplicates here)
     // ---------------------------------------------------------
@@ -521,7 +585,7 @@
         s.id  = p.id;
         // Bump on every change to any *-patch.js so browsers fetch a fresh
         // copy instead of serving the previously cached ?v= URL.
-        var APP_PATCH_VERSION = 'v76';
+        var APP_PATCH_VERSION = 'v77';
         s.src = p.src + (p.src.indexOf('?') === -1 ? '?' : '&') + 'v=' + APP_PATCH_VERSION;
         s.async = true;
         s.onerror = function () { console.warn('[patch-loader] Failed to load ' + p.src); };

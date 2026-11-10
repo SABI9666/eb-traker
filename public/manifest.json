@@ -1,7 +1,7 @@
 {
-  "name": "West EPCM Technologies — Project Management Tool",
-  "short_name": "West EPCM Technologies",
-  "description": "West EPCM Technologies — Project Management Tool for project tracking, HR announcements, and team collaboration.",
+  "name": "EB Tracker — Powered by West EPCM",
+  "short_name": "EB Tracker",
+  "description": "EB Tracker, powered by West EPCM — project management tool for project tracking, HR announcements, and team collaboration.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",

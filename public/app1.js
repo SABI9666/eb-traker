@@ -22,7 +22,7 @@
       // ============================================
       // CACHE BUSTER - Version 1.0.3-final-20251125
       // ============================================
-      console.log('🚀 West EPCM Technologies v1.0.3-final loaded at:', new Date().toISOString());
+      console.log('🚀 EB Tracker v1.0.3-final loaded at:', new Date().toISOString());
       console.log('💾 Script timestamp: 2025-11-25T18:40:00Z');
      
         const firebaseConfig = {
@@ -810,7 +810,7 @@
                     <div style="display: flex; align-items: flex-start; gap: 1rem;">
                         <div style="font-size: 2.5rem;">📱</div>
                         <div style="flex: 1;">
-                            <strong style="font-size: 1.1rem;">Install West EPCM Technologies App</strong>
+                            <strong style="font-size: 1.1rem;">Install EB Tracker App</strong>
                             <p style="font-size: 0.85rem; opacity: 0.95; margin-top: 0.5rem; line-height: 1.4;">
                                 Install this app on your iPhone:
                             </p>
@@ -870,7 +870,7 @@
                     <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
                         <span style="font-size: 2rem;">📱</span>
                         <div>
-                            <strong>Install West EPCM Technologies</strong>
+                            <strong>Install EB Tracker</strong>
                             <p style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">Add to home screen for quick access</p>
                         </div>
                     </div>
@@ -2273,7 +2273,7 @@ async function triggerEmailNotification(eventName, data = {}) {
             document.getElementById('mainContent').innerHTML = `
                 <div class="page-header">
                     <h2>Dashboard</h2>
-                    <div class="subtitle">Welcome to West EPCM Technologies — Project Management Tool</div>
+                    <div class="subtitle">Welcome to EB Tracker — powered by West EPCM</div>
                 </div>
                 ${announcementsHtml}
                 <div class="dashboard-stats">${statsHtml}</div>
@@ -2836,7 +2836,7 @@ function renderProposals(proposals) {
         <div class="action-item" style="${otherFullyAllocated ? 'border-left: 3px solid #10b981; background: #f0fdf4;' : otherPartiallyAllocated ? 'border-left: 3px solid #f59e0b; background: #fffbeb;' : ''}">
             <div class="action-content">
                 <strong>${p.projectName}</strong>${allocBadge}${wonDateChip}
-                <div class="action-meta">Client: ${p.clientCompany} | Created: ${formatDate(p.createdAt)}${p.status === 'won' && p.poNumber ? ` | P.O.: ${p.poNumber}` : ''}</div>
+                <div class="action-meta">Client: ${p.clientCompany} | Proposal date: ${typeof formatWonDate === 'function' ? formatWonDate(p.proposalDate || p.createdAt) : formatDate(p.proposalDate || p.createdAt)}${p.proposalDateEdited ? ' (edited)' : ''}${p.status === 'won' && p.poNumber ? ` | P.O.: ${p.poNumber}` : ''}</div>
             </div>
             <span class="proposal-status status-${statusClass}">${statusDisplay}</span>
             <div class="action-buttons">
@@ -4983,6 +4983,8 @@ function showCreateProposalModal() {
     const MAX_SINGLE_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
     const MAX_TOTAL_UPLOAD_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
 
+    const today = new Date();
+    const todayIso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     const projectTypes = [
         'Steel Detailing', 'Miscellaneous Steel', 'Connection Design', 'PE Stamping',
         'Joist Detailing', 'As-built Drawings', 'Rebar Detailing'
@@ -5035,6 +5037,11 @@ function showCreateProposalModal() {
                                     </div>
                                 </div>
                                 <div class="form-group">
+                                    <div style="margin-bottom: 1rem;">
+                                        <label for="proposalDate">Proposal / RFQ date *</label>
+                                        <input type="date" id="proposalDate" class="form-control" required min="2020-01-01" max="${todayIso}" value="${todayIso}">
+                                        <small style="color: var(--text-light);">The date the enquiry / RFQ was received. Sales reports show this RFQ in that week. You can change it later.</small>
+                                    </div>
                                     <div style="margin-bottom: 1rem;">
                                         <label>Timeline (Days)</label>
                                         <input type="text" id="timeline" class="form-control" placeholder="e.g., 15">
@@ -5220,6 +5227,7 @@ function showCreateProposalModal() {
             projectType: selectedTypes,
             country: document.getElementById('country').value,
             timeline: document.getElementById('timeline').value,
+            proposalDate: document.getElementById('proposalDate') ? document.getElementById('proposalDate').value : '',
             priority: document.getElementById('priority').value,
             scopeOfWork: document.getElementById('scopeOfWork').value,
             projectComments: document.getElementById('projectComments').value,
@@ -5527,6 +5535,7 @@ function showCreateProposalModal() {
                                     ${p.status.replace(/_/g, ' ').toUpperCase()}
                                 </span>
                             </div>
+                            <div id="proposalDatePanel" style="margin: -1.25rem 0 1.5rem;"></div>
                             ${p.status === 'won' ? `<div id="wonRecordPanel" style="margin-bottom: 2rem;"></div>` : ''}
 
                             <div style="display: grid; gap: 2rem;"> 
@@ -5634,6 +5643,7 @@ function showCreateProposalModal() {
 
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             // Won date, every "Won" click and any duplicate proposals for the same project (bdm-po-patch.js).
+            if (typeof window.renderProposalDate === 'function') window.renderProposalDate(p);
             if (p.status === 'won' && typeof window.renderWonRecord === 'function') window.renderWonRecord(p);
         }
 

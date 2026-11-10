@@ -1,5 +1,5 @@
 // ============================================
-// West EPCM Technologies Service Worker
+// EB Tracker (powered by West EPCM) Service Worker
 // Version: 6.0.7 - Cache Version 61
 //   - Accounts variation upload feature
 //   - Patch scripts are now NETWORK_ONLY so they bypass the SW cache
@@ -7,7 +7,7 @@
 //   - The SW itself is not cached (browser handles SW updates).
 // ============================================
 
-const CACHE_NAME = 'ebtracker-v88';
+const CACHE_NAME = 'ebtracker-v89';
 const STATIC_CACHE = 'ebtracker-static-v87';
 const DYNAMIC_CACHE = 'ebtracker-dynamic-v87';
 
@@ -141,7 +141,7 @@ function offlineFallback() {
 }
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'West EPCM Technologies', body: 'New notification', icon: '/icons/icon-192x192.png', url: '/' };
+  let data = { title: 'EB Tracker', body: 'New notification', icon: '/icons/icon-192x192.png', url: '/' };
   if (event.data) {
     try { data = { ...data, ...event.data.json() }; } catch (e) { data.body = event.data.text(); }
   }

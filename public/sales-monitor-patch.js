@@ -23,7 +23,7 @@
         won: { label: 'Won projects', short: 'Won', color: '#1f5e8a', source: 'Priced quote value of proposals the BDM marked won (P.O. value shown for comparison)' },
         variation: { label: 'Variations (Accounts)', short: 'Variations', color: '#39a8ae', source: 'Uploaded by Accounts for the BDM' },
         purchase: { label: 'Purchase projects', short: 'Purchase projects', color: '#e0a23a', source: 'Initial approved sales value · not attributed to BDMs' },
-        rfq: { label: 'RFQ value (Estimator)', short: 'RFQ', color: '#8696a7', source: 'Quote value uploaded by the estimator · not added to sales' }
+        rfq: { label: 'RFQ value (Estimator)', short: 'RFQ', color: '#8696a7', source: 'Quote value uploaded by the estimator, shown in the week of the proposal / RFQ date set by the BDM · not added to sales' }
     };
     const BDM_COLORS = ['#1f5e8a', '#39a8ae', '#e0a23a', '#8e6cc4', '#d9734e', '#5fa877', '#c95b6a', '#4f7fbf'];
     const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -157,7 +157,7 @@
             won: ['Won date', 'Project', 'Client', 'BDM', 'P.O. number', 'P.O. value (as typed)', 'Won value (quote)'],
             variation: ['Uploaded', 'Project / description', 'BDM', 'Reference', 'Variation value'],
             purchase: ['Award / PO date', 'Project number', 'Project', 'Client', 'Initial sales value'],
-            rfq: ['Priced', 'Project', 'Client', 'BDM', 'Proposal status', 'RFQ value']
+            rfq: ['RFQ date', 'Project', 'Client', 'BDM', 'Proposal status', 'Priced', 'RFQ value']
         }[tab];
         const recordRow = r => {
             const project = `<strong>${esc(r.projectName)}</strong>${r.projectNumber && tab !== 'purchase' ? `<small>${esc(r.projectNumber)}</small>` : ''}`;
@@ -165,7 +165,7 @@
             if (tab === 'won') return `<tr${r.duplicateOf ? ' class="sm-dup-row"' : ''}><td>${esc(r.date)}${r.wonDateEdited ? `<small class="sm-flag" title="Won date edited${r.wonDateEditedBy ? ' by ' + esc(r.wonDateEditedBy) : ''}">Date edited</small>` : ''}</td><td>${project}${r.duplicateOf ? `<span class="sm-dup" title="Same project and client as the win of ${esc(r.duplicateOf.date || 'an undated record')} by ${esc(r.duplicateOf.bdmName)}">Possible duplicate</span>` : ''}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td>${esc(r.reference || '—')}</td><td class="sm-num">${r.poValue == null ? '—' : esc(r.poCurrency) + ' ' + money(r.poValue)}</td>${value}</tr>`;
             if (tab === 'variation') return `<tr><td>${esc(r.date)}</td><td>${project}</td><td class="sm-name">${esc(r.bdmName)}</td><td>${esc(r.reference || '—')}</td>${value}</tr>`;
             if (tab === 'purchase') return `<tr><td>${esc(r.date)}</td><td><strong>${esc(r.projectNumber || '—')}</strong></td><td>${project}</td><td>${esc(r.client || '—')}</td>${value}</tr>`;
-            return `<tr><td>${esc(r.date)}</td><td>${project}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.status)}</span></td>${value}</tr>`;
+            return `<tr><td>${esc(r.date)}${r.proposalDateEdited ? `<small class="sm-flag" title="Proposal / RFQ date set by ${esc(r.proposalDateEditedBy || 'the BDM')}">Date set by BDM</small>` : ''}</td><td>${project}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.status)}</span></td><td>${esc(r.pricedDate || '—')}</td>${value}</tr>`;
         };
         const tabTotal = records.reduce((s, r) => s + (r.value || 0), 0);
         output.innerHTML = `${duplicates.length ? `<p class="sm-alert sm-alert-dup"><strong>${duplicates.length} possible duplicate win(s)</strong> in this range: the same project and client was already won on another proposal (${duplicates.slice(0, 3).map(d => esc(d.projectName)).join(', ')}${duplicates.length > 3 ? '…' : ''}). They are included in the totals and marked in Won projects; open the proposal and use its Won record to view or delete the other proposal. New duplicate proposals for the same project and client are blocked when created.</p>` : ''}
@@ -253,7 +253,7 @@
         if (!canView()) return;
         activeUid = currentUser.uid;
         const main = document.getElementById('mainContent');
-        main.innerHTML = `<div class="sm"><header class="sm-hero"><div><div class="sm-eyebrow">WEST EPCM · SALES INTELLIGENCE</div><h1>Sales analysis report</h1><p>Won projects, Accounts variations and purchase projects in one report, with estimator RFQ value alongside.</p></div><div class="sm-actions">${isSales() ? '' : '<button type="button" id="sm-back">← Sales tools</button>'}<span class="sm-readonly">Read-only access</span></div></header>
+        main.innerHTML = `<div class="sm"><header class="sm-hero"><div><div class="sm-eyebrow">EB TRACKER · POWERED BY WEST EPCM</div><h1>Sales analysis report</h1><p>Won projects, Accounts variations and purchase projects in one report, with estimator RFQ value alongside.</p></div><div class="sm-actions">${isSales() ? '' : '<button type="button" id="sm-back">← Sales tools</button>'}<span class="sm-readonly">Read-only access</span></div></header>
             <div class="sm-toolbar"><span id="sm-updated" aria-live="polite">Waiting for data</span><button type="button" id="sm-refresh">Refresh data</button></div>
             <section class="sm-panel sm-filters" aria-label="Report filters">
             <div class="sm-filter-row"><div class="sm-toggle" role="group" aria-label="Report view"><button type="button" data-view="month" aria-pressed="true">Monthly</button><button type="button" data-view="week" aria-pressed="false">Weekly</button><button type="button" data-view="day" aria-pressed="false">Date-wise</button></div>
@@ -263,7 +263,7 @@
             <label>Currency<select id="sm-currency"><option value="ALL_INR">All currencies (in INR)</option></select></label>
             <label class="sm-search">Project / client / reference<input type="search" id="sm-search" placeholder="Search"></label>
             <button type="button" id="sm-reset">Reset filters</button></section>
-            <p class="sm-note"><strong>What is counted.</strong> Won projects: the priced quote value (estimator pricing) of proposals the BDM marked won, on the won date; the P.O. value the BDM typed is listed beside it for comparison and used only when a proposal was never priced. Variations: values Accounts upload for a BDM. Purchase projects: the initial approved sales value of purchase portal projects, shown separately and not credited to any BDM. Total sales = won + variations + purchase projects. RFQ value is the quote value the estimator uploads on the proposal; it is shown for comparison and never added to sales. The report opens on 1 December 2025; choose “All time” or an earlier From date to see older wins.</p>
+            <p class="sm-note"><strong>What is counted.</strong> Won projects: the priced quote value (estimator pricing) of proposals the BDM marked won, on the won date; the P.O. value the BDM typed is listed beside it for comparison and used only when a proposal was never priced. Variations: values Accounts upload for a BDM. Purchase projects: the initial approved sales value of purchase portal projects, shown separately and not credited to any BDM. Total sales = won + variations + purchase projects. RFQ value is the quote value the estimator uploads on the proposal, counted in the week of the proposal / RFQ date the BDM set (or the date the proposal was created); it is shown for comparison and never added to sales. The report opens on 1 December 2025; choose “All time” or an earlier From date to see older wins.</p>
             <div id="sm-results" aria-live="polite"></div></div>`;
         view = 'month'; tab = 'won'; page = 1;
         document.getElementById('sm-refresh').onclick = refresh;

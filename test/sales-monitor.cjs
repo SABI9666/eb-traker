@@ -94,6 +94,16 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.setViewportSize({ width: 390, height: 844 });
         await page.screenshot({ path: path.join(screenshotDir, 'sales-mobile.png'), fullPage: true });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'No mobile page overflow');
+        // INR rates follow the record date: new rates from 8 Nov 2026, old rates before.
+        await page.evaluate(() => { window.apiCall = async () => ({ success: true, data: { generatedAt: '2026-11-12T00:00:00Z', bdms: [], rows: [
+            { id: 'n', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'New', value: 100, currency: 'USD', date: '2026-11-08', status: 'won' },
+            { id: 'o', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Old', value: 100, currency: 'USD', date: '2026-11-07', status: 'won' },
+            { id: 'g', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'GBP', value: 10, currency: 'GBP', date: '2026-11-10', status: 'won' },
+            { id: 'a', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'AUD', value: 10, currency: 'AUD', date: '2026-11-10', status: 'won' },
+            { id: 'c', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'CAD', value: 10, currency: 'CAD', date: '2026-11-10', status: 'won' }] } }); });
+        await page.click('#sm-refresh');
+        await page.waitForSelector('.sm-card');
+        assert.equal(await cardText('Won projects'), '21,114.00', 'USD 100 x 95 + USD 100 x 90 + GBP 10 x 127.5 + AUD 10 x 66.9 + CAD 10 x 67');
         await page.evaluate(() => { window.apiCall = async () => { throw new Error('Offline'); }; });
         await page.click('#sm-refresh');
         await page.waitForSelector('[role="alert"]');

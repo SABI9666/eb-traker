@@ -13,10 +13,16 @@
     // COO / Director open the same report from their hub; the API enforces access.
     const isManagement = () => typeof currentUserRole !== 'undefined' && ['coo', 'director'].includes(String(currentUserRole || '').toLowerCase());
     const canView = () => typeof currentUser !== 'undefined' && !!currentUser && (isSales() || isManagement());
-    // Same fixed rates as the rest of the tracker, so converted totals agree.
-    const TO_INR = { INR: 1, USD: 90.0, AUD: 55.0, NZD: 51.0, EUR: 90.0, GBP: 105.0, SGD: 62.0, AED: 22.7, CAD: 61.0, JPY: 0.55 };
+    // INR rates by the record's own date: from 8 Nov 2026 the new USD / AUD / GBP / CAD rates apply,
+    // earlier records keep the rates in force before then. Newest period first.
+    const BASE_RATES = { INR: 1, USD: 90.0, AUD: 55.0, NZD: 51.0, EUR: 90.0, GBP: 105.0, SGD: 62.0, AED: 22.7, CAD: 61.0, JPY: 0.55 };
+    const RATE_PERIODS = [
+        { from: '2026-11-08', rates: { ...BASE_RATES, USD: 95.0, AUD: 66.9, GBP: 127.5, CAD: 67.0 } },
+        { from: '', rates: BASE_RATES }
+    ];
+    const ratesOn = date => RATE_PERIODS.find(p => (date || '') >= p.from).rates;
     const ALL = 'ALL_INR';
-    const inr = r => r.value == null ? null : r.value * (TO_INR[r.currency] ?? 1);
+    const inr = r => r.value == null ? null : r.value * (ratesOn(r.date)[r.currency] ?? 1);
     // The report opens on December 2025; earlier dates can be chosen. Undated records are left out.
     const START = '2025-12-01';
     const KINDS = {
@@ -184,7 +190,7 @@
             <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Records</h2><div class="sm-toggle" role="tablist" aria-label="Record type">${Object.entries(KINDS).filter(([k]) => !(f.bdm && k === 'purchase')).map(([k, v]) => `<button type="button" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${v.label} (${totals[k + 'Count']})</button>`).join('')}</div></div>
             <p class="sm-tab-note">${KINDS[tab].source} · ${records.length} record(s) · ${money(tabTotal)} ${f.currency === ALL ? 'INR' : esc(f.currency)}</p>
             ${table(recordHeaders, records.slice((page - 1) * 25, page * 25).map(recordRow))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
-            <p class="sm-note">${f.currency === ALL ? 'Converted to INR at fixed rates (USD 90, AUD 55, NZD 51, EUR 90, GBP 105, SGD 62, AED 22.7, CAD 61, JPY 0.55); unrecorded currencies are counted as INR. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Figures are booked sales, not invoiced revenue or cash received.</p>`;
+            <p class="sm-note">${f.currency === ALL ? 'Converted to INR by each record\'s date: from 8 Nov 2026 USD 95, AUD 66.9, GBP 127.5, CAD 67; before that USD 90, AUD 55, GBP 105, CAD 61. Other currencies: NZD 51, EUR 90, SGD 62, AED 22.7, JPY 0.55. Unrecorded currencies are counted as INR. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Figures are booked sales, not invoiced revenue or cash received.</p>`;
         drawCharts(series, [['won', totals.won], ['variation', totals.variation], ['purchase', totals.purchase]].filter(([k]) => !(f.bdm && k === 'purchase'))
             .map(([k, value]) => ({ label: KINDS[k].short, value, color: KINDS[k].color })), ranking);
         document.getElementById('sm-prev').onclick = () => { page--; render(); };

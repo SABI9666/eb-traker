@@ -133,7 +133,7 @@
     $('#resetForm').addEventListener('submit', async e => {
         e.preventDefault();
         try {
-            await auth.sendPasswordResetEmail($('#resetEmail').value.trim(), { url: location.origin + location.pathname });
+            await auth.sendPasswordResetEmail($('#resetEmail').value.trim(), { url: location.origin + '/timesheet/' });
         } catch (err) { /* same message either way: do not reveal which emails exist */ }
         showLogin('If that email has an account, a reset link is on its way.', true);
     });

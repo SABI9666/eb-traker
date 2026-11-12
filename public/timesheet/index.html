@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Timesheet Portal · EB Tracker</title>
+    <meta name="description" content="Multi-company timesheets: weekly hours, approvals and manager reports.">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="ts.css?v=1">
+</head>
+<body>
+    <div id="boot" class="boot"><div class="spinner" aria-label="Loading"></div></div>
+
+    <!-- Sign in -->
+    <main id="loginView" class="login" hidden>
+        <section class="login-brand">
+            <div class="logo" aria-hidden="true">
+                <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><polyline points="14,26 33,76 50,46 67,76 86,26"/></svg>
+            </div>
+            <h1>EB <span>Tracker</span></h1>
+            <p class="product">Timesheet Portal</p>
+            <ul class="brand-points">
+                <li>Weekly hours in one grid or from Excel</li>
+                <li>Supervisor, project manager and GM approvals</li>
+                <li>Monthly reports for managers</li>
+            </ul>
+        </section>
+        <section class="login-card">
+            <div class="tabs" role="tablist">
+                <button role="tab" class="tab active" data-mode="member" aria-selected="true">Sign in</button>
+                <button role="tab" class="tab" data-mode="super" aria-selected="false">Super Admin</button>
+            </div>
+            <p id="loginHint" class="hint">Sign in with the email your company admin invited.</p>
+            <div id="loginMsg" class="msg" role="alert" hidden></div>
+            <form id="loginForm" autocomplete="on">
+                <label>Email<input type="email" id="loginEmail" autocomplete="username" required></label>
+                <label>Password<input type="password" id="loginPassword" autocomplete="current-password" required></label>
+                <button type="submit" class="btn primary block" id="loginBtn">Sign in</button>
+            </form>
+            <form id="resetForm" hidden>
+                <p class="hint">Enter your email and we'll send a link to set a new password.</p>
+                <label>Email<input type="email" id="resetEmail" autocomplete="username" required></label>
+                <button type="submit" class="btn primary block">Send reset link</button>
+            </form>
+            <button type="button" class="link" id="toggleReset">Forgot password?</button>
+        </section>
+    </main>
+
+    <!-- Portal -->
+    <div id="appView" class="app" hidden>
+        <header class="topbar">
+            <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Menu">☰</button>
+            <div class="brand-mini"><b>EB</b> Timesheets</div>
+            <div class="company" id="companyName"></div>
+            <div class="spacer"></div>
+            <div class="who"><span id="whoName"></span><small id="whoRole"></small></div>
+            <button class="btn ghost" id="signOut">Sign out</button>
+        </header>
+        <div class="layout">
+            <nav class="sidebar" id="sidebar" aria-label="Main"></nav>
+            <main class="content" id="content" tabindex="-1"></main>
+        </div>
+    </div>
+
+    <div id="modalRoot"></div>
+    <div id="toast" class="toast" role="status" hidden></div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="ts.js?v=1"></script>
+</body>
+</html>

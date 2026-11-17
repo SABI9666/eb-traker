@@ -94,6 +94,37 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.setViewportSize({ width: 390, height: 844 });
         await page.screenshot({ path: path.join(screenshotDir, 'sales-mobile.png'), fullPage: true });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'No mobile page overflow');
+        await page.setViewportSize({ width: 1440, height: 1100 });
+        // Duplicate check: groups entries by project & client, P.O. number and repeated variations.
+        await page.evaluate(() => { window.apiCall = async () => ({ success: true, data: { generatedAt: '2026-11-12T00:00:00Z', bdms: [], rows: [
+            { id: 'w1', source: 'proposals', kind: 'won', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge expansion', client: 'Client A', reference: 'PO-77', value: 100, currency: 'INR', date: '2026-10-01', status: 'won' },
+            { id: 'w2', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'bridge  Expansion', client: 'CLIENT A', reference: 'po 77', value: 100, currency: 'INR', date: '2025-05-01', status: 'won' },
+            { id: 'w3', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Alpha', client: 'X', reference: 'PO #CLIENT', value: 100, currency: 'INR', date: '2026-05-02', status: 'won' },
+            { id: 'w4', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Beta', client: 'Y', reference: 'PO #CLIENT', value: 100, currency: 'INR', date: '2026-05-03', status: 'won' },
+            { id: 'w5', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'Depot', client: 'Z', reference: 'PO-500', value: 100, currency: 'INR', date: '2026-06-03', status: 'won' },
+            { id: 'w6', source: 'proposals', kind: 'won', bdmUid: 'a', bdmName: 'Alice', projectName: 'Yard', client: 'Q', reference: 'PO-500', value: 100, currency: 'INR', date: '2026-06-04', status: 'won' },
+            { id: 'v1', source: 'accounts', kind: 'variation', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge', reference: 'VAR-1', value: 50, currency: 'INR', date: '2026-10-02', status: 'uploaded by accounts' },
+            { id: 'v2', source: 'accounts', kind: 'variation', bdmUid: 'a', bdmName: 'Alice', projectName: 'Bridge', reference: 'VAR-1', value: 50, currency: 'INR', date: '2026-10-05', status: 'uploaded by accounts' }] } }); });
+        await page.click('#sm-refresh');
+        await page.waitForSelector('.sm-card');
+        assert.match(await page.locator('.sm-alert-dup').textContent(), /3 group\(s\) of possible duplicate entries/, 'Duplicate groups are called out');
+        await page.click('#sm-find-dups');
+        assert.equal(await page.locator('.sm-dup-group').count(), 3, 'Duplicate groups are listed');
+        const dupText = await page.locator('.sm-details').textContent();
+        assert.match(dupText, /Same project & client[\s\S]*Same P\.O\. number[\s\S]*Bridge expansion/, 'Matches made several ways are one group');
+        assert.match(dupText, /Outside filters/, 'Earlier matching entry outside the range is shown for comparison');
+        assert.doesNotMatch(dupText, /PO #CLIENT/, 'Placeholder P.O. numbers are not matched');
+        await page.selectOption('#sm-dup-type', 'variation');
+        assert.equal(await page.locator('.sm-dup-group').count(), 1, 'Match type filter');
+        await page.selectOption('#sm-dup-type', '');
+        await page.fill('#sm-search', 'PO-500');
+        assert.equal(await page.locator('.sm-dup-group').count(), 1, 'Search narrows duplicate groups');
+        const [dupDownload] = await Promise.all([page.waitForEvent('download'), page.click('#sm-dup-csv')]);
+        assert.match(fs.readFileSync(await dupDownload.path(), 'utf8'), /First entry[\s\S]*Repeat/);
+        await page.fill('#sm-search', '');
+        await page.locator('.sm-details').screenshot({ path: path.join(screenshotDir, 'sales-duplicates.png') });
+        await page.click('#sm-reset');
+        await page.click('[data-tab="won"]');
         // INR rates follow the record date: new rates from 8 Nov 2026, old rates before.
         await page.evaluate(() => { window.apiCall = async () => ({ success: true, data: { generatedAt: '2026-11-12T00:00:00Z', bdms: [], rows: [
             { id: 'n', source: 'proposals', kind: 'won', bdmUid: 'b', bdmName: 'Bob', projectName: 'New', value: 100, currency: 'USD', date: '2026-11-08', status: 'won' },
@@ -115,6 +146,6 @@ const screenshotDir = process.env.SALES_SCREENSHOT_DIR || require('node:os').tmp
         await page.evaluate(() => { window.currentUser = null; window.authListeners.forEach(fn => fn(null)); });
         assert.equal(await page.locator('.sm').count(), 0, 'Logout clears sales data');
         assert.deepEqual(errors, []);
-        console.log('PASS: INR totals by source, monthly/weekly/date-wise views with totals, BDM table, separate record tabs, CSV export, BDM/date/currency/search filters, empty/error states, XSS escaping, mobile overflow.');
+        console.log('PASS: INR totals by source, monthly/weekly/date-wise views with totals, BDM table, separate record tabs, duplicate check, CSV export, BDM/date/currency/search filters, empty/error states, XSS escaping, mobile overflow.');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

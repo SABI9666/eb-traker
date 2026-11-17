@@ -3,7 +3,7 @@
 (function () {
     'use strict';
     const EMAIL = 'sales.edanbrook@outlook.com';
-    let report = null, requestId = 0, page = 1, activeUid = null, view = 'month', tab = 'won', charts = [], records = [];
+    let report = null, requestId = 0, page = 1, activeUid = null, view = 'month', tab = 'won', charts = [], records = [], dupType = '', dupPage = 1;
     const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     const money = value => value == null ? 'Not recorded' : Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     // Short Indian units for chart axes and labels (K, L, Cr).
@@ -63,6 +63,46 @@
     }
     const blank = () => ({ won: 0, wonCount: 0, variation: 0, variationCount: 0, purchase: 0, purchaseCount: 0, rfq: 0, rfqCount: 0 });
     function tally(target, r) { target[r.kind] += r.value || 0; target[r.kind + 'Count']++; return target; }
+
+    // Duplicate check: groups of won / variation entries that look like the same sale entered twice.
+    // Matching ignores case, spaces and punctuation. P.O. / reference numbers count only when they contain a
+    // digit, so placeholders such as "PO #CLIENT" are not matched.
+    const norm = value => String(value ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+    const realRef = value => { const n = norm(value); return n.length >= 3 && /\d/.test(n) ? n : ''; };
+    const DUP_TYPES = {
+        'project-client': 'Same project & client',
+        'po': 'Same P.O. number',
+        'project-number': 'Same project number',
+        'project-name': 'Same project name (different client)',
+        'variation': 'Repeated variation'
+    };
+    function findDuplicateGroups() {
+        const keyed = new Map();
+        const put = (type, key, r) => { if (!key) return; const k = type + '|' + key; (keyed.get(k) || keyed.set(k, { type, rows: [] }).get(k)).rows.push(r); };
+        report.rows.forEach(r => {
+            if (r.kind === 'won') {
+                const project = norm(r.projectName) === 'unnamedproject' ? '' : norm(r.projectName);
+                if (project) put('project-client', project + '|' + norm(r.client), r);
+                put('po', realRef(r.reference), r);
+                put('project-number', norm(r.projectNumber), r);
+                if (project) put('project-name', project, r);
+            } else if (r.kind === 'variation') {
+                const ref = realRef(r.reference);
+                put('variation', ref ? 'ref|' + ref : (r.value != null && norm(r.projectName) ? `${r.bdmUid}|${norm(r.projectName)}|${r.value}|${r.currency}` : ''), r);
+            }
+        });
+        // One group per set of entries; a set matched several ways lists every reason.
+        const groups = new Map();
+        keyed.forEach(({ type, rows }) => {
+            if (rows.length < 2) return;
+            if (type === 'project-name' && new Set(rows.map(r => norm(r.client))).size < 2) return;
+            const id = rows.map(r => r.id).sort().join(',');
+            const existing = groups.get(id);
+            if (existing) { if (!existing.types.includes(type)) existing.types.push(type); return; }
+            groups.set(id, { id, types: [type], rows: [...rows].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')) });
+        });
+        return [...groups.values()];
+    }
 
     function drawCharts(series, mix, bdmRows) {
         charts.forEach(c => c.destroy()); charts = [];
@@ -132,7 +172,7 @@
         const rows = report.rows.filter(r => (f.currency === ALL || r.currency === f.currency) &&
             // Purchase projects belong to no BDM, so a single-BDM view leaves them out.
             (!f.bdm || r.bdmUid === f.bdm) && r.date && r.date >= f.from && r.date <= end &&
-            (!search || `${r.projectName} ${r.projectNumber} ${r.client} ${r.reference}`.toLowerCase().includes(search)))
+            (!search || `${r.projectName} ${r.projectNumber} ${r.client} ${r.reference} ${r.bdmName}`.toLowerCase().includes(search)))
             .map(r => f.currency === ALL ? { ...r, value: inr(r), currency: 'INR' } : r);
         const totals = rows.reduce(tally, blank());
         const bdmSales = totals.won + totals.variation, sales = bdmSales + totals.purchase;
@@ -149,8 +189,15 @@
         const ranking = all.filter(b => b.wonCount || b.variationCount || b.rfqCount)
             .sort((a, b) => (b.won + b.variation) - (a.won + a.variation) || b.rfq - a.rfq || a.name.localeCompare(b.name));
         const idle = all.filter(b => !ranking.includes(b)).map(b => b.name).sort((a, b) => a.localeCompare(b));
+        // Duplicate groups with at least one entry in the selected range / BDM / search.
+        const inView = r => r.date && r.date >= f.from && r.date <= end && (!f.bdm || r.bdmUid === f.bdm) &&
+            (!search || `${r.projectName} ${r.projectNumber} ${r.client} ${r.reference} ${r.bdmName}`.toLowerCase().includes(search));
+        const allGroups = findDuplicateGroups().filter(g => g.rows.some(inView))
+            .sort((a, b) => b.rows.reduce((m, r) => r.date > m ? r.date : m, '').localeCompare(a.rows.reduce((m, r) => r.date > m ? r.date : m, '')));
+        const groups = allGroups.filter(g => !dupType || g.types.includes(dupType));
+        const dupEntries = groups.reduce((n, g) => n + g.rows.length - 1, 0);
         records = rows.filter(r => r.kind === tab).sort((a, b) => b.date.localeCompare(a.date) || (b.value || 0) - (a.value || 0));
-        const pages = Math.max(1, Math.ceil(records.length / 25)); page = Math.min(page, pages);
+        let pages = Math.max(1, Math.ceil(records.length / 25)); if (tab !== 'dup') page = Math.min(page, pages);
         const missingValues = rows.filter(r => r.value == null).length, undated = report.rows.filter(r => !r.date).length;
         const cur = f.currency === ALL ? 'INR (all currencies converted)' : esc(f.currency);
         const viewName = { month: 'Monthly', week: 'Weekly', day: 'Date-wise' }[view];
@@ -174,7 +221,17 @@
             return `<tr><td>${esc(r.date)}${r.proposalDateEdited ? `<small class="sm-flag" title="Proposal / RFQ date set by ${esc(r.proposalDateEditedBy || 'the BDM')}">Date set by BDM</small>` : ''}</td><td>${project}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td><span class="sm-tag">${esc(r.status)}</span></td><td>${esc(r.pricedDate || '—')}</td>${value}</tr>`;
         };
         const tabTotal = records.reduce((s, r) => s + (r.value || 0), 0);
-        output.innerHTML = `${duplicates.length ? `<p class="sm-alert sm-alert-dup"><strong>${duplicates.length} possible duplicate win(s)</strong> in this range: the same project and client was already won on another proposal (${duplicates.slice(0, 3).map(d => esc(d.projectName)).join(', ')}${duplicates.length > 3 ? '…' : ''}). They are included in the totals and marked in Won projects; open the proposal and use its Won record to view or delete the other proposal. New duplicate proposals for the same project and client are blocked when created.</p>` : ''}
+        let dupSection = '';
+        if (tab === 'dup') {
+            pages = Math.max(1, Math.ceil(groups.length / 10)); page = Math.min(page, pages);
+            const shown = r => f.currency === ALL ? `${money(inr(r))} INR` : `${esc(r.currency)} ${money(r.value)}`;
+            const dupRow = (r, i) => `<tr class="${i ? 'sm-dup-row' : ''}${inView(r) ? '' : ' sm-out'}"><td>${esc(r.date || 'No date')}${inView(r) ? '' : '<small class="sm-flag">Outside filters</small>'}</td><td><span class="sm-tag">${i ? 'Repeat' : 'First entry'}</span></td><td>${esc(KINDS[r.kind].short)}</td><td><strong>${esc(r.projectName)}</strong>${r.projectNumber ? `<small>${esc(r.projectNumber)}</small>` : ''}</td><td>${esc(r.client || '—')}</td><td class="sm-name">${esc(r.bdmName)}</td><td>${esc(r.reference || '—')}</td><td class="sm-num">${shown(r)}</td></tr>`;
+            const groupHtml = g => `<div class="sm-dup-group"><div class="sm-dup-head">${g.types.map(t => `<span class="sm-dup">${esc(DUP_TYPES[t])}</span>`).join('')}<strong>${esc(g.rows[0].projectName)}</strong><span>${g.rows.length} entries · ${g.rows.length - 1} possible repeat(s)</span></div>${table(['Date', 'Entry', 'Type', 'Project', 'Client', 'BDM', 'P.O. / reference', 'Value'], g.rows.map(dupRow))}</div>`;
+            dupSection = `<div class="sm-dup-bar"><label>Match type<select id="sm-dup-type"><option value="">All matches (${allGroups.length})</option>${Object.entries(DUP_TYPES).map(([k, v]) => `<option value="${k}"${dupType === k ? ' selected' : ''}>${esc(v)} (${allGroups.filter(g => g.types.includes(k)).length})</option>`).join('')}</select></label><button type="button" id="sm-dup-csv"${groups.length ? '' : ' disabled'}>Export duplicates CSV</button></div>
+            <p class="sm-tab-note">${groups.length} group(s) · ${dupEntries} possible repeat entr${dupEntries === 1 ? 'y' : 'ies'}. Each group lists the first entry, then the later ones that match it; entries outside the current dates / BDM / search are shown greyed for comparison. Use the search box above to look up one project, client, P.O. number or BDM.</p>
+            ${groups.length ? groups.slice((page - 1) * 10, page * 10).map(groupHtml).join('') : '<p class="sm-empty">No possible duplicate entries match these filters.</p>'}`;
+        }
+        output.innerHTML = `${duplicates.length ? `<p class="sm-alert sm-alert-dup"><strong>${duplicates.length} possible duplicate win(s)</strong> in this range: the same project and client was already won on another proposal (${duplicates.slice(0, 3).map(d => esc(d.projectName)).join(', ')}${duplicates.length > 3 ? '…' : ''}). They are included in the totals and marked in Won projects; open the proposal and use its Won record to view or delete the other proposal. New duplicate proposals for the same project and client are blocked when created. <button type="button" class="sm-dup-open" data-find-dups>Review duplicates</button></p>` : allGroups.length ? `<p class="sm-alert sm-alert-dup"><strong>${allGroups.length} group(s) of possible duplicate entries</strong> in this range (same project, P.O. number or repeated variation). <button type="button" class="sm-dup-open" data-find-dups>Review duplicates</button></p>` : ''}
         ${missingValues || undated || earlierWins || f.currency === 'UNSPECIFIED' ? `<p class="sm-alert">${missingValues ? `${missingValues} matching record(s) have no value (a won proposal with no quote or P.O. value) and count as zero. ` : ''}${earlierWins ? `${earlierWins} won proposal(s) dated before ${longDate(f.from)} are outside this range; choose an earlier From date or “All time” to include them. ` : ''}${undated ? `${undated} record(s) have no date and are not in this report. ` : ''}${f.currency === 'UNSPECIFIED' ? 'Currency is not recorded for this group; do not compare this total with other currencies.' : ''}</p>` : ''}
             <div class="sm-report-head"><div><h2>Sales analysis · ${longDate(f.from)} to ${longDate(end)}</h2><span>${viewName} view · ${cur} · ${bdmName}${f.search ? ` · “${esc(f.search)}”` : ''}</span></div><div class="sm-actions"><button type="button" id="sm-csv">Export CSV</button><button type="button" id="sm-print">Print / Save PDF</button></div></div>
             <div class="sm-cards">${card('Total sales', money(sales), 'Won + variations' + (f.bdm ? '' : ' + purchase projects'), '#173450')}${card('Won projects', money(totals.won), count(totals.wonCount, 'proposal') + ' marked won · quote value', KINDS.won.color)}${card('Variations (Accounts)', money(totals.variation), count(totals.variationCount, 'variation') + ' uploaded by Accounts', KINDS.variation.color)}${card('Purchase projects', f.bdm ? '—' : money(totals.purchase), f.bdm ? 'Not attributed to BDMs' : count(totals.purchaseCount, 'project') + ' · shown separately', KINDS.purchase.color)}
@@ -187,9 +244,9 @@
             </div>
             <section class="sm-panel"><div class="sm-section-title"><h2>${viewName} totals</h2><span>${cur} · ${view === 'day' ? 'dates with activity' : 'every ' + (view === 'month' ? 'month' : 'week (Mon – Sun)') + ' in the range'}</span></div><div class="sm-trend-table">${table([view === 'month' ? 'Month' : view === 'week' ? 'Week (Mon – Sun)' : 'Date', 'Wins', 'Won value', 'Variations', 'BDM sales', 'Purchase projects', 'Total sales', 'RFQs', 'RFQ value'], series.map(p => periodRow(esc(p.label), p)), periodRow('Total', totals, true))}</div></section>
             <section class="sm-panel"><div class="sm-section-title"><h2>BDM performance</h2><span>${cur} · ${count(ranking.length, 'active BDM')} · ranked by BDM sales · purchase projects excluded</span></div>${table(['Rank', 'BDM', 'Wins', 'Won value', 'Variations', 'Variation value', 'BDM sales', 'Share', 'Avg deal', 'RFQs', 'RFQ value'], ranking.map((b, i) => bdmRow(i + 1, b)), bdmRow('', { name: 'Total', ...totals }, true))}${idle.length ? `<p class="sm-idle">No activity in this period: ${idle.map(esc).join(', ')}</p>` : ''}</section>
-            <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Records</h2><div class="sm-toggle" role="tablist" aria-label="Record type">${Object.entries(KINDS).filter(([k]) => !(f.bdm && k === 'purchase')).map(([k, v]) => `<button type="button" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${v.label} (${totals[k + 'Count']})</button>`).join('')}</div></div>
-            <p class="sm-tab-note">${KINDS[tab].source} · ${records.length} record(s) · ${money(tabTotal)} ${f.currency === ALL ? 'INR' : esc(f.currency)}</p>
-            ${table(recordHeaders, records.slice((page - 1) * 25, page * 25).map(recordRow))}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
+            <section class="sm-panel sm-details"><div class="sm-section-title"><h2>Records</h2><div class="sm-toggle" role="tablist" aria-label="Record type">${Object.entries(KINDS).filter(([k]) => !(f.bdm && k === 'purchase')).map(([k, v]) => `<button type="button" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${v.label} (${totals[k + 'Count']})</button>`).join('')}<button type="button" role="tab" data-tab="dup" class="sm-dup-tab" aria-pressed="${tab === 'dup'}">Duplicate check (${allGroups.length})</button></div></div>
+            ${tab === 'dup' ? dupSection : `<p class="sm-tab-note">${KINDS[tab].source} · ${records.length} record(s) · ${money(tabTotal)} ${f.currency === ALL ? 'INR' : esc(f.currency)}</p>
+            ${table(recordHeaders, records.slice((page - 1) * 25, page * 25).map(recordRow))}`}<div class="sm-pages"><button type="button" id="sm-prev" ${page === 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" id="sm-next" ${page === pages ? 'disabled' : ''}>Next</button></div></section>
             <p class="sm-note">${f.currency === ALL ? 'Converted to INR by each record\'s date: from 8 Nov 2026 USD 95, AUD 66.9, GBP 127.5, CAD 67; before that USD 90, AUD 55, GBP 105, CAD 61. Other currencies: NZD 51, EUR 90, SGD 62, AED 22.7, JPY 0.55. Unrecorded currencies are counted as INR. ' : ''}Generated ${esc(new Date(report.generatedAt).toLocaleString())}. Figures are booked sales, not invoiced revenue or cash received.</p>`;
         drawCharts(series, [['won', totals.won], ['variation', totals.variation], ['purchase', totals.purchase]].filter(([k]) => !(f.bdm && k === 'purchase'))
             .map(([k, value]) => ({ label: KINDS[k].short, value, color: KINDS[k].color })), ranking);
@@ -198,6 +255,25 @@
         document.getElementById('sm-csv').onclick = () => exportCsv(rows);
         document.getElementById('sm-print').onclick = () => window.print();
         output.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; page = 1; render(); });
+        output.querySelectorAll('[data-find-dups]').forEach(b => b.onclick = openDuplicates);
+        const dupSelect = document.getElementById('sm-dup-type');
+        if (dupSelect) dupSelect.onchange = () => { dupType = dupSelect.value; page = 1; render(); };
+        const dupCsv = document.getElementById('sm-dup-csv');
+        if (dupCsv) dupCsv.onclick = () => exportDuplicates(groups);
+    }
+    function openDuplicates() {
+        tab = 'dup'; page = 1; render();
+        document.querySelector('#sm-results .sm-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function exportDuplicates(groups) {
+        const cell = value => { let s = String(value ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+        const lines = [['Group', 'Match', 'Entry', 'Date', 'Type', 'Project', 'Project number', 'Client', 'BDM', 'P.O. / reference', 'Currency', 'Value'].map(cell).join(',')];
+        groups.forEach((g, n) => g.rows.forEach((r, i) => lines.push([n + 1, g.types.map(t => DUP_TYPES[t]).join('; '), i ? 'Repeat' : 'First entry', r.date, KINDS[r.kind].label, r.projectName, r.projectNumber, r.client, r.bdmName, r.reference, r.currency, r.value ?? ''].map(cell).join(','))));
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+        link.download = `sales-duplicates-${today()}.csv`;
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     }
     function exportCsv(rows) {
         const cell = value => { let s = String(value ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
@@ -263,15 +339,16 @@
             <div class="sm-toolbar"><span id="sm-updated" aria-live="polite">Waiting for data</span><button type="button" id="sm-refresh">Refresh data</button></div>
             <section class="sm-panel sm-filters" aria-label="Report filters">
             <div class="sm-filter-row"><div class="sm-toggle" role="group" aria-label="Report view"><button type="button" data-view="month" aria-pressed="true">Monthly</button><button type="button" data-view="week" aria-pressed="false">Weekly</button><button type="button" data-view="day" aria-pressed="false">Date-wise</button></div>
-            <div class="sm-presets" role="group" aria-label="Quick ranges"><button type="button" data-preset="week">This week</button><button type="button" data-preset="month">This month</button><button type="button" data-preset="last-month">Last month</button><button type="button" data-preset="all">From 1 Dec 2025</button><button type="button" data-preset="ever">All time</button></div></div>
+            <div class="sm-presets" role="group" aria-label="Quick ranges"><button type="button" data-preset="week">This week</button><button type="button" data-preset="month">This month</button><button type="button" data-preset="last-month">Last month</button><button type="button" data-preset="all">From 1 Dec 2025</button><button type="button" data-preset="ever">All time</button><button type="button" id="sm-find-dups" class="sm-dup-open">Find duplicate entries</button></div></div>
             <label>From date<input type="date" id="sm-from" value="${START}"></label><label>To date<input type="date" id="sm-to"></label>
             <label>BDM<select id="sm-bdm"><option value="">All BDMs</option></select></label>
             <label>Currency<select id="sm-currency"><option value="ALL_INR">All currencies (in INR)</option></select></label>
-            <label class="sm-search">Project / client / reference<input type="search" id="sm-search" placeholder="Search"></label>
+            <label class="sm-search">Project / client / P.O. / BDM<input type="search" id="sm-search" placeholder="Search"></label>
             <button type="button" id="sm-reset">Reset filters</button></section>
             <p class="sm-note"><strong>What is counted.</strong> Won projects: the priced quote value (estimator pricing) of proposals the BDM marked won, on the won date; the P.O. value the BDM typed is listed beside it for comparison and used only when a proposal was never priced. Variations: values Accounts upload for a BDM. Purchase projects: the initial approved sales value of purchase portal projects, shown separately and not credited to any BDM. Total sales = won + variations + purchase projects. RFQ value is the quote value the estimator uploads on the proposal, counted in the week of the proposal / RFQ date the BDM set (or the date the proposal was created); it is shown for comparison and never added to sales. The report opens on 1 December 2025; choose “All time” or an earlier From date to see older wins.</p>
             <div id="sm-results" aria-live="polite"></div></div>`;
-        view = 'month'; tab = 'won'; page = 1;
+        view = 'month'; tab = 'won'; page = 1; dupType = '';
+        document.getElementById('sm-find-dups').onclick = () => { if (report) openDuplicates(); };
         document.getElementById('sm-refresh').onclick = refresh;
         document.getElementById('sm-back')?.addEventListener('click', () => { requestId++; if (typeof window._hubOpenSales === 'function') window._hubOpenSales(); else if (typeof window._hubOpenPhase === 'function') window._hubOpenPhase('corporate'); });
         document.getElementById('sm-reset').onclick = () => { ['bdm', 'to', 'search'].forEach(k => document.getElementById('sm-' + k).value = ''); document.getElementById('sm-from').value = START; document.getElementById('sm-currency').value = ALL; setView('month'); render(); };

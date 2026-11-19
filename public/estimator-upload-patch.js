@@ -18,6 +18,10 @@
     'use strict';
 
     function patchSaveEstimation() {
+        // app1.js now ships the combined Estimation & Pricing form whose own
+        // saveEstimation uploads files correctly and saves pricing too.
+        // Overriding it here would drop the quote number and pricing.
+        if (typeof window.readEstimationPricingForm === 'function') return true;
         if (typeof window.uploadFileDirectly !== 'function') return false;
 
         window.saveEstimation = async function (proposalId) {

@@ -2288,7 +2288,7 @@ async function triggerEmailNotification(eventName, data = {}) {
             switch(item.type) {
                 case 'estimation_required':
                     if (role === 'estimator')
-                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${item.proposalId}')">ENTER MANHOURS</button>`;
+                        actionBtn = `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${item.proposalId}')">ENTER ESTIMATION &amp; PRICING</button>`;
                     break;
                 case 'pricing_required':
                     if (role === 'estimator' || role === 'coo' || role === 'director')
@@ -2806,7 +2806,7 @@ function renderProposals(proposals) {
         const statusLower = (p.status || '').toLowerCase().replace(/\s+/g, '_');
 
         if (currentUserRole === 'estimator' && (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) && statusLower !== 'subcontracted' && !p.subcontractor) {
-            actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}', '${(p.estimation?.quoteNumber || '').replace(/'/g, "\\'")}')">Add Estimation</button> `;
+            actionButtons += `<button class="btn btn-primary btn-sm" onclick="showEstimationModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}', '${(p.estimation?.quoteNumber || '').replace(/'/g, "\\'")}')">Add Estimation &amp; Pricing</button> `;
             actionButtons += `<button class="btn btn-sm" style="background: #7c3aed; color: white; border: none;" onclick="showSubcontractorModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}')">Subcontractor</button> `;
         }
 
@@ -5348,7 +5348,7 @@ function showCreateProposalModal() {
             // ESTIMATOR: Show Add Estimation button, then Set Pricing button after estimation done
             if (currentUserRole === 'estimator') {
                 if (statusLower === 'draft' || statusLower === 'pending_estimation' || !p.estimation) {
-                    actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}', '${(p.estimation?.quoteNumber || '').replace(/'/g, "\\'")}')">Add Estimation</button>`;
+                    actionsHtml = `<button class="btn btn-primary" onclick="showEstimationModal('${p.id}', '${(p.projectName || '').replace(/'/g, "\\'")}', '${(p.estimation?.quoteNumber || '').replace(/'/g, "\\'")}')">Add Estimation &amp; Pricing</button>`;
                 } else if ((statusLower === 'estimated' || p.estimation) && (!p.pricing || !p.pricing.projectNumber)) {
                     actionsHtml = `<button class="btn btn-success" onclick="showCOOPricingForm('${p.id}')">Set Quote # & Pricing</button>`;
                 } else if (p.pricing && p.pricing.projectNumber && statusLower !== 'approved' && statusLower !== 'rejected' && statusLower !== 'won' && statusLower !== 'lost') {
@@ -5682,7 +5682,7 @@ function showCreateProposalModal() {
         <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
             <div class="modal-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
                 <div class="modal-header">
-                    <h2>Manhour Entry & Estimation</h2>
+                    <h2>Estimation &amp; Pricing</h2>
                     <span class="close-modal" onclick="closeModal()">&times;</span>
                 </div>
                 <form id="estimationForm" class="modal-form">
@@ -5691,9 +5691,13 @@ function showCreateProposalModal() {
                     <div class="form-section">
                         <h4>Quote Number</h4>
                         <div class="form-group">
-                            <label for="estimationQuoteNumber">Quote Number (Optional)</label>
-                            <input type="text" id="estimationQuoteNumber" class="form-control" placeholder="e.g. Q-2026-001" value="${existingQuoteNumber || ''}">
-                            <small style="color: var(--text-muted, #6b7280);">This number is visible to the BDM on the proposal.</small>
+                            <label for="estimationQuoteNumber">Quote Number <span class="required" style="color: red;">*</span></label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="estimationQuoteNumber" class="form-control" placeholder="Enter manually or click Auto Generate" value="${existingQuoteNumber || ''}">
+                                <button type="button" onclick="generateProjectNumber(document.getElementById('estClientCompany').value, 'estimationQuoteNumber')" class="btn btn-outline" style="width: auto; white-space: nowrap;">🔢 Auto Generate</button>
+                            </div>
+                            <input type="hidden" id="estClientCompany" value="">
+                            <small style="color: var(--text-muted, #6b7280);">Entered once &mdash; used as the quote / project number for the estimation and the pricing. Visible to the BDM.</small>
                         </div>
                     </div>
 
@@ -5742,6 +5746,48 @@ function showCreateProposalModal() {
                     </div>
 
                     <div class="form-section">
+                        <h4>Pricing</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div class="form-group">
+                                <label for="estQuoteValue">Quote Value <span class="required" style="color: red;">*</span></label>
+                                <input type="number" id="estQuoteValue" class="form-control" placeholder="Enter quote value" step="0.01" min="0" oninput="this.dataset.manual = this.value ? '1' : ''">
+                            </div>
+                            <div class="form-group">
+                                <label for="estCurrency">Currency</label>
+                                <select id="estCurrency" class="form-control">
+                                    <option value="USD">USD ($)</option>
+                                    <option value="AUD">AUD (A$)</option>
+                                    <option value="CAD">CAD (C$)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="estHourlyRate">Hourly Rate</label>
+                                <input type="number" id="estHourlyRate" class="form-control" placeholder="Enter hourly rate" step="0.01" min="0" oninput="calculateEstimationQuoteValue()">
+                            </div>
+                            <div class="form-group">
+                                <label for="estProfitMargin">Profit Margin (%)</label>
+                                <input type="number" id="estProfitMargin" class="form-control" placeholder="Enter profit margin" step="0.01" min="0" max="100" oninput="calculateEstimationQuoteValue()">
+                            </div>
+                        </div>
+                        <small style="color: var(--text-muted, #6b7280); display: block; margin-bottom: 0.75rem;">Quote Value is filled automatically from Total Hours &times; Hourly Rate (+ margin) until you type your own value.</small>
+                        <div class="form-group">
+                            <label for="estPricingNotes">Pricing Notes</label>
+                            <textarea id="estPricingNotes" class="form-control" rows="2" placeholder="Add any pricing notes or special conditions..."></textarea>
+                        </div>
+                        <details style="margin-top: 0.5rem;">
+                            <summary style="cursor: pointer; font-weight: 600;">Cost Breakdown (Optional)</summary>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 0.75rem;">
+                                <div class="form-group"><label for="estMaterialCosts">Material Costs</label><input type="number" id="estMaterialCosts" class="form-control" placeholder="0.00" step="0.01"></div>
+                                <div class="form-group"><label for="estLaborCosts">Labor Costs</label><input type="number" id="estLaborCosts" class="form-control" placeholder="0.00" step="0.01"></div>
+                                <div class="form-group"><label for="estOverheadCosts">Overhead Costs</label><input type="number" id="estOverheadCosts" class="form-control" placeholder="0.00" step="0.01"></div>
+                                <div class="form-group"><label for="estOtherCosts">Other Costs</label><input type="number" id="estOtherCosts" class="form-control" placeholder="0.00" step="0.01"></div>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="form-section">
                         <h4>Attachments</h4>
                         
                         <div style="margin-bottom: 1.5rem;">
@@ -5769,7 +5815,7 @@ function showCreateProposalModal() {
 
                     <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
                         <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                        <button type="button" onclick="saveEstimation('${id}')" class="btn btn-success">Save Estimation</button>
+                        <button type="button" onclick="saveEstimation('${id}')" class="btn btn-success">Save Estimation &amp; Pricing</button>
                     </div>
                 </form>
             </div>
@@ -5778,6 +5824,11 @@ function showCreateProposalModal() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     loadProjectFiles(id);
+    prefillEstimationPricing(id);
+    // Keep the auto quote value in step with hours / rate / margin edits.
+    document.getElementById('estimationForm').addEventListener('input', function (e) {
+        if (e.target && e.target.id !== 'estQuoteValue') calculateEstimationQuoteValue();
+    });
 
     // BOQ File Listener
     document.getElementById('boqFileInput').addEventListener('change', function() {
@@ -5836,80 +5887,168 @@ function showCreateProposalModal() {
     }, 100);
 }
 
+// ── Single Estimation & Pricing form helpers ─────────────────────────────
+// The estimator enters manhours, quote number and pricing in ONE form.
+// The quote number is typed once and stored as estimation.quoteNumber and
+// pricing.projectNumber / pricing.quoteNumber.
+async function prefillEstimationPricing(proposalId) {
+    try {
+        const response = await apiCall(`proposals?id=${proposalId}`);
+        if (!response || !response.success || !response.data) return;
+        const p = response.data;
+        const pr = p.pricing || {};
+        const set = (elId, val) => {
+            const el = document.getElementById(elId);
+            if (el && (val !== undefined && val !== null && val !== '') && !el.value) el.value = val;
+        };
+        const client = document.getElementById('estClientCompany');
+        if (client) client.value = p.clientCompany || '';
+        set('estimationQuoteNumber', (p.estimation && p.estimation.quoteNumber) || pr.quoteNumber || pr.projectNumber);
+        set('estQuoteValue', pr.quoteValue);
+        if (pr.quoteValue) document.getElementById('estQuoteValue').dataset.manual = '1';
+        if (pr.currency) { const c = document.getElementById('estCurrency'); if (c) c.value = pr.currency; }
+        set('estHourlyRate', pr.hourlyRate);
+        set('estProfitMargin', pr.profitMargin);
+        set('estPricingNotes', pr.notes);
+        const cb = pr.costBreakdown || {};
+        set('estMaterialCosts', cb.material || '');
+        set('estLaborCosts', cb.labor || '');
+        set('estOverheadCosts', cb.overhead || '');
+        set('estOtherCosts', cb.other || '');
+    } catch (e) {
+        console.warn('prefillEstimationPricing failed:', e);
+    }
+}
+
+function calculateEstimationQuoteValue() {
+    const qv = document.getElementById('estQuoteValue');
+    if (!qv || qv.dataset.manual === '1') return;
+    const rate = parseFloat(document.getElementById('estHourlyRate')?.value) || 0;
+    const margin = parseFloat(document.getElementById('estProfitMargin')?.value) || 0;
+    const hours = parseFloat(document.getElementById('totalHours')?.value) || 0;
+    qv.value = (rate > 0 && hours > 0) ? (rate * hours * (1 + margin / 100)).toFixed(2) : '';
+}
+
+// Reads the quote number + pricing part of the estimation form.
+// Returns { quoteNumber, pricing } (pricing is null when no quote value given)
+// or { error } when the input is invalid.
+function readEstimationPricingForm() {
+    const val = (id) => { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+    const num = (id) => parseFloat(val(id)) || 0;
+    const quoteNumber = val('estimationQuoteNumber');
+    const quoteValueRaw = val('estQuoteValue');
+    if (!quoteNumber) return { error: 'Please enter the Quote Number (or click Auto Generate).' };
+    if (!quoteValueRaw) return { quoteNumber, pricing: null };
+    const quoteValue = parseFloat(quoteValueRaw);
+    if (!(quoteValue > 0)) return { error: 'Please enter a valid Quote Value.' };
+    const material = num('estMaterialCosts'), labor = num('estLaborCosts'),
+          overhead = num('estOverheadCosts'), other = num('estOtherCosts');
+    return {
+        quoteNumber,
+        pricing: {
+            projectNumber: quoteNumber,
+            quoteNumber: quoteNumber,
+            quoteValue: quoteValue,
+            currency: val('estCurrency') || 'USD',
+            hourlyRate: val('estHourlyRate') ? parseFloat(val('estHourlyRate')) : null,
+            profitMargin: val('estProfitMargin') ? parseFloat(val('estProfitMargin')) : null,
+            notes: val('estPricingNotes'),
+            costBreakdown: { material, labor, overhead, other, total: material + labor + overhead + other }
+        }
+    };
+}
+
+// Saves the pricing part right after the estimation was saved.
+async function saveEstimationPricing(proposalId, pricing) {
+    const response = await apiCall(`proposals?id=${proposalId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ action: 'add_pricing', data: pricing })
+    });
+    if (!response || !response.success) throw new Error((response && response.error) || 'Failed to save pricing');
+    if (typeof triggerEmailNotification === 'function') {
+        triggerEmailNotification('pricing.complete', {
+            proposalId: proposalId,
+            quoteValue: pricing.currency + ' ' + pricing.quoteValue,
+            projectName: document.getElementById('estProjectName')?.value || 'Project'
+        });
+    }
+}
+if (typeof window !== 'undefined') {
+    window.prefillEstimationPricing = prefillEstimationPricing;
+    window.calculateEstimationQuoteValue = calculateEstimationQuoteValue;
+    window.readEstimationPricingForm = readEstimationPricingForm;
+    window.saveEstimationPricing = saveEstimationPricing;
+}
+
       async function saveEstimation(proposalId) {
     const services = Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value);
-    
-    // Get both values
     const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
     const tonnage = parseFloat(document.getElementById('tonnageInput').value) || 0;
-    
-    // ✅ CRITICAL: Check if tonnage checkbox is checked
     const useTonnageCheckbox = document.getElementById('useTonnageForDesign');
     const usedTonnageForDesign = useTonnageCheckbox ? useTonnageCheckbox.checked : false;
 
-    // MODIFIED VALIDATION: Allow if EITHER Total Hours OR Tonnage is greater than 0
     if (totalHours === 0 && tonnage === 0) {
         return alert('Please enter either Manhours OR Tonnage to proceed.');
     }
     if (services.length === 0) return alert('Please select at least one service.');
 
-    const quoteNumberEl = document.getElementById('estimationQuoteNumber');
-    const quoteNumber = quoteNumberEl ? quoteNumberEl.value.trim() : '';
+    const pf = readEstimationPricingForm();
+    if (pf.error) return alert(pf.error);
+    if (!pf.pricing && !confirm('No Quote Value entered.\n\nSave the estimation without pricing? You can add pricing later.')) return;
 
     const estimationData = {
         tonnage: tonnage,
-        quoteNumber: quoteNumber || null,
-
-        // ✅ CRITICAL NEW FIELDS FOR ALLOCATION LOGIC
+        quoteNumber: pf.quoteNumber,
         usedTonnageForDesign: usedTonnageForDesign,
         tonnageValue: usedTonnageForDesign ? tonnage : null,
-
         designHours: document.getElementById('designHours').value || 0,
         detailingHours: document.getElementById('detailingHours').value || 0,
         checkingHours: document.getElementById('checkingHours').value || 0,
         revisionHours: document.getElementById('revisionHours').value || 0,
         pmHours: document.getElementById('pmHours').value || 0,
         totalHours: totalHours,
-        manhours: totalHours, // <-- ✅ THIS IS THE FIX
+        manhours: totalHours,
         services: services,
         notes: 'Estimation completed'
     };
 
     try {
         showLoading();
-        
-        // 1. Collect ALL files from BOTH inputs (BOQ and Images)
         const boqFiles = Array.from(document.getElementById('boqFileInput').files);
         const imageFiles = Array.from(document.getElementById('imageFileInput').files);
-        const allFiles = [...boqFiles, ...imageFiles];
-
-        // 2. Upload if any files exist
-        if (allFiles.length > 0) {
-            const formData = new FormData();
-            allFiles.forEach(file => formData.append('files', file));
-            formData.append('proposalId', proposalId);
-            formData.append('fileType', 'estimation');
-            await apiCall('files', { method: 'POST', body: formData });
+        const failures = [];
+        for (const file of [...boqFiles, ...imageFiles]) {
+            try {
+                await uploadFileDirectly(file, proposalId, 'estimation');
+            } catch (err) {
+                failures.push(file.name + ': ' + (err && err.message ? err.message : err));
+            }
         }
 
-        // 3. Save Estimation Data
         const response = await apiCall(`proposals?id=${proposalId}`, {
             method: 'PUT',
             body: JSON.stringify({ action: 'add_estimation', data: estimationData })
         });
+        if (!response.success) throw new Error(response.error || 'Failed to save estimation');
 
-        if (response.success) {
-            alert('Estimation saved successfully!');
-            const projectName = document.getElementById('estProjectName')?.value || 'Unknown Project';
-            // Ensure triggerEmailNotification exists before calling
-            if (typeof triggerEmailNotification === 'function') {
-                 triggerEmailNotification('estimation.complete', { projectName: projectName });
-            }
-            closeModal();
-            showProposals();
-        } else {
-             throw new Error(response.error || 'Failed to save estimation');
+        const projectName = document.getElementById('estProjectName')?.value || 'Unknown Project';
+        if (typeof triggerEmailNotification === 'function') {
+            triggerEmailNotification('estimation.complete', { projectName: projectName });
         }
+
+        let msg = pf.pricing ? 'Estimation & pricing saved successfully!' : 'Estimation saved successfully! (No pricing yet)';
+        if (pf.pricing) {
+            try {
+                await saveEstimationPricing(proposalId, pf.pricing);
+            } catch (err) {
+                msg = 'Estimation saved, but pricing could not be saved:\n' + err.message +
+                      '\n\nUse "Set Quote # & Pricing" on the proposal to add it.';
+            }
+        }
+        if (failures.length) msg += '\n\nSome files failed to upload:\n' + failures.join('\n');
+        alert(msg);
+        closeModal();
+        showProposals();
     } catch (error) {
         alert('Error saving estimation: ' + error.message);
     } finally {
@@ -6806,13 +6945,13 @@ async function editProposal(proposalId) {
                                                         
                                 <form id="cooPricingForm">
                                     <div class="form-section">
-                                        <h4>Project Number</h4>
+                                        <h4>Quote Number</h4>
                                         <div class="form-group">
-                                            <label>Project Number <span class="required">*</span></label>
+                                            <label>Quote Number <span class="required">*</span></label>
                                             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
                                                 <input type="text" id="projectNumber" class="form-control"
                                                        placeholder="Enter manually or click Generate" 
-                                                       value="${proposal.pricing?.projectNumber || ''}"
+                                                       value="${proposal.pricing?.projectNumber || estimation.quoteNumber || ''}"
                                                        required>
                                                 <button type="button" onclick="generateProjectNumber('${proposal.clientCompany}')"
                                                         class="btn btn-outline" style="width: auto; white-space: nowrap;">
@@ -6922,7 +7061,7 @@ async function editProposal(proposalId) {
         }
 
         // Generate Project Number
-        async function generateProjectNumber(clientCompany) {
+        async function generateProjectNumber(clientCompany, targetId = 'projectNumber') {
             try {
                 showLoading();
                         
@@ -6934,7 +7073,7 @@ async function editProposal(proposalId) {
                 });
                         
                 if (response.success && response.data.projectNumber) {
-                    document.getElementById('projectNumber').value = response.data.projectNumber;
+                    document.getElementById(targetId).value = response.data.projectNumber;
                     showNotification('Project number generated successfully!', 'success');
                 } else {
                     throw new Error(response.error || 'Failed to generate project number');
@@ -6949,7 +7088,7 @@ async function editProposal(proposalId) {
                 const random = Math.floor(Math.random() * 900) + 100;
                 const projectNumber = `${clientPrefix}${year}-${random}`;
                         
-                document.getElementById('projectNumber').value = projectNumber;
+                document.getElementById(targetId).value = projectNumber;
                 showNotification('Project number generated (local)', 'warning');
             } finally {
                 hideLoading();
@@ -6973,7 +7112,7 @@ async function editProposal(proposalId) {
                 
             // Validation
             if (!projectNumber) {
-                alert('Please generate a project number');
+                alert('Please enter or generate a quote number');
                 return;
             }
                 
@@ -6987,6 +7126,7 @@ async function editProposal(proposalId) {
                         
                 const pricingData = {
                     projectNumber: projectNumber,
+                    quoteNumber: projectNumber,
                     quoteValue: parseFloat(quoteValue),
                     currency: currency,
                     hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
